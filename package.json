@@ -1,0 +1,26 @@
+{
+  "name": "agentd",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Self-hosted, approval-driven orchestration for native coding agents",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.ts",
+    "mobile": "node src/mobile.ts",
+    "agentctl": "node src/control.ts",
+    "test": "node --test test/*.test.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "typescript": "7.0.2"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Futuretunes/agentd.git"
+  }
+}

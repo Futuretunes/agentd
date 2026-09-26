@@ -1,0 +1,40 @@
+[Unit]
+Description=Agent orchestrator foundation
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=agentd
+Group=agentd
+WorkingDirectory=/opt/agentd
+ExecStart=/usr/local/bin/node /opt/agentd/src/server.ts
+Environment=AGENTD_STATE_DIR=/srv/agentd/state
+Environment=AGENTD_PORT=8787
+Environment=AGENTD_RUNNER=1
+EnvironmentFile=/etc/agentd/agentd.env
+Environment=AGENTD_CONTROL_SOCKET=/run/agentd/control.sock
+RuntimeDirectory=agentd
+RuntimeDirectoryMode=0700
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/agentd /var/lib/agentd
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

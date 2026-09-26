@@ -1,0 +1,25 @@
+[Unit]
+Description=Agent task desk for home network
+After=network.target agentd.service
+Requires=agentd.service
+[Service]
+User=agentd
+Group=agentd
+WorkingDirectory=/opt/agentd
+ExecStart=/usr/local/bin/node /opt/agentd/src/mobile.ts
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/agentd/state/attachments
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+[Install]
+WantedBy=multi-user.target
