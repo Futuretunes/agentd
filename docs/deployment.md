@@ -28,7 +28,7 @@ sudo systemctl enable --now agentd
 curl http://127.0.0.1:8787/healthz
 ```
 
-The unit retains `AF_NETLINK` because Codex's Linux sandbox needs a netlink socket to initialize its network namespace. The process still has no Linux capabilities and no sudo access.
+The unit retains `AF_NETLINK` for sandbox namespace setup. It also retains `CAP_SYS_ADMIN` in the capability *bounding set* so bubblewrap can mount `/proc` inside a newly created, unprivileged user namespace. `User=agentd` and `NoNewPrivileges=true` leave the daemon with zero permitted and effective capabilities in the host namespace; it has no sudo access. An empty bounding set breaks worker startup with `Can't mount proc ... Operation not permitted`.
 
 ## Mobile gateway
 

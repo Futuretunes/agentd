@@ -31,7 +31,10 @@ ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-CapabilityBoundingSet=
+# Keep CAP_SYS_ADMIN in the bounding set so bubblewrap can use it only inside
+# the worker's unprivileged user namespace. User=agentd and NoNewPrivileges
+# leave the daemon with no permitted or effective host-namespace capability.
+CapabilityBoundingSet=CAP_SYS_ADMIN
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 StandardOutput=journal
 StandardError=journal
