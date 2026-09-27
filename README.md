@@ -4,11 +4,12 @@ Self-hosted orchestration for native coding agents, with a human in control.
 
 agentd queues tasks, waits for approval, and runs Codex or Claude Code in a dedicated Git worktree. A mobile-friendly task desk lets you submit text and images, approve work, cancel runs, and inspect results.
 
-**Status: early proof of concept.** Linux is the deployment target. This is a single-user, trusted-network service, not a hardened multi-tenant platform. The current adapters are configured for read-only work. A successful process exit does not prove that an agent fulfilled its task.
+**Status: early proof of concept.** Linux is the deployment target. This is a single-user, trusted-network service, not a hardened multi-tenant platform. Ask mode is read-only. Optional Edit files mode requires Linux bubblewrap and separate run, check and commit approvals. A successful process exit does not prove that an agent fulfilled its task.
 
 ## Available today
 
 - Codex and Claude Code adapters using their installed CLIs and existing account logins; agentd does not require provider API keys.
+- Reviewable edits, snapshot-bound test results and explicitly approved local branch commits.
 - Projects with local repositories, persistent conversations, rename and archive controls.
 - Durable SQLite queue, explicit approval, one active worker, timeouts and process-group cancellation.
 - Commit-pinned, detached Git worktrees for each task.
@@ -65,3 +66,7 @@ Every newly created task waits for approval. Follow-ups create separate tasks; t
 Use **＋** beside Projects to create an empty project, then **New conversation** to start work. Existing repositories can be registered by an administrator with `npm run agentctl -- project-register "Project name" /absolute/repository/path`. Registration is available only through the private control socket, not the browser. GitHub publication alone does not register a repository.
 
 See [deployment](docs/deployment.md), [architecture](docs/architecture.md), [security](SECURITY.md), [roadmap](docs/roadmap.md) and [contributing](CONTRIBUTING.md).
+
+## Reviewable editing
+
+See [editing setup and limitations](docs/editing.md). Editing is disabled by default. No changes are pushed or published automatically.

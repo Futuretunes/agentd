@@ -1,6 +1,6 @@
 import { createConnection } from 'node:net';
 const [op,first,...rest]=process.argv.slice(2);
-const input=op==='project-register'?{op,name:first,repo:rest[0]}:op==='project-create'?{op,name:[first,...rest].join(' ')}:op==='create'?{op,adapter:first,prompt:rest.join(' ')}:{op:op??'list',id:first};
+const input=op==='project-checks'?{op,id:first,dependencies:rest[0]}:op==='project-register'?{op,name:first,repo:rest[0]}:op==='project-create'?{op,name:[first,...rest].join(' ')}:op==='create'?{op,adapter:first,prompt:rest.join(' ')}:{op:op??'list',id:first};
 const socket=createConnection(process.env.AGENTD_CONTROL_SOCKET??'/run/agentd/control.sock');
 socket.setTimeout(10000,()=>{console.error('Control request timed out');socket.destroy();process.exitCode=1;});
 socket.on('connect',()=>socket.write(JSON.stringify(input)+'\n'));

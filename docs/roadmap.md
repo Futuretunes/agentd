@@ -5,7 +5,7 @@ Implemented: project selection and creation, persistent conversations, serial ta
 Planned, with no release-date commitment:
 
 - Stable adapter contract, capability discovery and Cursor integration.
-- Write-capable tasks, reviewable diffs and repository import from the browser.
+- Browser repository import, approved GitHub publishing, broader check profiles and revision requests before committing.
 - Worker credential separation and stronger process isolation.
 - Structured results, task-specific validation and richer event streams.
 - Mobile notifications and approvals through ntfy; durable interrupts and resumable sessions.
