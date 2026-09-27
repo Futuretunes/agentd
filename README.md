@@ -9,6 +9,7 @@ agentd queues tasks, waits for approval, and runs Codex or Claude Code in a dedi
 ## Available today
 
 - Codex and Claude Code adapters using their installed CLIs and existing account logins; agentd does not require provider API keys.
+- Projects with local repositories, persistent conversations, rename and archive controls.
 - Durable SQLite queue, explicit approval, one active worker, timeouts and process-group cancellation.
 - Commit-pinned, detached Git worktrees for each task.
 - HTTPS mobile interface with access-key login, text input, JPEG/PNG attachments and follow-up tasks.
@@ -60,5 +61,7 @@ npm run agentctl -- cancel TASK_ID
 ```
 
 Every newly created task waits for approval. Follow-ups create separate tasks; they do not inject instructions into a running session.
+
+Use **＋** beside Projects to create an empty project, then **New conversation** to start work. Existing repositories can be registered by an administrator with `npm run agentctl -- project-register "Project name" /absolute/repository/path`. Registration is available only through the private control socket, not the browser. GitHub publication alone does not register a repository.
 
 See [deployment](docs/deployment.md), [architecture](docs/architecture.md), [security](SECURITY.md), [roadmap](docs/roadmap.md) and [contributing](CONTRIBUTING.md).

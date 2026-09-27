@@ -1,11 +1,11 @@
 # Roadmap
 
-Implemented: serial task queue, approval gate, Codex and Claude CLI execution, detached worktrees, mobile text/images, cancellation, SQLite persistence and basic metrics.
+Implemented: project selection and creation, persistent conversations, serial task queue, approval gate, Codex and Claude CLI execution, detached worktrees, mobile text/images, cancellation, SQLite persistence and basic metrics.
 
 Planned, with no release-date commitment:
 
 - Stable adapter contract, capability discovery and Cursor integration.
-- Real project selection, write-capable tasks and reviewable diffs.
+- Write-capable tasks, reviewable diffs and repository import from the browser.
 - Worker credential separation and stronger process isolation.
 - Structured results, task-specific validation and richer event streams.
 - Mobile notifications and approvals through ntfy; durable interrupts and resumable sessions.

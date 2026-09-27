@@ -1,19 +1,69 @@
-const $=id=>document.getElementById(id);let selected=null,uploads=[],busy=false,signedIn=false,lastOutput='';
-const label={waiting_for_approval:'Needs your approval',queued:'Queued',running:'Working',cancelling:'Stopping',cancelled:'Cancelled',succeeded:'Finished · review result',failed:'Failed',interrupted:'Interrupted',timed_out:'Time limit reached'};
-function notice(text=''){$('notice').textContent=text;}
-async function api(path,data){const response=await fetch(path,{method:data?'POST':'GET',headers:data?{'Content-Type':'application/json'}:undefined,body:data?JSON.stringify(data):undefined});const value=await response.json();if(response.status===401){signedIn=false;$('workspace').hidden=true;$('login').hidden=false;$('logout').hidden=true;}if(!response.ok)throw Error(value.error??'Request failed');return value;}
-function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;}
-function action(text,callback,cls){const b=node('button',text,cls);b.type='button';b.onclick=async()=>{b.disabled=true;try{await callback();notice();await refresh();}catch(e){notice(e.message);}finally{b.disabled=false;}};return b;}
-function images(items){const box=node('div',undefined,'images');for(const item of items){const a=document.createElement('a');a.href='/api/images/'+item.id;a.target='_blank';a.rel='noopener';const img=document.createElement('img');img.src=a.href;img.alt=item.name;a.append(img);box.append(a);}return box;}
-async function refresh(){if(busy)return;busy=true;try{const tasks=await api('/api/tasks');signedIn=true;$('login').hidden=true;$('workspace').hidden=false;$('logout').hidden=false;$('connection').textContent='Connected · home network';$('tasks').replaceChildren();if(!tasks.length)$('tasks').append(node('p','No tasks yet. Start with a small question.','subtle'));for(const task of tasks){const b=action('',async()=>{selected=task.id;lastOutput='';$('prompt').value='';uploads=[];renderUploads();},'task'+(selected===task.id?' selected':''));b.append(node('span',task.prompt,'task-title'),node('small',`${task.adapter} · ${label[task.status]??task.status}`));$('tasks').append(b);}
-if(selected){const data=await api('/api/tasks/'+selected);const t=data.task;const fingerprint=JSON.stringify(data);if(lastOutput!==fingerprint){lastOutput=fingerprint;const d=$('detail');d.replaceChildren(node('span',label[t.status]??t.status,'badge'),node('p',t.adapter.toUpperCase(),'eyebrow'),node('div',t.prompt,'instructions'));if(t.parent)d.append(node('p','Follow-up task · previous instruction and output are included when this runs.','subtle'));d.append(images(data.images??[]));const actions=node('div',undefined,'actions');if(t.status==='waiting_for_approval'){actions.append(action('Approve & run',()=>api('/api/action',{op:'approve',id:t.id}),'primary'),action('Reject',()=>api('/api/action',{op:'cancel',id:t.id}),'danger'));}else if(['queued','running'].includes(t.status))actions.append(action('Cancel task',async()=>{if(confirm('Stop this task? Its worktree and output will be kept.'))await api('/api/action',{op:'cancel',id:t.id});},'danger'));d.append(actions);if(t.error)d.append(node('p',t.error,'subtle'));if(data.output){d.append(node('h2','Agent output'));const output=node('pre',data.output.replace(/\x1b\[[0-9;]*[a-zA-Z]/g,''),'result');d.append(output);}else d.append(node('p','Output will appear here when the agent starts.','subtle'));const events=document.createElement('details');events.append(node('summary','Activity'));for(const event of data.events)events.append(node('p',`${new Date(event.at).toLocaleTimeString()} · ${label[event.status]??event.status}`,'metadata'));d.append(events);}
-$('compose-label').textContent='Add an instruction';$('send').textContent='Create follow-up';$('hint').textContent='Follow-ups become new tasks for approval; they do not interrupt a running agent. Use Cancel above to stop it. Dictate with your keyboard microphone.';
-}}catch(e){if(signedIn)notice(e.message);}finally{busy=false;}}
-function renderUploads(){$('attachments').replaceChildren(...uploads.map(item=>action(item.name+' ×',async()=>{uploads=uploads.filter(x=>x.id!==item.id);renderUploads();})));}
-$('loginform').onsubmit=async e=>{e.preventDefault();try{await api('/api/login',{key:$('key').value});$('key').value='';notice();await refresh();}catch(error){notice(error.message);}};
-$('logout').onclick=async()=>{await api('/api/logout',{});selected=null;signedIn=false;await refresh();};
-$('new').onclick=()=>{selected=null;lastOutput='';uploads=[];renderUploads();$('detail').replaceChildren(node('p','READY WHEN YOU ARE','eyebrow'),node('h2','What shall we work on?'),node('p','Every new task waits for your approval.','subtle'));$('compose-label').textContent='New instruction';$('send').textContent='Create task';$('prompt').value='';$('hint').textContent='Use your keyboard microphone to dictate, then review before sending. JPEG or PNG, up to 5 MB each.';$('prompt').focus();refresh();};
-$('voice').onclick=()=>{$('prompt').focus();notice('Tap the microphone on your iPhone keyboard to dictate. Review the text here before sending.');};
-$('files').onchange=async()=>{const files=Array.from($('files').files);$('send').disabled=true;try{if(uploads.length+files.length>4)throw Error('Attach up to four images.');for(const file of files){if(file.size>5*1024*1024)throw Error('Each image must be at most 5 MB.');const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});uploads.push(await api('/api/upload',{name:file.name,data}));renderUploads();}notice();}catch(e){notice(e.message);}finally{$('files').value='';$('send').disabled=false;}};
-$('compose').onsubmit=async e=>{e.preventDefault();$('send').disabled=true;try{const task=await api('/api/action',{op:'create',adapter:$('adapter').value,prompt:$('prompt').value,attachments:uploads.map(x=>x.id),parent:selected});selected=task.id;lastOutput='';$('prompt').value='';uploads=[];renderUploads();notice('Task saved. Review the instruction, then approve when ready.');await refresh();}catch(error){notice(error.message);}finally{$('send').disabled=false;}};
-refresh();setInterval(()=>{if(signedIn&&!document.hidden)refresh();},3000);
+const $ = id => document.getElementById(id);
+let projectId = null, selected = null, uploads = [], signedIn = false, busy = false, generation = 0;
+let projects = [], latest = null, fingerprint = '', uploading = false;
+const labels = {waiting_for_approval:'Ready for your approval',queued:'Queued',running:'Working',cancelling:'Stopping',cancelled:'Cancelled',succeeded:'Finished · review result',failed:'Failed',interrupted:'Interrupted',timed_out:'Time limit reached'};
+const pending = status => ['waiting_for_approval','queued','running','cancelling'].includes(status);
+function notice(text = '') { $('notice').textContent = text; $('notice').hidden = !text; }
+function node(tag,text,cls) { const e = document.createElement(tag); if(text !== undefined)e.textContent=text; if(cls)e.className=cls; return e; }
+async function api(path,data) {
+  const res = await fetch(path,{method:data?'POST':'GET',headers:data?{'Content-Type':'application/json'}:undefined,body:data?JSON.stringify(data):undefined});
+  const value=await res.json();
+  if(res.status===401){signedIn=false;$('workspace').hidden=true;$('login').hidden=false;}
+  if(!res.ok)throw Error(value.error??'Request failed'); return value;
+}
+function button(text,callback,cls='') {
+  const b=node('button',text,cls);b.type='button';b.onclick=async()=>{b.disabled=true;try{await callback();await refresh();}catch(e){notice(e.message);}finally{b.disabled=false;}};return b;
+}
+function reset(thread=null) { selected=thread;generation++;fingerprint='';latest=null;uploads=[];renderUploads();$('prompt').value='';$('project-info').hidden=true; }
+function renderUploads(){ $('attachments').replaceChildren(...uploads.map(item=>button(item.name+' ×',()=>{uploads=uploads.filter(x=>x.id!==item.id);renderUploads();}))); }
+function images(items){const box=node('div',undefined,'images');for(const item of items){const a=node('a');a.href='/api/images/'+item.id;a.target='_blank';a.rel='noopener';const img=node('img');img.src=a.href;img.alt=item.name;a.append(img);box.append(a);}return box;}
+function empty(){
+  const d=$('detail');d.replaceChildren();const intro=node('div',undefined,'welcome');intro.append(node('div','◈','welcome-icon'),node('p',projects.find(p=>p.id===projectId)?.name??'Your workspace','eyebrow'),node('h2','What shall we work on?'),node('p','Start a conversation. Choose an agent. You decide when it runs.','muted'));
+  const ideas=node('div',undefined,'suggestions');for(const text of ['Explain this project','Review the architecture','Plan the next milestone'])ideas.append(button(text,()=>{$('prompt').value=text;$('prompt').focus();}));intro.append(ideas);d.append(intro);
+}
+function renderThread(data){
+  $('thread-title').textContent=data.conversation.title;
+  const d=$('detail'),nearBottom=d.scrollHeight-d.scrollTop-d.clientHeight<120;d.replaceChildren();
+  for(const t of data.messages){
+    const turn=node('article',undefined,'turn');const user=node('div',undefined,'user-message');user.append(node('div',t.prompt,'message-text'),images(t.images??[]));turn.append(user);
+    const response=node('div',undefined,'agent-message');const head=node('div',undefined,'message-head');head.append(node('strong',t.adapter==='codex'?'◈ Codex':'✳ Claude'),node('span',labels[t.status]??t.status,'status '+t.status));response.append(head);
+    if(t.output)response.append(node('pre',t.output.replace(/\x1b\[[0-9;]*[a-zA-Z]/g,''),'result'));else response.append(node('p',t.status==='waiting_for_approval'?'Review your message, then approve this run.':pending(t.status)?'Your agent’s output will appear here.':'No output was recorded.','muted'));
+    if(t.error)response.append(node('p',t.error,'error'));
+    const actions=node('div',undefined,'actions');if(t.status==='waiting_for_approval'){actions.append(button('Approve & run',()=>api('/api/action',{op:'approve',id:t.id}),'primary'),button('Reject',()=>api('/api/action',{op:'cancel',id:t.id})));}
+    else if(['queued','running'].includes(t.status))actions.append(button('Stop run',()=>api('/api/action',{op:'cancel',id:t.id}),'danger'));
+    response.append(actions);const meta=node('details');meta.append(node('summary','Run details'),node('p',`Revision ${t.revision.slice(0,12)} · ${new Date(t.created).toLocaleString()}`,'muted'),node('p',t.worktree??'A worktree will be created after approval.','path'));response.append(meta);turn.append(response);d.append(turn);
+  }
+  if(data.messages.length===30)d.prepend(node('p','Showing the latest 30 turns.','muted'));
+  if(nearBottom||!fingerprint)d.scrollTop=d.scrollHeight;
+}
+async function refresh(){
+  if(busy)return;busy=true;const epoch=generation;
+  try{
+    const list=await api('/api/projects');if(epoch!==generation)return;projects=list;
+    signedIn=true;$('login').hidden=true;$('workspace').hidden=false;
+    if(!projects.some(p=>p.id===projectId))projectId=projects[0]?.id??null;
+    $('projects').replaceChildren(...projects.map(p=>{const b=button('',()=>{projectId=p.id;reset();},'project'+(p.id===projectId?' selected':''));b.append(node('span','▱ '+p.name),node('small',String(p.conversations)));return b;}));
+    $('project-name').textContent=projects.find(p=>p.id===projectId)?.name??'Workspace';
+    const threads=projectId?await api('/api/projects/'+projectId+'/conversations'):[];if(epoch!==generation)return;
+    $('tasks').replaceChildren(...threads.map(t=>{const b=button('',()=>reset(t.id),'thread'+(selected===t.id?' selected':''));b.append(node('span',t.title),node('small',labels[t.status]??'New'));return b;}));
+    if(!threads.length)$('tasks').append(node('p','Your conversations will appear here.','empty-list'));
+    if(selected){const data=await api('/api/conversations/'+selected);if(epoch!==generation)return;latest=data.messages.at(-1);const next=JSON.stringify(data);if(next!==fingerprint){renderThread(data);fingerprint=next;}}
+    else{$('thread-title').textContent='New conversation';latest=null;if(!fingerprint){empty();fingerprint='empty';}}
+    $('rename').hidden=!selected;$('archive').hidden=!selected;
+    const locked=latest&&pending(latest.status);$('send').disabled=!!locked||uploading||!projectId;
+    $('hint').textContent=locked?'Approve or stop the current run before sending the next message.':'Each message waits for approval. Images and keyboard dictation are supported.';
+  }catch(e){if(signedIn)notice(e.message);}finally{busy=false;if(epoch!==generation)refresh();}
+}
+$('loginform').onsubmit=async e=>{e.preventDefault();try{await api('/api/login',{key:$('key').value});$('key').value='';notice();await refresh();}catch(e){notice(e.message);}};
+$('logout').onclick=async()=>{try{await api('/api/logout',{});signedIn=false;reset();projectId=null;$('workspace').hidden=true;$('login').hidden=false;}catch(e){notice(e.message);}};
+$('new').onclick=()=>{reset();refresh();$('prompt').focus();};
+$('add-project').onclick=()=>$('project-dialog').showModal();
+$('project-close').onclick=()=>$('project-dialog').close();
+$('project-form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{const p=await api('/api/action',{op:'project-create',name:$('project-input').value});projectId=p.id;reset();$('project-dialog').close();$('project-input').value='';notice();await refresh();}catch(e){notice(e.message);}finally{b.disabled=false;}};
+$('rename').onclick=async()=>{const name=prompt('Conversation name',$('thread-title').textContent);if(name===null)return;try{await api('/api/action',{op:'conversation-rename',id:selected,name});fingerprint='';await refresh();}catch(e){notice(e.message);}};
+$('archive').onclick=async()=>{if(!confirm('Archive this conversation? Its runs and files will be kept.'))return;try{await api('/api/action',{op:'conversation-archive',id:selected});reset();await refresh();}catch(e){notice(e.message);}};
+$('project-menu').onclick=()=>{const box=$('project-info');box.hidden=!box.hidden;const p=projects.find(p=>p.id===projectId);if(!p)return;box.replaceChildren(node('strong',p.name),node('p',p.repo,'path'),node('p','Local Git repository · read-only agent access','muted'),button('Rename project',async()=>{const name=prompt('Project name',p.name);if(name===null)return;await api('/api/action',{op:'project-rename',id:p.id,name});box.hidden=true;}));};
+$('voice').onclick=()=>{$('prompt').focus();notice('Use your keyboard microphone to dictate, then review your message before sending.');};
+$('files').onchange=async()=>{const epoch=generation;uploading=true;$('send').disabled=true;try{const files=Array.from($('files').files);if(uploads.length+files.length>4)throw Error('Attach up to four images.');for(const file of files){if(file.size>5*1024*1024)throw Error('Each image must be at most 5 MB.');const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});const item=await api('/api/upload',{name:file.name,data});if(epoch!==generation)break;uploads.push(item);renderUploads();}}catch(e){notice(e.message);}finally{$('files').value='';uploading=false;refresh();}};
+$('compose').onsubmit=async e=>{e.preventDefault();$('send').disabled=true;const epoch=generation;try{const t=await api('/api/action',{op:'create',project:projectId,conversation:selected,adapter:$('adapter').value,prompt:$('prompt').value,attachments:uploads.map(x=>x.id)});if(epoch===generation){reset(t.conversation);notice();}await refresh();}catch(e){notice(e.message);await refresh();}};
+notice();refresh();setInterval(()=>{if(signedIn&&!document.hidden)refresh();},3000);
