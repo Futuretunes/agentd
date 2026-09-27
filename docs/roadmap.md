@@ -4,12 +4,14 @@ Implemented: project selection and creation, persistent conversations, serial ta
 
 Also implemented in v0.6.0: a shared native adapter contract, executable availability discovery, and an Agents panel with explicit unavailable reasons. Discovery does not authenticate or start model work.
 
+Implemented in v0.7.0: a read-only Operations Center for desktop and phone. It summarizes service health, queue and task states, recent failures, pending reviews, adapter availability, and normalized native account sign-in state. Provider usage is shown as unavailable unless a native interface can report it reliably. Account checks are cached and their raw output, identities, executable paths, prompts, logs, and worktree paths are excluded from the Operations response.
+
 ## Core product requirement: terminal-free operation
 
 The eventual product must let the operator manage everything through the desktop/mobile GUI, without SSH, shell commands, manual file edits, or copying installer output into chat. This is a product acceptance requirement, not just a visual redesign. Current terminal-based administration is temporary.
 
 - **Credits and limits:** show each provider's available usage/credits, reset times, account status and approaching-limit warnings where supported. Distinguish subscription limits from metered balances. Show unavailable or stale information honestly; never invent a balance. Explain when limits block a task and provide a clear next action.
-- **Current tasks:** one overview of queued, running, waiting-for-approval, blocked, failed and completed work, with progress, results, logs, checks, changes, approvals, cancellation and supported retry/resume controls.
+- **Current tasks:** the read-only overview is implemented. Add progress, results, logs, checks, changes, approvals, cancellation and supported retry/resume controls to the GUI.
 - **Accounts:** guided Claude/Codex sign-in, sign-out, account selection and reauthentication using supported native/browser flows. Explain expired sessions and verify success. Keep passwords, authorization codes and tokens out of conversations and logs; preserve human control over sign-in and permissions.
 - **Projects and operations:** create/import projects, configure supported agents and integrations, review/commit/publish approved changes, install updates, monitor services, and manage backups/restores through guided GUI workflows.
 - **Foolproof recovery:** plain-language errors, sensible defaults, disabled actions with explanations, actionable prerequisites and clear success/failure states. Prevent duplicate submissions and accidental destructive actions. Preserve work across failures and offer safe rollback/retry paths instead of terminal instructions.

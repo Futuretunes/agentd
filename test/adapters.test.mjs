@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,writeFileSync,chmodSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {discover,invocation} from '../src/adapters.ts';
+import {discover,invocation,probeAccount} from '../src/adapters.ts';
 test('native adapter invocations preserve sandbox, tools and literal user arguments',()=>{
  const prompt='literal $(touch unwanted); --dangerously-skip-permissions';
  const [,codex]=invocation('codex',{prompt,mode:'edit',images:['/tmp/a photo.png']});
@@ -12,6 +12,15 @@ test('native adapter invocations preserve sandbox, tools and literal user argume
  const [,claude]=invocation('claude',{prompt,mode:'ask',images:[]});assert.equal(claude[claude.indexOf('--tools')+1],'Read,Glob,Grep');assert.equal(claude[claude.indexOf('--permission-mode')+1],'dontAsk');assert.equal(claude.at(-1),prompt);
  const [,edit]=invocation('claude',{prompt,mode:'edit',images:[]});assert.equal(edit[edit.indexOf('--allowedTools')+1],'Read,Glob,Grep,Edit,Write');
  assert.throws(()=>invocation('cursor',{prompt,mode:'ask',images:[]}),/Unsupported/);assert.throws(()=>invocation('claude',{prompt,mode:'unsafe',images:[]}),/Unsupported/);
+});
+test('account probes return only normalized status and never raw identity output',async()=>{
+ const root=mkdtempSync(join(tmpdir(),'account-')),bin=join(root,'claude'),prior=process.env.AGENTD_CLAUDE_BIN;
+ try{
+  process.env.AGENTD_CLAUDE_BIN=bin;writeFileSync(bin,"#!/bin/sh\nprintf 'Login method: Claude Pro account\\nEmail: private@example.test\\n'\n",{mode:0o700});
+  const signedIn=await probeAccount('claude');assert.deepEqual(signedIn.state,'signed_in');assert.equal(signedIn.method,'Claude subscription');assert.ok(!JSON.stringify(signedIn).includes('private@example.test'));
+  writeFileSync(bin,"#!/bin/sh\nprintf 'Not logged in. Run login to authenticate.\\n'\nexit 1\n",{mode:0o700});const signedOut=await probeAccount('claude');assert.equal(signedOut.state,'signed_out');assert.equal(signedOut.method,null);
+  rmSync(bin);const missing=await probeAccount('claude');assert.equal(missing.state,'unavailable');assert.ok(!JSON.stringify(missing).includes(bin));
+ }finally{if(prior===undefined)delete process.env.AGENTD_CLAUDE_BIN;else process.env.AGENTD_CLAUDE_BIN=prior;rmSync(root,{recursive:true,force:true});}
 });
 test('discovery distinguishes installation from policy without running CLI or checking credentials',()=>{
  const root=mkdtempSync(join(tmpdir(),'adapters-')),bin=join(root,'cli');const prior=process.env.AGENTD_CLAUDE_BIN;

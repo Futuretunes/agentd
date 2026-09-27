@@ -25,14 +25,14 @@ The runner and gateway currently share a Unix account. Worktrees isolate Git sta
 ## Interfaces
 
 - `GET /healthz`, `/readyz`, `/v1/status`, `/metrics`: loopback daemon HTTP.
-- Control socket: one newline-delimited JSON request; operations `create`, `list`, `show`, `approve`, `cancel`.
-- Gateway: `/api/login`, `/api/logout`, `/api/tasks`, `/api/tasks/:id`, `/api/action`, `/api/upload`, `/api/images/:id`.
+- Control socket: one newline-delimited JSON request. Alongside task and project mutations, the `operations` request returns a sanitized global status snapshot.
+- Gateway: authenticated project, conversation, task, upload, review, action and `GET /api/operations` routes.
 
 Socket replies are `{ok:true,result:...}` or `{ok:false,error:...}`. Create accepts `adapter`, `prompt`, optional `attachments` IDs and optional `parent` task ID. List returns the latest 100 tasks. Show includes events and a bounded log tail.
 
 Images are copied into `.agentd-input/` in the task worktree. This creates untracked input files. A follow-up includes the immediate parent's instruction and a truncated log tail; it is not a resumed native session.
 
-The adapter command selection currently lives in `src/runner.ts`. A stable plugin interface is a roadmap item.
+Native adapter discovery, invocation and normalized account probes live in `src/adapters.ts`. A stable external plugin interface is a roadmap item.
 
 ## Project workspace
 

@@ -1,4 +1,4 @@
-import {adapterIds,invocation,discover,type Mode} from './adapters.ts';
+import {adapterIds,invocation,discover,probeAccount,type AccountStatus,type Mode} from './adapters.ts';
 import {snapshot,commitSnapshot} from './changes.ts';
 import {isolated} from './isolation.ts';
 import {fileURLToPath} from 'node:url';
@@ -10,7 +10,7 @@ import { mkdirSync, openSync, closeSync, realpathSync, readFileSync, copyFileSyn
 import { join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 
-type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]] };
+type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
 export function runner(c: Config) {
   for (const dir of [c.stateDir,c.worktrees,c.logs]) mkdirSync(dir,{recursive:true,mode:0o700});
   for(const name of readdirSync(c.stateDir))if(name.startsWith('worker-'))rmSync(join(c.stateDir,name),{recursive:true,force:true});
@@ -76,6 +76,24 @@ export function runner(c: Config) {
   };
   const git=(args:string[],repo=c.repo)=>execFileSync('git',['-C',repo,...args],{encoding:'utf8',timeout:15000,stdio:['ignore','pipe','pipe']}).trim();
   const capabilities=()=>discover(enabledAdapters,editAdapters,!!c.command);
+  const accountCache=new Map<string,AccountStatus>(adapterIds.map(id=>[id,{state:'checking',method:null,checkedAt:null,message:'Checking account status'}]));
+  let checkingAccounts=false;
+  let accountsCheckedAt=0;
+  const refreshAccounts=(force=false)=>{
+    if(checkingAccounts||closing||(!force&&Date.now()-accountsCheckedAt<300000))return;checkingAccounts=true;
+    void Promise.all(adapterIds.map(async id=>{
+      try{accountCache.set(id,await (c.accountStatus??probeAccount)(id));}
+      catch{accountCache.set(id,{state:'error',method:null,checkedAt:new Date().toISOString(),message:'Could not verify sign-in'});}
+    })).finally(()=>{accountsCheckedAt=Date.now();checkingAccounts=false;});
+  };
+  setImmediate(()=>refreshAccounts(true));
+  const accountTimer=setInterval(()=>refreshAccounts(true),300000);accountTimer.unref();
+  const operationError=(value:unknown)=>{
+    if(value===null||value===undefined||value==='')return null;
+    const message=String(value);
+    if(/^Exit \d+$/.test(message)||message==='Service stopped before completion')return message;
+    return 'Worker could not start';
+  };
   const requireAdapter=(id:string,mode:string)=>{
     const value=capabilities().find(value=>value.id===id);
     if(!value)throw Error('Unsupported adapter');
@@ -158,6 +176,20 @@ export function runner(c: Config) {
   function request(input:any){
     if(closing)throw new Error('Service is stopping');
     if(input.op==='capabilities'){const adapters=capabilities();return {adapterSchemaVersion:1,adapters,editing:adapters.some(value=>value.modes.includes('edit')),editAdapters:adapters.filter(value=>value.modes.includes('edit')).map(value=>value.id),enabledAdapters:adapters.filter(value=>value.available).map(value=>value.id),strictWorkers:!!c.strictWorkers,publishing:false};}
+    if(input.op==='operations'){
+      refreshAccounts();
+      const counts:Record<string,number>={waiting_for_approval:0,queued:0,running:0,cancelling:0,succeeded:0,failed:0,cancelled:0,timed_out:0,interrupted:0};
+      for(const row of db.prepare('SELECT status,count(*) AS count FROM tasks GROUP BY status').all())counts[String(row.status)]=Number(row.count);
+      const tasks=db.prepare(`SELECT t.id,t.adapter,t.mode,t.status,t.created,t.updated,t.error,t.review,t.project,t.conversation,
+        p.name AS project_name,c.title AS conversation_title,t.checks
+        FROM tasks t JOIN projects p ON p.id=t.project JOIN conversations c ON c.id=t.conversation
+        ORDER BY t.updated DESC,t.rowid DESC LIMIT 50`).all().map((row:any)=>{
+          let checkStatus:string|null=null;try{checkStatus=row.checks?String(JSON.parse(String(row.checks)).status??'unknown'):null;}catch{checkStatus='unknown';}
+          return {id:row.id,adapter:row.adapter,mode:row.mode,status:row.status,created:row.created,updated:row.updated,error:operationError(row.error),review:row.review,project:row.project,projectName:row.project_name,conversation:row.conversation,conversationTitle:row.conversation_title,checkStatus};
+        });
+      const adapters=capabilities().map(value=>({...value,account:accountCache.get(value.id),usage:{state:'unavailable',message:'Usage limits are not reported by this native CLI'}}));
+      return {generatedAt:new Date().toISOString(),service:{state:'healthy',scheduler:'serial',activeTask:active?.id??null,queueDepth:counts.queued??0,security:c.strictWorkers?'hardened':'standard'},counts,tasks,adapters};
+    }
     if(input.op==='audit')return db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 100').all();
     if(input.op==='project-checks'){
       const p=project(input.id);if(typeof input.dependencies!=='string'||!isAbsolute(input.dependencies))throw Error('Absolute dependency directory required');
@@ -280,5 +312,5 @@ export function runner(c: Config) {
   const controlPath=process.env.AGENTD_CONTROL_SOCKET??socket;
   server.listen(controlPath);
   server.on('listening',()=>pump());
-  return {request,server,async close(){closing=true;const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
+  return {request,server,async close(){closing=true;clearInterval(accountTimer);const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
 }

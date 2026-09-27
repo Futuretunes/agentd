@@ -38,3 +38,16 @@ test('legacy tasks migrate to their original project and preserve follow-up ance
  const app=runner({stateDir,repo:repo(root,'original'),worktrees:join(root,'trees'),logs:join(root,'logs')});await once(app.server,'listening');
  try{const threads=app.request({op:'conversations',project:'default'});assert.equal(threads.length,1);const data=app.request({op:'conversation-show',id:threads[0].id});assert.equal(data.messages.length,2);assert.equal(data.messages[1].parent,'old');}finally{await app.close();rmSync(root,{recursive:true,force:true});}
 });
+test('operations summarizes global work and sanitized account health without prompts or logs',async()=>{
+ let accountChecks=0;
+ const root=mkdtempSync(join(tmpdir(),'operations-')),config={stateDir:join(root,'state'),repo:repo(root,'original'),worktrees:join(root,'trees'),logs:join(root,'logs'),command:(_adapter,prompt)=>[process.execPath,['-e',prompt==='fail'?'process.exit(1)':"console.log('private model output')"]],accountStatus:async id=>{accountChecks++;return {state:id==='claude'?'signed_in':'signed_out',method:id==='claude'?'Claude subscription':null,checkedAt:'2026-01-01T00:00:00.000Z',message:id==='claude'?'Account is signed in':'Sign-in required'};}};
+ const app=runner(config);await once(app.server,'listening');
+ try{
+  const complete=app.request({op:'create',adapter:'claude',prompt:'private prompt'});app.request({op:'approve',id:complete.id});await done(app,complete.id);
+  const waiting=app.request({op:'create',adapter:'claude',prompt:'private waiting prompt'});
+  const failed=app.request({op:'create',adapter:'codex',prompt:'fail'});app.request({op:'approve',id:failed.id});for(let i=0;i<100&&app.request({op:'show',id:failed.id}).task.status!=='failed';i++)await sleep(10);
+  await sleep(10);const value=app.request({op:'operations'}),serialized=JSON.stringify(value);app.request({op:'operations'});
+  assert.equal(value.service.state,'healthy');assert.equal(value.counts.succeeded,1);assert.equal(value.counts.waiting_for_approval,1);assert.equal(value.counts.failed,1);assert.equal(value.tasks.length,3);assert.equal(value.tasks.find(x=>x.id===waiting.id).conversationTitle,'private waiting prompt');
+  assert.equal(value.adapters.find(x=>x.id==='claude').account.state,'signed_in');assert.equal(value.adapters[0].usage.state,'unavailable');assert.equal(accountChecks,2);assert.ok(!serialized.includes('private model output'));assert.ok(!value.tasks.some(x=>'prompt' in x||'log' in x||'worktree' in x));
+ }finally{await app.close();rmSync(root,{recursive:true,force:true});}
+});

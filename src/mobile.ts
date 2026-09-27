@@ -43,6 +43,7 @@ export function mobile(c:Config){
    if(!id||(sessions.get(id)??0)<Date.now()){send(401,{error:'Sign in to continue'});return;}
    if(path==='/api/logout'&&req.method==='POST'){sessions.delete(id);res.setHeader('Set-Cookie','agentd_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');send(200,{ok:true});return;}
    if(path==='/api/capabilities'&&req.method==='GET'){send(200,await call({op:'capabilities'}));return;}
+   if(path==='/api/operations'&&req.method==='GET'){send(200,await call({op:'operations'}));return;}
    const review=path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/review$/);
    if(review&&req.method==='GET'){send(200,await call({op:'review',id:review[1]}));return;}
    if(path==='/api/projects'&&req.method==='GET'){send(200,await call({op:'projects'}));return;}

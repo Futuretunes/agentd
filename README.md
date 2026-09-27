@@ -16,6 +16,7 @@ agentd queues tasks, waits for approval, and runs Codex or Claude Code in a dedi
 - HTTPS mobile interface with access-key login, text input, JPEG/PNG attachments and follow-up tasks.
 - Keyboard dictation through your phone's operating system. Recorded audio and transcription are not implemented.
 - Local health and Prometheus metrics endpoints; structured daemon logs.
+- Read-only Operations Center for global task, service, adapter and account status.
 
 Use each provider's supported authentication and respect its subscription terms and limits. agentd does not bypass billing, permissions or rate limits. Cursor and other adapters are planned, not implemented.
 
