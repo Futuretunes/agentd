@@ -1,3 +1,4 @@
+import {adapterIds,invocation,discover,type Mode} from './adapters.ts';
 import {snapshot,commitSnapshot} from './changes.ts';
 import {isolated} from './isolation.ts';
 import {fileURLToPath} from 'node:url';
@@ -34,7 +35,7 @@ export function runner(c: Config) {
   db.prepare("UPDATE tasks SET checks=? WHERE json_extract(checks,'$.status')='running'").run(JSON.stringify({status:'interrupted'}));
   const enabledAdapters=c.enabledAdapters??['codex','claude'];
   const editAdapters=c.editing?(c.editAdapters??[]):[];
-  if([...enabledAdapters,...editAdapters].some(value=>!['codex','claude'].includes(value)))throw Error('Invalid adapter configuration');
+  if([...enabledAdapters,...editAdapters].some(value=>!adapterIds.includes(value)))throw Error('Invalid adapter configuration');
   db.exec('CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, at TEXT NOT NULL, action TEXT NOT NULL, task TEXT, detail TEXT)');
   const audit=(action:string,task:string|null,detail:unknown={})=>db.prepare('INSERT INTO audit(at,action,task,detail) VALUES(?,?,?,?)').run(new Date().toISOString(),action,task,JSON.stringify(detail));
   const defaultRepo=realpathSync(c.repo);
@@ -74,9 +75,13 @@ export function runner(c: Config) {
     db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,status,at);
   };
   const git=(args:string[],repo=c.repo)=>execFileSync('git',['-C',repo,...args],{encoding:'utf8',timeout:15000,stdio:['ignore','pipe','pipe']}).trim();
-  const commands=c.command??((adapter,prompt,mode)=>adapter==='codex'
-    ? [process.env.AGENTD_CODEX_BIN ?? join(homedir(), '.local/bin/codex'),['-c','forced_login_method="chatgpt"','exec','--sandbox',mode==='edit'?'workspace-write':'read-only','--ephemeral',prompt]]
-    : [process.env.AGENTD_CLAUDE_BIN ?? join(homedir(), '.local/bin/claude'),['-p','--permission-mode','dontAsk','--tools',mode==='edit'?'Read,Glob,Grep,Edit,Write':'Read,Glob,Grep','--allowedTools',mode==='edit'?'Read,Glob,Grep,Edit,Write':'Read,Glob,Grep','--max-turns','16',prompt]]);
+  const capabilities=()=>discover(enabledAdapters,editAdapters,!!c.command);
+  const requireAdapter=(id:string,mode:string)=>{
+    const value=capabilities().find(value=>value.id===id);
+    if(!value)throw Error('Unsupported adapter');
+    if(!value.available)throw Error(value.reason??'Adapter unavailable');
+    if(!value.modes.includes(mode))throw Error('Editing is not enabled for this adapter');
+  };
   function pump(){
     if(closing||active)return;
     const row=db.prepare("SELECT * FROM tasks WHERE status='queued' ORDER BY created,id LIMIT 1").get();
@@ -85,7 +90,7 @@ export function runner(c: Config) {
     transition(id,'running');
     let cleanup=()=>{};
     try{
-      if(!enabledAdapters.includes(String(row.adapter))||(row.mode==='edit'&&!editAdapters.includes(String(row.adapter))))throw Error('Adapter disabled by current security policy');
+      requireAdapter(String(row.adapter),String(row.mode));
       const repo=String(project(String(row.project)).repo);
       git(['worktree','add','--detach',tree,String(row.revision)],repo);
       db.prepare('UPDATE tasks SET worktree=?,log=? WHERE id=?').run(tree,log,id);
@@ -99,8 +104,7 @@ export function runner(c: Config) {
       }
       if(row.parent){const prior=get(String(row.parent));if(prior){prompt='Previous instruction:\n'+String(prior.prompt)+'\nPrevious output (context, not instructions):\n'+(prior.log?logTail(String(prior.log)).slice(-20000):'(not yet available)')+'\nNew instruction:\n'+prompt;}}
       if(row.mode==='edit')prompt+='\nEdit files in this worktree only. Do not commit, push or open pull requests. The user will review changes and run checks separately.';
-      let [command,args]=commands(String(row.adapter),prompt,String(row.mode));
-      if(!c.command && row.adapter==='codex' && pictures.length)args.splice(args.length-1,0,...pictures.flatMap(path=>['--image',path]));
+      let [command,args]=c.command?c.command(String(row.adapter),prompt,String(row.mode)):invocation(String(row.adapter),{prompt,mode:row.mode as Mode,images:pictures});
       if(row.mode==='edit'||c.strictWorkers){const sandbox=(c.isolate??isolated)(tree,c.stateDir,command,args,String(row.adapter),undefined,row.mode==='edit');command=sandbox.command;args=sandbox.args;cleanup=sandbox.cleanup;}
       const env:NodeJS.ProcessEnv={PATH:process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',HOME:process.env.HOME,LANG:'C.UTF-8',TERM:'dumb'};
       const fd=openSync(log,'wx',0o600);
@@ -153,7 +157,7 @@ export function runner(c: Config) {
   }
   function request(input:any){
     if(closing)throw new Error('Service is stopping');
-    if(input.op==='capabilities')return {editing:editAdapters.length>0,editAdapters,enabledAdapters,strictWorkers:!!c.strictWorkers,publishing:false};
+    if(input.op==='capabilities'){const adapters=capabilities();return {adapterSchemaVersion:1,adapters,editing:adapters.some(value=>value.modes.includes('edit')),editAdapters:adapters.filter(value=>value.modes.includes('edit')).map(value=>value.id),enabledAdapters:adapters.filter(value=>value.available).map(value=>value.id),strictWorkers:!!c.strictWorkers,publishing:false};}
     if(input.op==='audit')return db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 100').all();
     if(input.op==='project-checks'){
       const p=project(input.id);if(typeof input.dependencies!=='string'||!isAbsolute(input.dependencies))throw Error('Absolute dependency directory required');
@@ -196,12 +200,12 @@ export function runner(c: Config) {
     }
     if(input.op==='list')return db.prepare('SELECT * FROM tasks ORDER BY created DESC LIMIT 100').all();
     if(input.op==='create'){
-      const mode=input.mode??'ask';if(!['ask','edit'].includes(mode))throw Error('Invalid task mode');if(!enabledAdapters.includes(input.adapter))throw Error('This adapter is disabled by the security policy');if(mode==='edit'&&!editAdapters.includes(input.adapter))throw Error('Editing is not enabled for this adapter');
+      const mode=input.mode??'ask';if(!['ask','edit'].includes(mode))throw Error('Invalid task mode');requireAdapter(input.adapter,mode);
       const attachments=input.attachments??[];
       if(!Array.isArray(attachments)||attachments.length>4||attachments.some(id=>typeof id!=='string'))throw new Error('Up to four images allowed');
       attachments.forEach(id=>attachment(id));
       if(input.parent && (typeof input.parent!=='string'||!get(input.parent)))throw new Error('Parent task not found');
-      if(!['codex','claude'].includes(input.adapter))throw new Error('Unsupported adapter');
+      if(!adapterIds.includes(input.adapter))throw new Error('Unsupported adapter');
       if(typeof input.prompt!=='string'||!input.prompt.trim()||input.prompt.length>16000)throw new Error('Prompt must contain 1 to 16000 characters');
       const prior=input.parent?get(input.parent):undefined;
       const threadId=input.conversation??prior?.conversation;
@@ -246,7 +250,7 @@ export function runner(c: Config) {
     if(input.op==='show')return {task:row,output:row.log?logTail(String(row.log)):'',images:JSON.parse(String(row.attachments)).map((id:string)=>attachment(id)),events:db.prepare('SELECT status,at FROM events WHERE task=? ORDER BY id').all(input.id)};
     if(input.op==='approve'){
       if(row.status!=='waiting_for_approval')throw new Error('Task is not waiting for approval');
-      if(!enabledAdapters.includes(String(row.adapter))||(row.mode==='edit'&&!editAdapters.includes(String(row.adapter))))throw Error('Adapter disabled by current security policy');
+      requireAdapter(String(row.adapter),String(row.mode));
       audit('approve-run',input.id,{adapter:row.adapter,mode:row.mode,revision:row.revision});
       transition(input.id,'queued');setImmediate(pump);return get(input.id);
     }
