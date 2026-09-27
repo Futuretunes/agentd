@@ -1,7 +1,23 @@
 const $ = id => document.getElementById(id);
 let projectId = null, selected = null, uploads = [], signedIn = false, busy = false, generation = 0;
 let policy={editAdapters:[],enabledAdapters:['codex','claude']};
-function applyPolicy(){for(const option of $('adapter').options)option.disabled=!policy.enabledAdapters.includes(option.value);if(!policy.enabledAdapters.includes($('adapter').value))$('adapter').value=policy.enabledAdapters[0]??'';const canEdit=policy.editAdapters.includes($('adapter').value);$('mode').querySelector('[value=edit]').disabled=!canEdit;if(!canEdit)$('mode').value='ask';$('policy-hint').textContent=policy.strictWorkers?'Isolated workers · provider-only network access · approval required'+(!policy.enabledAdapters.includes('codex')?' · Codex unavailable under the current security policy.':'.'):'Each message waits for approval before an agent starts.';}
+function renderAgents(){
+  const box=$('adapter-info');box.replaceChildren(node('h2','Your agents'));
+  for(const value of policy.adapters??[]){const item=node('div',undefined,'agent-availability');item.append(node('strong',value.name),node('p',value.available?'Available · '+value.modes.map(mode=>mode==='edit'?'Edit files':'Ask').join(' and '):value.reason,'muted'));if(value.available)item.append(node('p','Sign-in is checked when a run starts.','muted'));box.append(item);}
+  box.append(node('p','Cursor integration is planned.','muted'));
+}
+function applyPolicy(){
+  if(policy.adapters){
+    const signature=JSON.stringify(policy.adapters.map(value=>[value.id,value.name]));
+    if($('adapter').dataset.options!==signature){const selected=$('adapter').value;$('adapter').replaceChildren(...policy.adapters.map(value=>{const option=node('option',value.name);option.value=value.id;return option;}));$('adapter').value=selected;$('adapter').dataset.options=signature;}
+  }
+  for(const option of $('adapter').options)option.disabled=!policy.enabledAdapters.includes(option.value);
+  if(!policy.enabledAdapters.includes($('adapter').value))$('adapter').value=policy.enabledAdapters[0]??'';
+  const canEdit=policy.editAdapters.includes($('adapter').value);$('mode').querySelector('[value=edit]').disabled=!canEdit;if(!canEdit)$('mode').value='ask';
+  $('policy-hint').textContent=!policy.enabledAdapters.length?'No agents are available. Open Agents for details.':policy.strictWorkers?'Isolated workers · provider-only network access · approval required.':'Each message waits for approval before an agent starts.';
+  if(!$('adapter-info').hidden)renderAgents();
+}
+$('agents-menu').onclick=()=>{$('adapter-info').hidden=!$('adapter-info').hidden;renderAgents();};
 $('adapter').onchange=applyPolicy;
 let reviewTask=null,reviewTree=null,checking=false;
 let projects = [], latest = null, fingerprint = '', uploading = false;
@@ -44,7 +60,7 @@ function renderThread(data){
 async function refresh(){
   if(busy)return;busy=true;const epoch=generation;
   try{
-    const capabilities=await api('/api/capabilities');policy={editAdapters:capabilities.editAdapters??[],enabledAdapters:capabilities.enabledAdapters??['codex','claude'],strictWorkers:capabilities.strictWorkers};applyPolicy();
+    const capabilities=await api('/api/capabilities');policy={editAdapters:capabilities.editAdapters??[],enabledAdapters:capabilities.enabledAdapters??['codex','claude'],strictWorkers:capabilities.strictWorkers,adapters:capabilities.adapters};applyPolicy();
     const list=await api('/api/projects');if(epoch!==generation)return;projects=list;
     signedIn=true;$('login').hidden=true;$('workspace').hidden=false;
     if(!projects.some(p=>p.id===projectId))projectId=projects[0]?.id??null;
@@ -56,7 +72,7 @@ async function refresh(){
     if(selected){const data=await api('/api/conversations/'+selected);if(epoch!==generation)return;latest=data.messages.at(-1);const next=JSON.stringify(data);if(next!==fingerprint){renderThread(data);fingerprint=next;}}
     else{$('thread-title').textContent='New conversation';latest=null;if(!fingerprint){empty();fingerprint='empty';}}
     $('rename').hidden=!selected;$('archive').hidden=!selected;
-    const locked=latest&&(pending(latest.status)||latest.review==='pending');$('send').disabled=!!locked||uploading||!projectId;
+    const locked=latest&&(pending(latest.status)||latest.review==='pending');$('send').disabled=!!locked||uploading||!projectId||!policy.enabledAdapters.length;
     $('hint').textContent=locked?latest?.review==='pending'?'Review and commit or discard these changes before continuing.':'Approve or stop the current run before sending the next message.':'Each message waits for approval. Images and keyboard dictation are supported.';
   }catch(e){if(signedIn)notice(e.message);}finally{busy=false;if(epoch!==generation)refresh();}
 }

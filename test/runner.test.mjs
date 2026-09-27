@@ -55,3 +55,14 @@ test('adapter policy rejects new and previously pending work; approvals are audi
   const audit=app.request({op:'audit'});assert.equal(audit[0].action,'approve-run');assert.equal(audit[0].task,allowed.id);assert.ok(!JSON.stringify(audit).includes('private prompt'));
  }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
 });
+test('missing CLI blocks approval and dispatch even when it existed at creation',async()=>{
+ const f=await fixture();await f.app.close();const prior=process.env.AGENTD_CLAUDE_BIN;let app;
+ try{
+  const binary=join(f.root,'native-cli');writeFileSync(binary,'#!/bin/sh\nexit 0\n',{mode:0o700});process.env.AGENTD_CLAUDE_BIN=binary;
+  app=runner({...f.config,command:undefined,enabledAdapters:['claude']});await once(app.server,'listening');
+  const task=app.request({op:'create',adapter:'claude',prompt:'read'});rmSync(binary);
+  assert.throws(()=>app.request({op:'approve',id:task.id}),/missing/);assert.deepEqual(app.request({op:'capabilities'}).enabledAdapters,[]);
+  writeFileSync(binary,'#!/bin/sh\nexit 0\n',{mode:0o700});app.request({op:'approve',id:task.id});rmSync(binary);
+  const failed=await status(app,task.id,['failed']);assert.match(failed.error,/missing/);assert.equal(failed.worktree,null);
+ }finally{await app?.close();if(prior===undefined)delete process.env.AGENTD_CLAUDE_BIN;else process.env.AGENTD_CLAUDE_BIN=prior;rmSync(f.root,{recursive:true,force:true});}
+});
