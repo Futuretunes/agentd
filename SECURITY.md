@@ -2,7 +2,7 @@
 
 This early POC is intended for one trusted operator on a private network. Do not expose the gateway directly to the public internet.
 
-Run under a dedicated account without sudo. Treat prompts, repository files, attachments and agent output as untrusted content. Git worktrees are not a security boundary. The service uses one Unix account. Edit workers run in a bubblewrap mount/PID namespace, with only the worktree and a disposable home profile writable. Provider authentication is copied into that profile for the native CLI; it is not a credentialless environment. Ask-mode workers retain the earlier CLI-level restrictions.
+Run under a dedicated account without sudo. Treat prompts, repository files, attachments and agent output as untrusted content. Git worktrees are not a security boundary. The service uses one Unix account. Edit workers run in a bubblewrap mount/PID namespace, with only the worktree and a disposable home profile writable. Provider authentication is copied into that profile for the native CLI; it is not a credentialless environment. With `AGENTD_STRICT_WORKERS=1`, Ask workers use the same outer boundary with a read-only worktree. Without that setting, Ask workers retain only the earlier CLI-level restrictions. The hardened profile is documented in [worker security](docs/worker-security.md).
 
 The mobile gateway uses TLS, hashed access keys, in-memory sessions, same-origin POST checks and login throttling. Restarting it invalidates sessions. Uploaded images have size and signature checks, but are not fully decoded or sanitized. Task logs can contain sensitive data. Protect and back up the state directory accordingly.
 

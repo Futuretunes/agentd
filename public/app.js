@@ -1,5 +1,8 @@
 const $ = id => document.getElementById(id);
 let projectId = null, selected = null, uploads = [], signedIn = false, busy = false, generation = 0;
+let policy={editAdapters:[],enabledAdapters:['codex','claude']};
+function applyPolicy(){for(const option of $('adapter').options)option.disabled=!policy.enabledAdapters.includes(option.value);if(!policy.enabledAdapters.includes($('adapter').value))$('adapter').value=policy.enabledAdapters[0]??'';const canEdit=policy.editAdapters.includes($('adapter').value);$('mode').querySelector('[value=edit]').disabled=!canEdit;if(!canEdit)$('mode').value='ask';$('policy-hint').textContent=policy.strictWorkers?'Isolated workers · provider-only network access · approval required'+(!policy.enabledAdapters.includes('codex')?' · Codex unavailable under the current security policy.':'.'):'Each message waits for approval before an agent starts.';}
+$('adapter').onchange=applyPolicy;
 let reviewTask=null,reviewTree=null,checking=false;
 let projects = [], latest = null, fingerprint = '', uploading = false;
 const labels = {waiting_for_approval:'Ready for your approval',queued:'Queued',running:'Working',cancelling:'Stopping',cancelled:'Cancelled',succeeded:'Finished · review result',failed:'Failed',interrupted:'Interrupted',timed_out:'Time limit reached'};
@@ -41,7 +44,7 @@ function renderThread(data){
 async function refresh(){
   if(busy)return;busy=true;const epoch=generation;
   try{
-    const capabilities=await api('/api/capabilities');$('mode').querySelector('[value=edit]').disabled=!capabilities.editing;
+    const capabilities=await api('/api/capabilities');policy={editAdapters:capabilities.editAdapters??[],enabledAdapters:capabilities.enabledAdapters??['codex','claude'],strictWorkers:capabilities.strictWorkers};applyPolicy();
     const list=await api('/api/projects');if(epoch!==generation)return;projects=list;
     signedIn=true;$('login').hidden=true;$('workspace').hidden=false;
     if(!projects.some(p=>p.id===projectId))projectId=projects[0]?.id??null;

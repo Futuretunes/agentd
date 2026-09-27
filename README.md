@@ -70,3 +70,7 @@ See [deployment](docs/deployment.md), [architecture](docs/architecture.md), [sec
 ## Reviewable editing
 
 See [editing setup and limitations](docs/editing.md). Editing is disabled by default. No changes are pushed or published automatically.
+
+## Hardened workers
+
+The [hardened worker profile](docs/worker-security.md) isolates Ask and Edit tasks, limits outbound connections to selected provider destinations, and records approval decisions. The initial hardened deployment enables Claude only: Codex remains disabled where its inner sandbox cannot run under the host's namespace restrictions. No sandbox bypass is used.
