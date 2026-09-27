@@ -26,15 +26,15 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/srv/agentd /var/lib/agentd
-ProtectKernelTunables=true
+# This must remain false: systemd's protective mounts under /proc make procfs
+# incomplete, and Linux then rejects bubblewrap's user-namespace proc mount.
+# The service is unprivileged and retains no capabilities.
+ProtectKernelTunables=false
 ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-# Keep CAP_SYS_ADMIN in the bounding set so bubblewrap can use it only inside
-# the worker's unprivileged user namespace. User=agentd and NoNewPrivileges
-# leave the daemon with no permitted or effective host-namespace capability.
-CapabilityBoundingSet=CAP_SYS_ADMIN
+CapabilityBoundingSet=
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 StandardOutput=journal
 StandardError=journal

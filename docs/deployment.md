@@ -28,7 +28,7 @@ sudo systemctl enable --now agentd
 curl http://127.0.0.1:8787/healthz
 ```
 
-The unit retains `AF_NETLINK` for sandbox namespace setup. It also retains `CAP_SYS_ADMIN` in the capability *bounding set* so bubblewrap can mount `/proc` inside a newly created, unprivileged user namespace. `User=agentd` and `NoNewPrivileges=true` leave the daemon with zero permitted and effective capabilities in the host namespace; it has no sudo access. An empty bounding set breaks worker startup with `Can't mount proc ... Operation not permitted`.
+The unit retains `AF_NETLINK` for sandbox namespace setup. `ProtectKernelTunables` must remain disabled: that systemd option adds protective mounts below `/proc`, making the parent procfs incomplete; Linux then rejects bubblewrap's procfs mount in an unprivileged user namespace with `Can't mount proc ... Operation not permitted`. The dedicated `agentd` user has no sudo access, and `NoNewPrivileges=true` plus an empty capability bounding set prevent it from changing host kernel tunables. Other unit protections remain enabled.
 
 ## Mobile gateway
 

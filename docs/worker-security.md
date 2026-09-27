@@ -19,7 +19,7 @@ Workers receive the selected worktree, read-only Git metadata, selected system r
 
 All isolated workers use separate PID, IPC and network namespaces. Native agents reach the host through one mounted Unix socket. An in-namespace relay sets HTTP(S) proxy variables, and a host broker permits CONNECT to port 443 on exact provider hostnames. It rejects private/reserved IP addresses and mixed DNS answers, and pins each connection to the validated address. Direct internet, LAN and host-loopback connections are unavailable. No Git push credentials are supplied.
 
-The systemd service retains `CAP_SYS_ADMIN` only in its capability bounding set. The unprivileged daemon has no permitted or effective host capability; bubblewrap obtains the capability inside its new user namespace to construct the worker mount namespace. `NoNewPrivileges` remains enabled. Preflights must use the complete production restriction set, including this bounding-set rule.
+The systemd service has an empty capability bounding set and `NoNewPrivileges` remains enabled. `ProtectKernelTunables` is intentionally disabled because its mounts below `/proc` prevent Linux from mounting procfs in bubblewrap's unprivileged user namespace. The daemon's dedicated unprivileged account cannot change host kernel tunables. Preflights must use this complete production restriction set.
 
 The initial Claude allowlist is `api.anthropic.com`, `claude.ai`, and `platform.claude.com`. Codex's future compatible profile has a separate list. Destination changes require code review; workers cannot configure the broker. TLS remains end-to-end. Provider login/refresh compatibility must pass the live preflight before deployment.
 
