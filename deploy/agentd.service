@@ -26,7 +26,10 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/srv/agentd /var/lib/agentd
-ProtectKernelTunables=true
+# This must remain false: systemd's protective mounts under /proc make procfs
+# incomplete, and Linux then rejects bubblewrap's user-namespace proc mount.
+# The service is unprivileged and retains no capabilities.
+ProtectKernelTunables=false
 ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true

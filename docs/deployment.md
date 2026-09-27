@@ -28,7 +28,7 @@ sudo systemctl enable --now agentd
 curl http://127.0.0.1:8787/healthz
 ```
 
-The unit retains `AF_NETLINK` because Codex's Linux sandbox needs a netlink socket to initialize its network namespace. The process still has no Linux capabilities and no sudo access.
+The unit retains `AF_NETLINK` for sandbox namespace setup. `ProtectKernelTunables` must remain disabled: that systemd option adds protective mounts below `/proc`, making the parent procfs incomplete; Linux then rejects bubblewrap's procfs mount in an unprivileged user namespace with `Can't mount proc ... Operation not permitted`. The dedicated `agentd` user has no sudo access, and `NoNewPrivileges=true` plus an empty capability bounding set prevent it from changing host kernel tunables. Other unit protections remain enabled.
 
 ## Mobile gateway
 
