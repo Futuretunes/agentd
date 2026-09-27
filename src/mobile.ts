@@ -42,11 +42,16 @@ export function mobile(c:Config){
    const id=req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith('agentd_session='))?.slice(15);
    if(!id||(sessions.get(id)??0)<Date.now()){send(401,{error:'Sign in to continue'});return;}
    if(path==='/api/logout'&&req.method==='POST'){sessions.delete(id);res.setHeader('Set-Cookie','agentd_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');send(200,{ok:true});return;}
+   if(path==='/api/projects'&&req.method==='GET'){send(200,await call({op:'projects'}));return;}
+   const threads=path.match(/^\/api\/projects\/([0-9a-z-]+)\/conversations$/);
+   if(threads&&req.method==='GET'){send(200,await call({op:'conversations',project:threads[1]}));return;}
+   const thread=path.match(/^\/api\/conversations\/([0-9a-f-]{36})$/);
+   if(thread&&req.method==='GET'){send(200,await call({op:'conversation-show',id:thread[1]}));return;}
    if(path==='/api/tasks'&&req.method==='GET'){send(200,await call({op:'list'}));return;}
    const match=path.match(/^\/api\/tasks\/([0-9a-f-]{36})$/);
    if(match&&req.method==='GET'){send(200,await call({op:'show',id:match[1]}));return;}
    if(path==='/api/action'&&req.method==='POST'){
-    const input=await body(req);if(!['create','approve','cancel'].includes(input.op))throw new Error('Unsupported action');
+    const input=await body(req);if(!['create','approve','cancel','project-create','project-rename','conversation-rename','conversation-archive'].includes(input.op))throw new Error('Unsupported action');
     send(200,await call(input));return;
    }
    if(path==='/api/upload'&&req.method==='POST'){
