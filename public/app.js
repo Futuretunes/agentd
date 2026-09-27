@@ -20,7 +20,7 @@ function applyPolicy(){
 $('agents-menu').onclick=()=>{$('adapter-info').hidden=!$('adapter-info').hidden;renderAgents();};
 $('adapter').onchange=applyPolicy;
 let reviewTask=null,reviewTree=null,checking=false;
-let projects = [], latest = null, fingerprint = '', uploading = false;
+let projects = [], latest = null, fingerprint = '', uploading = false, operationsBusy = false;
 const labels = {waiting_for_approval:'Ready for your approval',queued:'Queued',running:'Working',cancelling:'Stopping',cancelled:'Cancelled',succeeded:'Finished · review result',failed:'Failed',interrupted:'Interrupted',timed_out:'Time limit reached'};
 const pending = status => ['waiting_for_approval','queued','running','cancelling'].includes(status);
 function notice(text = '') { $('notice').textContent = text; $('notice').hidden = !text; }
@@ -34,6 +34,28 @@ async function api(path,data) {
 function button(text,callback,cls='') {
   const b=node('button',text,cls);b.type='button';b.onclick=async()=>{b.disabled=true;try{await callback();await refresh();}catch(e){notice(e.message);}finally{b.disabled=false;}};return b;
 }
+const relativeTime=value=>{const seconds=Math.max(0,Math.floor((Date.now()-new Date(value).getTime())/1000));if(seconds<60)return 'just now';if(seconds<3600)return Math.floor(seconds/60)+'m ago';if(seconds<86400)return Math.floor(seconds/3600)+'h ago';return Math.floor(seconds/86400)+'d ago';};
+function operationTask(item){
+  const card=node('article',undefined,'operation-task'),head=node('div',undefined,'message-head');head.append(node('strong',item.conversationTitle),node('span',labels[item.status]??item.status,'status '+item.status));card.append(head,node('p',`${item.projectName} · ${item.adapter==='codex'?'Codex':'Claude'} · ${item.mode==='edit'?'Edit files':'Ask'} · ${relativeTime(item.updated)}`,'muted'));
+  if(item.error)card.append(node('p',item.error==='Exit 1'?'The agent stopped with an error. Open the conversation for details.':item.error,'error'));
+  if(item.review==='pending')card.append(node('p','Changes are waiting for review.','attention'));
+  if(item.checkStatus)card.append(node('p','Checks: '+item.checkStatus,'muted'));
+  card.append(button('Open conversation',async()=>{projectId=item.project;reset(item.conversation);$('operations-dialog').close();await refresh();}));return card;
+}
+function renderOperations(data){
+  const content=$('operations-content');content.replaceChildren();
+  const active=(data.counts.waiting_for_approval??0)+(data.counts.queued??0)+(data.counts.running??0)+(data.counts.cancelling??0),problems=(data.counts.failed??0)+(data.counts.timed_out??0)+(data.counts.interrupted??0);
+  const summary=node('section',undefined,'operation-summary');for(const [value,label] of [[active,'Active or waiting'],[data.counts.succeeded??0,'Completed'],[problems,'Need attention'],[data.service.queueDepth,'Queued']]){const card=node('div',undefined,'metric-card');card.append(node('strong',String(value)),node('span',label));summary.append(card);}content.append(summary);
+  const service=node('section',undefined,'operation-section');service.append(node('h3','Service'),node('p',`Healthy · ${data.service.scheduler} scheduler · ${data.service.security} workers`,'good'),node('p',data.service.activeTask?'An agent is currently working.':'No agent is currently running.','muted'));content.append(service);
+  const agents=node('section',undefined,'operation-section');agents.append(node('h3','Agents and usage'));
+  for(const value of data.adapters){const card=node('div',undefined,'operation-agent'),account=value.account??{state:'checking',message:'Checking account status'};card.append(node('strong',value.name),node('p',account.state==='signed_in'?`Signed in${account.method?' · '+account.method:''}`:account.message,account.state==='signed_in'?'good':account.state==='signed_out'?'attention':'muted'),node('p',value.available?'Available · '+value.modes.map(mode=>mode==='edit'?'Edit files':'Ask').join(' and '):value.reason,'muted'),node('p',value.usage.message,'muted'));agents.append(card);}content.append(agents);
+  const current=data.tasks.filter(item=>pending(item.status)||item.review==='pending'),attention=data.tasks.filter(item=>['failed','timed_out','interrupted'].includes(item.status)),recent=data.tasks.filter(item=>!pending(item.status)&&item.review!=='pending'&&!['failed','timed_out','interrupted'].includes(item.status)).slice(0,10);
+  for(const [title,items,emptyText] of [['Current work',current,'Nothing is waiting or running.'],['Needs attention',attention,'No recent failures need attention.'],['Recent work',recent,'No completed work yet.']]){const section=node('section',undefined,'operation-section');section.append(node('h3',title));if(items.length)section.append(...items.map(operationTask));else section.append(node('p',emptyText,'muted'));content.append(section);}
+  content.append(node('p','Updated '+new Date(data.generatedAt).toLocaleTimeString()+'. Account status is cached; usage appears only when a native provider exposes it reliably.','hint'));
+}
+async function loadOperations(show=true){if(operationsBusy)return;operationsBusy=true;try{if(show&&!$('operations-dialog').open)$('operations-dialog').showModal();if(show)$('operations-content').replaceChildren(node('p','Loading workspace status…','muted'));renderOperations(await api('/api/operations'));}catch(e){notice(e.message);if(show)$('operations-dialog').close();}finally{operationsBusy=false;}}
+$('operations-menu').onclick=()=>loadOperations();
+$('operations-close').onclick=()=>$('operations-dialog').close();
 function reset(thread=null) { selected=thread;generation++;fingerprint='';latest=null;uploads=[];renderUploads();$('prompt').value='';$('project-info').hidden=true; }
 function renderUploads(){ $('attachments').replaceChildren(...uploads.map(item=>button(item.name+' ×',()=>{uploads=uploads.filter(x=>x.id!==item.id);renderUploads();}))); }
 function images(items){const box=node('div',undefined,'images');for(const item of items){const a=node('a');a.href='/api/images/'+item.id;a.target='_blank';a.rel='noopener';const img=node('img');img.src=a.href;img.alt=item.name;a.append(img);box.append(a);}return box;}
@@ -74,6 +96,7 @@ async function refresh(){
     $('rename').hidden=!selected;$('archive').hidden=!selected;
     const locked=latest&&(pending(latest.status)||latest.review==='pending');$('send').disabled=!!locked||uploading||!projectId||!policy.enabledAdapters.length;
     $('hint').textContent=locked?latest?.review==='pending'?'Review and commit or discard these changes before continuing.':'Approve or stop the current run before sending the next message.':'Each message waits for approval. Images and keyboard dictation are supported.';
+    if($('operations-dialog').open)void loadOperations(false);
   }catch(e){if(signedIn)notice(e.message);}finally{busy=false;if(epoch!==generation)refresh();}
 }
 $('loginform').onsubmit=async e=>{e.preventDefault();try{await api('/api/login',{key:$('key').value});$('key').value='';notice();await refresh();}catch(e){notice(e.message);}};
