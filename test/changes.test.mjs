@@ -12,7 +12,7 @@ async function checked(app,id){for(let i=0;i<200;i++){const t=app.request({op:'s
 function setup(){const root=mkdtempSync(join(tmpdir(),'changes-')),repo=join(root,'repo');mkdirSync(repo);git(repo,['init','-b','main']);writeFileSync(join(repo,'README.md'),'before\n');writeFileSync(join(repo,'package-lock.json'),'{}');git(repo,['add','.']);git(repo,['-c','user.name=test','-c','user.email=test@localhost','commit','-m','fixture']);return {root,repo};}
 test('edit snapshot includes new files; checks and commit approval are bound to exact content',async()=>{
  const f=setup();let pass=true;
- const app=runner({repo:f.repo,stateDir:join(f.root,'state'),worktrees:join(f.root,'trees'),logs:join(f.root,'logs'),editing:true,
+ const app=runner({repo:f.repo,stateDir:join(f.root,'state'),worktrees:join(f.root,'trees'),logs:join(f.root,'logs'),editing:true,editAdapters:['codex'],
   command:()=>[process.execPath,['-e',"require('fs').writeFileSync('README.md','edited\\n');require('fs').writeFileSync('new.txt','new\\n')"]],
   isolate:(_tree,_state,command,args,adapter)=>({command:adapter?command:process.execPath,args:adapter?args:['-e',pass?'console.log("checks passed")':'process.exit(1)'],cleanup(){}})});
  await once(app.server,'listening');

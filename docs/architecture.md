@@ -20,7 +20,7 @@ Cancellation briefly enters `cancelling`. A graceful shutdown interrupts active 
 
 `revision` is captured from the configured repository's HEAD at task creation. Uncommitted changes are not included. Each run gets a detached worktree. Artifacts and worktrees are retained; automatic retention is not implemented.
 
-The runner and gateway currently share a Unix account. Worktrees isolate Git state, not permissions or credentials. Ask mode uses Codex's read-only sandbox or Claude's Read/Glob/Grep tools. Edit mode adds the outer Linux sandbox described in [editing](editing.md). Neither restriction should be treated as a general hostile-code containment boundary.
+The runner and gateway currently share a Unix account. Worktrees isolate Git state, not permissions or credentials. Ask mode uses Codex's read-only sandbox or Claude's Read/Glob/Grep tools. The [hardened worker profile](worker-security.md) adds the outer Linux sandbox to both Ask and Edit, with a provider-only network broker and per-adapter availability. Neither restriction should be treated as a general hostile-code containment boundary.
 
 ## Interfaces
 

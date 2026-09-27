@@ -43,3 +43,15 @@ test('single worker cancellation failure and graceful interruption',async()=>{
 test('hung worker hits timeout',async()=>{
  const f=await fixture(100);try{const t=f.app.request({op:'create',adapter:'claude',prompt:'hang'});f.app.request({op:'approve',id:t.id});await status(f.app,t.id,['timed_out']);}finally{await f.app.close();rmSync(f.root,{recursive:true,force:true});}
 });
+test('adapter policy rejects new and previously pending work; approvals are audited',async()=>{
+ const f=await fixture();let app=f.app;
+ try{
+  const pending=app.request({op:'create',adapter:'codex',prompt:'private prompt'});
+  await app.close();app=runner({...f.config,enabledAdapters:['claude'],editing:true,editAdapters:['claude']});await once(app.server,'listening');
+  assert.throws(()=>app.request({op:'approve',id:pending.id}),/disabled/);
+  assert.throws(()=>app.request({op:'create',adapter:'codex',prompt:'private prompt'}),/disabled/);
+  assert.deepEqual(app.request({op:'capabilities'}).editAdapters,['claude']);
+  const allowed=app.request({op:'create',adapter:'claude',prompt:'private prompt'});app.request({op:'approve',id:allowed.id});await status(app,allowed.id,['succeeded']);
+  const audit=app.request({op:'audit'});assert.equal(audit[0].action,'approve-run');assert.equal(audit[0].task,allowed.id);assert.ok(!JSON.stringify(audit).includes('private prompt'));
+ }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
+});

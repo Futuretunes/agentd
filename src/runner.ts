@@ -9,7 +9,7 @@ import { mkdirSync, openSync, closeSync, realpathSync, readFileSync, copyFileSyn
 import { join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 
-type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]] };
+type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]] };
 export function runner(c: Config) {
   for (const dir of [c.stateDir,c.worktrees,c.logs]) mkdirSync(dir,{recursive:true,mode:0o700});
   for(const name of readdirSync(c.stateDir))if(name.startsWith('worker-'))rmSync(join(c.stateDir,name),{recursive:true,force:true});
@@ -32,6 +32,11 @@ export function runner(c: Config) {
   const projectColumns=db.prepare('PRAGMA table_info(projects)').all().map(x=>x.name);
   for(const name of ['check_dependencies','check_lock'])if(!projectColumns.includes(name))db.exec(`ALTER TABLE projects ADD COLUMN ${name} TEXT`);
   db.prepare("UPDATE tasks SET checks=? WHERE json_extract(checks,'$.status')='running'").run(JSON.stringify({status:'interrupted'}));
+  const enabledAdapters=c.enabledAdapters??['codex','claude'];
+  const editAdapters=c.editing?(c.editAdapters??[]):[];
+  if([...enabledAdapters,...editAdapters].some(value=>!['codex','claude'].includes(value)))throw Error('Invalid adapter configuration');
+  db.exec('CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, at TEXT NOT NULL, action TEXT NOT NULL, task TEXT, detail TEXT)');
+  const audit=(action:string,task:string|null,detail:unknown={})=>db.prepare('INSERT INTO audit(at,action,task,detail) VALUES(?,?,?,?)').run(new Date().toISOString(),action,task,JSON.stringify(detail));
   const defaultRepo=realpathSync(c.repo);
   db.prepare('INSERT OR IGNORE INTO projects(id,name,repo,created) VALUES(?,?,?,?)').run('default','Original workspace',defaultRepo,new Date().toISOString());
   db.prepare("UPDATE tasks SET project='default' WHERE project IS NULL").run();
@@ -80,6 +85,7 @@ export function runner(c: Config) {
     transition(id,'running');
     let cleanup=()=>{};
     try{
+      if(!enabledAdapters.includes(String(row.adapter))||(row.mode==='edit'&&!editAdapters.includes(String(row.adapter))))throw Error('Adapter disabled by current security policy');
       const repo=String(project(String(row.project)).repo);
       git(['worktree','add','--detach',tree,String(row.revision)],repo);
       db.prepare('UPDATE tasks SET worktree=?,log=? WHERE id=?').run(tree,log,id);
@@ -95,7 +101,7 @@ export function runner(c: Config) {
       if(row.mode==='edit')prompt+='\nEdit files in this worktree only. Do not commit, push or open pull requests. The user will review changes and run checks separately.';
       let [command,args]=commands(String(row.adapter),prompt,String(row.mode));
       if(!c.command && row.adapter==='codex' && pictures.length)args.splice(args.length-1,0,...pictures.flatMap(path=>['--image',path]));
-      if(row.mode==='edit'){const sandbox=(c.isolate??isolated)(tree,c.stateDir,command,args,String(row.adapter));command=sandbox.command;args=sandbox.args;cleanup=sandbox.cleanup;}
+      if(row.mode==='edit'||c.strictWorkers){const sandbox=(c.isolate??isolated)(tree,c.stateDir,command,args,String(row.adapter),undefined,row.mode==='edit');command=sandbox.command;args=sandbox.args;cleanup=sandbox.cleanup;}
       const env:NodeJS.ProcessEnv={PATH:process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',HOME:process.env.HOME,LANG:'C.UTF-8',TERM:'dumb'};
       const fd=openSync(log,'wx',0o600);
       let child:ChildProcess;
@@ -147,7 +153,8 @@ export function runner(c: Config) {
   }
   function request(input:any){
     if(closing)throw new Error('Service is stopping');
-    if(input.op==='capabilities')return {editing:!!c.editing,publishing:false};
+    if(input.op==='capabilities')return {editing:editAdapters.length>0,editAdapters,enabledAdapters,strictWorkers:!!c.strictWorkers,publishing:false};
+    if(input.op==='audit')return db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 100').all();
     if(input.op==='project-checks'){
       const p=project(input.id);if(typeof input.dependencies!=='string'||!isAbsolute(input.dependencies))throw Error('Absolute dependency directory required');
       const dependencies=realpathSync(input.dependencies);const hash=createHash('sha256').update(readFileSync(join(String(p.repo),'package-lock.json'))).digest('hex');
@@ -189,7 +196,7 @@ export function runner(c: Config) {
     }
     if(input.op==='list')return db.prepare('SELECT * FROM tasks ORDER BY created DESC LIMIT 100').all();
     if(input.op==='create'){
-      const mode=input.mode??'ask';if(!['ask','edit'].includes(mode))throw Error('Invalid task mode');if(mode==='edit'&&!c.editing)throw Error('Editing is not enabled by the administrator');
+      const mode=input.mode??'ask';if(!['ask','edit'].includes(mode))throw Error('Invalid task mode');if(!enabledAdapters.includes(input.adapter))throw Error('This adapter is disabled by the security policy');if(mode==='edit'&&!editAdapters.includes(input.adapter))throw Error('Editing is not enabled for this adapter');
       const attachments=input.attachments??[];
       if(!Array.isArray(attachments)||attachments.length>4||attachments.some(id=>typeof id!=='string'))throw new Error('Up to four images allowed');
       attachments.forEach(id=>attachment(id));
@@ -223,7 +230,7 @@ export function runner(c: Config) {
     if(typeof input.id!=='string')throw new Error('Task id required');
     const row=get(input.id);if(!row)throw new Error('Task not found');
     if(input.op==='review')return review(row);
-    if(input.op==='validate')return validate(row,input.tree);
+    if(input.op==='validate'){const result=validate(row,input.tree);audit('run-checks',input.id,{tree:input.tree});return result;}
     if(input.op==='discard'){available(row);if(row.review!=='pending')throw Error('Review is already resolved');db.prepare("UPDATE tasks SET review='discarded' WHERE id=?").run(input.id);return get(input.id);}
     if(input.op==='commit'){
       const value=review(row);if(row.review!=='pending')throw Error('Review is already resolved');
@@ -232,15 +239,19 @@ export function runner(c: Config) {
       if(value.truncated||value.blocked.length)throw Error('Review contains oversized changes or sensitive filenames; resolve them before committing');
       if(value.checks?.status!=='passed'||value.checks.tree!==value.tree)throw Error('Checks must pass for the exact reviewed changes');
       const message=title(input.message),branch='agentd/'+row.id;
+      audit('approve-commit',input.id,{tree:value.tree,branch});
       const sha=commitSnapshot(String(project(String(row.project)).repo),String(row.revision),value.tree,branch,message);
       db.prepare("UPDATE tasks SET review='committed',commit_sha=?,branch=? WHERE id=?").run(sha,branch,row.id);return get(input.id);
     }
     if(input.op==='show')return {task:row,output:row.log?logTail(String(row.log)):'',images:JSON.parse(String(row.attachments)).map((id:string)=>attachment(id)),events:db.prepare('SELECT status,at FROM events WHERE task=? ORDER BY id').all(input.id)};
     if(input.op==='approve'){
       if(row.status!=='waiting_for_approval')throw new Error('Task is not waiting for approval');
+      if(!enabledAdapters.includes(String(row.adapter))||(row.mode==='edit'&&!editAdapters.includes(String(row.adapter))))throw Error('Adapter disabled by current security policy');
+      audit('approve-run',input.id,{adapter:row.adapter,mode:row.mode,revision:row.revision});
       transition(input.id,'queued');setImmediate(pump);return get(input.id);
     }
     if(input.op==='cancel'){
+      audit('cancel',input.id);
       if(active && active.id===input.id)active.stop('cancelled');
       else if(['waiting_for_approval','queued'].includes(String(row.status)))transition(input.id,'cancelled');
       else throw new Error('Task cannot be cancelled in this state');
