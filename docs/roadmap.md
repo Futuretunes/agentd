@@ -131,4 +131,4 @@ Implemented on `feat/shared-git-policy`: minimal explicit environment, disabled 
 
 ## R13 / R14 candidate — sensitive data and binary classification
 
-Shared credential filename/content policy now covers exact review blobs, outgoing commit history, commit messages and PR text. Suspect/unscannable review patches are withheld; GUI commit/publication remain blocked. Binary detection uses Git numstat metadata instead of a phrase in the diff. Full large-diff/binary review workflows remain deferred. Exact Linux/CI validation pending; not installed. See [handover](handovers/2026-09-28-sensitive-data.md).
+Shared credential filename/content policy now covers exact review blobs, outgoing commit history, commit messages and PR text. Suspect/unscannable review patches are withheld; GUI commit/publication remain blocked. Binary detection uses Git numstat metadata instead of a phrase in the diff. Full large-diff/binary review workflows remain deferred. Exact archive `3af7da7` passed 125/125 Linux tests, zero skips; CI passed, draft #29 open. Not installed. See [handover](handovers/2026-09-28-sensitive-data.md).

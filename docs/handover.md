@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.26.0 — shared sensitive-data checks
 
-[Handover](handovers/2026-09-28-sensitive-data.md): reviews and publishing share filename and bounded credential-content rules. Suspect patches are withheld; outgoing history is scanned commit by commit. Binary detection uses Git metadata. Validation/staging pending; installed 0.22.0 unchanged. Includes R6, R7 and R12 candidates. Next: assess remaining reliability work and prepare one cumulative update.
+[Handover](handovers/2026-09-28-sensitive-data.md): reviews and publishing share filename and bounded credential-content rules. Suspect patches are withheld; outgoing history is scanned commit by commit. Binary detection uses Git metadata. Exact archive `3af7da7` passed 125/125 Linux tests, zero skips; CI passed. [Draft #29](https://github.com/Futuretunes/agentd/pull/29) is open. Installed 0.22.0 unchanged. Includes R6, R7 and R12 candidates. Next: assess remaining reliability work and prepare one cumulative update.
 
 ## Candidate 0.25.0 — shared Git policy
 
