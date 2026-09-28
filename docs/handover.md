@@ -13,7 +13,9 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
   - The prototype's light-theme contrast failures are fixed.
   - The backlog order is agreed.
 
-Open operator decisions: **R1** (merge strategy) and **U1** (manual-review path for projects without npm checks). Next implementation, once assigned: R4 + R11.
+**Operator decision, 2026-09-28: visual direction approved.** The operator confirmed the prototype's look ([`docs/design/task-desk-prototype.html`](design/task-desk-prototype.html)): warm neutrals, one clay accent, Geist UI text, serif agent answers, light and dark themes, and the conversation-first layout. UX-4 tokens should follow it, including the AA-corrected colours. It is no longer just a proposal.
+
+Still open for the operator: **R1** (merge strategy) and **U1** (manual-review path for projects without npm checks). Next implementation, once assigned: R4 + R11.
 
 ## Review response — 2026-09-28
 

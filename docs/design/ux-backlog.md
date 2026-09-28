@@ -45,6 +45,8 @@ Priority: high. Dependencies: R4/R11 and R14/R15 for reliable snapshots and boun
 
 ### UX-4 — Shared visual, mobile and accessibility foundations (U16, U18, U19)
 
+**Operator decision, 2026-09-28:** the operator approved the prototype's visual direction ([task-desk-prototype.html](task-desk-prototype.html)) as the target look. Use its token set (AA-corrected in `review/claude-ux-rejoinder-2026-09-28`) as the starting point. Fonts still have to be vendored locally, and every real text/control pair still needs a contrast check.
+
 Priority: high; start alongside UX-1 and validate in every subsequent item.
 
 - Semantic light/dark tokens for colour, typography, spacing, radii and focus. Verify contrast for actual text/control states; do not copy unverified prototype colours. Use system or locally served fonts and consistent icons without external font/CDN dependencies.
