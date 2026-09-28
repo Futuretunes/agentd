@@ -127,4 +127,4 @@ Implemented shared explicit namespace/capability policy and fail-closed libsecco
 
 ## R12 candidate — shared Git subprocess policy
 
-Implemented on `feat/shared-git-policy`: minimal explicit environment, disabled hooks/global configuration/implicit transport, and rejection of custom executable drivers, includes and repository transport overrides. Covers all runtime Git paths, retaining explicit temporary-index and GitHub network authority. Focused regressions passed; exact Linux/CI validation pending. Not installed. See [handover](handovers/2026-09-28-git-policy.md). Next R13 shared sensitive-data checks.
+Implemented on `feat/shared-git-policy`: minimal explicit environment, disabled hooks/global configuration/implicit transport, and rejection of custom executable drivers, includes and repository transport overrides. Covers all runtime Git paths, retaining explicit temporary-index and GitHub network authority. Exact archive passed 122/122 Linux tests with zero skips; CI passed, draft #28 open. Not installed. See [handover](handovers/2026-09-28-git-policy.md). Next R13 shared sensitive-data checks.

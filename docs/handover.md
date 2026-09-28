@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.25.0 — shared Git policy
 
-[Git policy handover](handovers/2026-09-28-git-policy.md): repository import/update, task worktrees, snapshots, reviews, size checks and cleanup now share configuration and environment safeguards. Focused local regressions passed 18/18; exact Linux/CI validation pending. Cumulative with resources/retention and worker hardening; installed 0.22.0 unchanged. Next: R13 sensitive-data checks.
+[Git policy handover](handovers/2026-09-28-git-policy.md): repository import/update, task worktrees, snapshots, reviews, size checks and cleanup now share configuration and environment safeguards. Exact archive `0373bf9` passed 122/122 Linux tests with zero skips; CI passed. [Draft #28](https://github.com/Futuretunes/agentd/pull/28) is open. Cumulative with resources/retention and worker hardening; installed 0.22.0 unchanged. Next: R13 sensitive-data checks.
 
 ## Candidate 0.24.0 — worker hardening
 
