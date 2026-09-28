@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.29.0 — native compatibility and limits
 
-[Handover](handovers/2026-09-28-native-limits.md): Operations shows tested/observed CLI versions, compatibility status and native fixed limits. Approval snapshots include native limits; model/renewal/protocol version pins share one source. 33 focused tests passed; exact Linux/CI pending. Cumulative overnight release remains uninstalled, production 0.22.0 unchanged.
+[Handover](handovers/2026-09-28-native-limits.md): Operations shows tested/observed CLI versions, compatibility status and native fixed limits. Approval snapshots include native limits; model/renewal/protocol version pins share one source. Exact archive `c11b35f` passed 128/128 Linux tests, zero skips; CI passed, draft #32 open. Cumulative overnight release remains uninstalled, production 0.22.0 unchanged.
 
 ## Candidate 0.28.0 — session audit coverage
 

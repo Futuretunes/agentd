@@ -12,7 +12,7 @@ Approval payloads include native limits, making changed declared policy invalida
 
 ## Validation
 
-33 focused adapter/settings/chat/Cursor/runner tests passed. New fixtures cover matching/different/unrecognized version output and correspondence between displayed Claude limit and invocation arguments. Typecheck passed. Final exact Linux/CI pending. No live native version/account/model probe or production deployment performed for this item.
+33 focused adapter/settings/chat/Cursor/runner tests passed. New fixtures cover matching/different/unrecognized version output and correspondence between displayed Claude limit and invocation arguments. Typecheck passed. Exact archive `c11b35f` passed typecheck and 128/128 Linux tests, zero skips/failures. CI `36480523050` passed; [draft #32](https://github.com/Futuretunes/agentd/pull/32) targets session-audit. Archive SHA256 `bd303b315bb69eb9f122d87fb1e1e09e13fc35fed658dbefc307aa5f0bfc81aa`. No live native version/account/model probe or production deployment performed for this item.
 
 ## Boundaries and next
 
