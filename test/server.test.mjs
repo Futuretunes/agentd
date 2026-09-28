@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
@@ -19,6 +19,7 @@ test('loopback health metrics method restrictions and persistent SQLite state', 
         const response = await fetch(url + path);
         assert.equal(response.status, 200);
         const status = await response.json();
+        assert.equal(status.version, JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version);
         assert.equal(status.starts, boot);
         assert.equal(status.workerDispatch, false);
       }
