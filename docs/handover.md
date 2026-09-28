@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.35.0 — dependency operation ownership
 
-[Handover](handovers/2026-09-29-dependency-owner.md): dependency setup is a separate manager with owned cancellation/completion and unchanged admission gates. Focused tests pass; exact Linux/CI pending. No deployment; the single installer still targets the last validated candidate until these checks finish.
+[Handover](handovers/2026-09-29-dependency-owner.md): dependency setup is a separate manager with owned cancellation/completion and unchanged admission gates. Exact archive `d76fba7` passed 145/145 Linux tests with zero skips, formatting, typecheck and CI; draft #39 is open. No deployment; the single installer is staged for 0.35.0 and has not been executed.
 
 ## Candidate 0.34.0 — explicit operation admission
 
