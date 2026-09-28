@@ -31,7 +31,9 @@ Implemented and installed in v0.14.0: GUI npm dependency/check setup from Projec
 
 Implemented and installed in v0.15.0 (66 deployment tests passed): exact-commit GitHub publication previews, separate upload approval, dedicated branches, draft PR creation and recovery after uncertain GitHub responses. See [publishing](publishing.md). Live publication remains operator-approved.
 
-Implemented in v0.16.0, pending installation: snapshot-preserving revision requests before committing and separately approved forward updates to existing draft PRs in the same conversation.
+Implemented and installed in v0.16.0 (70 deployment tests passed): snapshot-preserving revision requests before committing and separately approved forward updates to existing draft PRs in the same conversation.
+
+Implemented in v0.17.0, pending installation: selected GitHub review-comment import and isolated base integration with conflict review, fresh checks and separately approved forward publication. See [GitHub feedback and conflicts](github-feedback.md).
 
 High-priority follow-up:
 
@@ -43,7 +45,7 @@ High-priority follow-up:
 
 Order agreed with the operator on 2026-09-28: finish the GitHub workflow, integrate Cursor CLI, then deliver configurable environment permissions and economical model/effort selection. Permission-policy design may begin during adapter work to avoid incompatible implementations. These are planned milestones, not installed capabilities or release-date commitments.
 
-1. **Finish the GitHub review/publishing workflow.** Verify the first live approved draft PR; v0.16 implements revision requests before committing and updates to existing draft PRs. Remaining: review-comment synchronization and GUI handling of advanced bases/conflicts. Design separately approved merge operations and fork workflows. Preserve exact-content checks and explicit publication approval.
+1. **Finish the GitHub review/publishing workflow.** Verify the first live approved draft PR; v0.16 implements revision requests before committing and updates to existing draft PRs. v0.17 implements selected review-comment import and safe base/conflict integration. Remaining: live operator acceptance, broader conflict types, optional ongoing review synchronization, separately approved PR merge operations and fork workflows. Preserve exact-content checks and explicit publication approval.
 2. **Cursor CLI integration.** Use the official native CLI and Cursor account/subscription login. Evaluate ACP for prompts, streamed results, cancellation and permission requests. Validate login/renewal, subscription-limit handling, model selection, and sandbox/network compatibility before enabling Ask/Edit. Expose setup and status through the GUI; no separate provider API key requirement or automatic activation of paid overages.
 3. **Agent settings: environment permissions and model/effort selection.** GUI project defaults, conversation overrides and per-agent CLI settings, changeable at any time. Isolated worktrees remain the default. Show effective filesystem, execution, network and tool permissions and their inheritance before approval. Broader access requires explicit scoped consent; running jobs need a clear stop/restart transition rather than an unnoticed permission change. See [environment permission design requirements](environment-permissions.md). Add automatic task-appropriate model/effort selection, visible reasons and manual overrides per project, conversation and CLI; prefer the least costly capable choice, with bounded escalation and no invented usage estimates. See [model selection requirements](model-selection.md).
 4. **Codex repository access.** Validate Ask/Edit compatibility with host namespace restrictions without bypassing the inner sandbox. User-selectable policies do not turn unsupported sandbox combinations into supported ones.

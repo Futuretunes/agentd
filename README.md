@@ -85,3 +85,5 @@ Open **Agents** in the task desk to see which native agents are available and wh
 Optional [durable native credential renewal](docs/credential-renewal.md) refreshes sessions before approved work and keeps refresh grants outside task workers. Operations explains when provider consent requires a GUI reconnect.
 
 [Workspace history and recovery](docs/workspace-history.md) provides search, reversible archives, run activity and browser-tab draft recovery.
+
+GitHub reviews: [selected comment import and safe conflict handling](docs/github-feedback.md).

@@ -1,3 +1,4 @@
+import {integrationGit,integrationConfig,githubReviewAPI,loadFeedback,selectedFeedback,prepareIntegration,unresolvedConflicts,type ReviewAPI} from './github-review.ts';
 import {previewPublication,executePublication,githubPullAPI,publicationText,type PullAPI,type PublishPlan} from './publishing.ts';
 import {checkManifest,prepareDependencies,writeManifests,type DependencyPreparation} from './check-setup.ts';
 import {adapterIds,invocation,discover,probeAccount,type AccountStatus,type Mode} from './adapters.ts';
@@ -16,7 +17,7 @@ import { mkdirSync, openSync, closeSync, realpathSync, readFileSync, copyFileSyn
 import { join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 
-type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
+type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; reviewAPI?:ReviewAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
 export function runner(c: Config) {
   if(c.credentialRenewal&&!c.strictWorkers)throw Error('Credential renewal requires hardened isolation');
   if(c.codexChat&&!c.strictWorkers)throw Error("Chat only requires hardened worker isolation");
@@ -30,7 +31,7 @@ export function runner(c: Config) {
   const columns=db.prepare('PRAGMA table_info(tasks)').all().map(x=>x.name);
   if(!columns.includes('attachments'))db.exec("ALTER TABLE tasks ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'");
   if(!columns.includes('parent'))db.exec("ALTER TABLE tasks ADD COLUMN parent TEXT");
-  for(const name of ['revision_of','seed_tree'])if(!columns.includes(name))db.exec(`ALTER TABLE tasks ADD COLUMN ${name} TEXT`);
+  for(const name of ['revision_of','seed_tree','merge_parent','conflict_paths'])if(!columns.includes(name))db.exec(`ALTER TABLE tasks ADD COLUMN ${name} TEXT`);
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS tasks_revision_of ON tasks(revision_of) WHERE revision_of IS NOT NULL');
   if(!columns.includes('retry_of'))db.exec("ALTER TABLE tasks ADD COLUMN retry_of TEXT");
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS tasks_retry_of ON tasks(retry_of) WHERE retry_of IS NOT NULL');
@@ -56,6 +57,7 @@ export function runner(c: Config) {
   db.exec("CREATE TABLE IF NOT EXISTS publications(id TEXT PRIMARY KEY,task TEXT,owner TEXT,state TEXT,plan TEXT,error TEXT,url TEXT,updated TEXT,expires INTEGER)");
   db.exec("UPDATE publications SET state='needs_attention',error='Service stopped during publication. GitHub may already contain the branch or PR. Preview again to reconcile.' WHERE state IN ('publishing','pushing','branch_published','creating_pr')");
   db.exec("UPDATE publications SET state='expired',error='Service restarted. Create a fresh preview.' WHERE state IN ('preparing','ready')");
+  db.exec("CREATE TABLE IF NOT EXISTS review_jobs(id TEXT PRIMARY KEY,kind TEXT,task TEXT,owner TEXT,state TEXT,plan TEXT,error TEXT,result TEXT,selection TEXT,updated TEXT,expires INTEGER); UPDATE review_jobs SET state='expired',error='Service restarted. Prepare a fresh preview.' WHERE state IN ('preparing','ready')");
   const enabledAdapters=c.enabledAdapters??['codex','claude'];
   const editAdapters=c.editing?(c.editAdapters??[]):[];
   if([...enabledAdapters,...editAdapters].some(value=>!adapterIds.includes(value)))throw Error('Invalid adapter configuration');
@@ -147,7 +149,7 @@ export function runner(c: Config) {
   const publicationView=(task:string)=>db.prepare('SELECT id,task,state,plan,error,url,updated,expires FROM publications WHERE task=? ORDER BY rowid DESC LIMIT 5').all(task).map((row:any)=>({...row,plan:row.plan?JSON.parse(row.plan):null}));
   const publishTarget=(id:string)=>{const row=get(id);if(!row||row.review!=='committed'||!row.commit_sha)throw Error('Approve a local commit with passing checks before publishing.');const p=project(String(row.project));if(p.archived)throw Error('Restore this project before publishing.');return {row,p};};
   const approvedCommit=(projectId:string,sha:string,tree:string)=>{const row=db.prepare("SELECT checks FROM tasks WHERE project=? AND commit_sha=? AND review='committed'").get(projectId,sha);if(!row)return false;const checks=JSON.parse(String(row.checks??'{}'));return checks.status==='passed'&&checks.tree===tree;};
-  const publicationTargets=(task:string)=>{const {row}=publishTarget(task);return db.prepare("SELECT p.id,p.url,p.plan FROM publications p JOIN tasks t ON t.id=p.task WHERE p.state='published' AND t.conversation=? AND t.project=? AND t.id!=? ORDER BY p.rowid DESC").all(row.conversation,row.project,task).map((p:any)=>({id:p.id,url:p.url,plan:JSON.parse(p.plan)})).filter((p:any,i:number,list:any[])=>list.findIndex(q=>q.plan.branch===p.plan.branch)===i).map((p:any)=>({id:p.id,url:p.url,branch:p.plan.branch,base:p.plan.base,head:p.plan.head}));};
+  const publicationTargets=(task:string,includeCurrent=false)=>{const {row}=publishTarget(task);return db.prepare("SELECT p.id,p.url,p.plan FROM publications p JOIN tasks t ON t.id=p.task WHERE p.state='published' AND t.conversation=? AND t.project=? AND t.id!=? ORDER BY p.rowid DESC").all(row.conversation,row.project,includeCurrent?'':task).map((p:any)=>({id:p.id,url:p.url,plan:JSON.parse(p.plan)})).filter((p:any,i:number,list:any[])=>list.findIndex(q=>q.plan.branch===p.plan.branch)===i).map((p:any)=>({id:p.id,url:p.url,branch:p.plan.branch,base:p.plan.base,head:p.plan.head}));};
   function startPublication(input:any,approve=false){
     if(!/^[a-f0-9]{64}$/.test(input.owner??''))throw Error('Authenticated browser session required.');
     if(publicationWork||repositoryWork||dependencyWork||github.busy())throw Error('Wait for current publishing, repository, dependency or GitHub sign-in work.');
@@ -163,12 +165,49 @@ export function runner(c: Config) {
     if(approve){db.prepare("UPDATE publications SET state='publishing',error=NULL,updated=? WHERE id=?").run(new Date().toISOString(),id);audit('approve-publication',task,{publication:id,fingerprint:plan!.fingerprint,destination:plan!.destination,head:plan!.head,base:plan!.base,baseSha:plan!.baseSha});}
     else db.prepare('INSERT INTO publications VALUES(?,?,?,?,?,?,?,?,?)').run(id,task,input.owner,'preparing',null,null,null,new Date().toISOString(),Date.now()+900000);
     const done=Promise.resolve().then(async()=>{try{
-      if(!approve){const preview=await previewPublication({git:gitCommand,repo:String(p.repo),task,head:String(row.commit_sha),base,title:fields.title,body:fields.body,update,api:c.pullAPI??githubPullAPI(c.stateDir,profile!),approved:(sha,tree)=>approvedCommit(String(p.id),sha,tree),signal:abort.signal});db.prepare("UPDATE publications SET state='ready',plan=?,updated=?,expires=? WHERE id=?").run(JSON.stringify(preview),new Date().toISOString(),Date.now()+900000,id);}
+      if(!approve){const preview=await previewPublication({git:gitCommand,repo:String(p.repo),task,head:String(row.commit_sha),base,title:fields.title,body:fields.body,update,api:c.pullAPI??githubPullAPI(c.stateDir,profile!),approved:(sha,tree)=>approvedCommit(String(p.id),sha,tree),approvedMerge:(sha,parents)=>{const t=db.prepare("SELECT revision,merge_parent FROM tasks WHERE project=? AND commit_sha=? AND review='committed'").get(p.id,sha);return !!t&&parents.join(' ')===[t.revision,t.merge_parent].join(' ');},signal:abort.signal});db.prepare("UPDATE publications SET state='ready',plan=?,updated=?,expires=? WHERE id=?").run(JSON.stringify(preview),new Date().toISOString(),Date.now()+900000,id);}
       else {for(const commit of plan!.commits){const tree=await gitCommand(String(p.repo),['rev-parse',commit.sha+'^{tree}'],abort.signal);if(!approvedCommit(String(p.id),commit.sha,tree))throw Error('Commit approval or check results changed. Preview again.');}
         const result=await executePublication(gitCommand,c.pullAPI??githubPullAPI(c.stateDir,profile!),String(p.repo),plan!,abort.signal,stage=>db.prepare('UPDATE publications SET state=?,updated=? WHERE id=?').run(stage,new Date().toISOString(),id));
         db.prepare("UPDATE publications SET state='published',url=?,error=?,updated=? WHERE id=?").run(result.url,result.reused?'Existing pull request reused; its current title, description and state were kept.':null,new Date().toISOString(),id);audit('published',task,{publication:id,url:result.url,head:plan!.head,reused:result.reused});}
     }catch(error){db.prepare('UPDATE publications SET state=?,error=?,updated=? WHERE id=?').run(approve?'needs_attention':'failed',(error as Error).message,new Date().toISOString(),id);}finally{publicationWork=undefined;}});
     publicationWork={done,abort};return publicationView(task).find(job=>job.id===id);
+  }
+  const feedbackView=(task:string,owner:string)=>db.prepare('SELECT id,kind,state,plan,error,result,expires FROM review_jobs WHERE task=? AND owner=? ORDER BY rowid DESC LIMIT 10').all(task,owner).map((r:any)=>({...r,plan:r.plan?JSON.parse(r.plan):null}));
+  function latestCommitted(task:string){const target=publishTarget(task);if(conversation(String(target.row.conversation)).archived)throw Error('Restore this conversation first.');if(db.prepare('SELECT id FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 1').get(target.row.conversation)?.id!==task)throw Error('Open the latest committed turn before continuing.');return target;}
+  function feedback(input:any){
+    if(!/^[a-f0-9]{64}$/.test(input.owner??''))throw Error('Authenticated browser session required.');
+    if(input.op==='feedback-targets')return publicationTargets(input.task,true);
+    if(input.op==='feedback-status'){publishTarget(input.task);return feedbackView(input.task,input.owner);}
+    const applying=input.op==='feedback-apply',stored=applying?db.prepare('SELECT * FROM review_jobs WHERE id=?').get(input.id):null;
+    if(applying&&(!stored||stored.owner!==input.owner))throw Error('This preview belongs to another browser.');
+    const plan=stored?.plan?JSON.parse(String(stored.plan)):null;
+    if(applying&&(!plan||input.fingerprint!==plan.fingerprint))throw Error('Preview changed. Review again.');
+    const chosen=applying&&stored!.kind==='comments'?selectedFeedback(plan,input.keys,input.instruction):null;
+    if(stored?.state==='applied'){if(chosen&&chosen.selection!==stored.selection)throw Error('A different selection was already imported.');return get(String(stored.result));}
+    if(applying&&(stored!.state!=='ready'||Number(stored!.expires)<Date.now()))throw Error('Preview expired. Prepare it again.');
+    const task=String(stored?.task??input.task),{row,p}=latestCommitted(task);
+    if(publicationWork||repositoryWork||dependencyWork||active||accountBusy()||github.busy()||db.prepare("SELECT id FROM tasks WHERE status='queued'").get())throw Error('Wait for current work before preparing GitHub feedback or integration.');
+    requireAdapter(String(row.adapter),'edit');
+    if(applying){
+      if(plan.sourceHead!==row.commit_sha)throw Error('The local commit changed. Prepare again.');
+      const id=randomUUID(),at=new Date().toISOString(),integration=stored!.kind==='integration',repo=String(p.repo),worktree=integration?join(c.worktrees,id):null;
+      if(integration){integrationConfig(repo);integrationGit(repo,['worktree','add','--detach',worktree!,plan.baseSha]);try{integrationGit(worktree!,['read-tree','--reset','-u',plan.tree]);}catch(error){git(['worktree','remove','--force',worktree!],repo);throw error;}}
+      db.exec('BEGIN');try{
+        db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,seed_tree,merge_parent,conflict_paths,worktree,review) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,row.adapter,integration?'Integrate '+plan.base+' at '+plan.baseSha+'. Review the combined changes and resolve any conflicts before checks and commit.':chosen!.prompt,integration?plan.baseSha:row.commit_sha,integration?'succeeded':'waiting_for_approval',at,at,row.project,row.conversation,'[]',row.id,'edit',integration?plan.tree:null,integration?plan.head:null,integration?JSON.stringify(plan.conflicts):null,worktree,integration?'pending':null);
+        db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,integration?'succeeded':'waiting_for_approval',at);
+        db.prepare("UPDATE review_jobs SET state='applied',result=?,selection=?,updated=? WHERE id=?").run(id,chosen?.selection??null,at,stored!.id);
+        audit(integration?'approve-integration':'import-feedback',id,{source:task,preview:stored!.id,fingerprint:plan.fingerprint,selection:chosen?.selection??null});db.exec('COMMIT');
+      }catch(error){db.exec('ROLLBACK');if(worktree)git(['worktree','remove','--force',worktree],repo);throw error;}return get(id);
+    }
+    const kind=input.kind;if(!['comments','integration'].includes(kind))throw Error('Unsupported review operation');
+    const profile=github.profile();if(!profile&&!c.reviewAPI&&!c.repositoryCommand)throw Error('Connect GitHub first.');
+    let publication:any=null;if(kind==='comments'){const target=publicationTargets(task,true).find(t=>t.id===input.publication);if(!target)throw Error('Choose a published PR from this conversation.');publication={plan:JSON.parse(String(db.prepare('SELECT plan FROM publications WHERE id=?').get(target.id)!.plan)),number:Number(target.url.match(/\/pull\/(\d+)$/)?.[1])};}
+    const id=randomUUID(),abort=new AbortController();db.prepare('INSERT INTO review_jobs VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(id,kind,task,input.owner,'preparing',null,null,null,null,new Date().toISOString(),Date.now()+1800000);
+    const done=Promise.resolve().then(async()=>{try{const value=kind==='comments'?await loadFeedback(c.reviewAPI??githubReviewAPI(c.stateDir,profile!),publication.plan,publication.number,abort.signal):await prepareIntegration(c.repositoryCommand??repositoryGit({stateDir:c.stateDir,githubProfile:profile}),String(p.repo),String(row.commit_sha),input.base,abort.signal);
+      if(abort.signal.aborted)throw Error('Preparation cancelled.');latestCommitted(task);
+      if(kind==='integration'){integrationGit(String(p.repo),['update-ref','refs/agentd/integrations/'+id,(value as any).tree]);integrationGit(String(p.repo),['update-ref','refs/agentd/integration-bases/'+id,(value as any).baseSha]);}
+      db.prepare("UPDATE review_jobs SET state='ready',plan=?,updated=? WHERE id=?").run(JSON.stringify({...value,sourceHead:row.commit_sha}),new Date().toISOString(),id);
+    }catch(error){db.prepare("UPDATE review_jobs SET state='failed',error=? WHERE id=?").run((error as Error).message,id);}finally{publicationWork=undefined;}});publicationWork={done,abort};return {id,state:'preparing'};
   }
   const capabilities=()=>discover(enabledAdapters,editAdapters,!!c.command,!!c.codexChat);
   const accountCache=new Map<string,AccountStatus>(adapterIds.map(id=>[id,{state:'checking',method:null,checkedAt:null,message:'Checking account status'}]));
@@ -261,12 +300,13 @@ export function runner(c: Config) {
     if(active||db.prepare("SELECT id FROM tasks WHERE status='queued'").get())throw Error('Wait for the active worker before reviewing changes');
     if(row.mode!=='edit'||!row.worktree||['waiting_for_approval','queued','running','cancelling'].includes(row.status))throw Error('This run has no finished editable worktree');
   }
-  const review=(row:any)=>{available(row);return {project:row.project,...snapshot(String(row.worktree),String(row.revision),c.stateDir),checks:row.checks?((value:any)=>({...value,output:value.log?logTail(value.log):''}))(JSON.parse(String(row.checks))):null,commit:row.commit_sha,branch:row.branch,decision:row.review};};
+  const review=(row:any)=>{available(row);const value=snapshot(String(row.worktree),String(row.revision),c.stateDir);return {project:row.project,...value,mergeParent:row.merge_parent,conflicts:row.merge_parent?unresolvedConflicts(String(row.worktree),value.tree,[...new Set([...JSON.parse(String(row.conflict_paths??'[]')),...value.files])]):[],checks:row.checks?((value:any)=>({...value,output:value.log?logTail(value.log):''}))(JSON.parse(String(row.checks))):null,commit:row.commit_sha,branch:row.branch,decision:row.review};};
   function validate(row:any,expected:string){
     if(accountBusy()||dependencyWork)throw Error('Finish account or dependency preparation before running checks');
     if(projectBusy(String(row.project)))throw Error('Wait for the repository update.');
     available(row);if(row.review!=='pending')throw Error('This review is already resolved');
     const value=snapshot(String(row.worktree),String(row.revision),c.stateDir);if(value.tree!==expected)throw Error('Changes have changed. Review again.');
+    if(review(row).conflicts.length)throw Error('Resolve conflict markers before running checks.');
     const p=project(String(row.project));if(!p.check_dependencies)throw Error('Open Set up checks to prepare this project’s dependencies.');
     if(p.check_manifest&&checkManifest(String(row.worktree)).fingerprint!==p.check_manifest)throw Error('Dependency files changed. Open Set up checks for this review.');
     const hash=createHash('sha256').update(readFileSync(join(String(row.worktree),'package-lock.json'))).digest('hex');
@@ -288,6 +328,7 @@ export function runner(c: Config) {
   }
   function request(input:any){
     if(closing)throw new Error('Service is stopping');
+    if(typeof input.op==='string'&&input.op.startsWith('feedback-'))return feedback(input);
     if(input.op==='publication-targets')return publicationTargets(input.task);
     if(input.op==='publication-status'){publishTarget(input.task);return publicationView(input.task);}
     if(input.op==='publication-preview')return startPublication(input);
@@ -449,6 +490,7 @@ export function runner(c: Config) {
       git(['update-ref','refs/agentd/revisions/'+id,value.tree],String(project(String(row.project)).repo));
       db.exec('BEGIN');try{
         db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,revision_of,seed_tree) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,row.adapter,input.prompt,row.revision,'waiting_for_approval',at,at,row.project,row.conversation,row.attachments,row.id,'edit',row.id,value.tree);
+        db.prepare('UPDATE tasks SET merge_parent=?,conflict_paths=? WHERE id=?').run(row.merge_parent,row.conflict_paths,id);
         db.prepare("UPDATE tasks SET review='superseded' WHERE id=?").run(row.id);
         db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);audit('request-revision',id,{revisionOf:row.id,tree:value.tree});db.exec('COMMIT');
       }catch(error){db.exec('ROLLBACK');throw error;}return get(id);
@@ -473,6 +515,7 @@ export function runner(c: Config) {
       try{
         // Keep the original context, not the failed attempt's output or partial edits.
         db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,retry_of) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,row.adapter,row.prompt,row.revision,'waiting_for_approval',at,at,row.project,row.conversation,row.attachments,row.parent,row.mode,row.id);
+        db.prepare('UPDATE tasks SET merge_parent=?,conflict_paths=? WHERE id=?').run(row.merge_parent,row.conflict_paths,id);
         if(row.seed_tree)db.prepare('UPDATE tasks SET seed_tree=? WHERE id=?').run(row.seed_tree,id);
         db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);
         audit('retry-run',id,{retryOf:row.id});
@@ -489,13 +532,14 @@ export function runner(c: Config) {
     if(input.op==='discard'){available(row);if(row.review!=='pending')throw Error('Review is already resolved');db.prepare("UPDATE tasks SET review='discarded' WHERE id=?").run(input.id);return get(input.id);}
     if(input.op==='commit'){
       const value=review(row);if(row.review!=='pending')throw Error('Review is already resolved');
-      if(!value.files.length)throw Error('No changes to commit');
+      if(!value.files.length&&!row.merge_parent)throw Error('No changes to commit');
+      if(value.conflicts.length)throw Error('Resolve conflict markers before committing.');
       if(value.tree!==input.tree)throw Error('Changes have changed. Review again.');
       if(value.truncated||value.blocked.length)throw Error('Review contains oversized changes or sensitive filenames; resolve them before committing');
       if(value.checks?.status!=='passed'||value.checks.tree!==value.tree)throw Error('Checks must pass for the exact reviewed changes');
       const message=title(input.message),branch='agentd/'+row.id;
       audit('approve-commit',input.id,{tree:value.tree,branch});
-      const sha=commitSnapshot(String(project(String(row.project)).repo),String(row.revision),value.tree,branch,message);
+      const sha=commitSnapshot(String(project(String(row.project)).repo),String(row.revision),value.tree,branch,message,row.merge_parent?String(row.merge_parent):undefined);
       db.prepare("UPDATE tasks SET review='committed',commit_sha=?,branch=? WHERE id=?").run(sha,branch,row.id);return get(input.id);
     }
     if(input.op==='show')return {task:row,output:row.log?logTail(String(row.log)):'',images:JSON.parse(String(row.attachments)).map((id:string)=>attachment(id)),events:db.prepare('SELECT status,at FROM events WHERE task=? ORDER BY id').all(input.id)};
