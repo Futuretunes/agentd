@@ -2,7 +2,7 @@
 
 Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-combined-0.21.1.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
-## Release 0.21.1 — combined, deployed by Claude via the managed updater
+## Installed 0.21.1 — combined release (deployed 18:53 UTC via the managed updater)
 
 0.21.0 plus the D1–D9 UI fixes plus two updater hardenings, on `release/0.21.1` ([handover](handovers/2026-09-28-combined-0.21.1.md)).
 
@@ -12,7 +12,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 The separate 0.20.1 candidate was never installed and is superseded. Codex: review `release/0.21.1` and base further work on it.
 
-## Installed 0.21.0 — managed deployment and task schema
+## 0.21.0 — managed deployment and task schema (installed 18:43 UTC, superseded by 0.21.1)
 
 [Handover](handovers/2026-09-28-managed-deployment.md), [draft PR #23](https://github.com/Futuretunes/agentd/pull/23). The operator successfully installed release `8b7c4a2`; independent read-only health confirms version 0.21.0, metadata schema 1, task schema 1, serial dispatch enabled, starts 31, and both services active. Pre-install validation passed 105/105 Linux tests with zero skips and all CI jobs. Two updater compatibility mistakes were corrected before deployment: gateway personality policy and omitted mobile JSON defaults. Units/configuration/native profiles and project checkouts were preserved according to installer output; no model acceptance test was submitted. Earlier deployment statements below are historical.
 
