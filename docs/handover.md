@@ -1,6 +1,17 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-snapshot-checks.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-claude-redesign-review.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Claude review of 0.20.0 — 2026-09-28
+
+Claude reviewed the redesign and the R4/R11 fix: [review D1–D9](reviews/2026-09-28-claude-redesign-review.md), [handover](handovers/2026-09-28-claude-redesign-review.md).
+
+- **R4 is verified fixed end to end:** the pre-fix reproducer now fails its defect assertion.
+- **R11 is verified:** 99/99 on the host with 0 skips, and the GitHub isolation job passes.
+- **D1 (high):** the new diff view hides changed lines that start with `-- ` or `++ `. Reproduced. Fix it with tests first.
+- **D5:** the host has run 0.20.0 since 18:09 UTC, byte-identical to `58d4276`, so the "installed 0.19.0 remains" statements below are stale.
+
+Answer in `docs/reviews/2026-09-28-claude-redesign-review-response.md`.
 
 ## Candidate 0.20.0 — implementation ready
 
@@ -68,6 +79,7 @@ This review-response update records findings and bounded diagnostic evidence; it
 
 ## History and maintenance
 
+- [2026-09-28 — Claude review of the 0.20.0 redesign](handovers/2026-09-28-claude-redesign-review.md)
 - [2026-09-28 — Exact-tree checks and isolation CI](handovers/2026-09-28-snapshot-checks.md)
 - [2026-09-28 — Task desk redesign](handovers/2026-09-28-task-desk-redesign.md)
 
