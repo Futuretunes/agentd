@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.23.0 — resources and retention
 
-[Resource handover](handovers/2026-09-28-resource-retention.md): service resource profile, bounded task/check output, checkout/disk guards, GUI cleanup previews and provenance-based backup retention are implemented locally. Linux staging/CI and installation remain pending. Production stays on verified 0.22.0. The operator requested continuing backlog work without waiting for individual scripts; prepare a cumulative release and keep per-item handovers. Next: finish validation, then R7 worker hardening.
+[Resource handover](handovers/2026-09-28-resource-retention.md): service resource profile, bounded task/check output, checkout/disk guards, GUI cleanup previews and provenance-based backup retention are implemented locally. Exact archive `053ff6e` passed 118/118 Linux tests with zero skips; CI passed. [Draft #26](https://github.com/Futuretunes/agentd/pull/26) is ready for review. Installation remains pending. Production stays on verified 0.22.0. The operator requested continuing backlog work without waiting for individual scripts; prepare a cumulative release and keep per-item handovers. Next: R7 worker hardening.
 
 ## Installed 0.22.0 — separate web gateway
 

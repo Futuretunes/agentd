@@ -2,7 +2,9 @@
 
 - Author: Codex.
 - Request: resource limits and safe retention for task logs, worktrees and backups; continue backlog without waiting for intermediate installations.
-- Status: implemented locally; Linux staging/CI pending; not installed.
+- Status: implemented and exact-archive Linux/CI verified; not installed.
+- Draft PR: [#26](https://github.com/Futuretunes/agentd/pull/26).
+- Tested source: `053ff6e5e2ded30a43d3452034f503e567124b39`; archive SHA-256 `4f88953919c42c25c16eaba34c25fff9cba61642a53e7586742f2768c2288dbb`.
 - Release: 0.23.0 candidate, task schema remains 1.
 - Branch/base: `feat/resource-retention` from installed gateway branch `09ba7d6`.
 
@@ -16,7 +18,7 @@ Read `docs/resource-retention.md` before reviewing or installing: cgroups are se
 
 ## Validation
 
-Local typecheck and full suite passed: initial 117 tests, 110 passed and seven Linux-only skips. Additional checkout preflight and GUI storage-auth regressions passed. Final exact-archive Linux run and CI are pending. Python fixtures cover kernel-property verification, failed migration rollback, backup pinning/age/newest-copy protection, symlink handling and pending recovery refusal. No live provider requests, root migration or phone acceptance.
+Local typecheck and full suite passed: initial 117 tests, 110 passed and seven Linux-only skips. Additional checkout preflight and GUI storage-auth regressions passed. Final exact-archive Linux run passed 118/118 tests with zero skips. CI run `36475776972` passed all jobs. Python fixtures cover kernel-property verification, failed migration rollback, backup pinning/age/newest-copy protection, symlink handling and pending recovery refusal. No live provider requests, root migration or phone acceptance.
 
 ## Deployment and rollback
 
@@ -24,4 +26,4 @@ Installed production remains 0.22.0. Operator requested continued backlog work w
 
 ## Next
 
-Finish Linux validation/PR evidence, then R7 explicit worker sandbox hardening with compatibility tests. Preserve procfs and supported adapter ceilings; Codex project tools remain disabled. Shared handover is required after each work item. R1 main baseline/protected CI and U1 no-check manual-review policy remain unresolved operator decisions.
+Linux validation and draft #26 are complete. Continue R7 explicit worker sandbox hardening with compatibility tests. Preserve procfs and supported adapter ceilings; Codex project tools remain disabled. Shared handover is required after each work item. R1 main baseline/protected CI and U1 no-check manual-review policy remain unresolved operator decisions.
