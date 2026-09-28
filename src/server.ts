@@ -70,6 +70,7 @@ export function start(options: Options) {
   try {
     tasks = options.taskRunner
       ? runner({
+          gateway: process.env.AGENTD_GATEWAY_SOCKET ? {path:process.env.AGENTD_GATEWAY_SOCKET,gid:Number(process.env.AGENTD_GATEWAY_GID)} : undefined,
           githubRoot: join(homedir(), ".agentd-github"),
           credentialRenewal: process.env.AGENTD_CREDENTIAL_RENEWAL === "1",
           codexChat: process.env.AGENTD_CODEX_CHAT === "1",

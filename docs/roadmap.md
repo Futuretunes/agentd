@@ -112,3 +112,7 @@ Order agreed with the operator on 2026-09-28: finish the GitHub workflow, integr
 Every milestone includes desktop/phone acceptance, actionable failures, cancellation/recovery where relevant, and preservation of the approval model. Full Codex GUI consent, private GitHub sign-in/import, task retry acceptance and the first live publication still need recorded operator verification.
 
 A feature listed here is not a promise that the current release supports it.
+
+## R5 implementation — candidate 0.22.0
+
+Separate web UID, restricted runner socket, runner-owned attachments and journalled identity migration are implemented; see [handover](handovers/2026-09-28-separate-web-gateway.md). Local tests passed; Linux staging and installed UID/mount-namespace verification remain pending. Installed 0.21.2 is unchanged. Preserve actual approval/security boundaries and distinguish this source milestone from deployment. After acceptance, R6 resource budgets and safe retention are next; existing R1 release-baseline decisions remain open.

@@ -131,7 +131,7 @@ test('retry keeps failed worktrees and rejects stale turns, unavailable adapters
   assert.notEqual(again.worktree,failed.worktree);assert.equal(readFileSync(join(failed.worktree,'README.md'),'utf8'),'fixture');
   const later=app.request({op:'create',conversation:original.conversation,adapter:'claude',prompt:'new turn'});app.request({op:'cancel',id:later.id});
   assert.throws(()=>app.request({op:'retry',id:retry.id}),/latest run/);
-  const image='22222222-2222-4222-8222-222222222222';writeFileSync(join(f.config.stateDir,'attachments',image+'.json'),JSON.stringify({id:image,ext:'.png'}));
+  const image='22222222-2222-4222-8222-222222222222';writeFileSync(join(f.config.stateDir,'attachments',image+'.json'),JSON.stringify({id:image,ext:'.png',name:'Missing image'}));
   const missing=app.request({op:'create',adapter:'claude',prompt:'image',attachments:[image]});app.request({op:'cancel',id:missing.id});
   assert.throws(()=>app.request({op:'retry',id:missing.id}),/image is missing/);
   app.request({op:'conversation-archive',id:later.conversation});assert.throws(()=>app.request({op:'retry',id:later.id}),/archived/);

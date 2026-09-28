@@ -8,6 +8,7 @@ StartLimitBurst=3
 Type=simple
 User=agentd
 Group=agentd
+SupplementaryGroups=agentd-web
 WorkingDirectory=/opt/agentd
 ExecStart=/usr/local/bin/node /opt/agentd/src/server.ts
 Environment=AGENTD_STATE_DIR=/srv/agentd/state
@@ -15,7 +16,9 @@ Environment=AGENTD_PORT=8787
 Environment=AGENTD_RUNNER=1
 EnvironmentFile=/etc/agentd/agentd.env
 Environment=AGENTD_CONTROL_SOCKET=/run/agentd/control.sock
-RuntimeDirectory=agentd
+Environment=AGENTD_GATEWAY_SOCKET=/run/agentd-web/gateway.sock
+# Set AGENTD_GATEWAY_GID to the dedicated agentd-web group ID when provisioning.
+RuntimeDirectory=agentd agentd-web
 RuntimeDirectoryMode=0700
 Restart=on-failure
 RestartSec=5

@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-candidate-validation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-separate-web-gateway.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.22.0 — separate web gateway
+
+R5 is implemented on `feat/separate-web-gateway`; [latest handover](handovers/2026-09-28-separate-web-gateway.md). Runner-enforced browser protocol, runner-owned images, separate gateway UID/socket/configuration and a rollback-capable identity migration are ready for Linux candidate validation. Local suite: 112 tests, 105 passed, seven Linux-only skips, zero failures. Installed remains 0.21.2. Actual UID/mount namespace acceptance is an installer gate, not yet verified. No model tasks or deployment occurred. Next: finish staging/Claude review, then operator installation and R6.
 
 ## Installed 0.21.2 — installer validation follow-up
 

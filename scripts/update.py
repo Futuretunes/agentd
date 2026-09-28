@@ -38,12 +38,17 @@ def canonical(value):
 def config(path):
     c = json.loads(Path(path).read_text())
     required = {'app','state','deployment','user','runnerUnit','mobileUnit','node','npm','healthUrl','configFiles','controlSocket'}
-    if set(c) != required: raise ValueError('Unexpected or missing configuration field')
+    optional={'gatewayUser','gatewaySocket'}
+    if (set(c)-optional) != required or bool(c.get('gatewayUser')) != bool(c.get('gatewaySocket')): raise ValueError('Unexpected or missing configuration field')
     paths = [canonical(c[k]) for k in ('app','state','deployment')]
     for i, a in enumerate(paths):
         if any(a == b or a in b.parents or b in a.parents for b in paths[i+1:]): raise ValueError('Application, state and deployment paths must be disjoint')
     for k in ('node','npm'): canonical(c[k]) if not Path(c[k]).is_symlink() else canonical(str(Path(c[k]).resolve()))
     canonical(c['controlSocket'])
+    if c.get('gatewayUser'):
+        if not re.fullmatch(r'[a-z_][a-z0-9_-]*',c['gatewayUser']) or c['gatewayUser'] in ('root',c['user']): raise ValueError('Separate non-root gateway user required')
+        canonical(c['gatewaySocket'])
+        if Path(c['gatewaySocket']).parent == Path(c['controlSocket']).parent: raise ValueError('Separate socket directories required')
     for path in c['configFiles']: canonical(path)
     if not re.fullmatch(r'[a-z_][a-z0-9_-]*',c['user']) or c['user'] == 'root': raise ValueError('Dedicated non-root service user required')
     for k in ('runnerUnit','mobileUnit'):
@@ -56,10 +61,10 @@ def inventory(c):
     result = {}
     for key in ('runnerUnit','mobileUnit'):
         unit = c[key]
-        text = capture(['systemctl','show',unit,*['--property='+p for p in PROPERTIES]])
+        text = capture(['systemctl','show',unit,*['--property='+p for p in (PROPERTIES+(['SupplementaryGroups','RuntimeDirectory','RuntimeDirectoryMode','PrivateDevices'] if c.get('gatewayUser') else []))]])
         properties = dict(line.split('=',1) for line in text.splitlines() if '=' in line)
         if properties.get('NeedDaemonReload') == 'yes': raise ValueError('Reload and review changed unit files before updating')
-        for name, value in {'User':c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','CapabilityBoundingSet':'','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes'}.items():
+        for name, value in {'User':c.get('gatewayUser',c['user']) if key=='mobileUnit' else c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','CapabilityBoundingSet':'','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes'}.items():
             if properties.get(name) != value: raise ValueError('Unsupported service security configuration: '+name)
         # The runner template locks personality; the gateway template does not.
         # Preserve and fingerprint either gateway setting, but never accept a
@@ -89,8 +94,20 @@ def inventory(c):
             mobile=json.loads(Path(mobile_config).read_text())
             # Match src/mobile.ts: absent keys use fixed application defaults;
             # explicit null/empty/different values must still fail closed.
-            if mobile.get('socket','/run/agentd/control.sock')!=c['controlSocket']: raise ValueError('Mobile control socket differs from update target')
+            if mobile.get('socket','/run/agentd/control.sock')!=c.get('gatewaySocket',c['controlSocket']): raise ValueError('Mobile control socket differs from update target')
             if mobile.get('publicDir','/opt/agentd/public')!=str(Path(c['app'])/'public'): raise ValueError('Mobile public directory differs from update target')
+        if c.get('gatewayUser'):
+            gateway=pwd.getpwnam(c['gatewayUser'])
+            if key=='runnerUnit':
+                if environment.get('AGENTD_GATEWAY_SOCKET')!=c['gatewaySocket'] or environment.get('AGENTD_GATEWAY_GID')!=str(gateway.pw_gid): raise ValueError('Gateway socket environment mismatch')
+                if properties.get('RuntimeDirectoryMode')!='0700' or not {'agentd','agentd-web'}.issubset(set(properties.get('RuntimeDirectory','').split())): raise ValueError('Private runtime directory configuration required')
+                if c['gatewayUser'] not in properties.get('SupplementaryGroups','').split(): raise ValueError('Runner gateway group missing')
+            else:
+                if properties.get('PrivateDevices')!='yes': raise ValueError('Gateway requires private devices')
+                if properties.get('Group')!=c['gatewayUser'] or properties.get('SupplementaryGroups',''): raise ValueError('Gateway must have only its dedicated group')
+                if properties.get('ReadWritePaths',''): raise ValueError('Gateway must not have writable application paths')
+                hidden={str(Path(c['state']).parent),pwd.getpwnam(c['user']).pw_dir,str(Path(c['controlSocket']).parent),'/etc/agentd'}
+                if not hidden.issubset(set(properties.get('InaccessiblePaths','').split())): raise ValueError('Gateway private paths must be inaccessible')
         hashes = {}
         for name in files:
             if not name: raise ValueError('Missing unit file')
@@ -145,7 +162,7 @@ def test_candidate(c, stage, temporary, release_files, manifest):
              '--property=ProtectHome=yes','--property=PrivateTmp=yes','--property=ProtectKernelTunables=no',
              '--property=ProtectKernelModules=yes','--property=ProtectControlGroups=yes','--property=CapabilityBoundingSet=',
              '--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK',
-             '--property=InaccessiblePaths='+' '.join([str(Path(c['state']).parent),account.pw_dir,str(Path(c['controlSocket']).parent),*c['configFiles']]),
+             '--property=InaccessiblePaths='+' '.join([str(Path(c['state']).parent),account.pw_dir,str(Path(c['controlSocket']).parent),*([str(Path(c['gatewaySocket']).parent)] if c.get('gatewaySocket') else []),*c['configFiles']]),
              '--property=ReadWritePaths='+str(temporary), *args])
     command([c['npm'],'ci','--ignore-scripts','--no-audit','--no-fund'])
     command([c['npm'],'run','typecheck'])
@@ -274,7 +291,7 @@ if __name__ == '__main__':
         if root.is_symlink() or root.stat().st_uid!=0 or root.stat().st_mode & 0o077: raise ValueError('Deployment directory must be root-owned mode 700')
         with (root/'update.lock').open('w') as lock:
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-            if (root/'pending.json').exists(): raise ValueError('An interrupted update requires administrator recovery; see pending.json')
+            if (root/'pending.json').exists() or (root/'gateway-pending.json').exists(): raise ValueError('An interrupted update requires administrator recovery; see pending.json')
             current=inventory(c); record=root/'installed.json'
             previous=json.loads(record.read_text()) if record.exists() else None
             if previous and previous['configuration']!=current: raise ValueError('Installed configuration drifted; review and reconcile it before updating')

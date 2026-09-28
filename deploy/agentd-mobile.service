@@ -3,8 +3,10 @@ Description=Agent task desk for home network
 After=network.target agentd.service
 Requires=agentd.service
 [Service]
-User=agentd
-Group=agentd
+User=agentd-web
+Group=agentd-web
+SupplementaryGroups=
+Environment=AGENTD_MOBILE_CONFIG=/etc/agentd-web/mobile.json
 WorkingDirectory=/opt/agentd
 ExecStart=/usr/local/bin/node /opt/agentd/src/mobile.ts
 Restart=on-failure
@@ -14,7 +16,8 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/srv/agentd/state/attachments
+InaccessiblePaths=/srv/agentd /var/lib/agentd /run/agentd /etc/agentd
+PrivateDevices=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

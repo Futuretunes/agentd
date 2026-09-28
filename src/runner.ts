@@ -1,3 +1,5 @@
+import {attachmentStore} from './attachment-store.ts';
+import {gatewaySocket} from './gateway-protocol.ts';
 import { initializeTaskDatabase } from './task-database.ts';
 import {settings,resolveSettings,type Settings} from './execution-settings.ts';
 import {modelCatalog,discoverModels} from './model-catalog.ts';
@@ -20,7 +22,7 @@ import { mkdirSync, openSync, writeSync, closeSync, realpathSync, readFileSync, 
 import { join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 
-type Config = { modelDiscovery?:typeof discoverModels; stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; reviewAPI?:ReviewAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
+type Config = { gateway?: {path:string;gid:number}; modelDiscovery?:typeof discoverModels; stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; reviewAPI?:ReviewAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
 export function runner(c: Config) {
   if(c.enabledAdapters?.includes('cursor')&&!c.command&&(!c.strictWorkers||!c.credentialRenewal))throw Error('Cursor requires hardened isolation and access-only credential handling');
   if(c.credentialRenewal&&!c.strictWorkers)throw Error('Credential renewal requires hardened isolation');
@@ -42,11 +44,8 @@ export function runner(c: Config) {
   const title=(value:unknown)=>{if(typeof value!=='string'||!value.trim()||value.trim().length>100)throw new Error('Name must contain 1 to 100 characters');return value.trim();};
   const attachmentRoot=c.attachments??join(c.stateDir,'attachments');
   mkdirSync(attachmentRoot,{recursive:true,mode:0o700});
-  const attachment=(id:string)=>{
-    if(!/^[0-9a-f-]{36}$/.test(id))throw new Error('Invalid attachment');
-    const path=join(attachmentRoot,id+'.json');
-    return JSON.parse(readFileSync(path,'utf8'));
-  };
+  const images=attachmentStore(attachmentRoot);
+  const attachment=images.metadata;
   const logTail=(path:string,limit=60000)=>{
     if(!existsSync(path))return '';
     const fd=openSync(path,'r');try{const size=statSync(path).size;const b=Buffer.alloc(Math.min(size,limit));readSync(fd,b,0,b.length,Math.max(0,size-b.length));return b.toString('utf8');}finally{closeSync(fd);}
@@ -325,6 +324,8 @@ export function runner(c: Config) {
   }
   function request(input:any){
     if(closing)throw new Error('Service is stopping');
+    if(input.op==='attachment-upload')return images.upload(input);
+    if(input.op==='attachment-read')return images.read(input.id);
     if(input.op==='settings-view'||input.op==='settings-save'||input.op==='models-refresh'){
       const projectId=String(input.project??'default'),conversationId=input.conversation?String(input.conversation):null,agent=String(input.agent??'claude');
       project(projectId);if(conversationId&&conversation(conversationId).project!==projectId)throw Error('Conversation belongs to another project');
@@ -605,7 +606,8 @@ export function runner(c: Config) {
   });
   // Caller supplies a private, freshly created directory for the control socket.
   const controlPath=process.env.AGENTD_CONTROL_SOCKET??socket;
+  const gateway=c.gateway?gatewaySocket(c.gateway,request):undefined;
   server.listen(controlPath);
   server.on('listening',()=>pump());
-  return {request,server,async close(){closing=true;publicationWork?.abort.abort();await publicationWork?.done;dependencyWork?.abort.abort();await dependencyWork?.done;repositoryWork?.abort.abort();await repositoryWork?.done;await github.close();await catalog.close();clearInterval(accountTimer);await accountManager.close();await renewalManager?.close();await preparation;const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
+  return {request,server,gateway,async close(){closing=true;publicationWork?.abort.abort();await publicationWork?.done;dependencyWork?.abort.abort();await dependencyWork?.done;repositoryWork?.abort.abort();await repositoryWork?.done;await github.close();await catalog.close();clearInterval(accountTimer);await accountManager.close();await renewalManager?.close();await preparation;const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await gateway?.close();await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
 }
