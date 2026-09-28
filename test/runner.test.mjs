@@ -7,21 +7,28 @@ import {execFileSync} from 'node:child_process';
 import {once} from 'node:events';
 import {runner} from '../src/runner.ts';
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-async function fixture(timeoutMs=2000){
+async function fixture(timeoutMs=2000,accountStatus=async()=>({state:'signed_out',method:null,checkedAt:null,message:'Sign-in required'})){
  const root=mkdtempSync(join(tmpdir(),'runner-')),repo=join(root,'repo');mkdirSync(repo);
  const git=(...args)=>execFileSync('git',['-C',repo,...args],{stdio:'pipe'});
  git('init','-b','main');writeFileSync(join(repo,'README.md'),'fixture');git('add','.');git('-c','user.name=test','-c','user.email=test@localhost','commit','-m','fixture');
  const config={stateDir:join(root,'state'),repo,worktrees:join(root,'trees'),logs:join(root,'logs'),timeoutMs,command:(_adapter,prompt)=>[process.execPath,['-e',prompt==='hang'?'setInterval(()=>{},1000)':prompt==='fail'?'process.exit(7)':"console.log(require('fs').readFileSync('README.md','utf8'))"]]};
+ config.accountStatus=accountStatus;
  const app=runner(config);await once(app.server,'listening');return{root,repo,config,app};
 }
 async function status(app,id,wanted){for(let i=0;i<150;i++){const row=app.request({op:'show',id}).task;if(wanted.includes(row.status))return row;await sleep(20);}throw Error('Timed out waiting for '+wanted);}
 test('account changes exclude task approvals and running workers; audit excludes secrets',async()=>{
  const prior=process.env.AGENTD_CLAUDE_BIN,binRoot=mkdtempSync(join(tmpdir(),'account-cli-')),bin=join(binRoot,'claude');
  writeFileSync(bin,`#!${process.execPath}\nif(process.argv.includes('status')){console.log('Not logged in');process.exit(1)}setInterval(()=>{},1000);`,{mode:0o700});process.env.AGENTD_CLAUDE_BIN=bin;
- const f=await fixture();const owner='a'.repeat(64);
+ const probes=new Map();
+ const f=await fixture(2000,id=>new Promise(resolve=>probes.set(id,resolve)));const owner='a'.repeat(64);
  try{
   const task=f.app.request({op:'create',adapter:'claude',prompt:'hang'});
-  for(let i=0;i<100&&f.app.request({op:'operations'}).adapters.find(x=>x.id==='claude').account.state==='checking';i++)await sleep(20);
+  for(let i=0;i<100&&probes.size!==2;i++)await sleep(10);
+  assert.equal(probes.size,2);
+  const signedOut={state:'signed_out',method:null,checkedAt:null,message:'Sign-in required'};
+  probes.get('claude')(signedOut);await sleep(0);
+  assert.throws(()=>f.app.request({op:'account-start',owner,adapter:'claude',action:'login'}),/account checks/);
+  probes.get('codex')(signedOut);await sleep(0);
   const session=f.app.request({op:'account-start',owner,adapter:'claude',action:'login'});
   assert.equal(f.app.request({op:'operations'}).service.accountChange,true);
   assert.throws(()=>f.app.request({op:'approve',id:task.id}),/account change/);
