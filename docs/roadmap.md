@@ -135,4 +135,8 @@ Shared credential filename/content policy now covers exact review blobs, outgoin
 
 ## R15 candidate — bounded oversized reviews
 
-Git output overflow now becomes a fixed error without raw output; review converts it to an unapprovable truncated result. Patch generation is capped at 180 KB before buffering a full diff. Real multi-megabyte reproduction passes. Exact archive passed 126/126 Linux tests with zero skips; CI pending. Not installed. See [handover](handovers/2026-09-28-bounded-review.md). R14 large-file paginated review remains future work.
+Git output overflow now becomes a fixed error without raw output; review converts it to an unapprovable truncated result. Patch generation is capped at 180 KB before buffering a full diff. Real multi-megabyte reproduction passes. Exact archive passed 126/126 Linux tests with zero skips; CI passed, draft #30 open. Not installed. See [handover](handovers/2026-09-28-bounded-review.md). R14 large-file paginated review remains future work.
+
+## R19 candidate — missing mutation audits and session attribution
+
+Browser mutations now require a gateway-supplied owner; audit records use a domain-separated session pseudonym and distinguish browser/local/system contexts. Missing project creation/rename, conversation rename, discard and task creation records are added without names or prompts. Focused tests passed; exact Linux/CI pending, not installed. See [handover](handovers/2026-09-28-session-audit.md). User accounts, tamper-evident external audit storage and a GUI audit viewer remain separate work.

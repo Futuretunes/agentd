@@ -1,3 +1,4 @@
+import {AsyncLocalStorage} from 'node:async_hooks';
 import {localGit} from './git-policy.ts';
 import {resourceLimits,checkoutBudget,requireSpace,freeBytes,captureOutput,monitorWorktree,serviceBudget,type Limits} from './resources.ts';
 import {retention} from './retention.ts';
@@ -42,7 +43,9 @@ export function runner(c: Config) {
   const editAdapters=c.editing?(c.editAdapters??[]):[];
   if([...enabledAdapters,...editAdapters].some(value=>!adapterIds.includes(value)))throw Error('Invalid adapter configuration');
   const limits=c.resources??resourceLimits;
-  const audit=(action:string,task:string|null,detail:unknown={})=>db.prepare('INSERT INTO audit(at,action,task,detail) VALUES(?,?,?,?)').run(new Date().toISOString(),action,task,JSON.stringify(detail));
+  const auditContext=new AsyncLocalStorage<{kind:'browser'|'local'|'system';session?:string}>();
+  const audit=(action:string,task:string|null,detail:unknown={})=>db.prepare('INSERT INTO audit(at,action,task,detail) VALUES(?,?,?,?)').run(new Date().toISOString(),action,task,JSON.stringify({...detail as object,actor:auditContext.getStore()??{kind:'system'}}));
+  const auditedWrite=(action:string,task:string|null,detail:unknown,write:()=>unknown)=>{db.exec('BEGIN');try{write();audit(action,task,detail);db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}};
   const storage=retention(db,{worktrees:c.worktrees,logs:c.logs},audit);
   const project=(id:string)=>{const value=db.prepare('SELECT * FROM projects WHERE id=?').get(id);if(!value)throw new Error('Project not found');return value;};
   const conversation=(id:string)=>{const value=db.prepare('SELECT * FROM conversations WHERE id=?').get(id);if(!value)throw new Error('Conversation not found');return value;};
@@ -329,7 +332,12 @@ export function runner(c: Config) {
     try{captureOutput(child,log,fail,limits.logBytes);unmonitor=monitorWorktree(prepared.worktree,[c.stateDir,c.worktrees,c.logs],fail,limits);}catch{fail('Could not safely write task output');}
     return {status:'running'};
   }
-  function request(input:any){
+  function request(input:any){return auditContext.run({kind:'local'},()=>handleRequest(input));}
+  function browserRequest(input:any){
+    const actor={kind:'browser' as const,...(input.owner?{session:createHash('sha256').update('agentd-audit-session:'+input.owner).digest('hex')}:{})};
+    return auditContext.run(actor,()=>handleRequest(input));
+  }
+  function handleRequest(input:any){
     if(closing)throw new Error('Service is stopping');
     if(input.op==='attachment-upload'){requireSpace([c.stateDir],limits.reserveBytes);return images.upload(input);}
     if(input.op==='storage-preview'||input.op==='storage-cleanup'){
@@ -415,7 +423,7 @@ export function runner(c: Config) {
         git(['init','-b','main'],repo);
         git(['-c','user.name=agentd','-c','user.email=agentd@localhost','commit','--allow-empty','-m','Initialize project'],repo);
       }
-      db.prepare('INSERT INTO projects(id,name,repo,created) VALUES(?,?,?,?)').run(id,name,repo,new Date().toISOString());return project(id);
+      auditedWrite(input.op,null,{project:id},()=>db.prepare('INSERT INTO projects(id,name,repo,created) VALUES(?,?,?,?)').run(id,name,repo,new Date().toISOString()));return project(id);
     }
     if(input.op==='project-archive'||input.op==='project-restore'){
       if(dependencyWork||publicationWork||projectBusy(input.id))throw Error('Wait for the repository or publishing operation.');
@@ -439,7 +447,7 @@ export function runner(c: Config) {
         ORDER BY c.rowid DESC LIMIT 51`).all(before,filter,filter,filter,query,query,query,query);
       const more=rows.length>50;return {items:rows.slice(0,50),next:more?rows[49].sequence:null};
     }
-    if(input.op==='project-rename'){project(input.id);db.prepare('UPDATE projects SET name=? WHERE id=?').run(title(input.name),input.id);return project(input.id);}
+    if(input.op==='project-rename'){project(input.id);auditedWrite(input.op,null,{project:input.id},()=>db.prepare('UPDATE projects SET name=? WHERE id=?').run(title(input.name),input.id));return project(input.id);}
     if(input.op==='conversations'){
       project(input.project);
       return db.prepare(`SELECT c.*, (SELECT status FROM tasks t WHERE t.conversation=c.id ORDER BY created DESC,rowid DESC LIMIT 1) AS status,
@@ -458,7 +466,7 @@ export function runner(c: Config) {
       const thread=conversation(input.id);if(project(String(thread.project)).archived)throw Error('Restore the project before restoring this conversation.');
       db.prepare('UPDATE conversations SET archived=0 WHERE id=?').run(input.id);audit(input.op,null,{conversation:input.id});return conversation(input.id);
     }
-    if(input.op==='conversation-rename'){conversation(input.id);db.prepare('UPDATE conversations SET title=? WHERE id=?').run(title(input.name),input.id);return conversation(input.id);}
+    if(input.op==='conversation-rename'){conversation(input.id);auditedWrite(input.op,null,{conversation:input.id},()=>db.prepare('UPDATE conversations SET title=? WHERE id=?').run(title(input.name),input.id));return conversation(input.id);}
     if(input.op==='conversation-archive'){
       conversation(input.id);
       if(db.prepare("SELECT id FROM tasks WHERE conversation=? AND (status IN ('waiting_for_approval','queued','running','cancelling') OR review='pending')").get(input.id))throw new Error('Finish or cancel pending tasks before archiving');
@@ -499,6 +507,7 @@ export function runner(c: Config) {
         db.prepare('UPDATE tasks SET run_overrides=? WHERE id=?').run(JSON.stringify(settings(input.overrides??{},input.adapter,true)),id);bindExecution(id);
 
         db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);
+        audit('create-run',id,{project:projectId,conversation:conversationId,adapter:input.adapter,mode});
         db.exec('COMMIT');
       }catch(error){db.exec('ROLLBACK');throw error;}
       return get(id);
@@ -569,7 +578,7 @@ export function runner(c: Config) {
     }
     if(input.op==='review')return review(row);
     if(input.op==='validate'){const result=validate(row,input.tree);audit('run-checks',input.id,{tree:input.tree});return result;}
-    if(input.op==='discard'){available(row);if(row.review!=='pending')throw Error('Review is already resolved');db.prepare("UPDATE tasks SET review='discarded' WHERE id=?").run(input.id);return get(input.id);}
+    if(input.op==='discard'){available(row);if(row.review!=='pending')throw Error('Review is already resolved');auditedWrite(input.op,input.id,{project:row.project},()=>db.prepare("UPDATE tasks SET review='discarded' WHERE id=?").run(input.id));return get(input.id);}
     if(input.op==='commit'){
       const value=review(row);if(row.review!=='pending')throw Error('Review is already resolved');
       if(!value.files.length&&!row.merge_parent)throw Error('No changes to commit');
@@ -618,7 +627,7 @@ export function runner(c: Config) {
   });
   // Caller supplies a private, freshly created directory for the control socket.
   const controlPath=process.env.AGENTD_CONTROL_SOCKET??socket;
-  const gateway=c.gateway?gatewaySocket(c.gateway,request):undefined;
+  const gateway=c.gateway?gatewaySocket(c.gateway,browserRequest):undefined;
   server.listen(controlPath);
   server.on('listening',()=>pump());
   return {request,server,gateway,async close(){closing=true;publicationWork?.abort.abort();await publicationWork?.done;dependencyWork?.abort.abort();await dependencyWork?.done;repositoryWork?.abort.abort();await repositoryWork?.done;await github.close();await catalog.close();clearInterval(accountTimer);await accountManager.close();await renewalManager?.close();await preparation;const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await gateway?.close();await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};

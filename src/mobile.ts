@@ -1,4 +1,4 @@
-import { gatewayRequest } from "./gateway-protocol.ts";
+import { gatewayRequest, gatewayMutations } from "./gateway-protocol.ts";
 import { createServer } from "node:https";
 import { createConnection } from "node:net";
 import { readFileSync } from "node:fs";
@@ -20,7 +20,7 @@ type Config = {
 export function mobile(c: Config) {
   const sessions = new Map<string, number>(),
     attempts = new Map<string, { count: number; until: number }>();
-  const call = (input: unknown) =>
+  const bridge = (input: unknown) =>
     new Promise<any>((resolve, reject) => {
       const encoded = JSON.stringify(gatewayRequest(input)) + "\n";
       const s = createConnection(c.socket);
@@ -153,6 +153,12 @@ export function mobile(c: Config) {
           return;
         }
         const accountOwner = createHash("sha256").update(id).digest("hex");
+        // Never trust a browser-supplied actor: bind every mutation to its cookie.
+        const call = (input: Record<string, any>) =>
+          bridge({
+            ...input,
+            ...(gatewayMutations.has(input.op) ? { owner: accountOwner } : {}),
+          });
         if (path === "/api/storage" && req.method === "POST") {
           const input = await body(req);
           if (!["preview", "cleanup"].includes(input.action))

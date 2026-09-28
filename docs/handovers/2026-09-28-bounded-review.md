@@ -12,7 +12,7 @@ The real large-diff regression also exposed that `diff.external=` tries to execu
 
 ## Validation
 
-Focused large-review and Git-policy tests passed 3/3, including a real diff exceeding the former 4 MiB buffer with blob contents still within the scan budget. The new result is bounded and unapprovable, without raw subprocess output. Exact archive `4e60f4d` passed typecheck and 126/126 Linux tests with zero skips/failures. Archive SHA256 `28f96b17142598c4116dead172c71d8cd08faa918eef1fbfd7b0dd219a5222c5`. CI `36479059061` pending; draft review opened against the sensitive-data branch. No deployment/model/account/publication operation.
+Focused large-review and Git-policy tests passed 3/3, including a real diff exceeding the former 4 MiB buffer with blob contents still within the scan budget. The new result is bounded and unapprovable, without raw subprocess output. Exact archive `4e60f4d` passed typecheck and 126/126 Linux tests with zero skips/failures. Archive SHA256 `28f96b17142598c4116dead172c71d8cd08faa918eef1fbfd7b0dd219a5222c5`. CI `36479059061` passed. [Draft #30](https://github.com/Futuretunes/agentd/pull/30) targets the sensitive-data branch. No deployment/model/account/publication operation.
 
 ## Next and deployment
 

@@ -64,6 +64,44 @@ const fields: Record<string, string> = {
   "attachment-upload": "name data",
   "attachment-read": "id",
 };
+export const gatewayMutations = new Set([
+  "create",
+  "retry",
+  "restart-settings",
+  "revise",
+  "approve",
+  "cancel",
+  "validate",
+  "commit",
+  "discard",
+  "project-create",
+  "project-rename",
+  "project-archive",
+  "project-restore",
+  "conversation-rename",
+  "conversation-archive",
+  "conversation-restore",
+  "account-start",
+  "account-code",
+  "account-cancel",
+  "account-refresh",
+  "github-start",
+  "github-cancel",
+  "github-logout",
+  "repository-start",
+  "repository-cancel",
+  "check-prepare",
+  "check-cancel",
+  "publication-preview",
+  "publication-approve",
+  "feedback-prepare",
+  "feedback-apply",
+  "settings-save",
+  "models-refresh",
+  "attachment-upload",
+  "storage-preview",
+  "storage-cleanup",
+]);
 export function gatewayRequest(value: unknown): Record<string, any> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw Error("Invalid gateway request");
@@ -71,6 +109,7 @@ export function gatewayRequest(value: unknown): Record<string, any> {
   if (typeof input.op !== "string" || !Object.hasOwn(fields, input.op))
     throw Error("Operation is not available through the gateway");
   const allowed = new Set(["op", ...fields[input.op].split(" ")]);
+  if (gatewayMutations.has(input.op)) allowed.add("owner");
   for (const key of Object.keys(input))
     if (input[key] !== undefined && !allowed.has(key))
       throw Error("Unexpected gateway request field");

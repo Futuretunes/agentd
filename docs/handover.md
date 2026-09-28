@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-bounded-review.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-session-audit.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.28.0 — session audit coverage
+
+[Handover](handovers/2026-09-28-session-audit.md): browser mutations carry a cookie-derived session owner; the runner records a separate audit pseudonym. Added transactional project creation/rename, conversation rename and discard records, plus task creation. Focused regressions passed; exact Linux/CI pending. Cumulative safeguards remain uninstalled; production 0.22.0 is unchanged.
 
 ## Candidate 0.27.0 — bounded large reviews
 
-[Handover](handovers/2026-09-28-bounded-review.md): oversized patches return a bounded, unapprovable review instead of raw Git buffer errors. Exact archive `4e60f4d` passed 126/126 Linux tests with zero skips; CI pending. Includes prior overnight safeguards; installed 0.22.0 unchanged. Next: actor attribution and missing mutation audits, then cumulative staging.
+[Handover](handovers/2026-09-28-bounded-review.md): oversized patches return a bounded, unapprovable review instead of raw Git buffer errors. Exact archive `4e60f4d` passed 126/126 Linux tests with zero skips; CI passed, draft #30 open. Includes prior overnight safeguards; installed 0.22.0 unchanged. Next: actor attribution and missing mutation audits, then cumulative staging.
 
 ## Candidate 0.26.0 — shared sensitive-data checks
 

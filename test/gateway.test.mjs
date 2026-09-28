@@ -15,7 +15,11 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { gatewayRequest, gatewaySocket } from "../src/gateway-protocol.ts";
+import {
+  gatewayRequest,
+  gatewaySocket,
+  gatewayMutations,
+} from "../src/gateway-protocol.ts";
 import { attachmentStore } from "../src/attachment-store.ts";
 const owner = "a".repeat(64);
 test("gateway authority rejects admin operations, extra path fields and missing browser owners", () => {
@@ -51,7 +55,8 @@ test("gateway authority rejects admin operations, extra path fields and missing 
     owner,
   );
   assert.equal(
-    gatewayRequest({ op: "conversation-rename", id: "x", name: "New" }).name,
+    gatewayRequest({ op: "conversation-rename", id: "x", name: "New", owner })
+      .name,
     "New",
   );
 });
@@ -185,7 +190,14 @@ test("separate runner socket preserves image flow and approvals while admin sock
       once(app.server, "listening"),
       once(app.gateway.server, "listening"),
     ]);
-    const request = async (input) => call(path, JSON.stringify(input) + "\n");
+    const request = async (input) =>
+      call(
+        path,
+        JSON.stringify({
+          ...input,
+          ...(gatewayMutations.has(input.op) ? { owner } : {}),
+        }) + "\n",
+      );
     const image = await request({
       op: "attachment-upload",
       name: "test",
