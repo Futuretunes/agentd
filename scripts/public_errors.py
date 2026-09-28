@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import re
 root=Path(__file__).resolve().parents[1]
-pattern=re.compile(r"\bError\(\s*(?P<literal>(?P<quote>['\"])(?:\\.|(?!(?P=quote)).)*?(?P=quote))\s*\)",re.S)
+pattern=re.compile(r"\bError\(\s*(?P<literal>(?P<quote>['\"])(?:\\.|(?!(?P=quote)).)*?(?P=quote))\s*,?\s*\)",re.S)
 messages=set()
 for source in (root/'src').glob('*.ts'):
     if source.name.startswith('public-error'):continue

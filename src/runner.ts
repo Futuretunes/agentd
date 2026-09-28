@@ -1,3 +1,4 @@
+import { prepareWorktree } from "./worktree-preparation.ts";
 import { creationRequests } from "./creation-requests.ts";
 import { followupContext, contextPrompt } from "./followup-context.ts";
 import { testedVersions } from "./native-policy.ts";
@@ -5,7 +6,6 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { localGit } from "./git-policy.ts";
 import {
   resourceLimits,
-  checkoutBudget,
   requireSpace,
   freeBytes,
   captureOutput,
@@ -65,7 +65,7 @@ import {
 } from "./repositories.ts";
 import { githubAccount } from "./github-account.ts";
 import { accounts } from "./accounts.ts";
-import { snapshot, commitSnapshot, restoreSnapshot, checkSnapshot } from "./changes.ts";
+import { snapshot, commitSnapshot, checkSnapshot } from "./changes.ts";
 import { isolated } from "./isolation.ts";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
@@ -90,6 +90,7 @@ import { join, isAbsolute } from "node:path";
 import { createServer } from "node:net";
 
 type Config = {
+  prepareWorktree?: typeof prepareWorktree;
   nativeVersion?: typeof probeNativeVersion;
   resources?: Limits;
   gateway?: { path: string; gid: number };
@@ -240,7 +241,7 @@ export function runner(c: Config) {
   let active:
     | {
         id: string;
-        child: ChildProcess;
+        child?: ChildProcess;
         done: Promise<void>;
         stop: (status: string) => void;
       }
@@ -1303,7 +1304,7 @@ export function runner(c: Config) {
         });
     } else dispatch(row);
   }
-  function dispatch(row: any) {
+  async function dispatch(row: any) {
     if (!stillApproved(row)) {
       setImmediate(pump);
       return;
@@ -1314,6 +1315,22 @@ export function runner(c: Config) {
       log = join(c.logs, `${id}.log`);
     transition(id, "running");
     let cleanup = () => {};
+    const checkoutAbort = new AbortController();
+    let checkoutReason: string | undefined;
+    let resolveDone!: () => void;
+    const done = new Promise<void>((resolve) => {
+      resolveDone = resolve;
+    });
+    active = {
+      id,
+      done,
+      stop: (status) => {
+        if (checkoutReason) return;
+        checkoutReason = status;
+        transition(id, "cancelling");
+        checkoutAbort.abort();
+      },
+    };
     try {
       requireSpace([c.stateDir, c.worktrees, c.logs], limits.reserveBytes);
       requireAdapter(String(row.adapter), String(row.mode));
@@ -1324,15 +1341,21 @@ export function runner(c: Config) {
       )
         verifySelectionVersion(String(row.adapter));
       const repo = String(project(String(row.project)).repo);
-      const checkoutBytes = checkoutBudget(
-        repo,
-        String(row.seed_tree ?? row.revision),
-        limits,
-      );
-      requireSpace([c.worktrees], limits.reserveBytes + checkoutBytes);
-      git(["worktree", "add", "--detach", tree, String(row.revision)], repo);
+      // Persist the path first so interrupted/partial preparation is recoverable.
       db.prepare("UPDATE tasks SET worktree=?,log=? WHERE id=?").run(tree, log, id);
-      if (row.seed_tree) restoreSnapshot(tree, String(row.seed_tree));
+      await (c.prepareWorktree ?? prepareWorktree)(
+        {
+          repo,
+          tree,
+          revision: String(row.revision),
+          seed: row.seed_tree ? String(row.seed_tree) : null,
+          limits,
+        },
+        checkoutAbort.signal,
+      );
+      if (checkoutAbort.signal.aborted || closing)
+        throw Error("Worktree preparation stopped.");
+      requireAdapter(String(row.adapter), String(row.mode));
       let prompt = String(row.prompt);
       const pictures: string[] = [];
       const attachments = JSON.parse(String(row.attachments));
@@ -1414,10 +1437,6 @@ export function runner(c: Config) {
         killTimer = setTimeout(() => kill("SIGKILL"), 2000);
       };
       const timer = setTimeout(() => stop("timed_out"), approved.timeoutMs);
-      let resolveDone!: () => void;
-      const done = new Promise<void>((resolve) => {
-        resolveDone = resolve;
-      });
       active = { id, child, done, stop };
       let spawnError: string | undefined;
       child.on("error", (error) => {
@@ -1458,8 +1477,16 @@ export function runner(c: Config) {
       }
     } catch (error) {
       cleanup();
-      transition(id, "failed", (error as Error).message);
-      setImmediate(pump);
+      if (row.mode === "edit" && existsSync(tree))
+        db.prepare("UPDATE tasks SET review='pending' WHERE id=?").run(id);
+      transition(
+        id,
+        checkoutReason ?? "failed",
+        checkoutReason ? null : (error as Error).message,
+      );
+      active = undefined;
+      resolveDone();
+      if (!closing) setImmediate(pump);
     }
   }
   function available(row: any) {

@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  rmSync,
+  existsSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile, execFileSync } from "node:child_process";
@@ -485,6 +492,9 @@ test("retry protects partial edits until review is resolved", async () => {
     });
     app.request({ op: "approve", id: edit.id });
     const working = await status(app, edit.id, ["running"]);
+    for (let i = 0; i < 400 && !existsSync(join(working.worktree, "README.md")); i++)
+      await sleep(10);
+    assert.equal(existsSync(join(working.worktree, "README.md")), true);
     writeFileSync(join(working.worktree, "partial.txt"), "keep me");
     app.request({ op: "cancel", id: edit.id });
     await status(app, edit.id, ["cancelled"]);

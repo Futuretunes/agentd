@@ -159,4 +159,8 @@ Task/project creation now supports unique session-scoped request IDs, canonical 
 
 ## R2 formatting progress — candidate 0.32.0
 
-Pinned formatter and CI style checks cover TypeScript/JavaScript runtime, browser, tests and scripts. Mechanical formatting is separate from behavior changes. Typecheck remains the static analysis gate; semantic lint policy, module decomposition and explicit operation compatibility remain open. 136/136 Linux tests passed with zero skips; CI pending; uninstalled.
+Pinned formatter and CI style checks cover TypeScript/JavaScript runtime, browser, tests and scripts. Mechanical formatting is separate from behavior changes. Typecheck remains the static analysis gate; semantic lint policy, module decomposition and explicit operation compatibility remain open. 136/136 Linux tests passed with zero skips; CI passed; uninstalled.
+
+## R10 task preparation — candidate 0.33.0
+
+Task checkout/snapshot restoration no longer blocks the event loop; cancellation and shutdown hold the same worker slot and preserve partial files. Bounded helper execution uses the shared Git policy and resource admission. Other request-time Git operations and a complete operation compatibility model remain open. Focused regressions pass; exact Linux/CI pending. Not installed.

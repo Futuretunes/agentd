@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-formatting.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-async-preparation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.33.0 — responsive task preparation
+
+[Handover](handovers/2026-09-28-async-preparation.md): bounded child-process checkout preserves the worker slot, cancellation, shutdown and partial work. Focused tests passed; exact Linux/CI pending. R10 other synchronous Git operations and R2 lock/decomposition work remain open. Cumulative release is uninstalled; production 0.22.0 unchanged.
 
 ## Candidate 0.32.0 — reviewable formatting
 
-[Handover](handovers/2026-09-28-formatting.md): pinned formatter, CI check and separate mechanical source formatting. No intended behavior change; 136/136 Linux tests passed with zero skips; CI pending. R2 module decomposition/lock design remains open. Production stays 0.22.0.
+[Handover](handovers/2026-09-28-formatting.md): pinned formatter, CI check and separate mechanical source formatting. No intended behavior change; 136/136 Linux tests passed with zero skips; CI passed. R2 module decomposition/lock design remains open. Production stays 0.22.0.
 
 ## Candidate 0.32.0 — durable creation requests (task schema 2)
 
