@@ -2,11 +2,15 @@
 
 - Author: Codex.
 - Request: next backlog work; user clarified that the combined release was already installed.
-- Status: implemented and tested; not installed.
+- Status: implemented, tested and installed; service health independently verified.
 - Draft PR: [#24](https://github.com/Futuretunes/agentd/pull/24).
-- Staged source: `add2d08f23cfea40814514219e0da57567eac004`; archive SHA-256 `eed770e0f56c4086c5d480c93c558cb18c0c9f33c3eaead809faa42c96cf5be8`. Later handover commits do not change the staged archive.
-- Installed: 0.21.1 at `be16009`, read-only health/manifest confirms task schema 1, starts 32, both services active.
-- Candidate: 0.21.2; branch `fix/candidate-validation-boundaries`, based on `release/0.21.1` at `d042b77`.
+- Installed source: `add2d08f23cfea40814514219e0da57567eac004`; archive SHA-256 `eed770e0f56c4086c5d480c93c558cb18c0c9f33c3eaead809faa42c96cf5be8`. Later handover commits do not change the staged archive.
+- Installed: 0.21.2 at `add2d08`, read-only health/manifest confirms task schema 1, starts 33, both services active.
+- Release: 0.21.2; branch `fix/candidate-validation-boundaries`, based on `release/0.21.1` at `d042b77`.
+
+## Installation acceptance
+
+Operator output confirms all 107 deployment tests passed with zero skips and the application update completed with a private rollback backup. Independent read-only health and manifest verification confirms version 0.21.2, source `add2d08`, metadata/task schema 1, serial dispatch enabled, starts 33 and both services active. The installer reports units, configuration, project checkouts and native profiles preserved. Backup location remains in the operator's local output; no private deployment paths are added here. No model request or new end-to-end GUI acceptance run was submitted. The failed-attempt notes below are historical.
 
 ## Follow-up — validation caller regression
 
@@ -24,7 +28,7 @@ Local: 14 Python deployment tests passed, TypeScript passed, five UI regressions
 
 ## Deployment and constraints
 
-No deployment. Current 0.21.1 stays healthy. This is an installer-only maintenance release; no database migration, UI overwrite, host policy relaxation or service-account change. The verified source archive and a thin administrator launcher are staged in the operator account; no production command was run. The launcher requires an existing managed baseline and does not use --adopt-existing. No first-adoption flag is needed for an established baseline. Rollback remains prior application plus matching state, never credential profiles/renewal journal. Power-loss recovery and backup retention retain existing limitations.
+Successfully deployed by the operator. Current 0.21.2 is healthy. This is an installer-only maintenance release; no database migration, UI overwrite, host policy relaxation or service-account change. The verified source archive and a thin administrator launcher are staged in the operator account; the operator ran the launcher successfully. The launcher requires an existing managed baseline and does not use --adopt-existing. No first-adoption flag is needed for an established baseline. Rollback remains prior application plus matching state, never credential profiles/renewal journal. Power-loss recovery and backup retention retain existing limitations.
 
 ## Next
 

@@ -2,11 +2,11 @@
 
 Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-candidate-validation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
-## Candidate 0.21.2 — installer validation follow-up
+## Installed 0.21.2 — installer validation follow-up
 
-Based on Claude's installed `release/0.21.1`, not a duplicate integration. Read-only health/manifest independently confirm 0.21.1 at `be16009` and both services active. A duplicate local merge was aborted before any commit, publication or deployment. See [handover](handovers/2026-09-28-candidate-validation.md) and [review response](reviews/2026-09-28-claude-combined-0.21.1-response.md).
+The operator completed installation. Independent read-only health and release-manifest checks confirm 0.21.2 at `add2d08`, metadata/task schema 1, serial dispatch enabled, starts 33 and both services active. Installer output reports 107 tests passed with zero skips and preserved units/configuration/project checkouts/native profiles. See [handover](handovers/2026-09-28-candidate-validation.md), [Claude review response](reviews/2026-09-28-claude-combined-0.21.1-response.md), and [draft PR #24](https://github.com/Futuretunes/agentd/pull/24).
 
-Review found remaining candidate-file validation gaps, corrected before proceeding with R5 service identity changes. [Draft PR #24](https://github.com/Futuretunes/agentd/pull/24); corrected staged revision `add2d08` passed 107/107 Linux tests with zero skips, 14 deployment fixtures and all CI jobs. The first install attempt stopped before deployment because a loop shadowed the manifest file mapping; the reproduced caller regression is corrected with a complete validation-flow fixture. Candidate 0.21.2 preserves Claude's complete frontend and both earlier updater hardenings; it is not installed. R5 gateway separation remains the next substantive boundary item, and no service/account configuration has changed.
+Claude's frontend and prior updater hardenings are retained. The candidate validation gaps and subsequent calling-path regression are corrected. Earlier failed-attempt/staging notes are historical. No model or new GUI acceptance test was performed. R5 gateway identity/socket separation is next; it is not implemented. No main merge or PR-stack closure occurred.
 
 ## Installed 0.21.1 — combined release (deployed 18:53 UTC via the managed updater)
 
