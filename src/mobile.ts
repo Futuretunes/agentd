@@ -1,3 +1,4 @@
+import { publicError, browserResult } from "./public-errors.ts";
 import { gatewayRequest, gatewayMutations } from "./gateway-protocol.ts";
 import { createServer } from "node:https";
 import { createConnection } from "node:net";
@@ -40,7 +41,7 @@ export function mobile(c: Config) {
         try {
           const value = JSON.parse(text);
           if (!value.ok) reject(new Error(value.error));
-          else resolve(value.result);
+          else resolve(browserResult(value.result));
         } catch (e) {
           reject(e);
         }
@@ -537,7 +538,7 @@ export function mobile(c: Config) {
         }
         send(404, { error: "Not found" });
       } catch (error) {
-        send(400, { error: (error as Error).message });
+        send(400, { error: publicError(error) });
       }
     },
   );

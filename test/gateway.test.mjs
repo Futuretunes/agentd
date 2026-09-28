@@ -78,6 +78,10 @@ test("raw gateway socket enforces authority without trusting the HTTPS process",
       { path: join(root, "gateway.sock"), gid: process.getgid() },
       (value) => {
         calls.push(value);
+        if (value.op === "operations")
+          throw Error("fatal: /private/server fixture-secret");
+        if (value.op === "capabilities")
+          return { error: "/private/stored fixture-secret" };
         return { accepted: true };
       },
     );
@@ -109,6 +113,19 @@ test("raw gateway socket enforces authority without trusting the HTTPS process",
       false,
     );
     assert.equal(calls.length, 1);
+    const failed = await call(
+      join(root, "gateway.sock"),
+      JSON.stringify({ op: "operations" }) + "\n",
+    );
+    assert.equal(failed.ok, false);
+    assert.ok(!failed.error.includes("/private"));
+    assert.ok(!failed.error.includes("fixture-secret"));
+    const stored = await call(
+      join(root, "gateway.sock"),
+      JSON.stringify({ op: "capabilities" }) + "\n",
+    );
+    assert.equal(stored.ok, true);
+    assert.ok(!stored.result.error.includes("fixture-secret"));
     assert.equal(
       (
         await call(

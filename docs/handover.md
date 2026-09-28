@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-native-limits.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-public-errors.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.30.0 — safe browser error boundary
+
+[Handover](handovers/2026-09-28-public-errors.md): browser errors use reviewed fixed messages; unexpected exceptions and stored error metadata are normalized at both runner gateway and HTTPS boundaries. Focused tests passed; exact Linux/CI pending. Includes prior overnight work; production remains 0.22.0. Next: explicit follow-up context controls (R16) and cumulative staging.
 
 ## Candidate 0.29.0 — native compatibility and limits
 

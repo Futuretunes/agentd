@@ -1,3 +1,4 @@
+import { publicError, browserResult } from "./public-errors.ts";
 /** Runner-enforced browser authority. New admin operations are denied by default. */
 import { createServer, type Socket } from "node:net";
 import { chmodSync, chownSync, lstatSync, realpathSync } from "node:fs";
@@ -178,11 +179,12 @@ export function gatewaySocket(
         if (input.op !== "attachment-upload" && length > 80000)
           throw Error("Request too large");
         connection.end(
-          JSON.stringify({ ok: true, result: dispatch(input) }) + "\n",
+          JSON.stringify({ ok: true, result: browserResult(dispatch(input)) }) +
+            "\n",
         );
       } catch (error) {
         connection.end(
-          JSON.stringify({ ok: false, error: (error as Error).message }) + "\n",
+          JSON.stringify({ ok: false, error: publicError(error) }) + "\n",
         );
       }
     });

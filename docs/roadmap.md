@@ -144,3 +144,7 @@ Browser mutations now require a gateway-supplied owner; audit records use a doma
 ## R17 candidate — visible native compatibility and limits
 
 Operations exposes normalized installed CLI version, expected tested version, freshness/mismatch/unavailable state and fixed native turn/protocol limits. Approval snapshots include native limits; version constants are shared across selection, catalog, renewal and wrappers. Reviewed native-update procedure documented. Exact archive `c11b35f` passed 128/128 Linux tests, zero skips; CI passed, draft #32 open. Not installed. Structured provider stop-reason reporting and provider quota/credit discovery remain unavailable/deferred. See [handover](handovers/2026-09-28-native-limits.md).
+
+## R18 candidate — browser-safe errors
+
+Runner gateway and HTTPS boundaries now preserve reviewed fixed error guidance and normalize unknown exceptions plus stored task/job/check error metadata. No raw subprocess buffers or dynamic exception text are promoted to public error messages. Private administrator responses and authorized user content/logs remain separate. Focused tests passed; exact Linux/CI pending. Not installed. See [handover](handovers/2026-09-28-public-errors.md).
