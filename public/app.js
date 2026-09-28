@@ -40,7 +40,7 @@ function operationTask(item){
   if(item.error)card.append(node('p',item.error==='Exit 1'?'The agent stopped with an error. Open the conversation for details.':item.error,'error'));
   if(item.review==='pending')card.append(node('p','Changes are waiting for review.','attention'));
   if(item.checkStatus)card.append(node('p','Checks: '+item.checkStatus,'muted'));
-  card.append(button('Open conversation',async()=>{projectId=item.project;reset(item.conversation);$('operations-dialog').close();await refresh();}));return card;
+  card.append(button(['failed','timed_out','interrupted','cancelled'].includes(item.status)?'Open & recover':'Open conversation',async()=>{projectId=item.project;reset(item.conversation);$('operations-dialog').close();await refresh();}));return card;
 }
 function renderOperations(data){
   const content=$('operations-content');content.replaceChildren();
@@ -107,9 +107,25 @@ function renderThread(data){
     const response=node('div',undefined,'agent-message');const head=node('div',undefined,'message-head');head.append(node('strong',t.adapter==='codex'?'◈ Codex':'✳ Claude'),node('span',labels[t.status]??t.status,'status '+t.status));response.append(head);
     if(t.output)response.append(node('pre',t.output.replace(/\x1b\[[0-9;]*[a-zA-Z]/g,''),'result'));else response.append(node('p',t.status==='waiting_for_approval'?t.mode==='edit'?'This run may edit files in its worktree. Review your message, then approve.':'Review your message, then approve this run.':pending(t.status)?'Your agent’s output will appear here.':'No output was recorded.','muted'));
     if(t.error)response.append(node('p',t.error,'error'));
+    if(t.retry_of)response.append(node('p','New attempt of an earlier run · original inputs and revision retained.','muted'));
     const actions=node('div',undefined,'actions');if(t.status==='waiting_for_approval'){actions.append(button('Approve & run',()=>api('/api/action',{op:'approve',id:t.id}),'primary'),button('Reject',()=>api('/api/action',{op:'cancel',id:t.id})));}
     else if(['queued','running'].includes(t.status))actions.append(button('Stop run',()=>api('/api/action',{op:'cancel',id:t.id}),'danger'));
     if(t.mode==='edit'){response.append(node('p','Edit files · '+(t.review??'changes require a separate review'),'muted'));if(t.worktree&&!pending(t.status))actions.append(button(t.review==='committed'?'View committed changes':'Review changes',()=>openReview(t.id)));}
+    if(t.id===data.messages.at(-1)?.id&&['failed','timed_out','interrupted','cancelled'].includes(t.status)){
+      const reason=t.status==='timed_out'?'This run reached its time limit. A retry starts over with the same limit.':t.status==='interrupted'?'The service stopped before the run finished.':t.status==='cancelled'?'This run was stopped.':'The agent could not complete this run. Check its output above; reconnect in Operations if it reports a sign-in problem.';
+      response.append(node('p',reason,'attention'));
+      if(t.review==='pending')response.append(node('p','Review any partial changes first. Commit them and send a follow-up, or discard the review to retry from the original revision. The old files are retained.','muted'));
+      else if(t.commit_sha)response.append(node('p','Changes from this run are committed. Send a follow-up to continue from them.','muted'));
+      else{
+        const retry=button('Retry run',async()=>{
+          if(!confirm('Create a new attempt with the same prompt, images and original revision? Partial edits will not be copied. You will approve it before it runs.'))return;
+          await api('/api/action',{op:'retry',id:t.id});fingerprint='';notice('New attempt ready. Review it, then approve when you are ready.');
+        });
+        const supported=policy.enabledAdapters.includes(t.adapter)&&(t.mode!=='edit'||policy.editAdapters.includes(t.adapter));retry.disabled=!supported;actions.append(retry);
+        if(!supported)response.append(node('p','This agent or work mode is unavailable. Open Agents for the reason.','muted'));
+      }
+      actions.append(button('Account status',()=>loadOperations()));
+    }
     response.append(actions);const meta=node('details');meta.append(node('summary','Run details'),node('p',`Revision ${t.revision.slice(0,12)} · ${new Date(t.created).toLocaleString()}`,'muted'),node('p',t.worktree??'A worktree will be created after approval.','path'));response.append(meta);turn.append(response);d.append(turn);
   }
   if(data.messages.length===30)d.prepend(node('p','Showing the latest 30 turns.','muted'));

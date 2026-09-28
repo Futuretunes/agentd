@@ -23,6 +23,8 @@ export function runner(c: Config) {
   const columns=db.prepare('PRAGMA table_info(tasks)').all().map(x=>x.name);
   if(!columns.includes('attachments'))db.exec("ALTER TABLE tasks ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'");
   if(!columns.includes('parent'))db.exec("ALTER TABLE tasks ADD COLUMN parent TEXT");
+  if(!columns.includes('retry_of'))db.exec("ALTER TABLE tasks ADD COLUMN retry_of TEXT");
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS tasks_retry_of ON tasks(retry_of) WHERE retry_of IS NOT NULL');
   if(!columns.includes('project'))db.exec("ALTER TABLE tasks ADD COLUMN project TEXT");
   if(!columns.includes('conversation'))db.exec("ALTER TABLE tasks ADD COLUMN conversation TEXT");
   db.exec(`CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY, name TEXT NOT NULL, repo TEXT NOT NULL UNIQUE, created TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0);
@@ -277,6 +279,31 @@ export function runner(c: Config) {
     }
     if(typeof input.id!=='string')throw new Error('Task id required');
     const row=get(input.id);if(!row)throw new Error('Task not found');
+    if(input.op==='retry'){
+      // A repeated HTTP request returns the same attempt, even after a restart.
+      const existing=db.prepare('SELECT * FROM tasks WHERE retry_of=?').get(input.id);
+      if(existing)return existing;
+      if(!['failed','cancelled','timed_out','interrupted'].includes(String(row.status)))throw Error('Only stopped or unsuccessful runs can be retried');
+      const thread=conversation(String(row.conversation)),p=project(String(row.project));
+      if(thread.archived||p.archived)throw Error('Workspace is archived');
+      const latest=db.prepare('SELECT id FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 1').get(row.conversation);
+      if(latest?.id!==row.id)throw Error('Only the latest run can be retried. Open the latest turn.');
+      if(row.review==='pending')throw Error('Review and discard the existing changes before retrying. The original worktree will be kept.');
+      if(row.commit_sha)throw Error('This run has committed changes. Send a follow-up instead.');
+      requireAdapter(String(row.adapter),String(row.mode));
+      for(const id of JSON.parse(String(row.attachments))){const meta=attachment(id);if(!existsSync(join(attachmentRoot,id+meta.ext)))throw Error('An original image is missing. Send a new message with the image attached.');}
+      git(['cat-file','-e',String(row.revision)+'^{commit}'],String(p.repo));
+      const id=randomUUID(),at=new Date().toISOString();
+      db.exec('BEGIN');
+      try{
+        // Keep the original context, not the failed attempt's output or partial edits.
+        db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,retry_of) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,row.adapter,row.prompt,row.revision,'waiting_for_approval',at,at,row.project,row.conversation,row.attachments,row.parent,row.mode,row.id);
+        db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);
+        audit('retry-run',id,{retryOf:row.id});
+        db.exec('COMMIT');
+      }catch(error){db.exec('ROLLBACK');throw error;}
+      return get(id);
+    }
     if(input.op==='review')return review(row);
     if(input.op==='validate'){const result=validate(row,input.tree);audit('run-checks',input.id,{tree:input.tree});return result;}
     if(input.op==='discard'){available(row);if(row.review!=='pending')throw Error('Review is already resolved');db.prepare("UPDATE tasks SET review='discarded' WHERE id=?").run(input.id);return get(input.id);}

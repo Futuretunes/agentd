@@ -66,11 +66,11 @@ test('single worker cancellation failure and graceful interruption',async()=>{
   a.request({op:'cancel',id:first.id});await status(a,first.id,['cancelled']);await status(a,second.id,['failed']);
   const pending=a.request({op:'create',adapter:'claude',prompt:'read'});a.request({op:'cancel',id:pending.id});assert.equal(a.request({op:'show',id:pending.id}).task.status,'cancelled');
   const last=a.request({op:'create',adapter:'codex',prompt:'hang'});a.request({op:'approve',id:last.id});await status(a,last.id,['running']);
-  await a.close();const restarted=runner(f.config);await once(restarted.server,'listening');assert.equal(restarted.request({op:'show',id:last.id}).task.status,'interrupted');await restarted.close();
+  await a.close();const restarted=runner(f.config);await once(restarted.server,'listening');assert.equal(restarted.request({op:'show',id:last.id}).task.status,'interrupted');assert.equal(restarted.request({op:'retry',id:last.id}).status,'waiting_for_approval');await restarted.close();
  }finally{rmSync(f.root,{recursive:true,force:true});}
 });
 test('hung worker hits timeout',async()=>{
- const f=await fixture(100);try{const t=f.app.request({op:'create',adapter:'claude',prompt:'hang'});f.app.request({op:'approve',id:t.id});await status(f.app,t.id,['timed_out']);}finally{await f.app.close();rmSync(f.root,{recursive:true,force:true});}
+ const f=await fixture(100);try{const t=f.app.request({op:'create',adapter:'claude',prompt:'hang'});f.app.request({op:'approve',id:t.id});await status(f.app,t.id,['timed_out']);assert.equal(f.app.request({op:'retry',id:t.id}).status,'waiting_for_approval');}finally{await f.app.close();rmSync(f.root,{recursive:true,force:true});}
 });
 test('adapter policy rejects new and previously pending work; approvals are audited',async()=>{
  const f=await fixture();let app=f.app;
@@ -94,4 +94,61 @@ test('missing CLI blocks approval and dispatch even when it existed at creation'
   writeFileSync(binary,'#!/bin/sh\nexit 0\n',{mode:0o700});app.request({op:'approve',id:task.id});rmSync(binary);
   const failed=await status(app,task.id,['failed']);assert.match(failed.error,/missing/);assert.equal(failed.worktree,null);
  }finally{await app?.close();if(prior===undefined)delete process.env.AGENTD_CLAUDE_BIN;else process.env.AGENTD_CLAUDE_BIN=prior;rmSync(f.root,{recursive:true,force:true});}
+});
+
+test('retry preserves original inputs and context, requires approval and survives duplicate requests and restart',async()=>{
+ const f=await fixture();let app=f.app;
+ try{
+  const parent=app.request({op:'create',adapter:'claude',prompt:'read'});app.request({op:'approve',id:parent.id});await status(app,parent.id,['succeeded']);
+  const image='11111111-1111-4111-8111-111111111111',images=join(f.config.stateDir,'attachments');
+  writeFileSync(join(images,image+'.json'),JSON.stringify({id:image,ext:'.png',name:'fixture.png'}));writeFileSync(join(images,image+'.png'),'fixture');
+  const original=app.request({op:'create',conversation:parent.conversation,adapter:'claude',prompt:'retry me',attachments:[image]});
+  assert.throws(()=>app.request({op:'retry',id:original.id}),/Only stopped/);
+  app.request({op:'cancel',id:original.id});
+  // Advancing the project must not change the retry's pinned revision.
+  execFileSync('git',['-C',f.repo,'-c','user.name=test','-c','user.email=test@localhost','commit','--allow-empty','-m','advance'],{stdio:'pipe'});
+  const retry=app.request({op:'retry',id:original.id,prompt:'injected',adapter:'codex',revision:'HEAD',attachments:[]});
+  assert.notEqual(retry.id,original.id);assert.equal(retry.retry_of,original.id);
+  for(const key of ['prompt','adapter','mode','revision','attachments','parent','project','conversation'])assert.equal(retry[key],original[key],key);
+  assert.equal(retry.status,'waiting_for_approval');assert.equal(retry.worktree,null);assert.equal(retry.log,null);
+  assert.equal(app.request({op:'retry',id:original.id}).id,retry.id);
+  await app.close();app=runner(f.config);await once(app.server,'listening');
+  assert.equal(app.request({op:'retry',id:original.id}).id,retry.id);
+  assert.equal(app.request({op:'show',id:original.id}).task.status,'cancelled');
+  app.request({op:'approve',id:retry.id});const done=await status(app,retry.id,['succeeded']);
+  assert.equal(execFileSync('git',['-C',done.worktree,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),original.revision);
+  assert.equal(readFileSync(join(done.worktree,'.agentd-input',image+'.png'),'utf8'),'fixture');
+  const audit=app.request({op:'audit'}).filter(item=>item.action==='retry-run');assert.equal(audit.length,1);assert.ok(!JSON.stringify(audit).includes('retry me'));
+ }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
+});
+test('retry keeps failed worktrees and rejects stale turns, unavailable adapters and missing images',async()=>{
+ const f=await fixture();let app=f.app;
+ try{
+  const original=app.request({op:'create',adapter:'claude',prompt:'fail'});app.request({op:'approve',id:original.id});const failed=await status(app,original.id,['failed']);
+  const retry=app.request({op:'retry',id:original.id});app.request({op:'approve',id:retry.id});const again=await status(app,retry.id,['failed']);
+  assert.notEqual(again.worktree,failed.worktree);assert.equal(readFileSync(join(failed.worktree,'README.md'),'utf8'),'fixture');
+  const later=app.request({op:'create',conversation:original.conversation,adapter:'claude',prompt:'new turn'});app.request({op:'cancel',id:later.id});
+  assert.throws(()=>app.request({op:'retry',id:retry.id}),/latest run/);
+  const image='22222222-2222-4222-8222-222222222222';writeFileSync(join(f.config.stateDir,'attachments',image+'.json'),JSON.stringify({id:image,ext:'.png'}));
+  const missing=app.request({op:'create',adapter:'claude',prompt:'image',attachments:[image]});app.request({op:'cancel',id:missing.id});
+  assert.throws(()=>app.request({op:'retry',id:missing.id}),/image is missing/);
+  app.request({op:'conversation-archive',id:later.conversation});assert.throws(()=>app.request({op:'retry',id:later.id}),/archived/);
+  const disabled=app.request({op:'create',adapter:'codex',prompt:'read'});app.request({op:'cancel',id:disabled.id});
+  await app.close();app=runner({...f.config,enabledAdapters:['claude']});await once(app.server,'listening');assert.throws(()=>app.request({op:'retry',id:disabled.id}),/disabled/);
+ }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
+});
+test('retry protects partial edits until review is resolved',async()=>{
+ const f=await fixture();await f.app.close();
+ const app=runner({...f.config,editing:true,editAdapters:['claude'],command:(_adapter,prompt)=>[process.execPath,['-e',prompt.startsWith('hang')?'setInterval(()=>{},1000)':'process.exit(0)']],isolate:(_tree,_state,command,args)=>({command,args,cleanup(){}})});await once(app.server,'listening');
+ try{
+  const original=app.request({op:'create',adapter:'claude',mode:'edit',prompt:'read'});app.request({op:'approve',id:original.id});await status(app,original.id,['succeeded']);
+  assert.throws(()=>app.request({op:'retry',id:original.id}),/Only stopped/);
+  app.request({op:'discard',id:original.id});
+  // A hanging edit can leave changes before cancellation.
+  const edit=app.request({op:'create',adapter:'claude',mode:'edit',prompt:'hang'});app.request({op:'approve',id:edit.id});const working=await status(app,edit.id,['running']);
+  writeFileSync(join(working.worktree,'partial.txt'),'keep me');app.request({op:'cancel',id:edit.id});await status(app,edit.id,['cancelled']);
+  assert.throws(()=>app.request({op:'retry',id:edit.id}),/Review and discard/);
+  app.request({op:'discard',id:edit.id});const retry=app.request({op:'retry',id:edit.id});assert.equal(retry.mode,'edit');assert.equal(retry.status,'waiting_for_approval');
+  assert.equal(readFileSync(join(working.worktree,'partial.txt'),'utf8'),'keep me');assert.equal(retry.worktree,null);
+ }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
 });

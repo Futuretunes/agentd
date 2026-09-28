@@ -23,6 +23,6 @@ Native output and authorization codes are never written to task logs or audit re
 
 This implements guided login and manual reconnect. Durable renewal of refresh tokens produced inside disposable workers is still a separate backlog item; agentd does not copy worker-modified credential files back into the trusted profile. Codex execution remains disabled by the existing worker policy even after a successful account login. Usage/credit reporting, automatic retry, and privileged administration remain separate work.
 
-Validated against Claude Code 2.1.283 and Codex CLI 0.157.1. Native login startup was checked in empty profiles without completing authorization; the final user consent and live credential handoff must be verified by the operator after deployment.
+Validated against Claude Code 2.1.283 and Codex CLI 0.157.1. Native login startup was checked in empty profiles without completing authorization; the operator completed and verified live Claude reconnection through the GUI on 2026-09-28. Full Codex browser consent remains a separate acceptance check.
 
 References: [OpenAI headless authentication](https://learn.chatgpt.com/docs/auth#login-on-headless-devices), [Claude CLI authentication commands](https://code.claude.com/docs/en/cli-reference).

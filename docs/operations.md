@@ -20,4 +20,4 @@ Neither native CLI currently provides agentd with a stable, non-interactive usag
 
 ## Scope
 
-This release provides visibility, navigation back to the relevant conversation, and guided native account sign-in/sign-out. Safe retry/resume, service updates, backups and other administrative mutations remain separate milestones.
+This release provides visibility, navigation back to the relevant conversation, and guided native account sign-in/sign-out. Since v0.9.0, **Open & recover** leads to [safe task retry](task-recovery.md). Native session resume, service updates, backups and other administrative mutations remain separate milestones.

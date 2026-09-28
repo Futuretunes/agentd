@@ -68,7 +68,7 @@ export function mobile(c:Config){
    const match=path.match(/^\/api\/tasks\/([0-9a-f-]{36})$/);
    if(match&&req.method==='GET'){send(200,await call({op:'show',id:match[1]}));return;}
    if(path==='/api/action'&&req.method==='POST'){
-    const input=await body(req);if(!['create','approve','cancel','validate','commit','discard','project-create','project-rename','conversation-rename','conversation-archive'].includes(input.op))throw new Error('Unsupported action');
+    const input=await body(req);if(!['create','retry','approve','cancel','validate','commit','discard','project-create','project-rename','conversation-rename','conversation-archive'].includes(input.op))throw new Error('Unsupported action');
     send(200,await call(input));return;
    }
    if(path==='/api/upload'&&req.method==='POST'){
