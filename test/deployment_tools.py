@@ -108,4 +108,24 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual((Path(c['app'])/'version').read_text(),'new');self.assertEqual((backup/'app/version').read_text(),'old')
         self.assertEqual(json.loads((Path(c['deployment'])/'installed.json').read_text())['release'],manifest)
 
+    def test_candidate_may_only_add_dependencies(self):
+        stage=self.root/'candidate';files={'src/server.ts':b'x','package.json':b'{}'}
+        for name,data in files.items():
+            path=stage/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
+        (stage/'release-manifest.json').write_text('{}');(stage/'node_modules/pkg').mkdir(parents=True);(stage/'node_modules/pkg/index.js').write_text('dep')
+        update.unexpected_files(stage,files)
+        (stage/'public').mkdir();(stage/'public/extra.js').write_text('planted')
+        with self.assertRaisesRegex(ValueError,'unexpected file: public/extra.js'):update.unexpected_files(stage,files)
+        (stage/'public/extra.js').unlink();(stage/'src/link').symlink_to('/etc/passwd')
+        with self.assertRaisesRegex(ValueError,'unexpected link: src/link'):update.unexpected_files(stage,files)
+    def test_rollback_requires_one_filesystem(self):
+        app=self.root/'opt/app';app.mkdir(parents=True);state=self.root/'srv/state';state.mkdir(parents=True)
+        c={'app':str(app),'state':str(state)};update.same_filesystem(c)
+        real=os.stat
+        def other_device(path,*a,**k):
+            result=real(path,*a,**k)
+            return os.stat_result((*result[:2],result.st_dev+1,*result[3:])) if str(path)==str(state) else result
+        with patch.object(update.os,'stat',side_effect=other_device):
+            with self.assertRaisesRegex(ValueError,'share a filesystem'):update.same_filesystem(c)
+
 if __name__=='__main__':unittest.main()

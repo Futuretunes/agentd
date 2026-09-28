@@ -154,6 +154,23 @@ def test_candidate(c, stage, temporary):
             if not path.is_symlink():
                 os.chown(path,0,0); os.chmod(path,0o755 if path.stat().st_mode & 0o111 else 0o644)
 
+def unexpected_files(stage, files):
+    # Validation may add dependencies under node_modules only. Anything else that
+    # appeared in the candidate (outside the manifest) must not be deployed.
+    allowed=set(files)|{'release-manifest.json'}
+    for directory, dirs, names in os.walk(stage):
+        for name in [*dirs, *names]:
+            path=Path(directory)/name; relative=path.relative_to(stage).as_posix()
+            if relative=='node_modules' or relative.startswith('node_modules/'): continue
+            if path.is_symlink(): raise ValueError('Candidate contains an unexpected link: '+relative)
+            if path.is_file() and relative not in allowed: raise ValueError('Candidate contains an unexpected file: '+relative)
+
+def same_filesystem(c):
+    # Rollback renames state into the backup next to the application. A rename
+    # across filesystems fails midway, so refuse before anything is stopped.
+    if os.stat(c['state']).st_dev != os.stat(Path(c['app']).parent).st_dev:
+        raise ValueError('State and the application parent must share a filesystem for rollback')
+
 def ready(c, manifest):
     # Ignore proxy environment and refuse redirects away from the fixed loopback URL.
     class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -229,6 +246,7 @@ if __name__ == '__main__':
             previous=json.loads(record.read_text()) if record.exists() else None
             if previous and previous['configuration']!=current: raise ValueError('Installed configuration drifted; review and reconcile it before updating')
             if not previous and not args.adopt_existing: raise ValueError('First managed update requires --adopt-existing after configuration review')
+            same_filesystem(c)
             idle(Path(c['state']),manifest['taskSchemaVersion'])
             for unit in (c['runnerUnit'],c['mobileUnit']): run(['systemctl','is-active','--quiet',unit])
             print(json.dumps({'version':manifest['version'],'revision':manifest['revision'],'taskSchemaVersion':manifest['taskSchemaVersion'],'configuration':'unchanged' if previous else 'adopt existing'}),flush=True)
@@ -242,6 +260,7 @@ if __name__ == '__main__':
                     # Source files must still match after validation; npm may only add dependencies.
                     for name,data in files.items():
                         if (stage/name).is_symlink() or (stage/name).read_bytes()!=data: raise ValueError('Candidate changed during validation')
+                    unexpected_files(stage,files)
                     journal=root/'pending.json'
                     journal.write_text(json.dumps({'backup':str(backup),'version':manifest['version']})+'\n'); journal.chmod(0o600)
                     try:
