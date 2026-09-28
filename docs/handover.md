@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.34.0 — explicit operation admission
 
-[Handover](handovers/2026-09-29-operation-admission.md): twelve admission checks now share a documented directional policy. Exhaustive legacy-state parity preserves behavior; exact Linux/CI pending. This is not a new global lock; manager/project/approval gates remain. Production unchanged, prior cumulative installer still staged until validation completes.
+[Handover](handovers/2026-09-29-operation-admission.md): twelve admission checks now share a documented directional policy. Exhaustive legacy-state parity preserves behavior; exact archive `1daf51f` passed 141/141 Linux tests, zero skips, formatting, typecheck and CI. Draft #38 is open. This is not a new global lock; manager/project/approval gates remain. Production unchanged, the single cumulative installer is staged for 0.34.0 but has not been run.
 
 ## Overnight batch — ready for shared review, not installed
 

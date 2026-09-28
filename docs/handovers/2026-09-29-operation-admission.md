@@ -1,7 +1,7 @@
 # 2026-09-29 — Explicit operation admission policy
 
 - Author: Codex; overnight continuation, R2 partial.
-- Status: implemented, exact validation pending; not installed.
+- Status: implemented and exact Linux validated; CI passed; not installed.
 - Release: cumulative 0.34.0, task schema 2.
 - Branch/base: `refactor/operation-admission` from `feat/async-worktree-preparation` at `12fd484`.
 
@@ -11,7 +11,7 @@ Extracted twelve global admission decisions to `src/operation-policy.ts`. Runner
 
 ## Validation
 
-Independent original Boolean expressions verify all 32,768 combinations of fifteen states for twelve admission rules. Focused tests also verify lazy reads and deliberate directionality. Runner/preparation regression results and exact Linux/CI evidence follow after completion. Typecheck passed. No live model/account/publication, deployment or deletion operations.
+Independent original Boolean expressions verify all 32,768 combinations of fifteen states for twelve admission rules. Focused tests also verify lazy reads and deliberate directionality. 18 focused runner/preparation/policy tests passed. Exact archive `1daf51f4fb2da99dc99fbd6dcb1458e726a8c26e` passed 141/141 required Linux tests with zero skips, formatting and typecheck. Archive SHA-256: `e7bf7237ad63de3b81c6a936a490d17cd915415e54cc5fb11d8c8ecc1cad2a13`. CI run 36492197536 passed; draft PR #38 is open. No live model/account/publication, deployment or deletion operations.
 
 ## Deployment and rollback
 

@@ -167,4 +167,4 @@ Task checkout/snapshot restoration no longer blocks the event loop; cancellation
 
 ## R2 admission policy — candidate 0.34.0
 
-Twelve global admission checks are centralized and documented, preserving all 32,768 combinations of the prior fifteen-state decision model. Manager-owned/project-specific and approval checks remain. This establishes a reviewable baseline; owned operation leases, domain decomposition and interleaving proofs remain open. Exact Linux/CI pending; not installed. See [operation compatibility](operation-compatibility.md).
+Twelve global admission checks are centralized and documented, preserving all 32,768 combinations of the prior fifteen-state decision model. Manager-owned/project-specific and approval checks remain. This establishes a reviewable baseline; owned operation leases, domain decomposition and interleaving proofs remain open. Exact archive passed 141/141 Linux tests, zero skips, formatting, typecheck and CI; draft #38; not installed. See [operation compatibility](operation-compatibility.md).
