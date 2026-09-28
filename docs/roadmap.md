@@ -41,9 +41,21 @@ High-priority follow-up:
 - Implemented and installed in v0.10.0: **Codex Chat only**, text Q&A through the native ChatGPT login, with no advertised tools and no repository mounted. The pinned CLI rejects injected execution calls; its read-only policy rejects patches. See [Chat only](codex-chat.md). Native Ask and Edit remain disabled for Codex.
 - Restore Codex availability only through a validated solution compatible with the host's namespace restrictions. No inner-sandbox bypass.
 
+## Stabilization gate after independent review — 2026-09-28
+
+Claude's [review](reviews/2026-09-28-claude-review.md) and Codex's [verified response](reviews/2026-09-28-claude-review-response.md) supersede the next-feature recommendation below. Findings remain open; neither review nor response fixes the application. Do not treat a green test suite as evidence covering the demonstrated omitted cases.
+
+1. **R1 — Reviewed release baseline:** pause feature-stack growth; operator chooses merge/consolidation, then tag a reviewed and validated baseline. No automatic merges.
+2. **R4/R11 — Exact-snapshot checks and mandatory Linux isolation CI:** highest-priority corrective implementation. Ignored files must not make an otherwise failing reviewed snapshot pass; required CI must execute real boundaries without skips.
+3. **R2/R3/R9 — Reviewability and reproducible releases:** standalone mechanical formatting, explicit operation compatibility, small module extractions, tracked parameterized install/update, drift detection and versioned transactional task-schema migrations.
+4. **R5/R6/R7/R8/R12/R13 — Boundary and resource work:** separate gateway identity/socket authority, deliberate resource budgets and safe retention, verified sandbox hardening, narrower GitHub authorization, unified Git policy and shared sensitive-file/content checks.
+5. **R10/R14/R15/R16/R17/R18/R19 — Reliability and operator clarity:** asynchronous/idempotent mutations, structured binary/large-diff handling, controlled follow-up context, visible native limits/version compatibility, safe errors and actor-bound audit coverage.
+
+Private operator observations O1–O7 are addressed in public-safe terms in the response. Protected-file contents and other accounts' privileges were not independently inspected; do not promote those observations to verified facts. Resolve the gates above before resuming ntfy and other feature work.
+
 ## Prioritized backlog
 
-Order agreed with the operator on 2026-09-28: finish the GitHub workflow, integrate Cursor CLI, then deliver configurable environment permissions and economical model/effort selection. Permission-policy design may begin during adapter work to avoid incompatible implementations. These are planned milestones, not installed capabilities or release-date commitments.
+Order agreed with the operator on 2026-09-28: finish the GitHub workflow, integrate Cursor CLI, then deliver configurable environment permissions and economical model/effort selection. Permission-policy design may begin during adapter work to avoid incompatible implementations. The stabilization gate above now takes precedence. The list retains completed milestones and remaining feature scope; it is not a release-date commitment.
 
 1. **Finish the GitHub review/publishing workflow.** Verify the first live approved draft PR; v0.16 implements revision requests before committing and updates to existing draft PRs. v0.17 implements selected review-comment import and safe base/conflict integration. Remaining: live operator acceptance, broader conflict types, optional ongoing review synchronization, separately approved PR merge operations and fork workflows. Preserve exact-content checks and explicit publication approval.
 2. **Cursor CLI integration.** Implemented and installed in v0.18.0 (85 deployment tests passed); operator login/model acceptance remains: pinned official CLI, native browser login/reconnect/logout, normalized account status, ACP Ask/Edit, scoped file approvals and access-only credentials. Native startup/login and isolated boundaries verified without a model request. Automatic subscription renewal and reliable usage limits are not exposed by the tested CLI; reconnect is explicit. Images, shell, web, MCP, subagents and unstructured delete requests remain unavailable. See [Cursor integration](cursor.md). Follow-up: full native prompt/edit acceptance, provider-supported renewal and limit reporting. Model selection is installed in v0.19.0; live selected-model acceptance remains.
