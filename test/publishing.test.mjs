@@ -31,3 +31,17 @@ test('runner offers only same-conversation PR targets and requires a new preview
  const targets=app.request({op:'publication-targets',task:next.id});assert.equal(targets.length,1);assert.equal(targets[0].id,first.job.id);assert.throws(()=>app.request({op:'publication-preview',owner,task:next.id,updateOf:'unknown',base:'main',title:'PR',body:''}),/this conversation/);
  const update=await publish(next.id,first.job.id);assert.equal(update.ready.plan.previousHead,r.row.commit_sha);assert.equal(git(f.remote,['rev-parse',r.row.branch]),r.row.commit_sha);app.request({op:'publication-approve',owner,id:update.job.id,fingerprint:update.ready.plan.fingerprint});const result=await until(()=>app.request({op:'publication-status',task:next.id})[0],j=>['published','needs_attention'].includes(j.state));assert.equal(result.state,'published',result.error);assert.equal(git(f.remote,['rev-parse',r.row.branch]),committed.commit_sha);assert.equal(posts,1);
  }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}});
+
+test('publication scans every outgoing commit for credential content even when a later commit removes it',async()=>{
+ const f=fixture(),task='11111111-1111-4111-8111-111111111111',branch='agentd/'+task,signal=new AbortController().signal;
+ try{
+  git(f.repo,['switch','-c',branch]);
+  const token=['gh','p_','aB3dE6gH9jK2mN5pQ8sT1vW4xY7zA0bC3dE6'].join('');
+  writeFileSync(join(f.repo,'ordinary.txt'),token);git(f.repo,['add','.']);git(f.repo,['-c','user.name=test','-c','user.email=test@localhost','commit','-m','introduced']);
+  git(f.repo,['rm','ordinary.txt']);git(f.repo,['-c','user.name=test','-c','user.email=test@localhost','commit','-m','removed']);
+  await assert.rejects(previewPublication({git:f.command,repo:f.repo,task,head:git(f.repo,['rev-parse','HEAD']),base:'main',title:'PR',body:'',approved:()=>true,signal}),error=>{
+   assert.match(error.message,/possible credential content/);assert.ok(!error.message.includes(token));return true;
+  });
+  assert.equal(f.calls.some(args=>args[0]==='push'),false);
+ }finally{rmSync(f.root,{recursive:true,force:true});}
+});

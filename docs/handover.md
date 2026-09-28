@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-git-policy.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-sensitive-data.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.26.0 — shared sensitive-data checks
+
+[Handover](handovers/2026-09-28-sensitive-data.md): reviews and publishing share filename and bounded credential-content rules. Suspect patches are withheld; outgoing history is scanned commit by commit. Binary detection uses Git metadata. Validation/staging pending; installed 0.22.0 unchanged. Includes R6, R7 and R12 candidates. Next: assess remaining reliability work and prepare one cumulative update.
 
 ## Candidate 0.25.0 — shared Git policy
 

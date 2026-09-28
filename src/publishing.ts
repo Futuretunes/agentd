@@ -1,3 +1,4 @@
+import {sensitiveFilename,sensitiveContent,binaryNumstat,scanLimits,contentScan,acceptBlob,blobID} from './sensitive-data.ts';
 import {spawn} from 'node:child_process';import {mkdtempSync,rmSync} from 'node:fs';import {join} from 'node:path';import {createHash} from 'node:crypto';import {githubURL,branchName,type RepositoryGit} from './repositories.ts';
 export type PullAPI=(destination:string,branch:string,base:string,data:{title:string;body:string}|null,signal:AbortSignal)=>Promise<any>;
 export async function githubRequest(state:string,profile:string,endpoint:string,data:unknown,signal:AbortSignal,executable='/usr/local/bin/gh'):Promise<any>{
@@ -13,7 +14,7 @@ export function githubPullAPI(state:string,profile:string,executable='/usr/local
  return githubRequest(state,profile,endpoint,data?{...data,head:branch,base,draft:true}:null,signal,executable);
 };}
 export type PublishPlan={destination:string;base:string;baseSha:string;head:string;branch:string;localBranch?:string;previousHead?:string;pullNumber?:number;title:string;body:string;draft:true;commits:{sha:string;subject:string;patch:string}[];stat:string;fingerprint:string};
-export function publicationText(title:unknown,body:unknown){if(typeof title!=='string'||!title.trim()||title.length>200||typeof body!=='string'||body.length>12000)throw Error('Enter a PR title (up to 200 characters) and description (up to 12,000).');return {title:title.trim(),body};}
+export function publicationText(title:unknown,body:unknown){if(typeof title!=='string'||!title.trim()||title.length>200||typeof body!=='string'||body.length>12000)throw Error('Enter a PR title (up to 200 characters) and description (up to 12,000).');if(sensitiveContent(title+'\n'+body).length)throw Error('Pull request text may contain credential content. Remove it before publishing.');return {title:title.trim(),body};}
 async function remoteRef(git:RepositoryGit,repo:string,url:string,branch:string,signal:AbortSignal){const out=await git(repo,['ls-remote','--heads',url,'refs/heads/'+branch],signal,true);if(!out)return null;const lines=out.split('\n');if(lines.length!==1||!new RegExp('^[a-f0-9]{40}\\t').test(out))throw Error('Could not verify remote branch.');return out.split('\t')[0];}
 export async function previewPublication(options:{git:RepositoryGit;repo:string;task:string;head:string;base:string;title:string;body:string;approved:(sha:string,tree:string)=>boolean;approvedMerge?:(sha:string,parents:string[])=>boolean;signal:AbortSignal;api?:PullAPI;update?:{destination:string;branch:string;head:string;base:string;number:number}}){
  const {git,repo,signal,head}=options;if(!/^[a-f0-9]{40}$/.test(head)||!/^[a-f0-9-]{36}$/.test(options.task))throw Error('Invalid approved commit.');const localBranch='agentd/'+options.task,base=branchName(options.update?.base??options.base),branch=options.update?.branch??localBranch;
@@ -22,11 +23,21 @@ export async function previewPublication(options:{git:RepositoryGit;repo:string;
  await git(repo,['fetch','--no-tags','--no-recurse-submodules',destination,'refs/heads/'+base],signal,true,repo);const baseSha=await git(repo,['rev-parse','FETCH_HEAD^{commit}'],signal);
  if(await git(repo,['merge-base','--is-ancestor',baseSha,head],signal,false,undefined,true)==='NOT_ANCESTOR')throw Error('The GitHub base advanced or diverged. Update and review the changes against the current base before publishing.');
  const revisions=(await git(repo,['rev-list','--reverse',baseSha+'..'+head],signal)).split('\n').filter(Boolean);if(!revisions.length||revisions.length>20)throw Error('Publish between 1 and 20 reviewed commits at a time.');const commits=[];let size=0;
- for(const sha of revisions){const tree=await git(repo,['rev-parse',sha+'^{tree}'],signal);if(!options.approved(sha,tree))throw Error('Every outgoing commit must have passing checks and explicit local commit approval in this project.');
+ const scan=contentScan();for(const sha of revisions){const tree=await git(repo,['rev-parse',sha+'^{tree}'],signal);if(!options.approved(sha,tree))throw Error('Every outgoing commit must have passing checks and explicit local commit approval in this project.');
   const parents=(await git(repo,['rev-list','--parents','-n','1',sha],signal)).split(' ');if(parents.length!==2&&!(parents.length===3&&options.approvedMerge?.(sha,parents.slice(1))))throw Error('Only explicitly reviewed integration merges are supported.');
-  const names=(await git(repo,['diff','--name-only','-z','--no-renames',sha+'^',sha],signal)).split('\0');if(names.some(n=>/(^|\/)(\.env($|\.)|\.credentials\.json$|auth\.json$|id_(rsa|ed25519)$|\.npmrc$)|\.(pem|key)$/i.test(n)))throw Error('Outgoing history includes a sensitive filename. Resolve it before publishing.');
-  const patch=await git(repo,['diff','--no-ext-diff','--no-textconv','--no-color','--no-renames',sha+'^',sha],signal);size+=Buffer.byteLength(patch);if(size>180000||patch.includes('Binary files '))throw Error('Outgoing history is too large or contains binary changes. This GUI cannot approve it.');
-  commits.push({sha,subject:await git(repo,['show','-s','--format=%s',sha],signal),patch});
+  const names=(await git(repo,['diff','--name-only','-z','--no-renames',sha+'^',sha],signal)).split('\0').filter(Boolean);
+  if(names.some(sensitiveFilename))throw Error('Outgoing history includes a sensitive filename. Resolve it before publishing.');
+  if(names.length>scanLimits.files)throw Error('Outgoing history has too many changed files for sensitive-data review.');
+  for(const name of names)for(const rev of [sha+'^',sha]){
+   const blob=blobID(await git(repo,['--literal-pathspecs','ls-tree','-z',rev,'--',name],signal));
+   if(!blob||!acceptBlob(scan,blob,await git(repo,['cat-file','-s',blob],signal)))continue;
+   const body=await git(repo,['cat-file','blob',blob],signal);
+   if(body.includes('\0')||sensitiveContent(body).length)throw Error('Outgoing history includes binary or possible credential content. Resolve it before publishing.');
+  }
+  if(binaryNumstat(await git(repo,['diff','--numstat','-z','--no-renames',sha+'^',sha],signal)))throw Error('Outgoing history contains binary changes. This GUI cannot approve it.');
+  const patch=await git(repo,['diff','--no-ext-diff','--no-textconv','--no-color','--no-renames',sha+'^',sha],signal);size+=Buffer.byteLength(patch);if(size>180000)throw Error('Outgoing history is too large. This GUI cannot approve it.');
+  const subject=await git(repo,['show','-s','--format=%s',sha],signal);if(sensitiveContent(await git(repo,['show','-s','--format=%B',sha],signal)).length)throw Error('Outgoing commit message may contain credential content. Review it separately.');
+  commits.push({sha,subject,patch});
  }
  const existing=await remoteRef(git,repo,destination,branch,signal);if(existing&&existing!==head&&existing!==options.update?.head)throw Error('The remote publishing branch contains different work. It will not be overwritten.');
  let metadata=publicationText(options.title,options.body);let updateFields={};

@@ -1,3 +1,4 @@
+import {sensitiveFilename,sensitiveContent,binaryNumstat,scanLimits,contentScan,acceptBlob,blobID} from './sensitive-data.ts';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {join} from 'node:path';
 
@@ -29,9 +30,21 @@ export function restoreSnapshot(worktree:string,tree:string){
 
 export function treeSnapshot(worktree:string,revision:string,tree:string){
     const names=git(worktree,['diff','--name-only','-z',revision,tree]).split('\0').filter(Boolean);
-    const blocked=names.filter(name=>/(^|\/)(\.env($|\.)|\.credentials\.json$|auth\.json$|id_(rsa|ed25519)$)|\.(pem|key)$/i.test(name));
-    const patch=git(worktree,['diff','--no-ext-diff','--no-textconv','--no-color','--no-renames',revision,tree]);
-    if(patch.includes('Binary files '))blocked.push('[binary changes require local review]');
+    const blocked=names.filter(sensitiveFilename);
+    const scan=contentScan();
+    if(names.length>scanLimits.files)blocked.push('[too many files for sensitive-data review]');
+    else if(!blocked.length) {
+      try {for(const name of names)for(const rev of [revision,tree]) {
+        const sha=blobID(git(worktree,['--literal-pathspecs','ls-tree','-z',rev,'--',name]));
+        if(!sha||!acceptBlob(scan,sha,git(worktree,['cat-file','-s',sha])))continue;
+        const body=git(worktree,['cat-file','blob',sha]);
+        if(body.includes('\0'))blocked.push('[binary changes require local review]');
+        if(sensitiveContent(body).length)blocked.push(name+' [possible credential content]');
+      }} catch {blocked.push('[sensitive-data scan incomplete; separate review required]');}
+    }
+    if(binaryNumstat(git(worktree,['diff','--numstat','-z','--no-renames',revision,tree])))blocked.push('[binary changes require local review]');
+    // Do not return suspected secrets to a browser in a patch, even before approval.
+    const patch=blocked.length?'[Diff withheld: sensitive, binary or unscannable changes require separate review.]':git(worktree,['diff','--no-ext-diff','--no-textconv','--no-color','--no-renames',revision,tree]);
     const summary=git(worktree,['diff','--stat','--no-renames',revision,tree]);
     const truncated=Buffer.byteLength(patch)>180000;
     return {tree,files:names,summary,patch:patch.slice(0,180000),truncated,blocked};

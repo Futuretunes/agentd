@@ -514,7 +514,7 @@ export function runner(c: Config) {
       requireAdapter(String(row.adapter),'edit');
       if(typeof input.prompt!=='string'||!input.prompt.trim()||input.prompt.length>16000)throw Error('Describe the revision in 1 to 16000 characters');
       const value=review(row);if(value.tree!==input.tree)throw Error('Changes have changed. Review again.');
-      if(value.truncated||value.blocked.length)throw Error('Resolve oversized changes or sensitive filenames before requesting revisions');
+      if(value.truncated||value.blocked.length)throw Error('Resolve oversized changes or sensitive files or credential content before requesting revisions');
       const id=randomUUID(),at=new Date().toISOString();
       // Retain the snapshot against Git garbage collection without creating a commit.
       git(['update-ref','refs/agentd/revisions/'+id,value.tree],String(project(String(row.project)).repo));
@@ -575,7 +575,7 @@ export function runner(c: Config) {
       if(!value.files.length&&!row.merge_parent)throw Error('No changes to commit');
       if(value.conflicts.length)throw Error('Resolve conflict markers before committing.');
       if(value.tree!==input.tree)throw Error('Changes have changed. Review again.');
-      if(value.truncated||value.blocked.length)throw Error('Review contains oversized changes or sensitive filenames; resolve them before committing');
+      if(value.truncated||value.blocked.length)throw Error('Review contains oversized changes or sensitive files or credential content; resolve them before committing');
       if(value.checks?.status!=='passed'||value.checks.input!=='git-tree-v1'||value.checks.tree!==value.tree)throw Error('Checks must pass for the exact reviewed changes');
       const message=title(input.message),branch='agentd/'+row.id;
       audit('approve-commit',input.id,{tree:value.tree,branch});
