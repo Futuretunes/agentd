@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.27.0 — bounded large reviews
 
-[Handover](handovers/2026-09-28-bounded-review.md): oversized patches return a bounded, unapprovable review instead of raw Git buffer errors. Multi-megabyte reproduction passes locally; exact Linux/CI pending. Includes prior overnight safeguards; installed 0.22.0 unchanged. Next: actor attribution and missing mutation audits, then cumulative staging.
+[Handover](handovers/2026-09-28-bounded-review.md): oversized patches return a bounded, unapprovable review instead of raw Git buffer errors. Exact archive `4e60f4d` passed 126/126 Linux tests with zero skips; CI pending. Includes prior overnight safeguards; installed 0.22.0 unchanged. Next: actor attribution and missing mutation audits, then cumulative staging.
 
 ## Candidate 0.26.0 — shared sensitive-data checks
 

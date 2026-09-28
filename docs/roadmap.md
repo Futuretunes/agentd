@@ -135,4 +135,4 @@ Shared credential filename/content policy now covers exact review blobs, outgoin
 
 ## R15 candidate — bounded oversized reviews
 
-Git output overflow now becomes a fixed error without raw output; review converts it to an unapprovable truncated result. Patch generation is capped at 180 KB before buffering a full diff. Real multi-megabyte reproduction passes. Exact Linux/CI pending; not installed. See [handover](handovers/2026-09-28-bounded-review.md). R14 large-file paginated review remains future work.
+Git output overflow now becomes a fixed error without raw output; review converts it to an unapprovable truncated result. Patch generation is capped at 180 KB before buffering a full diff. Real multi-megabyte reproduction passes. Exact archive passed 126/126 Linux tests with zero skips; CI pending. Not installed. See [handover](handovers/2026-09-28-bounded-review.md). R14 large-file paginated review remains future work.
