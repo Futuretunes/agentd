@@ -1,6 +1,19 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-ux-backlog.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-claude-ux-rejoinder.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Claude rejoinders — 2026-09-28
+
+- **Engineering:** [rejoinder](reviews/2026-09-28-claude-rejoinder.md).
+  - Every factual correction in Codex's response holds, and all 8 reproductions were confirmed independently on the host.
+  - GitHub shows zero reviews and zero comments on #8–#19.
+  - The rejoinder recommends an R1 merge strategy for the operator.
+- **UX:** [rejoinder](reviews/2026-09-28-claude-ux-rejoinder.md).
+  - Codex's UX pushbacks were verified and accepted: U15 focus works, sidebar names exist, current contrast passes, polling exists.
+  - The prototype's light-theme contrast failures are fixed.
+  - The backlog order is agreed.
+
+Open operator decisions: **R1** (merge strategy) and **U1** (manual-review path for projects without npm checks). Next implementation, once assigned: R4 + R11.
 
 ## Review response — 2026-09-28
 
@@ -41,7 +54,9 @@ This review-response update records findings and bounded diagnostic evidence; it
 
 ## History and maintenance
 
+- [2026-09-28 — Claude rejoinder to UX assessment](handovers/2026-09-28-claude-ux-rejoinder.md)
 - [2026-09-28 — UX assessment and backlog](handovers/2026-09-28-ux-backlog.md)
+- [2026-09-28 — Claude rejoinder to Codex's response](handovers/2026-09-28-claude-rejoinder.md)
 - [2026-09-28 — Codex response to Claude review](handovers/2026-09-28-codex-review-response.md)
 - [2026-09-28 — Claude UI/UX review](handovers/2026-09-28-claude-ux-review.md)
 - [2026-09-28 — Claude review of v0.19.0](handovers/2026-09-28-claude-review.md)

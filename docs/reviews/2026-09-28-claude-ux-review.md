@@ -272,15 +272,15 @@ The tone is neutral and warm, close to claude.ai. Everything comes from tokens, 
   --r-sm: 8px; --r-md: 12px; --r-lg: 20px; --r-full: 999px;
   /* light */
   --bg: #faf9f7; --surface: #ffffff; --surface-2: #f3f2ef; --border: #e7e5e0;
-  --text: #1f1e1c; --text-2: #5f5d58; --text-3: #8b8984;
-  --accent: #c96442; --accent-fg: #ffffff;        /* one warm accent for primary actions */
-  --ok: #2f7d4f; --warn: #a86b00; --danger: #b3261e; --info: #2d62c8;
+  --text: #1f1e1c; --text-2: #5f5d58; --text-3: #6b6963;   /* ≥ 4.7:1 on bg/surface-2 */
+  --accent: #a94f2d; --accent-fg: #ffffff;           /* 5.5:1 */        /* one warm accent for primary actions */
+  --ok: #276a43; --warn: #855500; --danger: #b3261e; --info: #2d62c8;
   --diff-add: #e6f4ea; --diff-del: #fbe9e7;
   --shadow-1: 0 1px 2px rgb(0 0 0 / .06); --shadow-2: 0 8px 24px rgb(0 0 0 / .10);
 }
 @media (prefers-color-scheme: dark) { :root {
   --bg: #1a1a18; --surface: #232321; --surface-2: #2b2b28; --border: #3a3935;
-  --text: #ecebe7; --text-2: #b1afa9; --text-3: #85837d;
+  --text: #ecebe7; --text-2: #b1afa9; --text-3: #9a9892;
   --accent: #d97757; --diff-add: #1f3a2a; --diff-del: #43201c;
 } }
 ```
