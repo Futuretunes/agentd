@@ -8,6 +8,10 @@
 - Staged release revision: `a58f36408a768d19b8ff8618093d17a6238d82f2`; archive SHA-256 `3f0bf3608499775b5322bb236975ce1f4b1f9d73b9a5d198cf12c6e3fce71489`. Subsequent handover-only changes do not change this candidate.
 - Branch: `feat/reproducible-deployment`, based on `feat/task-desk-redesign` at `58d4276` (PR #22). No main merge or PR-stack closure.
 
+## Follow-up — gateway compatibility correction
+
+The first administrator attempt refused `LockPersonality` before application/database changes. Read-only inspection confirms 0.20.0 remains healthy. Root cause: the updater applied the runner's personality-lock requirement to the gateway, although `deploy/agentd-mobile.service` never sets it. The corrected check still requires `yes` for the runner, accepts the gateway's existing `yes`/`no` value, and fingerprints that value so later drift is rejected. No unit or host protection is changed. Regression fixtures now match the shipped gateway template, verify both gateway values are recorded differently, refuse a disabled runner lock, and still reject disabled common protections. A corrected source archive and the same operator launcher will replace the earlier candidate after validation.
+
 ## Changes
 
 R9: `src/task-database.ts` extracts schema/startup recovery from the runner, migrates unversioned historical data in one transaction, records user_version 1 and refuses future versions before task recovery/worker cleanup. Schema validation and failed legacy ancestry/recovery roll back all migration effects. Health reports taskSchemaVersion separately from metadata schemaVersion. The old defect-demonstration R9 block is retired in favor of acceptance regressions.

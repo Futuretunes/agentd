@@ -47,6 +47,8 @@ Implemented and installed (read-only health/service confirmation, 2026-09-28): t
 
 ## Candidate 0.21.0 — release and schema foundations
 
+Administrator acceptance found a gateway/runner compatibility-check mismatch (`LockPersonality`); corrected without changing either unit. Deployment remains pending; 0.20.0 is healthy.
+
 Implemented and tested (105/105 Linux tests, zero skips), not installed: R9 versioned transactional task migrations and refusal of future task schemas; R3 exact-commit deterministic source packages, manifest verification, tracked parameterized application update, effective configuration fingerprints and ordinary-failure rollback. See [managed updates](managed-updates.md) and [handover](handovers/2026-09-28-managed-deployment.md). Fresh provisioning, automatic power-loss recovery, signed release provenance, managed configuration reconciliation and GUI administration remain open. No project branches are advanced by the updater. Next: reviewed release baseline/protected CI, then boundary and resource work; R2 backend decomposition remains.
 
 ## Stabilization gate after independent review — 2026-09-28

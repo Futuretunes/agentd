@@ -58,8 +58,13 @@ def inventory(c):
         text = capture(['systemctl','show',unit,*['--property='+p for p in PROPERTIES]])
         properties = dict(line.split('=',1) for line in text.splitlines() if '=' in line)
         if properties.get('NeedDaemonReload') == 'yes': raise ValueError('Reload and review changed unit files before updating')
-        for name, value in {'User':c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','CapabilityBoundingSet':'','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes','LockPersonality':'yes'}.items():
+        for name, value in {'User':c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','CapabilityBoundingSet':'','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes'}.items():
             if properties.get(name) != value: raise ValueError('Unsupported service security configuration: '+name)
+        # The runner template locks personality; the gateway template does not.
+        # Preserve and fingerprint either gateway setting, but never accept a
+        # missing/disabled runner lock or an unknown gateway value.
+        allowed_personality = ('yes',) if key == 'runnerUnit' else ('yes','no')
+        if properties.get('LockPersonality') not in allowed_personality: raise ValueError('Unsupported service security configuration: '+key+' LockPersonality')
         if key == 'runnerUnit' and (properties.get('ProtectKernelTunables') != 'no' or 'AF_NETLINK' not in properties.get('RestrictAddressFamilies','').split()): raise ValueError('Unsupported worker namespace configuration')
         # Hash all selected effective properties, including Environment. Never print them.
         files = [properties.get('FragmentPath',''), *properties.get('DropInPaths','').split()]

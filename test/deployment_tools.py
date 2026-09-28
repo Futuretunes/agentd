@@ -59,7 +59,7 @@ class DeploymentTests(unittest.TestCase):
         def capture(args):
             runner=args[2]==c['runnerUnit']
             environment=('AGENTD_STATE_DIR='+c['state']+' AGENTD_CONTROL_SOCKET='+c['controlSocket']+' AGENTD_RUNNER=1') if runner else 'AGENTD_MOBILE_CONFIG='+str(mobile)
-            properties={'User':c['user'],'Group':c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','CapabilityBoundingSet':'','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelTunables':'no' if runner else 'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes','LockPersonality':'yes','RestrictAddressFamilies':'AF_UNIX AF_INET AF_INET6 AF_NETLINK','FragmentPath':str(unit),'DropInPaths':'','EnvironmentFiles':'','Environment':environment+' PRIVATE=fixture-secret','ExecStart':'{ path='+c['node']+' ; argv[]='+c['node']+' '+c['app']+'/src/'+('server.ts' if runner else 'mobile.ts')+' ; }'}
+            properties={'User':c['user'],'Group':c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','CapabilityBoundingSet':'','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelTunables':'no' if runner else 'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes','LockPersonality':'yes' if runner else 'no','RestrictAddressFamilies':'AF_UNIX AF_INET AF_INET6 AF_NETLINK','FragmentPath':str(unit),'DropInPaths':'','EnvironmentFiles':'','Environment':environment+' PRIVATE=fixture-secret','ExecStart':'{ path='+c['node']+' ; argv[]='+c['node']+' '+c['app']+'/src/'+('server.ts' if runner else 'mobile.ts')+' ; }'}
             return '\n'.join(k+'='+v for k,v in properties.items())
         with patch.object(update,'capture',side_effect=capture):
             value=update.inventory(c);self.assertNotIn('fixture-secret',json.dumps(value))
@@ -67,6 +67,16 @@ class DeploymentTests(unittest.TestCase):
         def restarted(args): return capture(args).replace(' ; }',' ; start_time=[tomorrow] ; pid=456 ; status=0/0 }')
         with patch.object(update,'capture',side_effect=running): before=update.inventory(c)
         with patch.object(update,'capture',side_effect=restarted): self.assertEqual(update.inventory(c),before)
+        # The shipped gateway omits LockPersonality while the runner enables it.
+        def locked_gateway(args): return capture(args).replace('LockPersonality=no','LockPersonality=yes')
+        with patch.object(update,'capture',side_effect=locked_gateway): self.assertNotEqual(update.inventory(c),value)
+        def unlocked_runner(args): return capture(args).replace('LockPersonality=yes','LockPersonality=no')
+        with patch.object(update,'capture',side_effect=unlocked_runner):
+            with self.assertRaisesRegex(ValueError,'runnerUnit LockPersonality'):update.inventory(c)
+        for setting in ('NoNewPrivileges','RestrictSUIDSGID'):
+            def unsafe(args): return capture(args).replace(setting+'=yes',setting+'=no')
+            with patch.object(update,'capture',side_effect=unsafe):
+                with self.assertRaisesRegex(ValueError,setting):update.inventory(c)
         def wrong(args): return capture(args).replace('AGENTD_STATE_DIR='+c['state'],'AGENTD_STATE_DIR=/different/state')
         with patch.object(update,'capture',side_effect=wrong):
             with self.assertRaisesRegex(ValueError,'state/socket differs'):update.inventory(c)
