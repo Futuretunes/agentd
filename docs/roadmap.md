@@ -47,7 +47,7 @@ Implemented and installed (read-only health/service confirmation, 2026-09-28): t
 
 ## Installed 0.21.1; candidate 0.21.2
 
-Claude combined the UI fixes with managed deployment and installed 0.21.1 (`be16009`); independent health/manifest verification confirms it. The separate 0.20.1 and duplicate integration paths are superseded. A follow-up installer review reproduced acceptance of unexpected special files and external dependency-root links. Candidate 0.21.2 rejects those, hard links and changed manifests before privileged ownership changes; 107/107 Linux tests and 13 deployment fixtures passed. It is staged, not installed. See [handover](handovers/2026-09-28-candidate-validation.md). R5 gateway identity/socket separation remains next, after this installer correction.
+Claude combined the UI fixes with managed deployment and installed 0.21.1 (`be16009`); independent health/manifest verification confirms it. The separate 0.20.1 and duplicate integration paths are superseded. A follow-up installer review reproduced acceptance of unexpected special files and external dependency-root links. Candidate 0.21.2 rejects those, hard links and changed manifests before privileged ownership changes; 107/107 Linux tests and 13 deployment fixtures passed. Initial deployment refused a valid manifest file due to a loop-variable collision; a full-flow regression now covers the correction. It remains staged, not installed. See [handover](handovers/2026-09-28-candidate-validation.md). R5 gateway identity/socket separation remains next, after this installer correction.
 
 ## Installed 0.21.0 — release and schema foundations
 

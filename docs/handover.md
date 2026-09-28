@@ -6,7 +6,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 Based on Claude's installed `release/0.21.1`, not a duplicate integration. Read-only health/manifest independently confirm 0.21.1 at `be16009` and both services active. A duplicate local merge was aborted before any commit, publication or deployment. See [handover](handovers/2026-09-28-candidate-validation.md) and [review response](reviews/2026-09-28-claude-combined-0.21.1-response.md).
 
-Review found remaining candidate-file validation gaps, corrected before proceeding with R5 service identity changes. [Draft PR #24](https://github.com/Futuretunes/agentd/pull/24); staged revision `0473e2b` passed 107/107 Linux tests with zero skips plus 13 deployment fixtures. Candidate 0.21.2 preserves Claude's complete frontend and both earlier updater hardenings; it is not installed. R5 gateway separation remains the next substantive boundary item, and no service/account configuration has changed.
+Review found remaining candidate-file validation gaps, corrected before proceeding with R5 service identity changes. [Draft PR #24](https://github.com/Futuretunes/agentd/pull/24); staged revision `0473e2b` passed 107/107 Linux tests with zero skips plus 13 deployment fixtures. The first install attempt stopped before deployment because a loop shadowed the manifest file mapping; the reproduced caller regression is corrected with a complete validation-flow fixture. Candidate 0.21.2 preserves Claude's complete frontend and both earlier updater hardenings; it is not installed. R5 gateway separation remains the next substantive boundary item, and no service/account configuration has changed.
 
 ## Installed 0.21.1 — combined release (deployed 18:53 UTC via the managed updater)
 

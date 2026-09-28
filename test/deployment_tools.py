@@ -11,6 +11,7 @@ import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 sys.dont_write_bytecode=True
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 import release
@@ -159,6 +160,34 @@ class DeploymentTests(unittest.TestCase):
         update.verify_candidate(stage,files,manifest)
         (stage/'release-manifest.json').write_text('{"version":"changed"}')
         with self.assertRaisesRegex(ValueError,'manifest changed'):update.verify_candidate(stage,files,manifest)
+
+    def test_complete_validation_flow_keeps_manifest_files(self):
+        for corrupt in (False, True):
+            temporary=self.root/('flow-bad' if corrupt else 'flow-good');temporary.mkdir()
+            stage=temporary/'app';(stage/'src').mkdir(parents=True)
+            files={'tsconfig.json':b'{}','src/server.ts':b'fixture'};manifest={'version':'fixture'}
+            for name,data in files.items():(stage/name).write_bytes(data)
+            (stage/'release-manifest.json').write_text(json.dumps(manifest))
+            account=SimpleNamespace(pw_uid=12345,pw_gid=12345,pw_dir='/fixture/profile')
+            c={'user':'fixture','node':'/usr/bin/node','npm':'/usr/bin/npm','state':'/fixture/state','controlSocket':'/run/fixture/control.sock','configFiles':[]}
+            commands=[];root_owned=[]
+            def command(args,**kwargs):
+                commands.append(args)
+                if len(commands)==1:
+                    (stage/'node_modules/pkg').mkdir(parents=True)
+                    (stage/'node_modules/pkg/index.js').write_text('dependency')
+                if len(commands)==3 and corrupt:(stage/'tsconfig.json').write_text('changed')
+            def chown(path,uid,gid,**kwargs):
+                if uid==0:root_owned.append(str(path))
+            with patch.object(update.pwd,'getpwnam',return_value=account),patch.object(update,'run',side_effect=command),patch.object(update.os,'chown',side_effect=chown):
+                if corrupt:
+                    with self.assertRaisesRegex(ValueError,'Candidate changed'):update.test_candidate(c,stage,temporary,files,manifest)
+                    self.assertEqual(root_owned,[])
+                else:
+                    update.test_candidate(c,stage,temporary,files,manifest)
+                    update.verify_candidate(stage,files,manifest)
+                    self.assertTrue(root_owned)
+            self.assertEqual(len(commands),3)
 
     def test_rollback_requires_one_filesystem(self):
         app=self.root/'opt/app';app.mkdir(parents=True);state=self.root/'srv/state';state.mkdir(parents=True)

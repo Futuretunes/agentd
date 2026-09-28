@@ -132,12 +132,12 @@ def control_idle(c):
         elif value.get('busy'): raise ValueError('Finish account changes before updating')
 
 # Run with the service account but a disposable home; no candidate tests run as root.
-def test_candidate(c, stage, temporary, files, manifest):
+def test_candidate(c, stage, temporary, release_files, manifest):
     account = pwd.getpwnam(c['user'])
     home = temporary/'home'; home.mkdir(); os.chown(home,account.pw_uid,account.pw_gid)
-    for root, dirs, files in os.walk(stage):
+    for root, dirs, filenames in os.walk(stage):
         os.chown(root,account.pw_uid,account.pw_gid)
-        for name in files: os.chown(Path(root)/name,account.pw_uid,account.pw_gid)
+        for name in filenames: os.chown(Path(root)/name,account.pw_uid,account.pw_gid)
     def command(args):
         run(['systemd-run','--quiet','--wait','--pipe','--collect','--uid='+c['user'], '--gid='+str(account.pw_gid),
              '--setenv=HOME='+str(home),'--setenv=PATH='+str(Path(c['node']).parent)+':/usr/bin:/bin',
@@ -151,11 +151,11 @@ def test_candidate(c, stage, temporary, files, manifest):
     command([c['npm'],'run','typecheck'])
     command([c['node'],'scripts/test-isolation-ci.mjs'])
     # Reject links, special files and altered content before privileged ownership changes.
-    verify_candidate(stage, files, manifest)
+    verify_candidate(stage, release_files, manifest)
     # All deployed code is immutable to the service account after validation.
-    for root, dirs, files in os.walk(stage):
+    for root, dirs, filenames in os.walk(stage):
         os.chown(root,0,0); os.chmod(root,0o755)
-        for name in files:
+        for name in filenames:
             path=Path(root)/name
             if not path.is_symlink():
                 os.chown(path,0,0); os.chmod(path,0o755 if path.stat().st_mode & 0o111 else 0o644)

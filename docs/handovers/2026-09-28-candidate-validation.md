@@ -8,6 +8,10 @@
 - Installed: 0.21.1 at `be16009`, read-only health/manifest confirms task schema 1, starts 32, both services active.
 - Candidate: 0.21.2; branch `fix/candidate-validation-boundaries`, based on `release/0.21.1` at `d042b77`.
 
+## Follow-up — validation caller regression
+
+The operator's installer ran all 107 tests, then refused `tsconfig.json` before service shutdown or swap. Reproduced through `test_candidate`: an `os.walk` loop shadowed the `files` argument, replacing the manifest mapping with a directory listing before `verify_candidate`. Renamed the manifest argument and walk variables. Added a full validation-flow fixture (systemd/chown mocked, real filesystem and verifier): valid manifest files survive all three test commands, tampering fails before root ownership changes. This regression failed with the exact reported error before the fix. Earlier standalone verifier tests missed this calling-path defect. No unit/policy change or rejection bypass.
+
 ## Changes
 
 The duplicate local integration was aborted before commit/publication/deployment. Claude's complete release is the base. Reviewed the UI fixes and updater hardenings in `docs/reviews/2026-09-28-claude-combined-0.21.1-response.md`.
