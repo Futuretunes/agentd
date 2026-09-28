@@ -2,11 +2,11 @@
 
 - Author: Codex.
 - Request: implement the separate web gateway (R5).
-- Status: implemented and staged; exact-archive Linux validation and CI passed; installation pending.
+- Status: implemented and installed; Linux/CI passed and live gateway boundary verified.
 - Release: 0.22.0, task schema remains 1.
-- Branch: `feat/separate-web-gateway`, based on `fix/candidate-validation-boundaries` at `9c79a0a` (installed 0.21.2 application retained).
+- Branch: `feat/separate-web-gateway`, based on `fix/candidate-validation-boundaries` at `9c79a0a` (supersedes installed 0.21.2).
 - Draft PR: [#25](https://github.com/Futuretunes/agentd/pull/25), based on #24.
-- Staged source: `8f033343a929047addbe6785d59ea7e42f0c9d46`; archive SHA-256 `06c1e0a190105214a1ee7dbb0d20a348078778ce18ce692724f3302199018326`. Later documentation commits do not change this staged archive.
+- Installed source: `8f033343a929047addbe6785d59ea7e42f0c9d46`; archive SHA-256 `06c1e0a190105214a1ee7dbb0d20a348078778ce18ce692724f3302199018326`. Later documentation commits do not change this staged archive.
 
 ## Changes
 
@@ -20,14 +20,14 @@ Read `docs/gateway-boundary.md` for the authority/residual-risk and two-stage ro
 
 ## Validation
 
-Local typecheck passed. Complete local suite: 112 tests, 105 passed, seven Linux-only skips, zero failures. Targeted final protocol/HTTPS/runner/deployment tests passed. Python fixtures include both successful migration and rollback after failed boundary acceptance, plus separate-profile policy refusal. The exact staged archive passed all 112 tests on the Linux VM with zero failures/skips. CI run `36473590656` passed Node 24, Node 26 and required Linux isolation. Python migration fixtures also passed with umask 077, confirming gateway configuration directory permissions remain usable under the root launcher. Actual different-UID systemd acceptance runs during installation; it has not yet been run. No model requests, sign-in consent, root deployment or GUI acceptance were performed.
+Local typecheck passed. Complete local suite: 112 tests, 105 passed, seven Linux-only skips, zero failures. Targeted final protocol/HTTPS/runner/deployment tests passed. Python fixtures include both successful migration and rollback after failed boundary acceptance, plus separate-profile policy refusal. The exact staged archive passed all 112 tests on the Linux VM with zero failures/skips. CI run `36473590656` passed Node 24, Node 26 and required Linux isolation. Python migration fixtures also passed with umask 077, confirming gateway configuration directory permissions remain usable under the root launcher. Operator installation passed the live different-UID/mount-namespace probe: browser reads succeeded; private files, the administrative socket and administrative protocol operations were denied. Independent read-only checks confirm both services active, gateway User/Group `agentd-web` with no supplementary groups or writable paths, and all four private directories masked. Runner remains `agentd`, with only its service supplementary gateway group added. Health reports 0.22.0, task schema 1, starts 35; installed manifest matches `8f03334`. No model request, sign-in consent or post-install phone acceptance was performed by Codex.
 
 ## Deployment
 
-Installed remains 0.21.2. A verified managed archive and private thin launcher are staged in the operator account and perform the app update then invoke the installed root-owned migration. No first-adoption/drift bypass is used. During the intermediate old identity profile, large image uploads exceed the unchanged 80 KB admin socket limit; complete identity migration before GUI use. Dedicated gateway uploads have their own bounded larger envelope. Automatic approval review rejected expanding the old admin socket limit, so that expansion was not made.
+The operator completed both the managed application update and the identity migration. Installed 0.22.0 is independently verified. Private application and configuration rollback backups were reported locally; their paths are intentionally excluded from public documentation. No first-adoption/drift bypass is used. The intermediate old identity profile is superseded; migration completed successfully. The administrative socket retains its unchanged 80 KB limit. Dedicated gateway uploads have their own bounded larger envelope. Automatic approval review rejected expanding the old admin socket limit, so that expansion was not made.
 
 Migration failure leaves the compatible 0.22 application with prior identity/configuration and a private journal requiring review. Abrupt-power-loss automatic recovery is not claimed. Identity migration supports the established standard layout only. All operator-specific paths/backup names stay in private staging/output.
 
 ## Next
 
-Claude: review the protocol, service group ownership, migration rollback and managed baseline changes in draft #25. The operator has one staged administrator command. After operator installation, independently verify health/identity and record actual deployment acceptance separately from fixtures. Then R6 resource/retention controls; R1 merge strategy and protected-branch settings remain unresolved. Do not merge main or close the existing PR stack based on this note.
+Claude: review the protocol, service group ownership, migration rollback and managed baseline changes in draft #25. Installation and independent health/identity checks are complete. Phone sign-in/upload acceptance remains an operator check. Next recommended implementation: R6 resource/retention controls; R1 merge strategy and protected-branch settings remain unresolved. Do not merge main or close the existing PR stack based on this note.
