@@ -464,22 +464,6 @@ header h1 {
 .attach:focus-within {
   outline: 2px solid var(--accent);
 }
-.composer-settings {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding-top: 6px;
-  font-size: 12px;
-  color: var(--muted);
-  flex-wrap: wrap;
-}
-.composer-settings button {
-  font-size: 12px;
-  background: transparent;
-  border: 0;
-  padding: 4px 8px;
-  min-height: 36px;
-}
 .hint {
   font-size: 12px;
   text-align: center;
@@ -898,6 +882,184 @@ a {
 #drawer-backdrop {
   display: none;
 }
+/* One composer control for agent, mode and model. */
+.run-picker {
+  position: relative;
+}
+.run-picker > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.run-picker > summary::-webkit-details-marker {
+  display: none;
+}
+.run-picker > summary:hover,
+.run-picker[open] > summary {
+  background: var(--surface-2);
+  color: var(--text);
+}
+#picker-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mode-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.picker-panel {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: 15;
+  width: min(360px, calc(100vw - 32px));
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.picker-panel label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 8px 0 4px;
+}
+.tools .picker-panel select {
+  width: 100%;
+  max-width: none;
+  border-color: var(--line);
+  background: var(--surface);
+  font-size: 14px;
+}
+.picker-panel #agent-reasons {
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+.picker-model {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.picker-model button {
+  align-self: flex-start;
+  font-size: 13px;
+}
+#stop-current:not([hidden]) {
+  border-color: var(--danger);
+}
+/* Settings is one panel with sections. */
+.settings-section {
+  border-top: 1px solid var(--line);
+  padding: 16px 0 8px;
+}
+.settings-section h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.settings-section .muted {
+  margin: 0 0 10px;
+}
+#preferences-dialog {
+  width: min(680px, 94vw);
+}
+/* Plain-language run facts. */
+.run-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  font-size: 13px;
+  margin: 10px 0;
+}
+.run-facts dt {
+  color: var(--muted);
+}
+.run-facts dd {
+  margin: 0;
+}
+/* Review: side panel on desktop, file headers, checks first. */
+#review-dialog {
+  margin: 0 0 0 auto;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: min(820px, 92vw);
+  border-radius: 20px 0 0 20px;
+  border-right: 0;
+}
+.file-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  cursor: pointer;
+}
+.file-name {
+  font:
+    500 13px/1.4 ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+}
+.file-status {
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--muted);
+}
+.file-status.added {
+  background: var(--good-bg);
+  color: var(--good);
+}
+.file-status.deleted {
+  background: var(--del);
+  color: var(--danger);
+}
+.file-counts {
+  margin-left: auto;
+  font:
+    12px ui-monospace,
+    monospace;
+  color: var(--muted);
+}
+.diff-line.hunk,
+.diff-line.note {
+  color: var(--muted);
+  background: var(--surface-2);
+}
+.review-checks {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px 16px 12px;
+  margin: 4px 0 16px;
+}
+.review-checks h3 {
+  margin: 12px 0 4px;
+  font-size: 15px;
+}
+.commit-field input {
+  width: 100%;
+  margin: 6px 0 0;
+}
+#review-stats {
+  margin: -12px 0 12px;
+}
 @media (max-width: 760px) {
   #workspace {
     grid-template-columns: minmax(0, 1fr);
@@ -964,9 +1126,6 @@ a {
     padding: 9px 12px;
     flex-shrink: 0;
   }
-  .composer-settings {
-    gap: 4px;
-  }
   #selection-summary {
     overflow: hidden;
     white-space: nowrap;
@@ -1006,6 +1165,28 @@ a {
   }
   #review-actions {
     bottom: -20px;
+  }
+  #review-dialog {
+    margin: 0;
+    height: var(--viewport-height, 100dvh);
+    max-height: var(--viewport-height, 100dvh);
+    border-radius: 0;
+  }
+  .diff {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .diff-line {
+    min-width: 0;
+  }
+  .line-number {
+    min-width: 56px;
+  }
+  .run-picker > summary {
+    padding: 4px 8px;
+  }
+  #picker-summary {
+    max-width: 38vw;
   }
   .operation-summary {
     grid-template-columns: repeat(2, 1fr);

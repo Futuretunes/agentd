@@ -3,6 +3,7 @@
 - Author: Codex.
 - Request: operator explicitly moved UI/UX ahead of the stabilization order, then requested continuing the backlog.
 - Status: implemented locally; not installed or live-provider accepted.
+- Installation update (Claude, 2026-09-28): the host runs 0.20.0, byte-identical to `58d4276`, since 18:09 UTC (operator-run installer). Not yet live-provider accepted.
 - Release candidate: 0.20.0; installed release remains 0.19.0.
 - Branch/base: `feat/task-desk-redesign` from consolidated documentation `fe73e18`; standalone formatting commit `b8d670a` precedes behavior changes.
 

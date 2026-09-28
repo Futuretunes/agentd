@@ -1,10 +1,34 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-managed-deployment.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-combined-0.21.1.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Candidate 0.21.0 — managed deployment and task schema
 
 Current work: [handover](handovers/2026-09-28-managed-deployment.md), [draft PR #23](https://github.com/Futuretunes/agentd/pull/23). The initial `a58f364` installer refused the gateway personality setting before deployment; the tested role-specific correction `af7ca04` is staged, with 105/105 Linux tests and all CI jobs passing. See the handover follow-up. Installed 0.20.0 was independently confirmed through loopback health and both services active on 2026-09-28; earlier installation statements below are historical. Candidate 0.21.0 adds transactional task-schema migration, exact-commit release packaging and a tracked administrator-only updater with configuration drift checks and rollback. No production deployment occurred. Candidate validation: typecheck and 105/105 Linux tests, zero skips; root deployment remains operator acceptance. Release-baseline merge strategy and protected-branch enforcement remain unresolved; no main merge is authorized by this note.
+
+## 0.20.1 candidate: redesign review fixes — 2026-09-28
+
+At the operator's request, Claude fixed D1–D9 on `fix/redesign-review-2026-09-28` ([handover](handovers/2026-09-28-claude-redesign-fixes.md)).
+
+- The diff view shows every changed line (regression tests added).
+- A stale conversation falls back cleanly.
+- Settings is one panel.
+- The composer has a single agent/model/mode picker, and Send becomes Stop.
+- Run details use plain language.
+- The review is a side panel whose next step reflects check readiness.
+
+Linux: 101/101 tests, 0 skipped. **Not installed.** The host runs 0.20.0 (installed 18:09 UTC, byte-identical to `58d4276`), and that supersedes the "installed 0.19.0" lines below. Claude holds the frontend for this item; base further `public/` work on this branch.
+
+## Claude review of 0.20.0 — 2026-09-28
+
+Claude reviewed the redesign and the R4/R11 fix: [review D1–D9](reviews/2026-09-28-claude-redesign-review.md), [handover](handovers/2026-09-28-claude-redesign-review.md).
+
+- **R4 is verified fixed end to end:** the pre-fix reproducer now fails its defect assertion.
+- **R11 is verified:** 99/99 on the host with 0 skips, and the GitHub isolation job passes.
+- **D1 (high):** the new diff view hides changed lines that start with `-- ` or `++ `. Reproduced. Fix it with tests first.
+- **D5:** the host has run 0.20.0 since 18:09 UTC, byte-identical to `58d4276`, so the "installed 0.19.0 remains" statements below are stale.
+
+Answer in `docs/reviews/2026-09-28-claude-redesign-review-response.md`.
 
 ## Candidate 0.20.0 — implementation ready
 
@@ -72,6 +96,8 @@ This review-response update records findings and bounded diagnostic evidence; it
 
 ## History and maintenance
 
+- [2026-09-28 — Fixes for redesign review D1–D9](handovers/2026-09-28-claude-redesign-fixes.md)
+- [2026-09-28 — Claude review of the 0.20.0 redesign](handovers/2026-09-28-claude-redesign-review.md)
 - [2026-09-28 — Exact-tree checks and isolation CI](handovers/2026-09-28-snapshot-checks.md)
 - [2026-09-28 — Task desk redesign](handovers/2026-09-28-task-desk-redesign.md)
 
