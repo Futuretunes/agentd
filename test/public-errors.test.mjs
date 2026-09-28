@@ -1,10 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  publicError,
-  browserResult,
-  unknownError,
-} from "../src/public-errors.ts";
+import { publicError, browserResult, unknownError } from "../src/public-errors.ts";
 import { publicMessages } from "../src/public-error-messages.ts";
 test("browser error boundary preserves fixed guidance but drops paths, subprocess output and arbitrary values", () => {
   assert.equal(publicError(Error("Task not found")), "Task not found");
@@ -55,8 +51,5 @@ test("stored task and nested check errors are normalized without altering author
   assert.equal(value.output, input.output);
   assert.equal(value.prompt, input.prompt);
   assert.equal(input.task.error, "/private/root");
-  assert.equal(
-    browserResult({ checks: "invalid private content" }).checks,
-    null,
-  );
+  assert.equal(browserResult({ checks: "invalid private content" }).checks, null);
 });

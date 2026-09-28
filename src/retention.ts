@@ -10,7 +10,7 @@ import {
   realpathSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import {gitOutput} from "./git-policy.ts";
+import { gitOutput } from "./git-policy.ts";
 import { inventory } from "./resources.ts";
 import type { DatabaseSync } from "node:sqlite";
 const ageMs = 30 * 86400000;
@@ -35,8 +35,7 @@ export function retention(
       .all(new Date(now - ageMs).toISOString()) as any[];
   }
   function describe(row: any) {
-    if (!/^[a-f0-9-]{36}$/.test(row.id))
-      throw Error("Invalid task storage identifier");
+    if (!/^[a-f0-9-]{36}$/.test(row.id)) throw Error("Invalid task storage identifier");
     const item: any = {
       id: row.id,
       conversation: row.conversation,
@@ -52,8 +51,7 @@ export function retention(
       if (resolve(row.worktree) !== expected || !existsSync(expected))
         throw Error("Worktree is not available for safe cleanup");
       const s = lstatSync(expected);
-      if (!s.isDirectory() || s.isSymbolicLink())
-        throw Error("Linked worktree refused");
+      if (!s.isDirectory() || s.isSymbolicLink()) throw Error("Linked worktree refused");
       const list = git(row.repo, ["worktree", "list", "--porcelain"]);
       if (!list.split("\n").includes("worktree " + expected))
         throw Error("Worktree registration mismatch");
@@ -82,8 +80,7 @@ export function retention(
         if (!saved.isFile() || saved.isSymbolicLink() || saved.nlink !== 1)
           throw Error("Saved answer requires manual review");
       }
-      if (suffix === ".log" && row.log !== path)
-        throw Error("Log path mismatch");
+      if (suffix === ".log" && row.log !== path) throw Error("Log path mismatch");
       const s = lstatSync(path);
       if (!s.isFile() || s.isSymbolicLink() || s.nlink !== 1)
         throw Error("Linked log refused");
@@ -114,9 +111,7 @@ export function retention(
         });
       }
     }
-    const fingerprint = createHash("sha256")
-      .update(JSON.stringify(items))
-      .digest("hex");
+    const fingerprint = createHash("sha256").update(JSON.stringify(items)).digest("hex");
     return {
       items,
       skipped,
@@ -174,10 +169,7 @@ export function retention(
           db.prepare("UPDATE tasks SET worktree=NULL WHERE id=?").run(item.id);
         }
         for (const log of item.logs) {
-          const fd = openSync(
-            log.path,
-            constants.O_WRONLY | constants.O_NOFOLLOW,
-          );
+          const fd = openSync(log.path, constants.O_WRONLY | constants.O_NOFOLLOW);
           try {
             const s = fstatSync(fd);
             if (

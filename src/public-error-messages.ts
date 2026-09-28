@@ -356,5 +356,5 @@ export const publicMessages = new Set<string>([
   "Worktree entry limit reached before checkout",
   "Worktree is not available for safe cleanup",
   "Worktree registration mismatch",
-  "Worktree size limit reached before checkout"
+  "Worktree size limit reached before checkout",
 ]);

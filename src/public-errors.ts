@@ -21,11 +21,7 @@ const fixed = new Set([
 ]);
 export function publicError(value: unknown) {
   const message =
-    typeof value === "string"
-      ? value
-      : value instanceof Error
-        ? value.message
-        : "";
+    typeof value === "string" ? value : value instanceof Error ? value.message : "";
   if (
     publicMessages.has(message) ||
     fixed.has(message) ||

@@ -12,8 +12,7 @@ import {
   acceptBlob,
 } from "../src/sensitive-data.ts";
 import { snapshot, commitSnapshot } from "../src/changes.ts";
-const credential = () =>
-  ["gh", "p_", "aB3dE6gH9jK2mN5pQ8sT1vW4xY7zA0bC3dE6"].join("");
+const credential = () => ["gh", "p_", "aB3dE6gH9jK2mN5pQ8sT1vW4xY7zA0bC3dE6"].join("");
 test("shared sensitive-data rules cover credential paths and known signatures without returning values", () => {
   for (const path of [
     ".env",
@@ -38,9 +37,7 @@ test("shared sensitive-data rules cover credential paths and known signatures wi
   );
   assert.deepEqual(
     sensitiveContent(
-      'api_key="' +
-        ["AbCdEfGh", "12345678", "IjKlMnOp", "90123456"].join("") +
-        '"',
+      'api_key="' + ["AbCdEfGh", "12345678", "IjKlMnOp", "90123456"].join("") + '"',
     ),
     ["credential assignment"],
   );
@@ -53,7 +50,10 @@ test("shared sensitive-data rules cover credential paths and known signatures wi
   assert.throws(() => acceptBlob(contentScan(), "a", "1048577"), /size limit/);
 });
 test("review scans both exact blobs, withholds suspect patches, and classifies actual binary metadata", () => {
-  assert.throws(()=>commitSnapshot("/nonexistent","a","b","c",credential()),/credential content/);
+  assert.throws(
+    () => commitSnapshot("/nonexistent", "a", "b", "c", credential()),
+    /credential content/,
+  );
   const repo = mkdtempSync(join(tmpdir(), "sensitive-review-"));
   const state = mkdtempSync(join(tmpdir(), "sensitive-state-"));
   const git = (args) =>
@@ -69,10 +69,7 @@ test("review scans both exact blobs, withholds suspect patches, and classifies a
     git(["add", "."]);
     git(["commit", "-m", "initial"]);
     const head = git(["rev-parse", "HEAD"]);
-    writeFileSync(
-      join(repo, "README.md"),
-      "Binary files are explained here.\n",
-    );
+    writeFileSync(join(repo, "README.md"), "Binary files are explained here.\n");
     let review = snapshot(repo, head, state);
     assert.deepEqual(review.blocked, []);
     assert.match(review.patch, /Binary files are explained/);

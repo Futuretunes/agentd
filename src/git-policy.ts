@@ -45,10 +45,7 @@ export const gitPolicy = Object.freeze([
   "-c",
   "core.pager=cat",
 ]);
-export function gitEnvironment(
-  home = "/nonexistent",
-  index?: string,
-): NodeJS.ProcessEnv {
+export function gitEnvironment(home = "/nonexistent", index?: string): NodeJS.ProcessEnv {
   return {
     PATH: "/usr/local/bin:/usr/bin:/bin",
     HOME: home,
@@ -155,11 +152,7 @@ export function gitOutput(
   assertGitConfig(repo);
   return raw(repo, args, options);
 }
-export function localGit(
-  repo: string,
-  args: string[],
-  extra: NodeJS.ProcessEnv = {},
-) {
+export function localGit(repo: string, args: string[], extra: NodeJS.ProcessEnv = {}) {
   if (Object.keys(extra).some((key) => key !== "GIT_INDEX_FILE"))
     throw Error("Unsupported Git environment override");
   return gitOutput(repo, args, { index: extra.GIT_INDEX_FILE }).trim();

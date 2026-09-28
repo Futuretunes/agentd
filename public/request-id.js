@@ -29,9 +29,7 @@ export function stageCreation(
   if (
     saved &&
     (typeof saved.id !== "string" ||
-      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
-        saved.id,
-      ) ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(saved.id) ||
       typeof saved.payload !== "string")
   )
     throw Error(

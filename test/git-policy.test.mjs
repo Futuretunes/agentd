@@ -1,12 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  existsSync,
-  rmSync,
-} from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -54,14 +48,8 @@ test("shared Git policy denies hooks and inherited executable/config overrides b
     assert.equal(env.GIT_DIR, undefined);
     assert.equal(env.GIT_SSH_COMMAND, undefined);
     assert.equal(env.LD_PRELOAD, undefined);
-    assert.throws(
-      () => localGit(repo, ["status"], { GIT_DIR: "/tmp" }),
-      /Unsupported/,
-    );
-    assert.equal(
-      localGit(repo, ["config", "--get", "protocol.https.allow"]),
-      "never",
-    );
+    assert.throws(() => localGit(repo, ["status"], { GIT_DIR: "/tmp" }), /Unsupported/);
+    assert.equal(localGit(repo, ["config", "--get", "protocol.https.allow"]), "never");
   } finally {
     if (previous === undefined) delete process.env.GIT_CONFIG_COUNT;
     else process.env.GIT_CONFIG_COUNT = previous;

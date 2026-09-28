@@ -121,8 +121,7 @@ export function gatewayRequest(value: unknown): Record<string, any> {
     throw Error("Browser owner required");
   if (
     input.op === "approve" &&
-    (typeof input.fingerprint !== "string" ||
-      !/^[a-f0-9]{64}$/.test(input.fingerprint))
+    (typeof input.fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(input.fingerprint))
   )
     throw Error("Refresh the run preview before approving.");
   if (
@@ -181,21 +180,15 @@ export function gatewaySocket(
       try {
         const bytes = Buffer.concat(chunks),
           end = bytes.indexOf(10);
-        if (end !== bytes.length - 1)
-          throw Error("One request per connection required");
-        const input = gatewayRequest(
-          JSON.parse(bytes.subarray(0, end).toString("utf8")),
-        );
+        if (end !== bytes.length - 1) throw Error("One request per connection required");
+        const input = gatewayRequest(JSON.parse(bytes.subarray(0, end).toString("utf8")));
         if (input.op !== "attachment-upload" && length > 80000)
           throw Error("Request too large");
         connection.end(
-          JSON.stringify({ ok: true, result: browserResult(dispatch(input)) }) +
-            "\n",
+          JSON.stringify({ ok: true, result: browserResult(dispatch(input)) }) + "\n",
         );
       } catch (error) {
-        connection.end(
-          JSON.stringify({ ok: false, error: publicError(error) }) + "\n",
-        );
+        connection.end(JSON.stringify({ ok: false, error: publicError(error) }) + "\n");
       }
     });
   });

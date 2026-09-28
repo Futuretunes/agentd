@@ -56,8 +56,7 @@ test("gateway authority rejects admin operations, extra path fields and missing 
     owner,
   );
   assert.equal(
-    gatewayRequest({ op: "conversation-rename", id: "x", name: "New", owner })
-      .name,
+    gatewayRequest({ op: "conversation-rename", id: "x", name: "New", owner }).name,
     "New",
   );
 });
@@ -100,17 +99,12 @@ test("raw gateway socket enforces authority without trusting the HTTPS process",
       { op: "create", prompt: "x", home: "/private" },
     ])
       assert.equal(
-        (await call(join(root, "gateway.sock"), JSON.stringify(value) + "\n"))
-          .ok,
+        (await call(join(root, "gateway.sock"), JSON.stringify(value) + "\n")).ok,
         false,
       );
     assert.equal(
-      (
-        await call(
-          join(root, "gateway.sock"),
-          '{"op":"projects"}\n{"op":"projects"}\n',
-        )
-      ).ok,
+      (await call(join(root, "gateway.sock"), '{"op":"projects"}\n{"op":"projects"}\n'))
+        .ok,
       false,
     );
     assert.equal(calls.length, 1);
@@ -246,10 +240,7 @@ test("separate runner socket preserves image flow and approvals while admin sock
       ).ok,
       false,
     );
-    assert.equal(
-      (await request({ op: "approve", id: task.result.id })).ok,
-      false,
-    );
+    assert.equal((await request({ op: "approve", id: task.result.id })).ok, false);
     assert.equal((await request({ op: "audit" })).ok, false);
     assert.equal(
       (await call(join(root, "state/control.sock"), '{"op":"audit"}\n')).ok,

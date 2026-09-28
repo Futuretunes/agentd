@@ -13,11 +13,7 @@ const version: string = JSON.parse(
 
 type Options = { stateDir: string; port: number; taskRunner?: boolean };
 export function start(options: Options) {
-  if (
-    !Number.isInteger(options.port) ||
-    options.port < 0 ||
-    options.port > 65535
-  )
+  if (!Number.isInteger(options.port) || options.port < 0 || options.port > 65535)
     throw new Error("Invalid port");
   mkdirSync(options.stateDir, { recursive: true, mode: 0o700 });
   const taskFile = join(options.stateDir, "tasks.sqlite");
@@ -34,12 +30,10 @@ export function start(options: Options) {
   const db = new DatabaseSync(join(options.stateDir, "agentd.sqlite"));
   if (
     db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'",
-      )
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
       .get() &&
-    db.prepare("SELECT value FROM metadata WHERE key='schema_version'").get()
-      ?.value !== "1"
+    db.prepare("SELECT value FROM metadata WHERE key='schema_version'").get()?.value !==
+      "1"
   ) {
     db.close();
     throw Error("Unsupported state schema");
@@ -60,17 +54,19 @@ export function start(options: Options) {
     "started",
   );
   const boots = Number(
-    db
-      .prepare(
-        "SELECT count(*) AS n FROM service_events WHERE kind = 'started'",
-      )
-      .get()?.n,
+    db.prepare("SELECT count(*) AS n FROM service_events WHERE kind = 'started'").get()
+      ?.n,
   );
   let tasks: ReturnType<typeof runner> | undefined;
   try {
     tasks = options.taskRunner
       ? runner({
-          gateway: process.env.AGENTD_GATEWAY_SOCKET ? {path:process.env.AGENTD_GATEWAY_SOCKET,gid:Number(process.env.AGENTD_GATEWAY_GID)} : undefined,
+          gateway: process.env.AGENTD_GATEWAY_SOCKET
+            ? {
+                path: process.env.AGENTD_GATEWAY_SOCKET,
+                gid: Number(process.env.AGENTD_GATEWAY_GID),
+              }
+            : undefined,
           githubRoot: join(homedir(), ".agentd-github"),
           credentialRenewal: process.env.AGENTD_CREDENTIAL_RENEWAL === "1",
           codexChat: process.env.AGENTD_CODEX_CHAT === "1",
@@ -78,9 +74,7 @@ export function start(options: Options) {
           editAdapters: (process.env.AGENTD_EDIT_ADAPTERS ?? "")
             .split(",")
             .filter(Boolean),
-          enabledAdapters: (
-            process.env.AGENTD_ENABLED_ADAPTERS ?? "codex,claude"
-          )
+          enabledAdapters: (process.env.AGENTD_ENABLED_ADAPTERS ?? "codex,claude")
             .split(",")
             .filter(Boolean),
           strictWorkers: process.env.AGENTD_STRICT_WORKERS === "1",
@@ -89,12 +83,9 @@ export function start(options: Options) {
           repo:
             process.env.AGENTD_REPO ??
             (() => {
-              throw new Error(
-                "AGENTD_REPO is required when the runner is enabled",
-              );
+              throw new Error("AGENTD_REPO is required when the runner is enabled");
             })(),
-          worktrees:
-            process.env.AGENTD_WORKTREES ?? join(options.stateDir, "worktrees"),
+          worktrees: process.env.AGENTD_WORKTREES ?? join(options.stateDir, "worktrees"),
           logs: process.env.AGENTD_LOGS ?? join(options.stateDir, "logs"),
         })
       : undefined;
@@ -164,10 +155,7 @@ export function start(options: Options) {
   };
   return { server, close };
 }
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.umask(0o077);
   const app = start({
     stateDir: process.env.AGENTD_STATE_DIR ?? "/srv/agentd/state",
@@ -184,9 +172,7 @@ if (
     ),
   );
   app.server.on("error", (error) => {
-    console.error(
-      JSON.stringify({ event: "server_error", message: error.message }),
-    );
+    console.error(JSON.stringify({ event: "server_error", message: error.message }));
     process.exit(1);
   });
   let stopping = false;

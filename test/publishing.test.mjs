@@ -1,47 +1,829 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from 'node:fs';import {join} from 'node:path';import {tmpdir} from 'node:os';import {execFileSync} from 'node:child_process';import {once} from 'node:events';import {DatabaseSync} from 'node:sqlite';import {runner} from '../src/runner.ts';import {gitPolicy} from '../src/repositories.ts';import {previewPublication,executePublication,githubPullAPI} from '../src/publishing.ts';
-const pause=ms=>new Promise(r=>setTimeout(r,ms)),url='https://github.com/example/repo.git',owner='a'.repeat(64);
-const git=(cwd,args)=>execFileSync('git',['-C',cwd,...args],{encoding:'utf8',stdio:'pipe'}).trim();
-function fixture(){const root=mkdtempSync(join(tmpdir(),'publish-')),repo=join(root,'repo'),remote=join(root,'remote.git');mkdirSync(repo);git(repo,['init','-b','main']);writeFileSync(join(repo,'README.md'),'before');writeFileSync(join(repo,'package-lock.json'),'{}');git(repo,['add','.']);git(repo,['-c','user.name=test','-c','user.email=test@localhost','commit','-m','base']);git(root,['clone','--bare',repo,remote]);git(repo,['remote','add','origin',url]);const calls=[];const command=async(cwd,args,signal,_network,_budget,one)=>{if(signal.aborted)throw Error('Cancelled');calls.push(args);try{return git(cwd,[...gitPolicy,'-c','protocol.file.allow=always',...args.map(x=>x===url?remote:x)]);}catch(e){if(one&&e.status===1)return 'NOT_ANCESTOR';throw e;}};return {root,repo,remote,calls,command};}
-function pull(plan){return {number:7,draft:true,head:{sha:plan.head,ref:plan.branch,repo:{full_name:'example/repo'}},base:{sha:plan.baseSha,ref:plan.base,repo:{full_name:'example/repo'}}};}
-async function until(read,check){for(let n=0;n<250;n++){const v=read();if(check(v))return v;await pause(10);}throw Error('Timed out');}
-async function reviewed(f){const config={repo:f.repo,stateDir:join(f.root,'state'),worktrees:join(f.root,'trees'),logs:join(f.root,'logs'),repositoryCommand:f.command,pullAPI:async()=>[],editing:true,editAdapters:['claude'],accountStatus:()=>({state:'signed_out'}),command:()=>[process.execPath,['-e',"require('fs').writeFileSync('README.md','after')"]],isolate:(_tree,_state,command,args,adapter)=>({command:adapter?command:process.execPath,args:adapter?args:['-e',''],cleanup(){}})};const app=runner(config);await once(app.server,'listening');const task=app.request({op:'create',adapter:'claude',mode:'edit',prompt:'edit'});app.request({op:'approve',id:task.id});await until(()=>app.request({op:'show',id:task.id}).task,t=>t.status==='succeeded');app.request({op:'project-checks',id:'default',dependencies:f.repo});const review=app.request({op:'review',id:task.id});app.request({op:'validate',id:task.id,tree:review.tree});await until(()=>JSON.parse(app.request({op:'show',id:task.id}).task.checks??'{}'),r=>r.status==='passed');const row=app.request({op:'commit',id:task.id,tree:review.tree,message:'Reviewed change'});return {app,config,row};}
-test('publication preview is read-only; owner-bound exact approval pushes one branch and creates one draft PR',async()=>{const f=fixture(),r=await reviewed(f);let apiCalls=[],created=null;r.config.pullAPI=async(destination,branch,base,data)=>{apiCalls.push(data);if(!data)return created?[created]:[];created=pull({head:r.row.commit_sha,branch,base,baseSha:git(f.remote,['rev-parse','main'])});assert.deepEqual(data,{title:'Reviewed PR',body:'literal `body`\n$(no shell)'});return created;};await r.app.close();let app=runner(r.config);await once(app.server,'listening');try{assert.throws(()=>app.request({op:'publication-approve',owner,id:'missing',fingerprint:'x'}),/expired/);const job=app.request({op:'publication-preview',owner,task:r.row.id,base:'main',title:'Reviewed PR',body:'literal `body`\n$(no shell)'});let ready=await until(()=>app.request({op:'publication-status',task:r.row.id})[0],j=>j.state!=='preparing');assert.equal(ready.state,'ready');assert.equal(ready.plan.head,r.row.commit_sha);assert.equal(ready.plan.commits.length,1);assert.match(ready.plan.commits[0].patch,/after/);assert.equal(f.calls.some(c=>c[0]==='push'),false);assert.equal(apiCalls.length,0);assert.throws(()=>app.request({op:'publication-approve',owner:'b'.repeat(64),id:job.id,fingerprint:ready.plan.fingerprint}),/another browser/);assert.throws(()=>app.request({op:'publication-approve',owner,id:job.id,fingerprint:'wrong'}),/changed/);app.request({op:'publication-approve',owner,id:job.id,fingerprint:ready.plan.fingerprint});const result=await until(()=>app.request({op:'publication-status',task:r.row.id})[0],j=>['published','needs_attention'].includes(j.state));assert.equal(result.state,'published',result.error);assert.equal(result.url,'https://github.com/example/repo/pull/7');assert.equal(git(f.remote,['rev-parse',r.row.branch]),r.row.commit_sha);assert.equal(apiCalls.filter(Boolean).length,1);assert.equal(f.calls.filter(c=>c[0]==='push').length,1);assert.ok(f.calls.find(c=>c[0]==='push').includes('--force-with-lease=refs/heads/'+r.row.branch+':'));app.request({op:'publication-preview',owner,task:r.row.id,base:'main',title:'again',body:''});assert.equal(apiCalls.filter(Boolean).length,1);}finally{await app.close();rmSync(f.root,{recursive:true,force:true});}});
-test('publication refuses changed bases, conflicting branches and unapproved outgoing history',async()=>{const f=fixture(),r=await reviewed(f),signal=new AbortController().signal;try{const options={git:f.command,repo:f.repo,task:r.row.id,head:r.row.commit_sha,base:'main',title:'PR',body:'',approved:()=>true,signal};await assert.rejects(previewPublication({...options,approved:()=>false}),/Every outgoing/);const plan=await previewPublication(options);git(f.remote,['update-ref','refs/heads/'+plan.branch,plan.baseSha]);await assert.rejects(executePublication(f.command,async()=>[],f.repo,plan,signal,()=>{}),/not be overwritten/);git(f.remote,['update-ref','-d','refs/heads/'+plan.branch]);git(f.remote,['fetch',f.repo,r.row.commit_sha]);git(f.remote,['update-ref','refs/heads/main',r.row.commit_sha]);await assert.rejects(executePublication(f.command,async()=>[],f.repo,plan,signal,()=>{}),/base changed/);assert.equal(f.calls.some(c=>c[0]==='push'),false);}finally{await r.app.close();rmSync(f.root,{recursive:true,force:true});}});
-test('uncertain PR creation reconciles without duplicate pushes or PRs; restart expires unapproved previews',async()=>{const f=fixture(),r=await reviewed(f);let created=null,posts=0;r.config.pullAPI=async(_dest,branch,base,data)=>{if(!data)return created?[created]:[];posts++;created=pull({head:r.row.commit_sha,branch,base,baseSha:git(f.remote,['rev-parse','main'])});throw Error('Response lost after creating PR');};await r.app.close();let app=runner(r.config);await once(app.server,'listening');try{let job=app.request({op:'publication-preview',owner,task:r.row.id,base:'main',title:'PR',body:''});let ready=await until(()=>app.request({op:'publication-status',task:r.row.id})[0],j=>j.state==='ready');await app.close();app=runner(r.config);await once(app.server,'listening');assert.equal(app.request({op:'publication-status',task:r.row.id})[0].state,'expired');assert.throws(()=>app.request({op:'publication-approve',owner,id:job.id,fingerprint:ready.plan.fingerprint}),/expired/);job=app.request({op:'publication-preview',owner,task:r.row.id,base:'main',title:'PR',body:''});ready=await until(()=>app.request({op:'publication-status',task:r.row.id})[0],j=>j.state==='ready');app.request({op:'publication-approve',owner,id:job.id,fingerprint:ready.plan.fingerprint});await until(()=>app.request({op:'publication-status',task:r.row.id})[0],j=>j.state==='needs_attention');assert.equal(posts,1);job=app.request({op:'publication-preview',owner,task:r.row.id,base:'main',title:'PR',body:''});ready=await until(()=>app.request({op:'publication-status',task:r.row.id})[0],j=>j.state==='ready');app.request({op:'publication-approve',owner,id:job.id,fingerprint:ready.plan.fingerprint});const result=await until(()=>app.request({op:'publication-status',task:r.row.id})[0],j=>j.state==='published');assert.equal(result.url,'https://github.com/example/repo/pull/7');assert.equal(posts,1);assert.equal(f.calls.filter(c=>c[0]==='push').length,1);}finally{await app.close();rmSync(f.root,{recursive:true,force:true});}});
-test('creation lease refuses a racing remote branch and history guard catches secrets removed by later commits',async()=>{const f=fixture(),r=await reviewed(f),signal=new AbortController().signal;try{const options={git:f.command,repo:f.repo,task:r.row.id,head:r.row.commit_sha,base:'main',title:'PR',body:'',approved:()=>true,signal};const plan=await previewPublication(options);let posts=0;const race=async(...args)=>{if(args[1][0]==='push')git(f.remote,['update-ref','refs/heads/'+plan.branch,plan.baseSha]);return f.command(...args);};await assert.rejects(executePublication(race,async(_a,_b,_c,data)=>{if(data)posts++;return [];},f.repo,plan,signal,()=>{}));assert.equal(git(f.remote,['rev-parse',plan.branch]),plan.baseSha);assert.equal(posts,0);git(f.remote,['update-ref','-d','refs/heads/'+plan.branch]);git(f.repo,['switch',plan.branch]);writeFileSync(join(f.repo,'.env.secret'),'fixture');git(f.repo,['add','.env.secret']);git(f.repo,['-c','user.name=test','-c','user.email=test@localhost','commit','-m','secret introduced']);git(f.repo,['rm','.env.secret']);git(f.repo,['-c','user.name=test','-c','user.email=test@localhost','commit','-m','secret removed']);await assert.rejects(previewPublication({...options,head:git(f.repo,['rev-parse','HEAD'])}),/sensitive filename/);}finally{await r.app.close();rmSync(f.root,{recursive:true,force:true});}});
-
-test('native PR transport uses fixed GitHub endpoints, JSON stdin and a clean credential environment',async()=>{const root=mkdtempSync(join(tmpdir(),'pull-api-')),bin=join(root,'gh');writeFileSync(bin,`#!${process.execPath}\nlet text='';process.stdin.on('data',b=>text+=b);process.stdin.on('end',()=>console.log(JSON.stringify({args:process.argv.slice(2),data:JSON.parse(text),home:process.env.HOME,profile:process.env.GH_CONFIG_DIR,inherited:process.env.GH_TOKEN??null})));`,{mode:0o700});const old=process.env.GH_TOKEN;process.env.GH_TOKEN='fixture-must-not-inherit';try{const value=await githubPullAPI(root,join(root,'profile'),bin)(url,'agentd/fixture','main',{title:'literal $(x)',body:'line one\n`line two`'},new AbortController().signal);assert.equal(value.inherited,null);assert.deepEqual(value.data,{title:'literal $(x)',body:'line one\n`line two`',head:'agentd/fixture',base:'main',draft:true});assert.ok(value.args.includes('repos/example/repo/pulls'));assert.ok(value.args.includes('POST'));assert.ok(value.args.includes('--input'));assert.equal(value.profile,join(root,'profile'));assert.notEqual(value.home,process.env.HOME);}finally{if(old===undefined)delete process.env.GH_TOKEN;else process.env.GH_TOKEN=old;rmSync(root,{recursive:true,force:true});}});
-
-test('restart journals uncertain remote writes without retrying; expired previews cannot be approved',async()=>{const f=fixture(),r=await reviewed(f);let app=r.app;try{const job=app.request({op:'publication-preview',owner,task:r.row.id,base:'main',title:'PR',body:''});const ready=await until(()=>app.request({op:'publication-status',task:r.row.id})[0],j=>j.state==='ready');const db=new DatabaseSync(join(r.config.stateDir,'tasks.sqlite'));try{db.prepare('UPDATE publications SET expires=? WHERE id=?').run(Date.now()-1000,job.id);assert.throws(()=>app.request({op:'publication-approve',owner,id:job.id,fingerprint:ready.plan.fingerprint}),/expired/);}finally{db.close();}await app.close();const stopped=new DatabaseSync(join(r.config.stateDir,'tasks.sqlite'));stopped.prepare("UPDATE publications SET state='creating_pr' WHERE id=?").run(job.id);stopped.close();app=runner(r.config);await once(app.server,'listening');const recovered=app.request({op:'publication-status',task:r.row.id})[0];assert.equal(recovered.state,'needs_attention');assert.match(recovered.error,/may already contain/);assert.equal(f.calls.some(c=>c[0]==='push'),false);}finally{await app.close();rmSync(f.root,{recursive:true,force:true});}});
-
-test('approved PR update advances only the reviewed remote head and preserves PR metadata',async()=>{const f=fixture(),r=await reviewed(f),signal=new AbortController().signal;try{
- const first=await previewPublication({git:f.command,repo:f.repo,task:r.row.id,head:r.row.commit_sha,base:'main',title:'PR',body:'Original body',approved:()=>true,signal});let pr=null,posts=0;const api=async(_d,_b,_base,data)=>{if(data){posts++;pr={...pull(first),title:data.title,body:data.body,state:'open'};}if(pr)pr.head.sha=git(f.remote,['rev-parse',first.branch]);return data?pr:pr?[pr]:[];};await executePublication(f.command,api,f.repo,first,signal,()=>{});
- git(f.repo,['switch',first.branch]);writeFileSync(join(f.repo,'README.md'),'second');git(f.repo,['add','.']);git(f.repo,['-c','user.name=test','-c','user.email=test@localhost','commit','-m','Second approved edit']);const head=git(f.repo,['rev-parse','HEAD']),task='11111111-1111-1111-1111-111111111111';git(f.repo,['branch','agentd/'+task,head]);git(f.repo,['update-ref','refs/heads/'+first.branch,first.head]);
- const options={git:f.command,repo:f.repo,task,head,base:'ignored',title:'ignored',body:'ignored',approved:()=>true,signal,api,update:{destination:url,branch:first.branch,head:first.head,base:first.base,number:7}};
- const plan=await previewPublication(options);assert.equal(plan.previousHead,first.head);assert.equal(plan.title,'PR');assert.equal(plan.body,'Original body');assert.equal(plan.commits.length,2);assert.equal(git(f.remote,['rev-parse',first.branch]),first.head);
- const racing=async(...args)=>{if(args[1][0]==='push')git(f.remote,['update-ref','refs/heads/'+first.branch,first.baseSha]);return f.command(...args);};await assert.rejects(executePublication(racing,api,f.repo,plan,signal,()=>{}));assert.equal(git(f.remote,['rev-parse',first.branch]),first.baseSha);git(f.remote,['update-ref','refs/heads/'+first.branch,first.head]);f.calls.splice(f.calls.findLastIndex(x=>x[0]==='push'),1);
- const result=await executePublication(f.command,api,f.repo,plan,signal,()=>{});assert.equal(result.url,'https://github.com/example/repo/pull/7');assert.equal(git(f.remote,['rev-parse',first.branch]),head);assert.equal(posts,1);await executePublication(f.command,api,f.repo,plan,signal,()=>{});assert.equal(f.calls.filter(x=>x[0]==='push').length,2);
- pr.state='closed';await assert.rejects(previewPublication(options),/open draft/);assert.equal(posts,1);
- }finally{await r.app.close();rmSync(f.root,{recursive:true,force:true});}});
-
-test('runner offers only same-conversation PR targets and requires a new preview approval for updates',async()=>{const f=fixture(),r=await reviewed(f);let pr=null,posts=0;r.config.pullAPI=async(_dest,branch,base,data)=>{if(data){posts++;pr={...pull({head:git(f.remote,['rev-parse',branch]),branch,base,baseSha:git(f.remote,['rev-parse',base])}),title:data.title,body:data.body,state:'open'};}if(pr)pr.head.sha=git(f.remote,['rev-parse',pr.head.ref]);return data?pr:pr?[pr]:[];};r.config.command=()=>[process.execPath,['-e',"require('fs').appendFileSync('README.md',' next')"]];await r.app.close();let app=runner(r.config);await once(app.server,'listening');try{
- const publish=async(task,updateOf)=>{const job=app.request({op:'publication-preview',owner,task,updateOf,base:'main',title:'PR',body:''});const ready=await until(()=>app.request({op:'publication-status',task})[0],j=>j.state!=='preparing');assert.equal(ready.state,'ready',ready.error);return {job,ready};};
- const first=await publish(r.row.id);app.request({op:'publication-approve',owner,id:first.job.id,fingerprint:first.ready.plan.fingerprint});await until(()=>app.request({op:'publication-status',task:r.row.id})[0],j=>j.state==='published');
- const next=app.request({op:'create',conversation:r.row.conversation,adapter:'claude',mode:'edit',prompt:'next'});app.request({op:'approve',id:next.id});await until(()=>app.request({op:'show',id:next.id}).task,t=>t.status==='succeeded');const view=app.request({op:'review',id:next.id});app.request({op:'validate',id:next.id,tree:view.tree});await until(()=>JSON.parse(app.request({op:'show',id:next.id}).task.checks??'{}'),c=>c.status==='passed');const committed=app.request({op:'commit',id:next.id,tree:view.tree,message:'Next'});
- const targets=app.request({op:'publication-targets',task:next.id});assert.equal(targets.length,1);assert.equal(targets[0].id,first.job.id);assert.throws(()=>app.request({op:'publication-preview',owner,task:next.id,updateOf:'unknown',base:'main',title:'PR',body:''}),/this conversation/);
- const update=await publish(next.id,first.job.id);assert.equal(update.ready.plan.previousHead,r.row.commit_sha);assert.equal(git(f.remote,['rev-parse',r.row.branch]),r.row.commit_sha);app.request({op:'publication-approve',owner,id:update.job.id,fingerprint:update.ready.plan.fingerprint});const result=await until(()=>app.request({op:'publication-status',task:next.id})[0],j=>['published','needs_attention'].includes(j.state));assert.equal(result.state,'published',result.error);assert.equal(git(f.remote,['rev-parse',r.row.branch]),committed.commit_sha);assert.equal(posts,1);
- }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}});
-
-test('publication scans every outgoing commit for credential content even when a later commit removes it',async()=>{
- const f=fixture(),task='11111111-1111-4111-8111-111111111111',branch='agentd/'+task,signal=new AbortController().signal;
- try{
-  git(f.repo,['switch','-c',branch]);
-  const token=['gh','p_','aB3dE6gH9jK2mN5pQ8sT1vW4xY7zA0bC3dE6'].join('');
-  writeFileSync(join(f.repo,'ordinary.txt'),token);git(f.repo,['add','.']);git(f.repo,['-c','user.name=test','-c','user.email=test@localhost','commit','-m','introduced']);
-  git(f.repo,['rm','ordinary.txt']);git(f.repo,['-c','user.name=test','-c','user.email=test@localhost','commit','-m','removed']);
-  await assert.rejects(previewPublication({git:f.command,repo:f.repo,task,head:git(f.repo,['rev-parse','HEAD']),base:'main',title:'PR',body:'',approved:()=>true,signal}),error=>{
-   assert.match(error.message,/possible credential content/);assert.ok(!error.message.includes(token));return true;
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
+import { once } from "node:events";
+import { DatabaseSync } from "node:sqlite";
+import { runner } from "../src/runner.ts";
+import { gitPolicy } from "../src/repositories.ts";
+import {
+  previewPublication,
+  executePublication,
+  githubPullAPI,
+} from "../src/publishing.ts";
+const pause = (ms) => new Promise((r) => setTimeout(r, ms)),
+  url = "https://github.com/example/repo.git",
+  owner = "a".repeat(64);
+const git = (cwd, args) =>
+  execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", stdio: "pipe" }).trim();
+function fixture() {
+  const root = mkdtempSync(join(tmpdir(), "publish-")),
+    repo = join(root, "repo"),
+    remote = join(root, "remote.git");
+  mkdirSync(repo);
+  git(repo, ["init", "-b", "main"]);
+  writeFileSync(join(repo, "README.md"), "before");
+  writeFileSync(join(repo, "package-lock.json"), "{}");
+  git(repo, ["add", "."]);
+  git(repo, [
+    "-c",
+    "user.name=test",
+    "-c",
+    "user.email=test@localhost",
+    "commit",
+    "-m",
+    "base",
+  ]);
+  git(root, ["clone", "--bare", repo, remote]);
+  git(repo, ["remote", "add", "origin", url]);
+  const calls = [];
+  const command = async (cwd, args, signal, _network, _budget, one) => {
+    if (signal.aborted) throw Error("Cancelled");
+    calls.push(args);
+    try {
+      return git(cwd, [
+        ...gitPolicy,
+        "-c",
+        "protocol.file.allow=always",
+        ...args.map((x) => (x === url ? remote : x)),
+      ]);
+    } catch (e) {
+      if (one && e.status === 1) return "NOT_ANCESTOR";
+      throw e;
+    }
+  };
+  return { root, repo, remote, calls, command };
+}
+function pull(plan) {
+  return {
+    number: 7,
+    draft: true,
+    head: { sha: plan.head, ref: plan.branch, repo: { full_name: "example/repo" } },
+    base: { sha: plan.baseSha, ref: plan.base, repo: { full_name: "example/repo" } },
+  };
+}
+async function until(read, check) {
+  for (let n = 0; n < 250; n++) {
+    const v = read();
+    if (check(v)) return v;
+    await pause(10);
+  }
+  throw Error("Timed out");
+}
+async function reviewed(f) {
+  const config = {
+    repo: f.repo,
+    stateDir: join(f.root, "state"),
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    repositoryCommand: f.command,
+    pullAPI: async () => [],
+    editing: true,
+    editAdapters: ["claude"],
+    accountStatus: () => ({ state: "signed_out" }),
+    command: () => [
+      process.execPath,
+      ["-e", "require('fs').writeFileSync('README.md','after')"],
+    ],
+    isolate: (_tree, _state, command, args, adapter) => ({
+      command: adapter ? command : process.execPath,
+      args: adapter ? args : ["-e", ""],
+      cleanup() {},
+    }),
+  };
+  const app = runner(config);
+  await once(app.server, "listening");
+  const task = app.request({
+    op: "create",
+    adapter: "claude",
+    mode: "edit",
+    prompt: "edit",
   });
-  assert.equal(f.calls.some(args=>args[0]==='push'),false);
- }finally{rmSync(f.root,{recursive:true,force:true});}
+  app.request({ op: "approve", id: task.id });
+  await until(
+    () => app.request({ op: "show", id: task.id }).task,
+    (t) => t.status === "succeeded",
+  );
+  app.request({ op: "project-checks", id: "default", dependencies: f.repo });
+  const review = app.request({ op: "review", id: task.id });
+  app.request({ op: "validate", id: task.id, tree: review.tree });
+  await until(
+    () => JSON.parse(app.request({ op: "show", id: task.id }).task.checks ?? "{}"),
+    (r) => r.status === "passed",
+  );
+  const row = app.request({
+    op: "commit",
+    id: task.id,
+    tree: review.tree,
+    message: "Reviewed change",
+  });
+  return { app, config, row };
+}
+test("publication preview is read-only; owner-bound exact approval pushes one branch and creates one draft PR", async () => {
+  const f = fixture(),
+    r = await reviewed(f);
+  let apiCalls = [],
+    created = null;
+  r.config.pullAPI = async (destination, branch, base, data) => {
+    apiCalls.push(data);
+    if (!data) return created ? [created] : [];
+    created = pull({
+      head: r.row.commit_sha,
+      branch,
+      base,
+      baseSha: git(f.remote, ["rev-parse", "main"]),
+    });
+    assert.deepEqual(data, { title: "Reviewed PR", body: "literal `body`\n$(no shell)" });
+    return created;
+  };
+  await r.app.close();
+  let app = runner(r.config);
+  await once(app.server, "listening");
+  try {
+    assert.throws(
+      () =>
+        app.request({
+          op: "publication-approve",
+          owner,
+          id: "missing",
+          fingerprint: "x",
+        }),
+      /expired/,
+    );
+    const job = app.request({
+      op: "publication-preview",
+      owner,
+      task: r.row.id,
+      base: "main",
+      title: "Reviewed PR",
+      body: "literal `body`\n$(no shell)",
+    });
+    let ready = await until(
+      () => app.request({ op: "publication-status", task: r.row.id })[0],
+      (j) => j.state !== "preparing",
+    );
+    assert.equal(ready.state, "ready");
+    assert.equal(ready.plan.head, r.row.commit_sha);
+    assert.equal(ready.plan.commits.length, 1);
+    assert.match(ready.plan.commits[0].patch, /after/);
+    assert.equal(
+      f.calls.some((c) => c[0] === "push"),
+      false,
+    );
+    assert.equal(apiCalls.length, 0);
+    assert.throws(
+      () =>
+        app.request({
+          op: "publication-approve",
+          owner: "b".repeat(64),
+          id: job.id,
+          fingerprint: ready.plan.fingerprint,
+        }),
+      /another browser/,
+    );
+    assert.throws(
+      () =>
+        app.request({
+          op: "publication-approve",
+          owner,
+          id: job.id,
+          fingerprint: "wrong",
+        }),
+      /changed/,
+    );
+    app.request({
+      op: "publication-approve",
+      owner,
+      id: job.id,
+      fingerprint: ready.plan.fingerprint,
+    });
+    const result = await until(
+      () => app.request({ op: "publication-status", task: r.row.id })[0],
+      (j) => ["published", "needs_attention"].includes(j.state),
+    );
+    assert.equal(result.state, "published", result.error);
+    assert.equal(result.url, "https://github.com/example/repo/pull/7");
+    assert.equal(git(f.remote, ["rev-parse", r.row.branch]), r.row.commit_sha);
+    assert.equal(apiCalls.filter(Boolean).length, 1);
+    assert.equal(f.calls.filter((c) => c[0] === "push").length, 1);
+    assert.ok(
+      f.calls
+        .find((c) => c[0] === "push")
+        .includes("--force-with-lease=refs/heads/" + r.row.branch + ":"),
+    );
+    app.request({
+      op: "publication-preview",
+      owner,
+      task: r.row.id,
+      base: "main",
+      title: "again",
+      body: "",
+    });
+    assert.equal(apiCalls.filter(Boolean).length, 1);
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test("publication refuses changed bases, conflicting branches and unapproved outgoing history", async () => {
+  const f = fixture(),
+    r = await reviewed(f),
+    signal = new AbortController().signal;
+  try {
+    const options = {
+      git: f.command,
+      repo: f.repo,
+      task: r.row.id,
+      head: r.row.commit_sha,
+      base: "main",
+      title: "PR",
+      body: "",
+      approved: () => true,
+      signal,
+    };
+    await assert.rejects(
+      previewPublication({ ...options, approved: () => false }),
+      /Every outgoing/,
+    );
+    const plan = await previewPublication(options);
+    git(f.remote, ["update-ref", "refs/heads/" + plan.branch, plan.baseSha]);
+    await assert.rejects(
+      executePublication(
+        f.command,
+        async () => [],
+        f.repo,
+        plan,
+        signal,
+        () => {},
+      ),
+      /not be overwritten/,
+    );
+    git(f.remote, ["update-ref", "-d", "refs/heads/" + plan.branch]);
+    git(f.remote, ["fetch", f.repo, r.row.commit_sha]);
+    git(f.remote, ["update-ref", "refs/heads/main", r.row.commit_sha]);
+    await assert.rejects(
+      executePublication(
+        f.command,
+        async () => [],
+        f.repo,
+        plan,
+        signal,
+        () => {},
+      ),
+      /base changed/,
+    );
+    assert.equal(
+      f.calls.some((c) => c[0] === "push"),
+      false,
+    );
+  } finally {
+    await r.app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test("uncertain PR creation reconciles without duplicate pushes or PRs; restart expires unapproved previews", async () => {
+  const f = fixture(),
+    r = await reviewed(f);
+  let created = null,
+    posts = 0;
+  r.config.pullAPI = async (_dest, branch, base, data) => {
+    if (!data) return created ? [created] : [];
+    posts++;
+    created = pull({
+      head: r.row.commit_sha,
+      branch,
+      base,
+      baseSha: git(f.remote, ["rev-parse", "main"]),
+    });
+    throw Error("Response lost after creating PR");
+  };
+  await r.app.close();
+  let app = runner(r.config);
+  await once(app.server, "listening");
+  try {
+    let job = app.request({
+      op: "publication-preview",
+      owner,
+      task: r.row.id,
+      base: "main",
+      title: "PR",
+      body: "",
+    });
+    let ready = await until(
+      () => app.request({ op: "publication-status", task: r.row.id })[0],
+      (j) => j.state === "ready",
+    );
+    await app.close();
+    app = runner(r.config);
+    await once(app.server, "listening");
+    assert.equal(
+      app.request({ op: "publication-status", task: r.row.id })[0].state,
+      "expired",
+    );
+    assert.throws(
+      () =>
+        app.request({
+          op: "publication-approve",
+          owner,
+          id: job.id,
+          fingerprint: ready.plan.fingerprint,
+        }),
+      /expired/,
+    );
+    job = app.request({
+      op: "publication-preview",
+      owner,
+      task: r.row.id,
+      base: "main",
+      title: "PR",
+      body: "",
+    });
+    ready = await until(
+      () => app.request({ op: "publication-status", task: r.row.id })[0],
+      (j) => j.state === "ready",
+    );
+    app.request({
+      op: "publication-approve",
+      owner,
+      id: job.id,
+      fingerprint: ready.plan.fingerprint,
+    });
+    await until(
+      () => app.request({ op: "publication-status", task: r.row.id })[0],
+      (j) => j.state === "needs_attention",
+    );
+    assert.equal(posts, 1);
+    job = app.request({
+      op: "publication-preview",
+      owner,
+      task: r.row.id,
+      base: "main",
+      title: "PR",
+      body: "",
+    });
+    ready = await until(
+      () => app.request({ op: "publication-status", task: r.row.id })[0],
+      (j) => j.state === "ready",
+    );
+    app.request({
+      op: "publication-approve",
+      owner,
+      id: job.id,
+      fingerprint: ready.plan.fingerprint,
+    });
+    const result = await until(
+      () => app.request({ op: "publication-status", task: r.row.id })[0],
+      (j) => j.state === "published",
+    );
+    assert.equal(result.url, "https://github.com/example/repo/pull/7");
+    assert.equal(posts, 1);
+    assert.equal(f.calls.filter((c) => c[0] === "push").length, 1);
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test("creation lease refuses a racing remote branch and history guard catches secrets removed by later commits", async () => {
+  const f = fixture(),
+    r = await reviewed(f),
+    signal = new AbortController().signal;
+  try {
+    const options = {
+      git: f.command,
+      repo: f.repo,
+      task: r.row.id,
+      head: r.row.commit_sha,
+      base: "main",
+      title: "PR",
+      body: "",
+      approved: () => true,
+      signal,
+    };
+    const plan = await previewPublication(options);
+    let posts = 0;
+    const race = async (...args) => {
+      if (args[1][0] === "push")
+        git(f.remote, ["update-ref", "refs/heads/" + plan.branch, plan.baseSha]);
+      return f.command(...args);
+    };
+    await assert.rejects(
+      executePublication(
+        race,
+        async (_a, _b, _c, data) => {
+          if (data) posts++;
+          return [];
+        },
+        f.repo,
+        plan,
+        signal,
+        () => {},
+      ),
+    );
+    assert.equal(git(f.remote, ["rev-parse", plan.branch]), plan.baseSha);
+    assert.equal(posts, 0);
+    git(f.remote, ["update-ref", "-d", "refs/heads/" + plan.branch]);
+    git(f.repo, ["switch", plan.branch]);
+    writeFileSync(join(f.repo, ".env.secret"), "fixture");
+    git(f.repo, ["add", ".env.secret"]);
+    git(f.repo, [
+      "-c",
+      "user.name=test",
+      "-c",
+      "user.email=test@localhost",
+      "commit",
+      "-m",
+      "secret introduced",
+    ]);
+    git(f.repo, ["rm", ".env.secret"]);
+    git(f.repo, [
+      "-c",
+      "user.name=test",
+      "-c",
+      "user.email=test@localhost",
+      "commit",
+      "-m",
+      "secret removed",
+    ]);
+    await assert.rejects(
+      previewPublication({ ...options, head: git(f.repo, ["rev-parse", "HEAD"]) }),
+      /sensitive filename/,
+    );
+  } finally {
+    await r.app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test("native PR transport uses fixed GitHub endpoints, JSON stdin and a clean credential environment", async () => {
+  const root = mkdtempSync(join(tmpdir(), "pull-api-")),
+    bin = join(root, "gh");
+  writeFileSync(
+    bin,
+    `#!${process.execPath}\nlet text='';process.stdin.on('data',b=>text+=b);process.stdin.on('end',()=>console.log(JSON.stringify({args:process.argv.slice(2),data:JSON.parse(text),home:process.env.HOME,profile:process.env.GH_CONFIG_DIR,inherited:process.env.GH_TOKEN??null})));`,
+    { mode: 0o700 },
+  );
+  const old = process.env.GH_TOKEN;
+  process.env.GH_TOKEN = "fixture-must-not-inherit";
+  try {
+    const value = await githubPullAPI(root, join(root, "profile"), bin)(
+      url,
+      "agentd/fixture",
+      "main",
+      { title: "literal $(x)", body: "line one\n`line two`" },
+      new AbortController().signal,
+    );
+    assert.equal(value.inherited, null);
+    assert.deepEqual(value.data, {
+      title: "literal $(x)",
+      body: "line one\n`line two`",
+      head: "agentd/fixture",
+      base: "main",
+      draft: true,
+    });
+    assert.ok(value.args.includes("repos/example/repo/pulls"));
+    assert.ok(value.args.includes("POST"));
+    assert.ok(value.args.includes("--input"));
+    assert.equal(value.profile, join(root, "profile"));
+    assert.notEqual(value.home, process.env.HOME);
+  } finally {
+    if (old === undefined) delete process.env.GH_TOKEN;
+    else process.env.GH_TOKEN = old;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("restart journals uncertain remote writes without retrying; expired previews cannot be approved", async () => {
+  const f = fixture(),
+    r = await reviewed(f);
+  let app = r.app;
+  try {
+    const job = app.request({
+      op: "publication-preview",
+      owner,
+      task: r.row.id,
+      base: "main",
+      title: "PR",
+      body: "",
+    });
+    const ready = await until(
+      () => app.request({ op: "publication-status", task: r.row.id })[0],
+      (j) => j.state === "ready",
+    );
+    const db = new DatabaseSync(join(r.config.stateDir, "tasks.sqlite"));
+    try {
+      db.prepare("UPDATE publications SET expires=? WHERE id=?").run(
+        Date.now() - 1000,
+        job.id,
+      );
+      assert.throws(
+        () =>
+          app.request({
+            op: "publication-approve",
+            owner,
+            id: job.id,
+            fingerprint: ready.plan.fingerprint,
+          }),
+        /expired/,
+      );
+    } finally {
+      db.close();
+    }
+    await app.close();
+    const stopped = new DatabaseSync(join(r.config.stateDir, "tasks.sqlite"));
+    stopped.prepare("UPDATE publications SET state='creating_pr' WHERE id=?").run(job.id);
+    stopped.close();
+    app = runner(r.config);
+    await once(app.server, "listening");
+    const recovered = app.request({ op: "publication-status", task: r.row.id })[0];
+    assert.equal(recovered.state, "needs_attention");
+    assert.match(recovered.error, /may already contain/);
+    assert.equal(
+      f.calls.some((c) => c[0] === "push"),
+      false,
+    );
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test("approved PR update advances only the reviewed remote head and preserves PR metadata", async () => {
+  const f = fixture(),
+    r = await reviewed(f),
+    signal = new AbortController().signal;
+  try {
+    const first = await previewPublication({
+      git: f.command,
+      repo: f.repo,
+      task: r.row.id,
+      head: r.row.commit_sha,
+      base: "main",
+      title: "PR",
+      body: "Original body",
+      approved: () => true,
+      signal,
+    });
+    let pr = null,
+      posts = 0;
+    const api = async (_d, _b, _base, data) => {
+      if (data) {
+        posts++;
+        pr = { ...pull(first), title: data.title, body: data.body, state: "open" };
+      }
+      if (pr) pr.head.sha = git(f.remote, ["rev-parse", first.branch]);
+      return data ? pr : pr ? [pr] : [];
+    };
+    await executePublication(f.command, api, f.repo, first, signal, () => {});
+    git(f.repo, ["switch", first.branch]);
+    writeFileSync(join(f.repo, "README.md"), "second");
+    git(f.repo, ["add", "."]);
+    git(f.repo, [
+      "-c",
+      "user.name=test",
+      "-c",
+      "user.email=test@localhost",
+      "commit",
+      "-m",
+      "Second approved edit",
+    ]);
+    const head = git(f.repo, ["rev-parse", "HEAD"]),
+      task = "11111111-1111-1111-1111-111111111111";
+    git(f.repo, ["branch", "agentd/" + task, head]);
+    git(f.repo, ["update-ref", "refs/heads/" + first.branch, first.head]);
+    const options = {
+      git: f.command,
+      repo: f.repo,
+      task,
+      head,
+      base: "ignored",
+      title: "ignored",
+      body: "ignored",
+      approved: () => true,
+      signal,
+      api,
+      update: {
+        destination: url,
+        branch: first.branch,
+        head: first.head,
+        base: first.base,
+        number: 7,
+      },
+    };
+    const plan = await previewPublication(options);
+    assert.equal(plan.previousHead, first.head);
+    assert.equal(plan.title, "PR");
+    assert.equal(plan.body, "Original body");
+    assert.equal(plan.commits.length, 2);
+    assert.equal(git(f.remote, ["rev-parse", first.branch]), first.head);
+    const racing = async (...args) => {
+      if (args[1][0] === "push")
+        git(f.remote, ["update-ref", "refs/heads/" + first.branch, first.baseSha]);
+      return f.command(...args);
+    };
+    await assert.rejects(executePublication(racing, api, f.repo, plan, signal, () => {}));
+    assert.equal(git(f.remote, ["rev-parse", first.branch]), first.baseSha);
+    git(f.remote, ["update-ref", "refs/heads/" + first.branch, first.head]);
+    f.calls.splice(
+      f.calls.findLastIndex((x) => x[0] === "push"),
+      1,
+    );
+    const result = await executePublication(
+      f.command,
+      api,
+      f.repo,
+      plan,
+      signal,
+      () => {},
+    );
+    assert.equal(result.url, "https://github.com/example/repo/pull/7");
+    assert.equal(git(f.remote, ["rev-parse", first.branch]), head);
+    assert.equal(posts, 1);
+    await executePublication(f.command, api, f.repo, plan, signal, () => {});
+    assert.equal(f.calls.filter((x) => x[0] === "push").length, 2);
+    pr.state = "closed";
+    await assert.rejects(previewPublication(options), /open draft/);
+    assert.equal(posts, 1);
+  } finally {
+    await r.app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test("runner offers only same-conversation PR targets and requires a new preview approval for updates", async () => {
+  const f = fixture(),
+    r = await reviewed(f);
+  let pr = null,
+    posts = 0;
+  r.config.pullAPI = async (_dest, branch, base, data) => {
+    if (data) {
+      posts++;
+      pr = {
+        ...pull({
+          head: git(f.remote, ["rev-parse", branch]),
+          branch,
+          base,
+          baseSha: git(f.remote, ["rev-parse", base]),
+        }),
+        title: data.title,
+        body: data.body,
+        state: "open",
+      };
+    }
+    if (pr) pr.head.sha = git(f.remote, ["rev-parse", pr.head.ref]);
+    return data ? pr : pr ? [pr] : [];
+  };
+  r.config.command = () => [
+    process.execPath,
+    ["-e", "require('fs').appendFileSync('README.md',' next')"],
+  ];
+  await r.app.close();
+  let app = runner(r.config);
+  await once(app.server, "listening");
+  try {
+    const publish = async (task, updateOf) => {
+      const job = app.request({
+        op: "publication-preview",
+        owner,
+        task,
+        updateOf,
+        base: "main",
+        title: "PR",
+        body: "",
+      });
+      const ready = await until(
+        () => app.request({ op: "publication-status", task })[0],
+        (j) => j.state !== "preparing",
+      );
+      assert.equal(ready.state, "ready", ready.error);
+      return { job, ready };
+    };
+    const first = await publish(r.row.id);
+    app.request({
+      op: "publication-approve",
+      owner,
+      id: first.job.id,
+      fingerprint: first.ready.plan.fingerprint,
+    });
+    await until(
+      () => app.request({ op: "publication-status", task: r.row.id })[0],
+      (j) => j.state === "published",
+    );
+    const next = app.request({
+      op: "create",
+      conversation: r.row.conversation,
+      adapter: "claude",
+      mode: "edit",
+      prompt: "next",
+    });
+    app.request({ op: "approve", id: next.id });
+    await until(
+      () => app.request({ op: "show", id: next.id }).task,
+      (t) => t.status === "succeeded",
+    );
+    const view = app.request({ op: "review", id: next.id });
+    app.request({ op: "validate", id: next.id, tree: view.tree });
+    await until(
+      () => JSON.parse(app.request({ op: "show", id: next.id }).task.checks ?? "{}"),
+      (c) => c.status === "passed",
+    );
+    const committed = app.request({
+      op: "commit",
+      id: next.id,
+      tree: view.tree,
+      message: "Next",
+    });
+    const targets = app.request({ op: "publication-targets", task: next.id });
+    assert.equal(targets.length, 1);
+    assert.equal(targets[0].id, first.job.id);
+    assert.throws(
+      () =>
+        app.request({
+          op: "publication-preview",
+          owner,
+          task: next.id,
+          updateOf: "unknown",
+          base: "main",
+          title: "PR",
+          body: "",
+        }),
+      /this conversation/,
+    );
+    const update = await publish(next.id, first.job.id);
+    assert.equal(update.ready.plan.previousHead, r.row.commit_sha);
+    assert.equal(git(f.remote, ["rev-parse", r.row.branch]), r.row.commit_sha);
+    app.request({
+      op: "publication-approve",
+      owner,
+      id: update.job.id,
+      fingerprint: update.ready.plan.fingerprint,
+    });
+    const result = await until(
+      () => app.request({ op: "publication-status", task: next.id })[0],
+      (j) => ["published", "needs_attention"].includes(j.state),
+    );
+    assert.equal(result.state, "published", result.error);
+    assert.equal(git(f.remote, ["rev-parse", r.row.branch]), committed.commit_sha);
+    assert.equal(posts, 1);
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test("publication scans every outgoing commit for credential content even when a later commit removes it", async () => {
+  const f = fixture(),
+    task = "11111111-1111-4111-8111-111111111111",
+    branch = "agentd/" + task,
+    signal = new AbortController().signal;
+  try {
+    git(f.repo, ["switch", "-c", branch]);
+    const token = ["gh", "p_", "aB3dE6gH9jK2mN5pQ8sT1vW4xY7zA0bC3dE6"].join("");
+    writeFileSync(join(f.repo, "ordinary.txt"), token);
+    git(f.repo, ["add", "."]);
+    git(f.repo, [
+      "-c",
+      "user.name=test",
+      "-c",
+      "user.email=test@localhost",
+      "commit",
+      "-m",
+      "introduced",
+    ]);
+    git(f.repo, ["rm", "ordinary.txt"]);
+    git(f.repo, [
+      "-c",
+      "user.name=test",
+      "-c",
+      "user.email=test@localhost",
+      "commit",
+      "-m",
+      "removed",
+    ]);
+    await assert.rejects(
+      previewPublication({
+        git: f.command,
+        repo: f.repo,
+        task,
+        head: git(f.repo, ["rev-parse", "HEAD"]),
+        base: "main",
+        title: "PR",
+        body: "",
+        approved: () => true,
+        signal,
+      }),
+      (error) => {
+        assert.match(error.message, /possible credential content/);
+        assert.ok(!error.message.includes(token));
+        return true;
+      },
+    );
+    assert.equal(
+      f.calls.some((args) => args[0] === "push"),
+      false,
+    );
+  } finally {
+    rmSync(f.root, { recursive: true, force: true });
+  }
 });

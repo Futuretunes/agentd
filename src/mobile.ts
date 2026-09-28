@@ -113,8 +113,7 @@ export function mobile(c: Config) {
             now = Date.now();
           for (const [key, value] of attempts)
             if (value.until < now) attempts.delete(key);
-          for (const [key, value] of sessions)
-            if (value < now) sessions.delete(key);
+          for (const [key, value] of sessions) if (value < now) sessions.delete(key);
           const attempt = attempts.get(address) ?? {
             count: 0,
             until: now + 60000,
@@ -136,8 +135,7 @@ export function mobile(c: Config) {
           }
           const id = randomBytes(32).toString("hex");
           sessions.set(id, now + 43200000);
-          if (sessions.size > 100)
-            sessions.delete(sessions.keys().next().value!);
+          if (sessions.size > 100) sessions.delete(sessions.keys().next().value!);
           res.setHeader(
             "Set-Cookie",
             `agentd_session=${id}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=43200`,
@@ -168,14 +166,9 @@ export function mobile(c: Config) {
           send(
             200,
             await call({
-              op:
-                input.action === "preview"
-                  ? "storage-preview"
-                  : "storage-cleanup",
+              op: input.action === "preview" ? "storage-preview" : "storage-cleanup",
               owner: accountOwner,
-              ...(input.action === "cleanup"
-                ? { fingerprint: input.fingerprint }
-                : {}),
+              ...(input.action === "cleanup" ? { fingerprint: input.fingerprint } : {}),
             }),
           );
           return;
@@ -367,8 +360,7 @@ export function mobile(c: Config) {
             send(200, await call({ op: "repository-cancel", job: input.job }));
             return;
           }
-          if (input.action !== "start")
-            throw Error("Unsupported repository action");
+          if (input.action !== "start") throw Error("Unsupported repository action");
           send(
             200,
             await call({
@@ -454,9 +446,7 @@ export function mobile(c: Config) {
           send(200, await call({ op: "projects" }));
           return;
         }
-        const threads = path.match(
-          /^\/api\/projects\/([0-9a-z-]+)\/conversations$/,
-        );
+        const threads = path.match(/^\/api\/projects\/([0-9a-z-]+)\/conversations$/);
         if (threads && req.method === "GET") {
           send(200, await call({ op: "conversations", project: threads[1] }));
           return;
@@ -548,16 +538,10 @@ export function mobile(c: Config) {
   server.listen(c.port, c.host);
   return server;
 }
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.umask(0o077);
   const config = JSON.parse(
-    readFileSync(
-      process.env.AGENTD_MOBILE_CONFIG ?? "/etc/agentd/mobile.json",
-      "utf8",
-    ),
+    readFileSync(process.env.AGENTD_MOBILE_CONFIG ?? "/etc/agentd/mobile.json", "utf8"),
   );
   const server = mobile({
     socket: "/run/agentd/control.sock",
@@ -566,9 +550,7 @@ if (
     ...config,
   });
   server.on("listening", () =>
-    console.log(
-      JSON.stringify({ event: "mobile_listening", origin: config.origin }),
-    ),
+    console.log(JSON.stringify({ event: "mobile_listening", origin: config.origin })),
   );
   server.on("error", (error) => {
     console.error(error.message);

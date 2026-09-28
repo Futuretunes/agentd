@@ -28,19 +28,10 @@ function baseline(db: DatabaseSync, repo: string) {
     .all()
     .map((x) => x.name);
   if (!columns.includes("attachments"))
-    db.exec(
-      "ALTER TABLE tasks ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'",
-    );
-  if (!columns.includes("parent"))
-    db.exec("ALTER TABLE tasks ADD COLUMN parent TEXT");
-  for (const name of [
-    "revision_of",
-    "seed_tree",
-    "merge_parent",
-    "conflict_paths",
-  ])
-    if (!columns.includes(name))
-      db.exec(`ALTER TABLE tasks ADD COLUMN ${name} TEXT`);
+    db.exec("ALTER TABLE tasks ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'");
+  if (!columns.includes("parent")) db.exec("ALTER TABLE tasks ADD COLUMN parent TEXT");
+  for (const name of ["revision_of", "seed_tree", "merge_parent", "conflict_paths"])
+    if (!columns.includes(name)) db.exec(`ALTER TABLE tasks ADD COLUMN ${name} TEXT`);
   db.exec(
     "CREATE UNIQUE INDEX IF NOT EXISTS tasks_revision_of ON tasks(revision_of) WHERE revision_of IS NOT NULL",
   );
@@ -49,8 +40,7 @@ function baseline(db: DatabaseSync, repo: string) {
   db.exec(
     "CREATE UNIQUE INDEX IF NOT EXISTS tasks_retry_of ON tasks(retry_of) WHERE retry_of IS NOT NULL",
   );
-  if (!columns.includes("project"))
-    db.exec("ALTER TABLE tasks ADD COLUMN project TEXT");
+  if (!columns.includes("project")) db.exec("ALTER TABLE tasks ADD COLUMN project TEXT");
   if (!columns.includes("conversation"))
     db.exec("ALTER TABLE tasks ADD COLUMN conversation TEXT");
   db.exec(`CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY, name TEXT NOT NULL, repo TEXT NOT NULL UNIQUE, created TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0);
@@ -65,14 +55,8 @@ function baseline(db: DatabaseSync, repo: string) {
     if (!columns.includes(name))
       db.exec(`ALTER TABLE tasks ADD COLUMN ${name} ${definition}`);
   }
-  for (const name of [
-    "execution",
-    "run_overrides",
-    "settings_error",
-    "restart_of",
-  ])
-    if (!columns.includes(name))
-      db.exec(`ALTER TABLE tasks ADD COLUMN ${name} TEXT`);
+  for (const name of ["execution", "run_overrides", "settings_error", "restart_of"])
+    if (!columns.includes(name)) db.exec(`ALTER TABLE tasks ADD COLUMN ${name} TEXT`);
   db.exec(
     "CREATE UNIQUE INDEX IF NOT EXISTS tasks_restart_of ON tasks(restart_of) WHERE restart_of IS NOT NULL",
   );
@@ -108,9 +92,12 @@ function baseline(db: DatabaseSync, repo: string) {
     "CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, at TEXT NOT NULL, action TEXT NOT NULL, task TEXT, detail TEXT)",
   );
   const defaultRepo = repo;
-  db.prepare(
-    "INSERT OR IGNORE INTO projects(id,name,repo,created) VALUES(?,?,?,?)",
-  ).run("default", "Original workspace", defaultRepo, new Date().toISOString());
+  db.prepare("INSERT OR IGNORE INTO projects(id,name,repo,created) VALUES(?,?,?,?)").run(
+    "default",
+    "Original workspace",
+    defaultRepo,
+    new Date().toISOString(),
+  );
   db.prepare("UPDATE tasks SET project='default' WHERE project IS NULL").run();
   const migrate = (row: any, seen = new Set<string>()): string => {
     if (row.conversation) return String(row.conversation);
@@ -127,9 +114,7 @@ function baseline(db: DatabaseSync, repo: string) {
     return id;
   };
   for (const row of db
-    .prepare(
-      "SELECT * FROM tasks WHERE conversation IS NULL ORDER BY created,id",
-    )
+    .prepare("SELECT * FROM tasks WHERE conversation IS NULL ORDER BY created,id")
     .all())
     migrate(row);
 }
@@ -150,13 +135,10 @@ function validate(db: DatabaseSync, version = TASK_SCHEMA_VERSION) {
     if (version >= 2) creationSchema(expected);
     if (
       version >= 2 &&
-      db
-        .prepare("SELECT sql FROM sqlite_master WHERE name='creation_requests'")
-        .get()?.sql !==
+      db.prepare("SELECT sql FROM sqlite_master WHERE name='creation_requests'").get()
+        ?.sql !==
         expected
-          .prepare(
-            "SELECT sql FROM sqlite_master WHERE name='creation_requests'",
-          )
+          .prepare("SELECT sql FROM sqlite_master WHERE name='creation_requests'")
           .get()?.sql
     )
       throw Error("Invalid creation receipt schema");
@@ -179,10 +161,7 @@ function validate(db: DatabaseSync, version = TASK_SCHEMA_VERSION) {
           .prepare(`PRAGMA table_info(${name})`)
           .all()
           .map((row) => [row.name, row.type, row.pk]);
-      if (
-        JSON.stringify(columns(db).sort()) !==
-        JSON.stringify(columns(expected).sort())
-      )
+      if (JSON.stringify(columns(db).sort()) !== JSON.stringify(columns(expected).sort()))
         throw Error(`Invalid task schema: ${name}`);
     }
     for (const { name, sql } of expected
@@ -193,8 +172,7 @@ function validate(db: DatabaseSync, version = TASK_SCHEMA_VERSION) {
       const actual = db
         .prepare("SELECT sql FROM sqlite_master WHERE type='index' AND name=?")
         .get(name!);
-      if (actual?.sql !== sql)
-        throw Error(`Invalid task schema index: ${name}`);
+      if (actual?.sql !== sql) throw Error(`Invalid task schema index: ${name}`);
     }
     if (
       db
@@ -211,11 +189,7 @@ function validate(db: DatabaseSync, version = TASK_SCHEMA_VERSION) {
 
 export function initializeTaskDatabase(db: DatabaseSync, repo: string) {
   const version = taskSchemaVersion(db);
-  if (
-    !Number.isInteger(version) ||
-    version < 0 ||
-    version > TASK_SCHEMA_VERSION
-  ) {
+  if (!Number.isInteger(version) || version < 0 || version > TASK_SCHEMA_VERSION) {
     throw Error(
       `Unsupported task schema version ${version}; supported through ${TASK_SCHEMA_VERSION}`,
     );

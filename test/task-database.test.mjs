@@ -1,13 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  rmSync,
-} from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -59,10 +53,7 @@ test("ancestry errors roll back schema, data and version; correction can retry",
     legacy(db);
     db.exec("UPDATE tasks SET parent='b' WHERE id='a'");
     const before = dump(db);
-    assert.throws(
-      () => initializeTaskDatabase(db, "/fixture/repo"),
-      /ancestry/,
-    );
+    assert.throws(() => initializeTaskDatabase(db, "/fixture/repo"), /ancestry/);
     assert.deepEqual(dump(db), before);
     db.exec("UPDATE tasks SET parent=NULL WHERE id='a'");
     initializeTaskDatabase(db, "/fixture/repo");
@@ -96,10 +87,7 @@ test("current version does not silently repair missing columns or indexes", () =
     initializeTaskDatabase(db, "/fixture/repo");
     db.exec("DROP INDEX tasks_retry_of");
     const before = dump(db);
-    assert.throws(
-      () => initializeTaskDatabase(db, "/fixture/repo"),
-      /schema index/,
-    );
+    assert.throws(() => initializeTaskDatabase(db, "/fixture/repo"), /schema index/);
     assert.deepEqual(dump(db), before);
   } finally {
     db.close();
@@ -130,10 +118,7 @@ test("future schema refuses runner startup before status changes or worker clean
       /Unsupported task schema version 999/,
     );
     assert.deepEqual(readFileSync(file), bytes);
-    assert.equal(
-      readFileSync(join(state, "worker-preserve", "marker"), "utf8"),
-      "keep",
-    );
+    assert.equal(readFileSync(join(state, "worker-preserve", "marker"), "utf8"), "keep");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -151,11 +136,7 @@ test("version-one receipt migration is atomic with recovery and current receipts
     assert.throws(() => initializeTaskDatabase(db, "/fixture/repo"));
     assert.deepEqual(dump(db), before);
     assert.equal(
-      db
-        .prepare(
-          "SELECT name FROM sqlite_master WHERE name='creation_requests'",
-        )
-        .get(),
+      db.prepare("SELECT name FROM sqlite_master WHERE name='creation_requests'").get(),
       undefined,
     );
     db.exec("UPDATE tasks SET checks=NULL WHERE id='a'");
@@ -171,10 +152,7 @@ test("version-one receipt migration is atomic with recovery and current receipts
     );
     db.exec("DROP TABLE creation_requests");
     const broken = dump(db);
-    assert.throws(
-      () => initializeTaskDatabase(db, "/fixture/repo"),
-      /receipt schema/,
-    );
+    assert.throws(() => initializeTaskDatabase(db, "/fixture/repo"), /receipt schema/);
     assert.deepEqual(dump(db), broken);
   } finally {
     db.close();

@@ -20,10 +20,7 @@ export type Receipt = {
 };
 export function creationRequests(db: DatabaseSync) {
   function inspect(input: any, scope: string): Receipt | undefined {
-    if (
-      !["create", "project-create"].includes(input.op) ||
-      input.requestId === undefined
-    )
+    if (!["create", "project-create"].includes(input.op) || input.requestId === undefined)
       return;
     if (
       typeof input.requestId !== "string" ||
@@ -55,10 +52,7 @@ export function creationRequests(db: DatabaseSync) {
         "SELECT operation,payload_hash,result_id FROM creation_requests WHERE scope=? AND request_id=?",
       )
       .get(scope, requestId);
-    if (
-      prior &&
-      (prior.operation !== input.op || prior.payload_hash !== payloadHash)
-    )
+    if (prior && (prior.operation !== input.op || prior.payload_hash !== payloadHash))
       throw Error(
         "This request identifier was already used for different work. Review the earlier result before starting a new request.",
       );
@@ -72,8 +66,7 @@ export function creationRequests(db: DatabaseSync) {
   }
   function save(receipt: Receipt | undefined, resultId: string) {
     if (!receipt) return;
-    if (!db.isTransaction)
-      throw Error("Creation receipt requires a transaction");
+    if (!db.isTransaction) throw Error("Creation receipt requires a transaction");
     db.prepare(
       "INSERT INTO creation_requests(scope,request_id,operation,payload_hash,result_id,created) VALUES(?,?,?,?,?,?)",
     ).run(

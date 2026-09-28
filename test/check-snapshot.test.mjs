@@ -1,34 +1,309 @@
-import {test} from 'node:test';
-import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,readdirSync,rmSync} from 'node:fs';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
-import {once} from 'node:events';
-import {runner} from '../src/runner.ts';
-import {git,snapshot,checkSnapshot} from '../src/changes.ts';
-import {isolated} from '../src/isolation.ts';
-const pause=()=>new Promise(r=>setTimeout(r,20));
-async function wait(fn){for(let n=0;n<400;n++){const value=fn();if(value)return value;await pause();}throw Error('Fixture timed out');}
-function fixture(){const root=mkdtempSync(join(tmpdir(),'check-snapshot-')),repo=join(root,'repo'),state=join(root,'state');mkdirSync(repo);mkdirSync(state);git(repo,['init','-b','main']);for(const [name,text] of Object.entries({'README.md':'before','.gitignore':'dist/\n','.gitattributes':'README.md export-ignore\n','package.json':JSON.stringify({scripts:{test:'node test.cjs'}}),'package-lock.json':'{}','test.cjs':"if(require('./dist/impl.cjs')!==42)process.exit(1)"}))writeFileSync(join(repo,name),text);git(repo,['add','.']);git(repo,['-c','user.name=fixture','-c','user.email=fixture@localhost','commit','-m','base']);return{root,repo,state,revision:git(repo,['rev-parse','HEAD'])};}
-test('check materialization uses the approved tree, excluding ignored, attachment and later content',()=>{
- const f=fixture();let prepared;
- try{writeFileSync(join(f.repo,'README.md'),'approved');mkdirSync(join(f.repo,'dist'));writeFileSync(join(f.repo,'dist','impl.cjs'),'module.exports=42');mkdirSync(join(f.repo,'.agentd-input'));writeFileSync(join(f.repo,'.agentd-input','image'),'private');const review=snapshot(f.repo,f.revision,f.state);writeFileSync(join(f.repo,'README.md'),'later');prepared=checkSnapshot(f.repo,f.revision,review.tree,f.state);assert.equal(readFileSync(join(prepared.worktree,'README.md'),'utf8'),'approved');assert.equal(existsSync(join(prepared.worktree,'dist')),false);assert.equal(existsSync(join(prepared.worktree,'.agentd-input')),false);assert.equal(git(prepared.worktree,['write-tree']),review.tree);const dir=prepared.worktree;prepared.cleanup();prepared=null;assert.equal(existsSync(dir),false);assert.equal(git(f.repo,['worktree','list','--porcelain']).includes('check-tree-'),false);assert.equal(readFileSync(join(f.repo,'README.md'),'utf8'),'later');}finally{prepared?.cleanup();rmSync(f.root,{recursive:true,force:true});}
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { once } from "node:events";
+import { runner } from "../src/runner.ts";
+import { git, snapshot, checkSnapshot } from "../src/changes.ts";
+import { isolated } from "../src/isolation.ts";
+const pause = () => new Promise((r) => setTimeout(r, 20));
+async function wait(fn) {
+  for (let n = 0; n < 400; n++) {
+    const value = fn();
+    if (value) return value;
+    await pause();
+  }
+  throw Error("Fixture timed out");
+}
+function fixture() {
+  const root = mkdtempSync(join(tmpdir(), "check-snapshot-")),
+    repo = join(root, "repo"),
+    state = join(root, "state");
+  mkdirSync(repo);
+  mkdirSync(state);
+  git(repo, ["init", "-b", "main"]);
+  for (const [name, text] of Object.entries({
+    "README.md": "before",
+    ".gitignore": "dist/\n",
+    ".gitattributes": "README.md export-ignore\n",
+    "package.json": JSON.stringify({ scripts: { test: "node test.cjs" } }),
+    "package-lock.json": "{}",
+    "test.cjs": "if(require('./dist/impl.cjs')!==42)process.exit(1)",
+  }))
+    writeFileSync(join(repo, name), text);
+  git(repo, ["add", "."]);
+  git(repo, [
+    "-c",
+    "user.name=fixture",
+    "-c",
+    "user.email=fixture@localhost",
+    "commit",
+    "-m",
+    "base",
+  ]);
+  return { root, repo, state, revision: git(repo, ["rev-parse", "HEAD"]) };
+}
+test("check materialization uses the approved tree, excluding ignored, attachment and later content", () => {
+  const f = fixture();
+  let prepared;
+  try {
+    writeFileSync(join(f.repo, "README.md"), "approved");
+    mkdirSync(join(f.repo, "dist"));
+    writeFileSync(join(f.repo, "dist", "impl.cjs"), "module.exports=42");
+    mkdirSync(join(f.repo, ".agentd-input"));
+    writeFileSync(join(f.repo, ".agentd-input", "image"), "private");
+    const review = snapshot(f.repo, f.revision, f.state);
+    writeFileSync(join(f.repo, "README.md"), "later");
+    prepared = checkSnapshot(f.repo, f.revision, review.tree, f.state);
+    assert.equal(readFileSync(join(prepared.worktree, "README.md"), "utf8"), "approved");
+    assert.equal(existsSync(join(prepared.worktree, "dist")), false);
+    assert.equal(existsSync(join(prepared.worktree, ".agentd-input")), false);
+    assert.equal(git(prepared.worktree, ["write-tree"]), review.tree);
+    const dir = prepared.worktree;
+    prepared.cleanup();
+    prepared = null;
+    assert.equal(existsSync(dir), false);
+    assert.equal(
+      git(f.repo, ["worktree", "list", "--porcelain"]).includes("check-tree-"),
+      false,
+    );
+    assert.equal(readFileSync(join(f.repo, "README.md"), "utf8"), "later");
+  } finally {
+    prepared?.cleanup();
+    rmSync(f.root, { recursive: true, force: true });
+  }
 });
-test('ignored implementation cannot make reviewed checks pass; corrected tracked content can',async()=>{
- const f=fixture(),deps=join(f.root,'dependencies');mkdirSync(deps);const checkPaths=[];
- const app=runner({repo:f.repo,stateDir:f.state,worktrees:join(f.root,'trees'),logs:join(f.root,'logs'),editing:true,editAdapters:['claude'],command:()=>[process.execPath,['-e',"const fs=require('fs');fs.writeFileSync('README.md','edited');fs.mkdirSync('dist');fs.writeFileSync('dist/impl.cjs','module.exports=42')"]],isolate:(tree,state,command,args,adapter,dependencies,...rest)=>{if(adapter)return{command,args,cleanup(){}};checkPaths.push(tree);return process.env.AGENTD_TEST_ISOLATION==='1'?isolated(tree,state,command,args,adapter,dependencies,...rest):{command,args,cleanup(){}};}});await once(app.server,'listening');
- try{const task=app.request({op:'create',adapter:'claude',mode:'edit',prompt:'fixture'});app.request({op:'approve',id:task.id});const done=await wait(()=>{const t=app.request({op:'show',id:task.id}).task;return t.status==='succeeded'&&t;});app.request({op:'project-checks',id:'default',dependencies:deps});let review=app.request({op:'review',id:task.id});app.request({op:'validate',id:task.id,tree:review.tree});const checks=()=>{const c=JSON.parse(app.request({op:'show',id:task.id}).task.checks??'{}');return c.status!=='running'&&c.status&&c;};assert.equal((await wait(checks)).status,'failed');assert.throws(()=>app.request({op:'commit',id:task.id,tree:review.tree,message:'must fail'}),/Checks must pass/);assert.notEqual(checkPaths[0],done.worktree);assert.equal(existsSync(checkPaths[0]),false);
- writeFileSync(join(done.worktree,'impl.cjs'),'module.exports=42');writeFileSync(join(done.worktree,'test.cjs'),"if(require('./impl.cjs')!==42)process.exit(1)");review=app.request({op:'review',id:task.id});app.request({op:'validate',id:task.id,tree:review.tree});assert.equal((await wait(checks)).status,'passed');assert.equal(existsSync(checkPaths[1]),false);assert.equal(readFileSync(join(done.worktree,'dist','impl.cjs'),'utf8'),'module.exports=42');assert.equal(app.request({op:'commit',id:task.id,tree:review.tree,message:'approved tracked fix'}).review,'committed');assert.equal(readdirSync(f.state).some(n=>n.startsWith('check-tree-')),false);
- }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
+test("ignored implementation cannot make reviewed checks pass; corrected tracked content can", async () => {
+  const f = fixture(),
+    deps = join(f.root, "dependencies");
+  mkdirSync(deps);
+  const checkPaths = [];
+  const app = runner({
+    repo: f.repo,
+    stateDir: f.state,
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    editing: true,
+    editAdapters: ["claude"],
+    command: () => [
+      process.execPath,
+      [
+        "-e",
+        "const fs=require('fs');fs.writeFileSync('README.md','edited');fs.mkdirSync('dist');fs.writeFileSync('dist/impl.cjs','module.exports=42')",
+      ],
+    ],
+    isolate: (tree, state, command, args, adapter, dependencies, ...rest) => {
+      if (adapter) return { command, args, cleanup() {} };
+      checkPaths.push(tree);
+      return process.env.AGENTD_TEST_ISOLATION === "1"
+        ? isolated(tree, state, command, args, adapter, dependencies, ...rest)
+        : { command, args, cleanup() {} };
+    },
+  });
+  await once(app.server, "listening");
+  try {
+    const task = app.request({
+      op: "create",
+      adapter: "claude",
+      mode: "edit",
+      prompt: "fixture",
+    });
+    app.request({ op: "approve", id: task.id });
+    const done = await wait(() => {
+      const t = app.request({ op: "show", id: task.id }).task;
+      return t.status === "succeeded" && t;
+    });
+    app.request({ op: "project-checks", id: "default", dependencies: deps });
+    let review = app.request({ op: "review", id: task.id });
+    app.request({ op: "validate", id: task.id, tree: review.tree });
+    const checks = () => {
+      const c = JSON.parse(app.request({ op: "show", id: task.id }).task.checks ?? "{}");
+      return c.status !== "running" && c.status && c;
+    };
+    assert.equal((await wait(checks)).status, "failed");
+    assert.throws(
+      () =>
+        app.request({
+          op: "commit",
+          id: task.id,
+          tree: review.tree,
+          message: "must fail",
+        }),
+      /Checks must pass/,
+    );
+    assert.notEqual(checkPaths[0], done.worktree);
+    assert.equal(existsSync(checkPaths[0]), false);
+    writeFileSync(join(done.worktree, "impl.cjs"), "module.exports=42");
+    writeFileSync(
+      join(done.worktree, "test.cjs"),
+      "if(require('./impl.cjs')!==42)process.exit(1)",
+    );
+    review = app.request({ op: "review", id: task.id });
+    app.request({ op: "validate", id: task.id, tree: review.tree });
+    assert.equal((await wait(checks)).status, "passed");
+    assert.equal(existsSync(checkPaths[1]), false);
+    assert.equal(
+      readFileSync(join(done.worktree, "dist", "impl.cjs"), "utf8"),
+      "module.exports=42",
+    );
+    assert.equal(
+      app.request({
+        op: "commit",
+        id: task.id,
+        tree: review.tree,
+        message: "approved tracked fix",
+      }).review,
+      "committed",
+    );
+    assert.equal(
+      readdirSync(f.state).some((n) => n.startsWith("check-tree-")),
+      false,
+    );
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
 });
-test('failed materialization and cancelled checks remove temporary worktrees',async()=>{
- const f=fixture();let checkedPath;
- assert.throws(()=>checkSnapshot(f.repo,f.revision,'f'.repeat(40),f.state));assert.equal(readdirSync(f.state).length,0);
- const app=runner({repo:f.repo,stateDir:f.state,worktrees:join(f.root,'trees'),logs:join(f.root,'logs'),editing:true,editAdapters:['claude'],command:()=>[process.execPath,['-e',"require('fs').writeFileSync('README.md','edited')"]],isolate:(tree,_state,command,args,adapter)=>{if(adapter)return{command,args,cleanup(){}};checkedPath=tree;return{command:process.execPath,args:['-e','setInterval(()=>{},1000)'],cleanup(){}};}});await once(app.server,'listening');
- try{const t=app.request({op:'create',adapter:'claude',mode:'edit',prompt:'fixture'});app.request({op:'approve',id:t.id});await wait(()=>app.request({op:'show',id:t.id}).task.status==='succeeded');app.request({op:'project-checks',id:'default',dependencies:f.repo});const review=app.request({op:'review',id:t.id});app.request({op:'validate',id:t.id,tree:review.tree});assert.ok(existsSync(checkedPath));app.request({op:'cancel',id:t.id});await wait(()=>JSON.parse(app.request({op:'show',id:t.id}).task.checks).status==='cancelled');assert.equal(existsSync(checkedPath),false);assert.equal(git(f.repo,['worktree','list','--porcelain']).includes('check-tree-'),false);}finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
+test("failed materialization and cancelled checks remove temporary worktrees", async () => {
+  const f = fixture();
+  let checkedPath;
+  assert.throws(() => checkSnapshot(f.repo, f.revision, "f".repeat(40), f.state));
+  assert.equal(readdirSync(f.state).length, 0);
+  const app = runner({
+    repo: f.repo,
+    stateDir: f.state,
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    editing: true,
+    editAdapters: ["claude"],
+    command: () => [
+      process.execPath,
+      ["-e", "require('fs').writeFileSync('README.md','edited')"],
+    ],
+    isolate: (tree, _state, command, args, adapter) => {
+      if (adapter) return { command, args, cleanup() {} };
+      checkedPath = tree;
+      return {
+        command: process.execPath,
+        args: ["-e", "setInterval(()=>{},1000)"],
+        cleanup() {},
+      };
+    },
+  });
+  await once(app.server, "listening");
+  try {
+    const t = app.request({
+      op: "create",
+      adapter: "claude",
+      mode: "edit",
+      prompt: "fixture",
+    });
+    app.request({ op: "approve", id: t.id });
+    await wait(() => app.request({ op: "show", id: t.id }).task.status === "succeeded");
+    app.request({ op: "project-checks", id: "default", dependencies: f.repo });
+    const review = app.request({ op: "review", id: t.id });
+    app.request({ op: "validate", id: t.id, tree: review.tree });
+    assert.ok(existsSync(checkedPath));
+    app.request({ op: "cancel", id: t.id });
+    await wait(
+      () =>
+        JSON.parse(app.request({ op: "show", id: t.id }).task.checks).status ===
+        "cancelled",
+    );
+    assert.equal(existsSync(checkedPath), false);
+    assert.equal(
+      git(f.repo, ["worktree", "list", "--porcelain"]).includes("check-tree-"),
+      false,
+    );
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
 });
-test('legacy passing checks are invalidated on restart and committed files can be rechecked',async()=>{
- const {DatabaseSync}=await import('node:sqlite');const f=fixture();const config={repo:f.repo,stateDir:f.state,worktrees:join(f.root,'trees'),logs:join(f.root,'logs'),editing:true,editAdapters:['claude'],command:()=>[process.execPath,['-e',"require('fs').writeFileSync('README.md','edited')"]],isolate:(_t,_s,command,args,adapter)=>({command:adapter?command:process.execPath,args:adapter?args:['-e',''],cleanup(){}})};
- let app=runner(config);await once(app.server,'listening');
- try{const t=app.request({op:'create',adapter:'claude',mode:'edit',prompt:'fixture'});app.request({op:'approve',id:t.id});await wait(()=>app.request({op:'show',id:t.id}).task.status==='succeeded');app.request({op:'project-checks',id:'default',dependencies:f.repo});const view=app.request({op:'review',id:t.id});app.request({op:'validate',id:t.id,tree:view.tree});await wait(()=>JSON.parse(app.request({op:'show',id:t.id}).task.checks).status==='passed');const committed=app.request({op:'commit',id:t.id,tree:view.tree,message:'reviewed'});await app.close();const db=new DatabaseSync(join(f.state,'tasks.sqlite'));db.prepare("UPDATE tasks SET checks=json_remove(checks,'$.input') WHERE id=?").run(t.id);db.close();app=runner(config);await once(app.server,'listening');assert.equal(app.request({op:'review',id:t.id}).checks.status,'stale');assert.equal(app.request({op:'show',id:t.id}).task.commit_sha,committed.commit_sha);app.request({op:'validate',id:t.id,tree:view.tree});await wait(()=>JSON.parse(app.request({op:'show',id:t.id}).task.checks).status==='passed');assert.equal(app.request({op:'review',id:t.id}).checks.input,'git-tree-v1');assert.equal(app.request({op:'show',id:t.id}).task.commit_sha,committed.commit_sha);writeFileSync(join(committed.worktree,'README.md'),'different');const changed=app.request({op:'review',id:t.id});assert.throws(()=>app.request({op:'validate',id:t.id,tree:changed.tree}),/Committed files changed/);}finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
+test("legacy passing checks are invalidated on restart and committed files can be rechecked", async () => {
+  const { DatabaseSync } = await import("node:sqlite");
+  const f = fixture();
+  const config = {
+    repo: f.repo,
+    stateDir: f.state,
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    editing: true,
+    editAdapters: ["claude"],
+    command: () => [
+      process.execPath,
+      ["-e", "require('fs').writeFileSync('README.md','edited')"],
+    ],
+    isolate: (_t, _s, command, args, adapter) => ({
+      command: adapter ? command : process.execPath,
+      args: adapter ? args : ["-e", ""],
+      cleanup() {},
+    }),
+  };
+  let app = runner(config);
+  await once(app.server, "listening");
+  try {
+    const t = app.request({
+      op: "create",
+      adapter: "claude",
+      mode: "edit",
+      prompt: "fixture",
+    });
+    app.request({ op: "approve", id: t.id });
+    await wait(() => app.request({ op: "show", id: t.id }).task.status === "succeeded");
+    app.request({ op: "project-checks", id: "default", dependencies: f.repo });
+    const view = app.request({ op: "review", id: t.id });
+    app.request({ op: "validate", id: t.id, tree: view.tree });
+    await wait(
+      () =>
+        JSON.parse(app.request({ op: "show", id: t.id }).task.checks).status === "passed",
+    );
+    const committed = app.request({
+      op: "commit",
+      id: t.id,
+      tree: view.tree,
+      message: "reviewed",
+    });
+    await app.close();
+    const db = new DatabaseSync(join(f.state, "tasks.sqlite"));
+    db.prepare("UPDATE tasks SET checks=json_remove(checks,'$.input') WHERE id=?").run(
+      t.id,
+    );
+    db.close();
+    app = runner(config);
+    await once(app.server, "listening");
+    assert.equal(app.request({ op: "review", id: t.id }).checks.status, "stale");
+    assert.equal(
+      app.request({ op: "show", id: t.id }).task.commit_sha,
+      committed.commit_sha,
+    );
+    app.request({ op: "validate", id: t.id, tree: view.tree });
+    await wait(
+      () =>
+        JSON.parse(app.request({ op: "show", id: t.id }).task.checks).status === "passed",
+    );
+    assert.equal(app.request({ op: "review", id: t.id }).checks.input, "git-tree-v1");
+    assert.equal(
+      app.request({ op: "show", id: t.id }).task.commit_sha,
+      committed.commit_sha,
+    );
+    writeFileSync(join(committed.worktree, "README.md"), "different");
+    const changed = app.request({ op: "review", id: t.id });
+    assert.throws(
+      () => app.request({ op: "validate", id: t.id, tree: changed.tree }),
+      /Committed files changed/,
+    );
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
 });

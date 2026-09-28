@@ -85,8 +85,7 @@ test("browser approvals and missing mutation audits bind to a session pseudonym 
       name: "private renamed project",
     });
     assert.equal(
-      (await call({ op: "project-rename", id: project.id, name: "no owner" }))
-        .ok,
+      (await call({ op: "project-rename", id: project.id, name: "no owner" })).ok,
       false,
     );
     const createRequest = {
@@ -114,15 +113,11 @@ test("browser approvals and missing mutation audits bind to a session pseudonym 
     });
     for (
       let i = 0;
-      i < 200 &&
-      app.request({ op: "show", id: row.id }).task.status !== "succeeded";
+      i < 200 && app.request({ op: "show", id: row.id }).task.status !== "succeeded";
       i++
     )
       await sleep(10);
-    assert.equal(
-      app.request({ op: "show", id: row.id }).task.status,
-      "succeeded",
-    );
+    assert.equal(app.request({ op: "show", id: row.id }).task.status, "succeeded");
     await browser({ op: "discard", id: row.id });
     const events = app.request({ op: "audit" }),
       actor = (who) => ({
@@ -131,24 +126,17 @@ test("browser approvals and missing mutation audits bind to a session pseudonym 
           .update("agentd-audit-session:" + who)
           .digest("hex"),
       });
-    for (const action of [
-      "project-rename",
-      "create-run",
-      "approve-run",
-      "discard",
-    ])
+    for (const action of ["project-rename", "create-run", "approve-run", "discard"])
       assert.deepEqual(
         JSON.parse(events.find((e) => e.action === action).detail).actor,
         actor(owner),
       );
     assert.deepEqual(
-      JSON.parse(events.find((e) => e.action === "conversation-rename").detail)
-        .actor,
+      JSON.parse(events.find((e) => e.action === "conversation-rename").detail).actor,
       actor(other),
     );
     assert.deepEqual(
-      JSON.parse(events.find((e) => e.action === "project-create").detail)
-        .actor,
+      JSON.parse(events.find((e) => e.action === "project-create").detail).actor,
       { kind: "local" },
     );
     const serialized = JSON.stringify(events);

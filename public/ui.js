@@ -27,16 +27,14 @@ export function markdownBlocks(input) {
       blocks.push({ type: "bullet", text: line.replace(/^\s*[-*] /, "") });
     else if (/^\d+\. /.test(line))
       blocks.push({ type: "number", text: line.replace(/^\d+\. /, "") });
-    else if (line.startsWith("> "))
-      blocks.push({ type: "quote", text: line.slice(2) });
+    else if (line.startsWith("> ")) blocks.push({ type: "quote", text: line.slice(2) });
     else if (line.trim()) {
       const last = blocks.at(-1);
       if (last?.type === "paragraph") last.text += "\n" + line;
       else blocks.push({ type: "paragraph", text: line });
     } else blocks.push({ type: "space", text: "" });
   }
-  if (code !== null)
-    blocks.push({ type: "code", text: code.join("\n"), language });
+  if (code !== null) blocks.push({ type: "code", text: code.join("\n"), language });
   return blocks;
 }
 function el(tag, text, cls) {
@@ -137,7 +135,14 @@ export function diffFiles(patch) {
     }
     if (!file) {
       if (!line) continue;
-      file = { name: "Changes", status: "modified", additions: 0, deletions: 0, binary: false, lines: [] };
+      file = {
+        name: "Changes",
+        status: "modified",
+        additions: 0,
+        deletions: 0,
+        binary: false,
+        lines: [],
+      };
       files.push(file);
     }
     if (line.startsWith("@@")) {
@@ -154,7 +159,11 @@ export function diffFiles(patch) {
       } else if (line.startsWith("rename to ")) file.name = unquote(line.slice(10));
       else if (line.startsWith("+++ ") && line !== "+++ /dev/null")
         file.name = stripPrefix(line.slice(4));
-      else if (line.startsWith("--- ") && file.status === "deleted" && line !== "--- /dev/null")
+      else if (
+        line.startsWith("--- ") &&
+        file.status === "deleted" &&
+        line !== "--- /dev/null"
+      )
         file.name = stripPrefix(line.slice(4));
       else if (line.startsWith("Binary files ") || line === "GIT binary patch")
         file.binary = true;
@@ -195,9 +204,7 @@ export function renderDiff(patch) {
           "file-status " + file.status,
         ),
       );
-    summary.append(
-      el("span", `+${file.additions} −${file.deletions}`, "file-counts"),
-    );
+    summary.append(el("span", `+${file.additions} −${file.deletions}`, "file-counts"));
     details.append(summary);
     const pre = el("pre", undefined, "diff");
     if (file.binary)
@@ -263,8 +270,7 @@ export function setupShell() {
     else if (mobile.matches) $("drawer-open").focus();
   }
   $("drawer-open").onclick = () => drawer(true);
-  $("drawer-close").onclick = $("drawer-backdrop").onclick = () =>
-    drawer(false);
+  $("drawer-close").onclick = $("drawer-backdrop").onclick = () => drawer(false);
   $("sidebar").addEventListener("keydown", (e) => {
     if (!mobile.matches || !$("sidebar").classList.contains("open")) return;
     if (e.key === "Escape") {
@@ -306,8 +312,7 @@ export function setupShell() {
   appearance.onchange = theme;
   theme();
   document.addEventListener("click", (e) => {
-    if (!e.target.closest("#conversation-menu"))
-      $("conversation-menu").open = false;
+    if (!e.target.closest("#conversation-menu")) $("conversation-menu").open = false;
     else if (e.target.closest("button")) $("conversation-menu").open = false;
     if (!e.target.closest("#run-picker")) $("run-picker").open = false;
     else if (e.target.closest("#run-options")) $("run-picker").open = false;

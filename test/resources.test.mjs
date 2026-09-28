@@ -63,16 +63,10 @@ test("worktree guard ignores linked targets, stops excessive growth and refuses 
     writeFileSync(join(root, "external"), "x".repeat(1000));
     symlinkSync("../external", join(root, "tree/link"));
     assert.equal(inventory(join(root, "tree")).bytes, 0);
-    assert.throws(
-      () => requireSpace([root], Number.MAX_SAFE_INTEGER),
-      /reserve/,
-    );
+    assert.throws(() => requireSpace([root], Number.MAX_SAFE_INTEGER), /reserve/);
     writeFileSync(join(root, "tree/data"), "over budget");
     await new Promise((resolve, reject) => {
-      const timeout = setTimeout(
-        () => reject(Error("guard did not fire")),
-        2000,
-      );
+      const timeout = setTimeout(() => reject(Error("guard did not fire")), 2000);
       const close = monitorWorktree(
         join(root, "tree"),
         [root],
@@ -121,10 +115,7 @@ test("real runner marks noisy tasks failed and preserves their worktree for revi
       resources: { ...resourceLimits, logBytes: 1024, reserveBytes: 0 },
       command: () => [
         process.execPath,
-        [
-          "-e",
-          "process.stderr.write('x'.repeat(20000));setInterval(()=>{},1000)",
-        ],
+        ["-e", "process.stderr.write('x'.repeat(20000));setInterval(()=>{},1000)"],
       ],
       accountStatus: () => ({
         state: "signed_out",
@@ -141,8 +132,7 @@ test("real runner marks noisy tasks failed and preserves their worktree for revi
     });
     app.request({ op: "approve", id: task.id });
     for (let n = 0; n < 100; n++) {
-      if (app.request({ op: "show", id: task.id }).task.status === "failed")
-        break;
+      if (app.request({ op: "show", id: task.id }).task.status === "failed") break;
       await new Promise((r) => setTimeout(r, 20));
     }
     const row = app.request({ op: "show", id: task.id }).task;
@@ -191,10 +181,7 @@ test("retention keeps unresolved/committed/recent work and binds cleanup to owne
       const status = n === 4 ? "failed" : "succeeded",
         mode = n === 1 || n === 2 ? "edit" : "ask",
         review = n === 1 ? "pending" : n === 2 ? "committed" : null;
-      db.prepare("INSERT INTO conversations VALUES(?,?)").run(
-        id,
-        n === 5 ? 0 : 1,
-      );
+      db.prepare("INSERT INTO conversations VALUES(?,?)").run(id, n === 5 ? 0 : 1);
       db.prepare("INSERT INTO tasks VALUES(?,?,?,?,?,?,?,?,?)").run(
         id,
         id,
@@ -217,10 +204,7 @@ test("retention keeps unresolved/committed/recent work and binds cleanup to owne
       plan.items.map((x) => x.id),
       [rows[0].id],
     );
-    assert.throws(
-      () => clean.apply("b".repeat(64), plan.fingerprint),
-      /expired/,
-    );
+    assert.throws(() => clean.apply("b".repeat(64), plan.fingerprint), /expired/);
     writeFileSync(rows[0].log, "changed".repeat(100));
     assert.throws(() => clean.apply(owner, plan.fingerprint), /changed/);
     const fresh = clean.preview(owner),
@@ -228,14 +212,12 @@ test("retention keeps unresolved/committed/recent work and binds cleanup to owne
     assert.deepEqual(result.removed, [rows[0].id]);
     assert.deepEqual(result.errors, []);
     assert.equal(
-      db.prepare("SELECT worktree FROM tasks WHERE id=?").get(rows[0].id)
-        .worktree,
+      db.prepare("SELECT worktree FROM tasks WHERE id=?").get(rows[0].id).worktree,
       null,
     );
     assert.match(readFileSync(rows[0].log, "utf8"), /removed by approved/);
     assert.equal(readFileSync(rows[0].log + ".answer", "utf8"), "saved answer");
-    for (const row of rows.slice(1))
-      assert.ok(statSync(row.tree).isDirectory());
+    for (const row of rows.slice(1)) assert.ok(statSync(row.tree).isDirectory());
     assert.equal(clean.preview(owner).items.length, 0);
   } finally {
     db.close();

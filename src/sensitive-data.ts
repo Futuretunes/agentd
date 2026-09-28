@@ -11,11 +11,7 @@ export function sensitiveFilename(name: string) {
 }
 export function sensitiveContent(value: string) {
   const reasons: string[] = [];
-  if (
-    /-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/.test(
-      value,
-    )
-  )
+  if (/-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/.test(value))
     reasons.push("private key");
   if (
     /\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|sk-(?:ant-|proj-)[A-Za-z0-9_-]{30,})\b/.test(
@@ -31,9 +27,7 @@ export function sensitiveContent(value: string) {
     /(?:["']?(?:refresh_token|access_token|client_secret|api_key|apikey)["']?\s*[:=]\s*)["']([A-Za-z0-9_./+\-=]{24,})["']/gi;
   for (const match of value.matchAll(assignments)) {
     if (
-      !/^(?:example|placeholder|changeme|your[_-]|test[_-]|fake[_-])/i.test(
-        match[1],
-      ) &&
+      !/^(?:example|placeholder|changeme|your[_-]|test[_-]|fake[_-])/i.test(match[1]) &&
       new Set(match[1]).size >= 10
     ) {
       reasons.push("credential assignment");
@@ -67,7 +61,6 @@ export function acceptBlob(scan: ContentScan, sha: string, sizeText: string) {
 export function blobID(entry: string) {
   if (!entry) return null;
   const match = /^\d+ blob ([a-f0-9]{40,64})\t/.exec(entry);
-  if (!match)
-    throw Error("Unsupported changed object. Review these changes separately.");
+  if (!match) throw Error("Unsupported changed object. Review these changes separately.");
   return match[1];
 }

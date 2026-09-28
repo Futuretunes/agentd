@@ -61,14 +61,8 @@ test("creation receipts survive lost responses and restart without duplicate tas
       first.id,
     );
     assert.equal(app.request({ op: "list" }).length, 1);
-    assert.equal(
-      app.request({ op: "conversations", project: "default" }).length,
-      1,
-    );
-    assert.throws(
-      () => app.request({ ...input, prompt: "different" }),
-      /different work/,
-    );
+    assert.equal(app.request({ op: "conversations", project: "default" }).length, 1);
+    assert.throws(() => app.request({ ...input, prompt: "different" }), /different work/);
     const projectInput = {
         op: "project-create",
         requestId: randomUUID(),
@@ -93,13 +87,8 @@ test("creation receipts survive lost responses and restart without duplicate tas
     assert.ok(repaired.id);
     const db = new DatabaseSync(join(config.stateDir, "tasks.sqlite"));
     try {
-      assert.equal(
-        db.prepare("SELECT count(*) AS n FROM creation_requests").get().n,
-        3,
-      );
-      const rows = JSON.stringify(
-        db.prepare("SELECT * FROM creation_requests").all(),
-      );
+      assert.equal(db.prepare("SELECT count(*) AS n FROM creation_requests").get().n, 3);
+      const rows = JSON.stringify(db.prepare("SELECT * FROM creation_requests").all());
       assert.ok(!rows.includes(input.prompt));
       assert.ok(!rows.includes(projectInput.name));
     } finally {

@@ -1,4 +1,4 @@
-import {gitOutput} from "./git-policy.ts";
+import { gitOutput } from "./git-policy.ts";
 import {
   constants,
   openSync,
@@ -28,10 +28,7 @@ export function freeBytes(path: string) {
   const s = statfsSync(path);
   return Number(s.bavail) * Number(s.bsize);
 }
-export function requireSpace(
-  paths: string[],
-  reserve = resourceLimits.reserveBytes,
-) {
+export function requireSpace(paths: string[], reserve = resourceLimits.reserveBytes) {
   for (const path of paths)
     if (freeBytes(path) < reserve)
       throw Error(
@@ -40,10 +37,7 @@ export function requireSpace(
 }
 
 /** Bounded inventory: no link traversal. Used only while idle for deletion previews. */
-export function inventory(
-  path: string,
-  maximum = resourceLimits.worktreeEntries,
-) {
+export function inventory(path: string, maximum = resourceLimits.worktreeEntries) {
   const root = realpathSync(path);
   if (root !== resolve(path)) throw Error("Linked storage path refused");
   const hash = createHash("sha256");
@@ -52,9 +46,7 @@ export function inventory(
   function walk(dir: string) {
     for (const name of readdirSync(dir).sort()) {
       if (++entries > maximum)
-        throw Error(
-          "Storage inventory is too large; preserve for manual review",
-        );
+        throw Error("Storage inventory is too large; preserve for manual review");
       const file = join(dir, name),
         s = lstatSync(file);
       hash.update(
@@ -124,15 +116,8 @@ export function captureOutput(
         writeSync(fd, part);
         bytes += part.length;
       }
-      if (
-        stdout &&
-        answerFd !== null &&
-        answerBytes < resourceLimits.answerBytes
-      ) {
-        const value = part.subarray(
-          0,
-          resourceLimits.answerBytes - answerBytes,
-        );
+      if (stdout && answerFd !== null && answerBytes < resourceLimits.answerBytes) {
+        const value = part.subarray(0, resourceLimits.answerBytes - answerBytes);
         writeSync(answerFd, value);
         answerBytes += value.length;
       }
@@ -167,8 +152,7 @@ export function monitorWorktree(
     try {
       requireSpace(paths, limits.reserveBytes);
       const value = inventory(path, limits.worktreeEntries);
-      if (value.bytes > limits.worktreeBytes)
-        stop("Worktree size limit reached");
+      if (value.bytes > limits.worktreeBytes) stop("Worktree size limit reached");
     } catch (e) {
       stop((e as Error).message);
     }
@@ -210,7 +194,9 @@ export function checkoutBudget(
   revision: string,
   limits: Limits = resourceLimits,
 ) {
-  const data = gitOutput(repo,["ls-tree","-r","-l","-z",revision],{maxBuffer:16*1024*1024});
+  const data = gitOutput(repo, ["ls-tree", "-r", "-l", "-z", revision], {
+    maxBuffer: 16 * 1024 * 1024,
+  });
   let bytes = 0,
     entries = 0;
   for (const item of data.split("\0")) {

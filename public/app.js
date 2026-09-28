@@ -62,17 +62,14 @@ function applyPolicy() {
   const modes =
     composerPolicy?.key === composerKey()
       ? composerPolicy.allowedModes
-      : (policy.adapters?.find((a) => a.id === $("adapter").value)?.modes ?? [
-          "ask",
-        ]);
-  for (const option of $("mode").options)
-    option.disabled = !modes.includes(option.value);
+      : (policy.adapters?.find((a) => a.id === $("adapter").value)?.modes ?? ["ask"]);
+  for (const option of $("mode").options) option.disabled = !modes.includes(option.value);
   if (!modes.includes($("mode").value)) $("mode").value = modes[0] ?? "ask";
   const chat = $("mode").value === "chat",
     textOnly =
       chat ||
-      policy.adapters?.find((a) => a.id === $("adapter").value)?.features
-        ?.images === false;
+      policy.adapters?.find((a) => a.id === $("adapter").value)?.features?.images ===
+        false;
   $("files").disabled = textOnly || submitting;
   $("files").closest("label").hidden = textOnly;
   $("mode").title = chat
@@ -185,8 +182,7 @@ function forgetDraft(key) {
 }
 function clearDrafts() {
   if ($("github-content")) $("github-content").replaceChildren();
-  for (const dialog of document.querySelectorAll("dialog[open]"))
-    dialog.close();
+  for (const dialog of document.querySelectorAll("dialog[open]")) dialog.close();
   draftLocation = null;
   try {
     for (const key of Object.keys(sessionStorage))
@@ -245,8 +241,7 @@ async function api(path, data) {
   if (res.status === 401) {
     clearDrafts();
     signedIn = false;
-    for (const dialog of document.querySelectorAll("dialog[open]"))
-      dialog.close();
+    for (const dialog of document.querySelectorAll("dialog[open]")) dialog.close();
     if ($("account-content")) $("account-content").replaceChildren();
     $("workspace").hidden = true;
     $("login").hidden = false;
@@ -307,8 +302,7 @@ function operationTask(item) {
     );
   if (item.review === "pending")
     card.append(node("p", "Changes are waiting for review.", "attention"));
-  if (item.checkStatus)
-    card.append(node("p", "Checks: " + item.checkStatus, "muted"));
+  if (item.checkStatus) card.append(node("p", "Checks: " + item.checkStatus, "muted"));
   card.append(
     button(
       ["failed", "timed_out", "interrupted", "cancelled"].includes(item.status)
@@ -334,8 +328,7 @@ function accountsSection(data) {
         message: "Checking account status",
       };
     const plainReason = {
-      "Adapter disabled by security policy":
-        "Not enabled for runs on this server",
+      "Adapter disabled by security policy": "Not enabled for runs on this server",
       "CLI is missing or not executable": "Not installed on this server",
     };
     card.append(
@@ -359,11 +352,7 @@ function accountsSection(data) {
           ? "Available · " +
               value.modes
                 .map((mode) =>
-                  mode === "edit"
-                    ? "Edit files"
-                    : mode === "chat"
-                      ? "Chat only"
-                      : "Ask",
+                  mode === "edit" ? "Edit files" : mode === "chat" ? "Chat only" : "Ask",
                 )
                 .join(" and ")
           : (plainReason[value.reason] ?? value.reason),
@@ -372,9 +361,7 @@ function accountsSection(data) {
     );
     if (value.nativeLimits) {
       const version = value.nativeVersion;
-      card.append(
-        node("p", "Tested CLI: " + value.nativeLimits.testedVersion, "muted"),
-      );
+      card.append(node("p", "Tested CLI: " + value.nativeLimits.testedVersion, "muted"));
       card.append(
         node(
           "p",
@@ -484,8 +471,7 @@ function accountsSection(data) {
       actions.append(logout);
     }
     card.append(actions);
-    for (const line of card.querySelectorAll("p"))
-      if (!line.textContent) line.remove();
+    for (const line of card.querySelectorAll("p")) if (!line.textContent) line.remove();
     agents.append(card);
   }
   agents.append(
@@ -494,9 +480,7 @@ function accountsSection(data) {
       "Usage limits are not shown: the native CLIs do not report them reliably.",
       "muted",
     ),
-    button("Refresh account status", () =>
-      api("/api/account", { action: "refresh" }),
-    ),
+    button("Refresh account status", () => api("/api/account", { action: "refresh" })),
   );
   if (data.service.renewing)
     agents.append(
@@ -513,11 +497,7 @@ function accountsSection(data) {
     );
   else if (data.service.activeTask || data.service.queueDepth > 0)
     agents.append(
-      node(
-        "p",
-        "Finish or stop current work before changing accounts.",
-        "muted",
-      ),
+      node("p", "Finish or stop current work before changing accounts.", "muted"),
     );
   return agents;
 }
@@ -649,8 +629,7 @@ function renderOperations(data) {
           details.append(
             node(
               "p",
-              plan.skipped.length +
-                " tasks need manual review and will be kept.",
+              plan.skipped.length + " tasks need manual review and will be kept.",
             ),
           );
         if (plan.items.length) {
@@ -747,8 +726,7 @@ async function loadOperations(show = true) {
   if (operationsBusy) return;
   operationsBusy = true;
   try {
-    if (show && !$("operations-dialog").open)
-      $("operations-dialog").showModal();
+    if (show && !$("operations-dialog").open) $("operations-dialog").showModal();
     if (show)
       $("operations-content").replaceChildren(
         node("p", "Loading workspace status…", "muted"),
@@ -833,11 +811,8 @@ async function updateAccount() {
       return;
     }
     accountHeading.textContent =
-      (s.adapter === "cursor"
-        ? "Cursor"
-        : s.adapter === "claude"
-          ? "Claude"
-          : "Codex") + " account";
+      (s.adapter === "cursor" ? "Cursor" : s.adapter === "claude" ? "Claude" : "Codex") +
+      " account";
     accountContent.append(
       node(
         "p",
@@ -983,24 +958,12 @@ function empty() {
   intro.append(
     node("div", "◈", "welcome-icon"),
     node("h2", "What shall we work on?"),
-    node(
-      "p",
-      "Start a conversation. Choose an agent. You decide when it runs.",
-      "muted",
-    ),
+    node("p", "Start a conversation. Choose an agent. You decide when it runs.", "muted"),
   );
   const ideas = node("div", undefined, "suggestions");
   for (const text of $("mode").value === "chat"
-    ? [
-        "Help me think through a design",
-        "Explain a concept",
-        "Review text I paste here",
-      ]
-    : [
-        "Explain this project",
-        "Review the architecture",
-        "Plan the next milestone",
-      ])
+    ? ["Help me think through a design", "Explain a concept", "Review text I paste here"]
+    : ["Explain this project", "Review the architecture", "Plan the next milestone"])
     ideas.append(
       button(text, () => {
         $("prompt").value = text;
@@ -1088,9 +1051,7 @@ function renderThread(data) {
     if (t.execution) {
       const execution = JSON.parse(t.execution);
       if (t.status === "waiting_for_approval")
-        response.append(
-          node("p", executionSummary(execution), "approval-summary"),
-        );
+        response.append(node("p", executionSummary(execution), "approval-summary"));
       response.append(executionDetails(execution));
     }
     if (t.settings_error)
@@ -1163,9 +1124,7 @@ function renderThread(data) {
       if (t.worktree && !pending(t.status))
         actions.prepend(
           button(
-            t.review === "committed"
-              ? "View committed changes"
-              : "Review changes",
+            t.review === "committed" ? "View committed changes" : "Review changes",
             () => openReview(t.id),
             t.review === "pending" ? "primary" : "",
           ),
@@ -1212,9 +1171,7 @@ function renderThread(data) {
             return;
           await api("/api/action", { op: "retry", id: t.id });
           fingerprint = "";
-          notice(
-            "New attempt ready. Review it, then approve when you are ready.",
-          );
+          notice("New attempt ready. Review it, then approve when you are ready.");
         });
         const supported =
           policy.enabledAdapters.includes(t.adapter) &&
@@ -1232,9 +1189,7 @@ function renderThread(data) {
       }
       actions.append(button("Account status", () => openPreferences()));
     }
-    actions.append(
-      button(t.log ? "View log" : "Activity", () => openRun(t.id)),
-    );
+    actions.append(button(t.log ? "View log" : "Activity", () => openRun(t.id)));
     response.append(actions);
     const meta = node("details");
     meta.append(
@@ -1289,9 +1244,7 @@ async function refresh() {
     $("workspace").hidden = false;
     if (!selected && !projects.some((p) => p.id === projectId))
       projectId = projects[0]?.id ?? null;
-    if (
-      $("projects").dataset.signature !== JSON.stringify([projects, projectId])
-    ) {
+    if ($("projects").dataset.signature !== JSON.stringify([projects, projectId])) {
       $("projects").dataset.signature = JSON.stringify([projects, projectId]);
       $("projects").replaceChildren(
         ...projects.map((p) => {
@@ -1304,10 +1257,7 @@ async function refresh() {
             },
             "project" + (p.id === projectId ? " selected" : ""),
           );
-          b.append(
-            node("span", "▱ " + p.name),
-            node("small", String(p.conversations)),
-          );
+          b.append(node("span", "▱ " + p.name), node("small", String(p.conversations)));
           return b;
         }),
       );
@@ -1327,10 +1277,7 @@ async function refresh() {
             () => reset(t.id),
             "thread" + (selected === t.id ? " selected" : ""),
           );
-          b.append(
-            node("span", t.title),
-            node("small", labels[t.status] ?? "New"),
-          );
+          b.append(node("span", t.title), node("small", labels[t.status] ?? "New"));
           return b;
         }),
       );
@@ -1371,9 +1318,7 @@ async function refresh() {
     }
     if (selected) {
       const data = await api(
-        "/api/conversations/" +
-          selected +
-          (pageBefore ? "?before=" + pageBefore : ""),
+        "/api/conversations/" + selected + (pageBefore ? "?before=" + pageBefore : ""),
       );
       if (epoch !== generation) return;
       archivedView = !!data.conversation.archived || !!data.project.archived;
@@ -1399,8 +1344,7 @@ async function refresh() {
     $("send").hidden = running;
     $("rename").hidden = !selected;
     $("archive").hidden = !selected;
-    const locked =
-      latest && (pending(latest.status) || latest.review === "pending");
+    const locked = latest && (pending(latest.status) || latest.review === "pending");
     $("send").disabled =
       submitting ||
       !!pageBefore ||
@@ -1409,11 +1353,9 @@ async function refresh() {
       uploading ||
       !projectId ||
       !policy.enabledAdapters.length ||
-      (composerPolicy?.key === composerKey() &&
-        !composerPolicy.allowedModes.length);
+      (composerPolicy?.key === composerKey() && !composerPolicy.allowedModes.length);
     $("hint").textContent =
-      composerPolicy?.key === composerKey() &&
-      !composerPolicy.allowedModes.length
+      composerPolicy?.key === composerKey() && !composerPolicy.allowedModes.length
         ? "Runs are disabled by the effective environment settings. Open Agent settings to change them."
         : archivedView
           ? "This conversation is archived. Restore it through History to continue."
@@ -1516,8 +1458,7 @@ $("rename").onclick = async () => {
   }
 };
 $("archive").onclick = async () => {
-  if (!confirm("Archive this conversation? Its runs and files will be kept."))
-    return;
+  if (!confirm("Archive this conversation? Its runs and files will be kept.")) return;
   try {
     await api("/api/action", { op: "conversation-archive", id: selected });
     reset();
@@ -1588,11 +1529,9 @@ $("files").onchange = async () => {
   $("send").disabled = true;
   try {
     const files = Array.from($("files").files);
-    if (uploads.length + files.length > 4)
-      throw Error("Attach up to four images.");
+    if (uploads.length + files.length > 4) throw Error("Attach up to four images.");
     for (const file of files) {
-      if (file.size > 5 * 1024 * 1024)
-        throw Error("Each image must be at most 5 MB.");
+      if (file.size > 5 * 1024 * 1024) throw Error("Each image must be at most 5 MB.");
       const data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result).split(",")[1]);
@@ -1725,8 +1664,7 @@ async function openReview(id) {
         : "muted",
     ),
   );
-  if (value.checks?.output)
-    checksBox.append(node("pre", value.checks.output, "result"));
+  if (value.checks?.output) checksBox.append(node("pre", value.checks.output, "result"));
   content.prepend(checksBox);
   const actions = $("review-actions");
   actions.replaceChildren();
@@ -1748,24 +1686,17 @@ async function openReview(id) {
       $("revision-dialog").showModal();
     });
     revise.disabled = value.truncated || !!value.blocked.length;
-    const setUp = button("Set up checks", () =>
-      openCheckSetup(value.project, id),
-    );
+    const setUp = button("Set up checks", () => openCheckSetup(value.project, id));
     const check = button("Run checks", async () => {
       await api("/api/action", { op: "validate", id, tree: value.tree });
       checking = id;
       actions.replaceChildren(
-        button(
-          "Stop checks",
-          () => api("/api/action", { op: "cancel", id }),
-          "danger",
-        ),
+        button("Stop checks", () => api("/api/action", { op: "cancel", id }), "danger"),
       );
       checksBox.lastChild.textContent = "Running…";
     });
     check.disabled = !!value.conflicts?.length || !checksReady;
-    const passed =
-      value.checks?.status === "passed" && value.checks?.tree === value.tree;
+    const passed = value.checks?.status === "passed" && value.checks?.tree === value.tree;
     const commitReady =
       (value.files.length || value.mergeParent) &&
       !value.conflicts?.length &&
@@ -1774,8 +1705,7 @@ async function openReview(id) {
       passed;
     let next;
     if (value.conflicts?.length)
-      next =
-        "Resolve the conflicts first. Use Request revisions to ask your agent.";
+      next = "Resolve the conflicts first. Use Request revisions to ask your agent.";
     else if (value.truncated || value.blocked.length)
       next = "Resolve the warnings above before committing.";
     else if (!checksReady)
@@ -1812,11 +1742,7 @@ async function openReview(id) {
       actions.append(commit, revise);
     } else {
       (checksReady ? check : setUp).classList.add("primary");
-      actions.append(
-        checksReady ? check : setUp,
-        checksReady ? setUp : check,
-        revise,
-      );
+      actions.append(checksReady ? check : setUp, checksReady ? setUp : check, revise);
     }
     if (next) checksBox.append(node("p", next, "next-step"));
 
@@ -1846,10 +1772,7 @@ async function openReview(id) {
       ),
     );
   } else if (value.commit) {
-    if (
-      value.checks?.input !== "git-tree-v1" ||
-      value.checks?.status !== "passed"
-    ) {
+    if (value.checks?.input !== "git-tree-v1" || value.checks?.status !== "passed") {
       content.append(
         node(
           "p",
@@ -1873,9 +1796,7 @@ async function openReview(id) {
       node("p", `Committed on ${value.branch}`, "muted"),
       node("p", value.commit, "path"),
       button("Publish to GitHub", () => openPublishing(id, value.project)),
-      button("GitHub feedback and conflicts", () =>
-        openFeedback(id, value.project),
-      ),
+      button("GitHub feedback and conflicts", () => openFeedback(id, value.project)),
     );
   }
   if (!$("review-dialog").open) $("review-dialog").showModal();
@@ -1972,12 +1893,9 @@ async function loadHistory(before = null) {
       );
     historyCursor = result.next;
     $("history-pages").replaceChildren();
-    if (before)
-      $("history-pages").append(button("Newest results", () => loadHistory()));
+    if (before) $("history-pages").append(button("Newest results", () => loadHistory()));
     if (historyCursor)
-      $("history-pages").append(
-        button("More results", () => loadHistory(historyCursor)),
-      );
+      $("history-pages").append(button("More results", () => loadHistory(historyCursor)));
     $("archived-projects").replaceChildren();
     if (filter !== "active" && archived.length) {
       $("archived-projects").append(node("h3", "Archived projects"));
@@ -2063,15 +1981,10 @@ async function updateRun() {
     box.append(link);
     if (["queued", "running"].includes(data.task.status))
       box.append(
-        button(
-          "Stop run",
-          () => api("/api/action", { op: "cancel", id }),
-          "danger",
-        ),
+        button("Stop run", () => api("/api/action", { op: "cancel", id }), "danger"),
       );
   } catch (e) {
-    if (runId === id)
-      $("run-content").replaceChildren(node("p", e.message, "error"));
+    if (runId === id) $("run-content").replaceChildren(node("p", e.message, "error"));
   } finally {
     runBusy = false;
   }
@@ -2268,9 +2181,7 @@ async function updateGithub() {
         box.append(node("pre", session.code), link);
       }
       if (data.busy)
-        box.append(
-          button("Cancel sign-in", () => githubAction("cancel", session.id)),
-        );
+        box.append(button("Cancel sign-in", () => githubAction("cancel", session.id)));
     } else if (data.busy)
       box.append(node("p", "Sign-in is in progress in another browser."));
     if (!data.installed)
@@ -2326,13 +2237,7 @@ $("check-setup-close").onclick = () => {
   setupTarget = null;
 };
 async function updateCheckSetup() {
-  if (
-    setupPolling ||
-    !setupTarget ||
-    !signedIn ||
-    !$("check-setup-dialog").open
-  )
-    return;
+  if (setupPolling || !setupTarget || !signedIn || !$("check-setup-dialog").open) return;
   setupPolling = true;
   const target = setupTarget;
   try {
@@ -2457,15 +2362,11 @@ async function openPublishing(task, project) {
   $("publishing-title").value = "Apply reviewed changes";
   $("publishing-body").value = "";
   $("publishing-content").replaceChildren();
-  $("publishing-target").replaceChildren(
-    new Option("Create a new draft PR", ""),
-  );
+  $("publishing-target").replaceChildren(new Option("Create a new draft PR", ""));
   for (const target of await api(
     "/api/publishing?targets=1&task=" + encodeURIComponent(task),
   )) {
-    $("publishing-target").append(
-      new Option("Update " + target.url, target.id),
-    );
+    $("publishing-target").append(new Option("Update " + target.url, target.id));
   }
   $("publishing-dialog").showModal();
   await updatePublishing();
@@ -2496,12 +2397,7 @@ $("publishing-form").onsubmit = async (e) => {
   }
 };
 async function updatePublishing() {
-  if (
-    publishingPolling ||
-    !publishingTask ||
-    !signedIn ||
-    !$("publishing-dialog").open
-  )
+  if (publishingPolling || !publishingTask || !signedIn || !$("publishing-dialog").open)
     return;
   publishingPolling = true;
   const task = publishingTask;
@@ -2542,9 +2438,7 @@ async function updatePublishing() {
       ),
     );
     if (job.error)
-      box.append(
-        node("p", job.error, job.state === "published" ? "muted" : "error"),
-      );
+      box.append(node("p", job.error, job.state === "published" ? "muted" : "error"));
     if (job.state === "needs_attention")
       box.append(
         node(
@@ -2571,10 +2465,7 @@ async function updatePublishing() {
       );
       for (const commit of plan.commits) {
         const details = node("details"),
-          summary = node(
-            "summary",
-            commit.subject + " · " + commit.sha.slice(0, 12),
-          );
+          summary = node("summary", commit.subject + " · " + commit.sha.slice(0, 12));
         details.append(summary, node("pre", commit.patch, "diff"));
         box.append(details);
       }
@@ -2680,8 +2571,7 @@ $("publishing-target").onchange = () => {
 };
 
 let publicationApproval = null;
-$("publication-confirm-close").onclick = () =>
-  $("publication-confirm-dialog").close();
+$("publication-confirm-close").onclick = () => $("publication-confirm-dialog").close();
 $("publication-confirm-form").onsubmit = async (e) => {
   e.preventDefault();
   const b = e.submitter;
@@ -2708,9 +2598,7 @@ async function openFeedback(task, project) {
   $("feedback-base").value =
     projects.find((p) => p.id === project)?.github_branch ?? "main";
   $("feedback-target").replaceChildren();
-  for (const t of await api(
-    "/api/feedback?targets=1&task=" + encodeURIComponent(task),
-  ))
+  for (const t of await api("/api/feedback?targets=1&task=" + encodeURIComponent(task)))
     $("feedback-target").append(new Option(t.url, t.id));
   $("feedback-load").disabled = !$("feedback-target").options.length;
   $("feedback-dialog").showModal();
@@ -2736,13 +2624,7 @@ $("feedback-load").onclick = () =>
 $("feedback-integrate").onclick = () =>
   prepareFeedback("integration").catch((e) => notice(e.message));
 async function updateFeedback() {
-  if (
-    feedbackPolling ||
-    !feedbackTask ||
-    !signedIn ||
-    !$("feedback-dialog").open
-  )
-    return;
+  if (feedbackPolling || !feedbackTask || !signedIn || !$("feedback-dialog").open) return;
   feedbackPolling = true;
   const task = feedbackTask;
   try {
@@ -2769,11 +2651,7 @@ async function updateFeedback() {
     const plan = job.plan;
     if (!plan) return;
     box.append(
-      node(
-        "p",
-        "Snapshot of " + plan.destination + " at " + plan.sourceHead,
-        "path",
-      ),
+      node("p", "Snapshot of " + plan.destination + " at " + plan.sourceHead, "path"),
     );
     const keys = [];
     let instruction = null;
@@ -2804,10 +2682,7 @@ async function updateFeedback() {
         label.append(
           check,
           document.createTextNode(
-            item.author +
-              " · " +
-              item.kind +
-              (item.state ? " · " + item.state : ""),
+            item.author + " · " + item.kind + (item.state ? " · " + item.state : ""),
           ),
         );
         card.append(label);
@@ -2816,19 +2691,13 @@ async function updateFeedback() {
             node(
               "p",
               item.path +
-                (item.line
-                  ? " : " + item.line
-                  : " · outdated or unavailable line"),
+                (item.line ? " : " + item.line : " · outdated or unavailable line"),
               "path",
             ),
           );
         if (item.commit && item.commit !== plan.sourceHead)
           card.append(
-            node(
-              "p",
-              "Comment refers to another revision: " + item.commit,
-              "muted",
-            ),
+            node("p", "Comment refers to another revision: " + item.commit, "muted"),
           );
         card.append(node("pre", item.body, "result"));
         const link = node("a", "View on GitHub");
@@ -2837,9 +2706,7 @@ async function updateFeedback() {
         link.rel = "noopener noreferrer";
         card.append(link);
         if (item.truncated)
-          card.append(
-            node("p", "Truncated; cannot import this comment.", "error"),
-          );
+          card.append(node("p", "Truncated; cannot import this comment.", "error"));
         box.append(card);
       }
       const label = node("label", "Your instruction"),
@@ -2871,9 +2738,7 @@ async function updateFeedback() {
     }
     if (job.state === "ready") {
       const action = button(
-        job.kind === "comments"
-          ? "Create feedback request"
-          : "Create integration review",
+        job.kind === "comments" ? "Create feedback request" : "Create integration review",
         async () => {
           action.disabled = true;
           try {
@@ -2892,9 +2757,7 @@ async function updateFeedback() {
             await refresh();
             if (job.kind === "integration") await openReview(result.id);
             else
-              notice(
-                "Feedback request saved. Review and approve its run to continue.",
-              );
+              notice("Feedback request saved. Review and approve its run to continue.");
           } finally {
             action.disabled = false;
           }
@@ -2977,18 +2840,12 @@ const plainPlace = (text) =>
     .replace(/worktree/gi, "project copy");
 function plainDuration(ms) {
   const seconds = Math.round(ms / 1000);
-  return seconds < 90
-    ? seconds + " seconds"
-    : Math.round(seconds / 60) + " min";
+  return seconds < 90 ? seconds + " seconds" : Math.round(seconds / 60) + " min";
 }
 function plainModel(selection) {
   return (
-    (selection.model === "provider"
-      ? "Provider default model"
-      : selection.model) +
-    (selection.effort === "provider"
-      ? ""
-      : " · " + selection.effort + " effort")
+    (selection.model === "provider" ? "Provider default model" : selection.model) +
+    (selection.effort === "provider" ? "" : " · " + selection.effort + " effort")
   );
 }
 function executionSummary(value) {
@@ -3008,8 +2865,7 @@ function executionDetails(value) {
     value.settings?.context === "none"
       ? "Not included"
       : value.context?.source === "saved_answer"
-        ? "Previous saved answer" +
-          (value.context.truncated ? " (shortened)" : "")
+        ? "Previous saved answer" + (value.context.truncated ? " (shortened)" : "")
         : value.context
           ? "No completed saved answer available"
           : "Previous saved answer when available",
@@ -3022,9 +2878,7 @@ function executionDetails(value) {
     row(
       "Most access allowed",
       (plainAccess[value.settings.access] ?? value.settings.access) +
-        (value.sources?.access
-          ? " · " + plainSource(value.sources.access)
-          : ""),
+        (value.sources?.access ? " · " + plainSource(value.sources.access) : ""),
     );
   details.append(
     summary,
@@ -3040,8 +2894,7 @@ function executionDetails(value) {
 }
 async function openSettings(scope) {
   settingsAgent.value = $("adapter").value;
-  settingsScope.value =
-    scope ?? (selected ? "conversation-agent" : "project-agent");
+  settingsScope.value = scope ?? (selected ? "conversation-agent" : "project-agent");
   for (const o of settingsScope.options)
     o.disabled = o.value.startsWith("conversation") && !selected;
   settingsDialog.showModal();
@@ -3054,9 +2907,7 @@ async function loadSettings() {
   settingsContent.replaceChildren(node("p", "Loading settings…", "muted"));
   try {
     const agent = settingsAgent.value,
-      mode = policy.adapters
-        ?.find((a) => a.id === agent)
-        ?.modes.includes($("mode").value)
+      mode = policy.adapters?.find((a) => a.id === agent)?.modes.includes($("mode").value)
         ? $("mode").value
         : (policy.adapters?.find((a) => a.id === agent)?.modes[0] ?? "ask");
     const value = await api("/api/settings", {
@@ -3352,11 +3203,7 @@ async function saveSettings(values, confirmed = false) {
         "p",
         "Affected waiting or queued runs will require fresh approval. Active runs retain their current permissions.",
       ),
-      button(
-        "Confirm settings change",
-        () => saveSettings(values, true),
-        "primary",
-      ),
+      button("Confirm settings change", () => saveSettings(values, true), "primary"),
       button("Keep editing", () => review.remove()),
     );
     settingsContent.append(review);
@@ -3388,17 +3235,10 @@ settingsForm.onsubmit = async (e) => {
   e.preventDefault();
   if (!settingsData) return;
   const values = {};
-  for (const name of [
-    "access",
-    "model",
-    "effort",
-    "timeoutSeconds",
-    "context",
-  ]) {
+  for (const name of ["access", "model", "effort", "timeoutSeconds", "context"]) {
     const input = settingsForm.elements.namedItem(name);
     if (input.disabled || !input.value) continue;
-    values[name] =
-      name === "timeoutSeconds" ? Number(input.value) : input.value;
+    values[name] = name === "timeoutSeconds" ? Number(input.value) : input.value;
   }
   await saveSettings(values);
 };
@@ -3444,5 +3284,4 @@ $("project-menu").onclick = () => {
   projectSettingsAction();
   $("project-settings-dialog").showModal();
 };
-$("project-settings-close").onclick = () =>
-  $("project-settings-dialog").close();
+$("project-settings-close").onclick = () => $("project-settings-dialog").close();

@@ -1,12 +1,8 @@
 import { openSync, closeSync, fstatSync, readSync, constants } from "node:fs";
 import { createHash } from "node:crypto";
 export type ContextMode = "previous_answer" | "none";
-export function followupContext(
-  prior: any,
-  mode: ContextMode = "previous_answer",
-) {
-  let source =
-      mode === "none" ? "disabled" : prior ? "unavailable" : "no_parent",
+export function followupContext(prior: any, mode: ContextMode = "previous_answer") {
+  let source = mode === "none" ? "disabled" : prior ? "unavailable" : "no_parent",
     text = "",
     truncated = false;
   if (
@@ -21,24 +17,22 @@ export function followupContext(
         constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
       );
       const stat = fstatSync(fd);
-      if (!stat.isFile() || stat.nlink !== 1)
-        throw Error("Unsafe saved answer");
+      if (!stat.isFile() || stat.nlink !== 1) throw Error("Unsafe saved answer");
       const bytes = Buffer.alloc(Math.min(stat.size, 20000));
-      const count=readSync(
+      const count = readSync(
         fd,
         bytes,
         0,
         bytes.length,
         Math.max(0, stat.size - bytes.length),
       );
-      if(count!==bytes.length)throw Error("Saved answer changed while reading");
+      if (count !== bytes.length) throw Error("Saved answer changed while reading");
       let answer = bytes.toString("utf8"),
         instruction = Buffer.from(String(prior.prompt))
           .subarray(0, 4000)
           .toString("utf8");
       truncated =
-        stat.size > bytes.length ||
-        Buffer.byteLength(String(prior.prompt)) > 4000;
+        stat.size > bytes.length || Buffer.byteLength(String(prior.prompt)) > 4000;
       const encode = () =>
         JSON.stringify({
           previousUserMessage: instruction,
@@ -49,11 +43,7 @@ export function followupContext(
         truncated = true;
         if (answer.length >= instruction.length)
           answer = answer.slice(Math.ceil(answer.length / 2));
-        else
-          instruction = instruction.slice(
-            0,
-            Math.floor(instruction.length / 2),
-          );
+        else instruction = instruction.slice(0, Math.floor(instruction.length / 2));
       }
       text = encode();
       source = "saved_answer";
