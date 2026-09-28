@@ -116,3 +116,7 @@ A feature listed here is not a promise that the current release supports it.
 ## R5 installed — 0.22.0
 
 Separate web UID, restricted runner socket, runner-owned attachments and journalled identity migration are implemented; see [handover](handovers/2026-09-28-separate-web-gateway.md). Exact archive passed all 112 Linux tests with zero skips; CI Node 24/26 and required isolation passed. Draft #25 and the operator installer are staged. The operator installed 0.22.0 and the live UID/mount-namespace probe passed. Independent verification confirms the expected release and separate gateway identity, with no writable paths or runner-group membership. Post-install phone acceptance remains pending. Preserve actual approval/security boundaries and distinguish this source milestone from deployment. After acceptance, R6 resource budgets and safe retention are next; existing R1 release-baseline decisions remain open.
+
+## R6 candidate — resources and retention
+
+Implemented on `feat/resource-retention`: bounded task/check output, disk reserve and tracked-checkout limits, monitored worktree growth, approval-gated archived-task cleanup, provenance-based managed backup retention and explicit service CPU/memory/process profile. See [handover](handovers/2026-09-28-resource-retention.md). Not installed; Linux/CI staging pending. Still open: per-worker cgroups, hard filesystem quotas, attachment/dependency retention, cleanup crash reconciliation and privileged GUI administration. Continue R7 next, per the operator's overnight backlog instruction.

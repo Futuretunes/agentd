@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-separate-web-gateway.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-resource-retention.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.23.0 — resources and retention
+
+[Resource handover](handovers/2026-09-28-resource-retention.md): service resource profile, bounded task/check output, checkout/disk guards, GUI cleanup previews and provenance-based backup retention are implemented locally. Linux staging/CI and installation remain pending. Production stays on verified 0.22.0. The operator requested continuing backlog work without waiting for individual scripts; prepare a cumulative release and keep per-item handovers. Next: finish validation, then R7 worker hardening.
 
 ## Installed 0.22.0 — separate web gateway
 

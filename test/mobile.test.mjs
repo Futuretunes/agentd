@@ -16,7 +16,7 @@ for(const path of ['/api/history','/api/archived-projects','/api/tasks/00000000-
 await req('/api/history?q=literal%25&filter=archived&before=42',null,cookie);assert.deepEqual(calls.at(-1),{op:'history',query:'literal%',filter:'archived',before:42});
 await req('/api/conversations/00000000-0000-0000-0000-000000000000?before=31',null,cookie);assert.equal(calls.at(-1).before,31);
 for(const op of ['project-archive','project-restore','conversation-restore','revise']){assert.equal((await req('/api/action',{op,id:'x'},cookie,'https://evil.example')).status,403);await req('/api/action',{op,id:'x'},cookie);assert.equal(calls.at(-1).op,op);}
-for(const path of ['/api/github','/api/repositories','/api/check-setup','/api/publishing','/api/feedback']){assert.equal((await req(path)).status,401);assert.equal((await req(path,{action:'start'},cookie,'https://evil.example')).status,403);}
+for(const path of ['/api/storage','/api/github','/api/repositories','/api/check-setup','/api/publishing','/api/feedback']){assert.equal((await req(path)).status,401);assert.equal((await req(path,{action:'start'},cookie,'https://evil.example')).status,403);}
 await req('/api/publishing',{action:'approve',id:'preview',fingerprint:'exact',owner:'spoofed',destination:'https://evil.example',command:'push',draft:false},cookie);assert.equal(calls.at(-1).op,'publication-approve');assert.match(calls.at(-1).owner,/^[a-f0-9]{64}$/);assert.equal(calls.at(-1).destination,undefined);assert.equal(calls.at(-1).command,undefined);assert.equal(calls.at(-1).draft,undefined);
 await req('/api/feedback',{action:'apply',id:'preview',fingerprint:'exact',keys:['reviews:1'],instruction:'Assess',owner:'spoofed',tree:'injected',repo:'/tmp',prompt:'injected'},cookie);assert.equal(calls.at(-1).op,'feedback-apply');assert.match(calls.at(-1).owner,/^[a-f0-9]{64}$/);for(const key of ['tree','repo','prompt'])assert.equal(calls.at(-1)[key],undefined);
 await req('/api/feedback?targets=1&task=fixture',null,cookie);assert.equal(calls.at(-1).op,'feedback-targets');
@@ -26,6 +26,7 @@ await req('/api/repositories',{action:'start',kind:'import',url:'https://github.
 assert.equal((await req('/api/settings')).status,401);assert.equal((await req('/api/settings',{action:'save'},cookie,'https://evil.example')).status,403);
 await req('/api/settings',{action:'save',project:'default',agent:'claude',scope:'project',agentScope:'claude',values:{access:'read'},owner:'spoofed',command:'unsafe',home:'/private'},cookie);assert.equal(calls.at(-1).op,'settings-save');assert.match(calls.at(-1).owner,/^[a-f0-9]{64}$/);assert.equal(calls.at(-1).command,undefined);assert.equal(calls.at(-1).home,undefined);
 assert.equal((await req('/api/action',{op:'approve',id:'fixture'},cookie)).status,400);await req('/api/action',{op:'approve',id:'fixture',fingerprint:'a'.repeat(64)},cookie);assert.equal(calls.at(-1).fingerprint,'a'.repeat(64));
+await req('/api/storage',{action:'preview',owner:'spoof'},cookie);assert.equal(calls.at(-1).op,'storage-preview');assert.match(calls.at(-1).owner,/^[a-f0-9]{64}$/);
 await req('/api/operations',null,cookie);assert.equal(calls.at(-1).op,'operations');
 assert.equal((await req('/api/account')).status,401);
 assert.equal((await req('/api/account',{action:'start',adapter:'claude',operation:'login'},cookie,'https://evil.example')).status,403);

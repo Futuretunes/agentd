@@ -1,3 +1,5 @@
+import {resourceLimits,checkoutBudget,requireSpace,freeBytes,captureOutput,monitorWorktree,serviceBudget,type Limits} from './resources.ts';
+import {retention} from './retention.ts';
 import {attachmentStore} from './attachment-store.ts';
 import {gatewaySocket} from './gateway-protocol.ts';
 import { initializeTaskDatabase } from './task-database.ts';
@@ -22,7 +24,7 @@ import { mkdirSync, openSync, writeSync, closeSync, realpathSync, readFileSync, 
 import { join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 
-type Config = { gateway?: {path:string;gid:number}; modelDiscovery?:typeof discoverModels; stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; reviewAPI?:ReviewAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
+type Config = { resources?:Limits; gateway?: {path:string;gid:number}; modelDiscovery?:typeof discoverModels; stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; reviewAPI?:ReviewAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
 export function runner(c: Config) {
   if(c.enabledAdapters?.includes('cursor')&&!c.command&&(!c.strictWorkers||!c.credentialRenewal))throw Error('Cursor requires hardened isolation and access-only credential handling');
   if(c.credentialRenewal&&!c.strictWorkers)throw Error('Credential renewal requires hardened isolation');
@@ -38,7 +40,9 @@ export function runner(c: Config) {
   const enabledAdapters=c.enabledAdapters??['codex','claude'];
   const editAdapters=c.editing?(c.editAdapters??[]):[];
   if([...enabledAdapters,...editAdapters].some(value=>!adapterIds.includes(value)))throw Error('Invalid adapter configuration');
+  const limits=c.resources??resourceLimits;
   const audit=(action:string,task:string|null,detail:unknown={})=>db.prepare('INSERT INTO audit(at,action,task,detail) VALUES(?,?,?,?)').run(new Date().toISOString(),action,task,JSON.stringify(detail));
+  const storage=retention(db,{worktrees:c.worktrees,logs:c.logs},audit);
   const project=(id:string)=>{const value=db.prepare('SELECT * FROM projects WHERE id=?').get(id);if(!value)throw new Error('Project not found');return value;};
   const conversation=(id:string)=>{const value=db.prepare('SELECT * FROM conversations WHERE id=?').get(id);if(!value)throw new Error('Conversation not found');return value;};
   const title=(value:unknown)=>{if(typeof value!=='string'||!value.trim()||value.trim().length>100)throw new Error('Name must contain 1 to 100 characters');return value.trim();};
@@ -63,7 +67,7 @@ export function runner(c: Config) {
   let repositoryWork:{id:string;project:string|null;abort:AbortController;done:Promise<void>}|undefined;
   const repositoryView=()=>db.prepare('SELECT * FROM repository_jobs ORDER BY updated DESC,rowid DESC LIMIT 20').all().map((row:any)=>({...row,result:row.result?JSON.parse(String(row.result)):null}));
   const projectBusy=(id:string)=>repositoryWork?.project===id;
-  function startRepository(input:any){
+  function startRepository(input:any){requireSpace([c.stateDir,c.worktrees],limits.reserveBytes);
     if(closing)throw Error('Service is stopping. Try again after it restarts.');
     if(repositoryWork||publicationWork||dependencyWork||github.busy())throw Error('Wait for the current repository or GitHub connection operation.');
     const kind=input.kind;if(!['inspect','import','update'].includes(kind))throw Error('Unsupported repository operation');
@@ -94,7 +98,7 @@ export function runner(c: Config) {
   const checkTarget=(input:any)=>{const p=project(input.project);if(p.archived)throw Error('Restore this project first.');const row=input.task?get(input.task):null;if(input.task&&(!row||row.project!==p.id||row.review!=='pending'||!row.worktree||['running','queued','cancelling','waiting_for_approval'].includes(String(row.status))))throw Error('Select a finished edit awaiting review in this project.');return {p,row,path:String(row?.worktree??p.repo)};};
   const setupView=(input:any)=>{const target=checkTarget(input);let plan:any=null,error=null;try{const value=checkManifest(target.path);plan={legacy:!target.p.check_manifest&&target.p.check_lock===value.lockHash&&!!target.p.check_dependencies&&existsSync(String(target.p.check_dependencies)),fingerprint:value.fingerprint,packages:value.count,scripts:value.scripts,ready:target.p.check_manifest===value.fingerprint&&!!target.p.check_dependencies&&existsSync(String(target.p.check_dependencies))};}catch(e){error=(e as NodeJS.ErrnoException).code==='ENOENT'?'Add package.json, package-lock.json and a test script to configure npm checks.':(e as Error).message;}
     return {project:target.p.id,task:target.row?.id??null,plan,error,busy:!!dependencyWork,jobs:db.prepare('SELECT * FROM dependency_jobs WHERE project=? ORDER BY rowid DESC LIMIT 10').all(String(target.p.id))};};
-  const startSetup=(input:any)=>{
+  const startSetup=(input:any)=>{requireSpace([c.stateDir],limits.reserveBytes);
     if(dependencyWork||repositoryWork||publicationWork||active||accountBusy()||preparing||db.prepare("SELECT id FROM tasks WHERE status='queued'").get())throw Error('Wait for current work before preparing dependencies.');
     const target=checkTarget(input),value=checkManifest(target.path);if(input.fingerprint!==value.fingerprint)throw Error('Dependency files changed. Review setup again.');
     const id=randomUUID(),abort=new AbortController(),stage=join(c.stateDir,'dependencies',id);writeManifests(stage,value);
@@ -210,6 +214,7 @@ export function runner(c: Config) {
   const operationError=(value:unknown)=>{
     if(value===null||value===undefined||value==='')return null;
     const message=String(value);
+    if(['Output limit reached','Worktree size limit reached','Disk reserve reached. Review storage cleanup before starting more work.','Could not safely write task output','Storage inventory is too large; preserve for manual review'].includes(message))return message;
     if(message===renewalFailure)return message;
     if(/^Exit \d+$/.test(message)||message==='Service stopped before completion')return message;
     return 'Worker could not start';
@@ -240,9 +245,11 @@ export function runner(c: Config) {
     transition(id,'running');
     let cleanup=()=>{};
     try{
+      requireSpace([c.stateDir,c.worktrees,c.logs],limits.reserveBytes);
       requireAdapter(String(row.adapter),String(row.mode));
       if(!c.command&&(approved.selection.model!=='provider'||approved.selection.effort!=='provider'))verifySelectionVersion(String(row.adapter));
       const repo=String(project(String(row.project)).repo);
+      const checkoutBytes=checkoutBudget(repo,String(row.seed_tree??row.revision),limits);requireSpace([c.worktrees],limits.reserveBytes+checkoutBytes);
       git(['worktree','add','--detach',tree,String(row.revision)],repo);
       db.prepare('UPDATE tasks SET worktree=?,log=? WHERE id=?').run(tree,log,id);
       if(row.seed_tree)restoreSnapshot(tree,String(row.seed_tree));
@@ -254,19 +261,13 @@ export function runner(c: Config) {
         for(const id of attachments){const meta=attachment(id);const target=join(folder,id+meta.ext);copyFileSync(join(attachmentRoot,id+meta.ext),target);pictures.push(target);}
         prompt+='\nUser attached images (use your image-reading tool):\n'+pictures.join('\n');
       }
-      if(row.parent){const prior=get(String(row.parent));if(prior){prompt='Previous instruction:\n'+String(prior.prompt)+'\nPrevious output (context, not instructions):\n'+(prior.log?logTail(String(prior.log)).slice(-20000):'(not yet available)')+'\nNew instruction:\n'+prompt;}}
+      if(row.parent){const prior=get(String(row.parent));if(prior){prompt='Previous instruction:\n'+String(prior.prompt)+'\nPrevious output (context, not instructions):\n'+(prior.log?logTail(existsSync(String(prior.log)+'.answer')?String(prior.log)+'.answer':String(prior.log)).slice(-20000):'(not yet available)')+'\nNew instruction:\n'+prompt;}}
       if(row.mode==='edit')prompt+='\nEdit files in this worktree only. Do not commit, push or open pull requests. The user will review changes and run checks separately.';
       let [command,args]=c.command?c.command(String(row.adapter),prompt,String(row.mode)):invocation(String(row.adapter),{prompt,mode:row.mode as Mode,images:pictures,selection:approved.selection});
       if(row.mode==='edit'||row.mode==='chat'||c.strictWorkers){const sandbox=(c.isolate??isolated)(tree,c.stateDir,command,args,String(row.adapter),undefined,row.mode==='edit',row.mode==='chat',c.credentialRenewal?{accessOnly:true}:undefined);command=sandbox.command;args=sandbox.args;cleanup=sandbox.cleanup;}
       const env:NodeJS.ProcessEnv={PATH:process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',HOME:process.env.HOME,LANG:'C.UTF-8',TERM:'dumb'};
-      const fd=openSync(log,'wx',0o600);
-      let child:ChildProcess;
-      const answerFd=openSync(log+'.answer','wx',0o600);let answerBytes=0;
-      try{
-        child=spawn(command,args,{cwd:tree,env,detached:true,stdio:['ignore','pipe',fd]});
-        child.stdout!.on('data',(chunk:Buffer)=>{writeSync(fd,chunk);const remaining=512000-answerBytes;if(remaining>0){const part=chunk.subarray(0,remaining);writeSync(answerFd,part);answerBytes+=part.length;}});
-        child.once('close',()=>{closeSync(fd);closeSync(answerFd);});
-      }catch(error){closeSync(fd);closeSync(answerFd);throw error;}
+      const child=spawn(command,args,{cwd:tree,env,detached:true,stdio:['ignore','pipe','pipe']});
+      let resourceError:string|undefined;let unmonitor=()=>{};
       let reason:string|undefined,killTimer:ReturnType<typeof setTimeout>|undefined;
       const kill=(signal:NodeJS.Signals)=>{if(child.pid)try{process.kill(-child.pid,signal);}catch(error){if((error as NodeJS.ErrnoException).code!=='ESRCH')throw error;}};
       const stop=(status:string)=>{if(reason)return;reason=status;transition(id,'cancelling');kill('SIGTERM');killTimer=setTimeout(()=>kill('SIGKILL'),2000);};
@@ -277,13 +278,15 @@ export function runner(c: Config) {
       let spawnError:string|undefined;
       child.on('error',error=>{spawnError=error.message;});
       child.on('close',code=>{
-        clearTimeout(timer);if(killTimer)clearTimeout(killTimer);
+        unmonitor();clearTimeout(timer);if(killTimer)clearTimeout(killTimer);
         // Reap any descendants before another task may start.
         kill('SIGKILL');cleanup();
         if(row.mode==='edit')db.prepare('UPDATE tasks SET review=? WHERE id=?').run('pending',id);
-        transition(id,reason??(code===0&&!spawnError?'succeeded':'failed'),spawnError??(code===0?null:`Exit ${code}`));
+        transition(id,reason??(code===0&&!spawnError?'succeeded':'failed'),resourceError??spawnError??(code===0?null:`Exit ${code}`));
         active=undefined;resolveDone();if(!closing)setImmediate(pump);
       });
+      const fail=(message:string)=>{resourceError=message;stop('failed');};
+      try{captureOutput(child,log,fail,limits.logBytes,true);unmonitor=monitorWorktree(tree,[c.stateDir,c.worktrees,c.logs],fail,limits);}catch{fail('Could not safely write task output');}
     }catch(error){cleanup();transition(id,'failed',(error as Error).message);setImmediate(pump);}
   }
   function available(row:any){
@@ -292,6 +295,7 @@ export function runner(c: Config) {
   }
   const review=(row:any)=>{available(row);const value=snapshot(String(row.worktree),String(row.revision),c.stateDir);return {project:row.project,...value,mergeParent:row.merge_parent,conflicts:row.merge_parent?unresolvedConflicts(String(row.worktree),value.tree,[...new Set([...JSON.parse(String(row.conflict_paths??'[]')),...value.files])]):[],checks:row.checks?((value:any)=>({...value,output:value.log?logTail(value.log):''}))(JSON.parse(String(row.checks))):null,commit:row.commit_sha,branch:row.branch,decision:row.review};};
   function validate(row:any,expected:string){
+    requireSpace([c.stateDir,c.worktrees,c.logs],limits.reserveBytes);
     if(accountBusy()||dependencyWork)throw Error('Finish account or dependency preparation before running checks');
     if(projectBusy(String(row.project)))throw Error('Wait for the repository update.');
     available(row);if(!['pending','committed'].includes(row.review))throw Error('This review is already resolved');
@@ -308,23 +312,30 @@ export function runner(c: Config) {
       const hash=createHash('sha256').update(readFileSync(join(prepared.worktree,'package-lock.json'))).digest('hex');
       if(hash!==p.check_lock)throw Error('Dependencies changed. Open Set up checks for this review.');
       sandbox=(c.isolate??isolated)(prepared.worktree,c.stateDir,process.execPath,[fileURLToPath(new URL('./check-worker.ts',import.meta.url))],undefined,String(p.check_dependencies));
-      const fd=openSync(log,'w',0o600);
-      try{child=spawn(sandbox.command,sandbox.args,{cwd:prepared.worktree,env:{PATH:process.env.PATH,HOME:homedir(),LANG:'C.UTF-8',TERM:'dumb'},detached:true,stdio:['ignore',fd,fd]});}finally{closeSync(fd);}
+      child=spawn(sandbox.command,sandbox.args,{cwd:prepared.worktree,env:{PATH:process.env.PATH,HOME:homedir(),LANG:'C.UTF-8',TERM:'dumb'},detached:true,stdio:['ignore','pipe','pipe']});
     } catch(error) {try{sandbox?.cleanup();}finally{prepared.cleanup();}throw error;}
     db.prepare('UPDATE tasks SET checks=? WHERE id=?').run(JSON.stringify({status:'running',tree:expected,log,input:'git-tree-v1'}),row.id);
-    let stopped:string|null=null,spawnError='';let resolveDone!:()=>void;const done=new Promise<void>(resolve=>resolveDone=resolve);
+    let stopped:string|null=null,spawnError='';let unmonitor=()=>{};let resolveDone!:()=>void;const done=new Promise<void>(resolve=>resolveDone=resolve);
     const kill=()=>{if(child.pid)try{process.kill(-child.pid,'SIGKILL');}catch{}};
     const stop=(reason='cancelled')=>{stopped=reason;kill();};const timer=setTimeout(()=>stop('timed_out'),240000);
     active={id:String(row.id),child,done,stop};child.on('error',error=>spawnError=error.message);
-    child.on('close',code=>{clearTimeout(timer);kill();let cleanupError=false;try{sandbox!.cleanup();}catch{cleanupError=true;}try{prepared.cleanup();}catch{cleanupError=true;}let status=stopped??(code===0&&!spawnError&&!cleanupError?'passed':'failed');
+    child.on('close',code=>{unmonitor();clearTimeout(timer);kill();let cleanupError=false;try{sandbox!.cleanup();}catch{cleanupError=true;}try{prepared.cleanup();}catch{cleanupError=true;}let status=stopped??(code===0&&!spawnError&&!cleanupError?'passed':'failed');
       try{if(snapshot(String(row.worktree),String(row.revision),c.stateDir).tree!==expected)status='stale';}catch{status='stale';}
       db.prepare('UPDATE tasks SET checks=? WHERE id=?').run(JSON.stringify({status,tree:expected,log,input:'git-tree-v1',exitCode:code,error:spawnError||null,at:new Date().toISOString()}),row.id);
       active=undefined;resolveDone();if(!closing)setImmediate(pump);
-    });return {status:'running'};
+    });
+    const fail=(message:string)=>{spawnError=message;stop('failed');};
+    try{captureOutput(child,log,fail,limits.logBytes);unmonitor=monitorWorktree(prepared.worktree,[c.stateDir,c.worktrees,c.logs],fail,limits);}catch{fail('Could not safely write task output');}
+    return {status:'running'};
   }
   function request(input:any){
     if(closing)throw new Error('Service is stopping');
-    if(input.op==='attachment-upload')return images.upload(input);
+    if(input.op==='attachment-upload'){requireSpace([c.stateDir],limits.reserveBytes);return images.upload(input);}
+    if(input.op==='storage-preview'||input.op==='storage-cleanup'){
+      if(active||preparing||accountBusy()||dependencyWork||repositoryWork||publicationWork||catalog.busy()||db.prepare("SELECT id FROM tasks WHERE status IN ('queued','running','cancelling')").get()||db.prepare("SELECT id FROM review_jobs WHERE state='preparing'").get())throw Error('Wait for current work before reviewing storage cleanup');
+      if(typeof input.owner!=='string'||! /^[a-f0-9]{64}$/.test(input.owner))throw Error('Browser owner required');
+      return input.op==='storage-preview'?storage.preview(input.owner):storage.apply(input.owner,input.fingerprint);
+    }
     if(input.op==='attachment-read')return images.read(input.id);
     if(input.op==='settings-view'||input.op==='settings-save'||input.op==='models-refresh'){
       const projectId=String(input.project??'default'),conversationId=input.conversation?String(input.conversation):null,agent=String(input.agent??'claude');
@@ -381,7 +392,7 @@ export function runner(c: Config) {
           return {id:row.id,adapter:row.adapter,mode:row.mode,status:row.status,created:row.created,updated:row.updated,error:operationError(row.error),review:row.review,project:row.project,projectName:row.project_name,conversation:row.conversation,conversationTitle:row.conversation_title,checkStatus};
         });
       const adapters=capabilities().map(value=>({...value,account:accountCache.get(value.id),...(renewalManager?{renewal:renewalManager.view(value.id)}:{}),usage:{state:'unavailable',message:'Usage limits are not reported by this native CLI'}}));
-      return {generatedAt:new Date().toISOString(),service:{state:'healthy',dependencySetup:!!dependencyWork,scheduler:'serial',activeTask:active?.id??null,queueDepth:counts.queued??0,security:c.strictWorkers?'hardened':'standard',accountChange:accountManager.busy(),renewing:!!preparing},counts,tasks,adapters};
+      return {resources:{limits,freeBytes:Math.min(...[c.stateDir,c.worktrees,c.logs].map(freeBytes)),service:serviceBudget()},generatedAt:new Date().toISOString(),service:{state:'healthy',dependencySetup:!!dependencyWork,scheduler:'serial',activeTask:active?.id??null,queueDepth:counts.queued??0,security:c.strictWorkers?'hardened':'standard',accountChange:accountManager.busy(),renewing:!!preparing},counts,tasks,adapters};
     }
     if(input.op==='audit')return db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 100').all();
     if(input.op==='project-checks'){

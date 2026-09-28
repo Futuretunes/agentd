@@ -326,7 +326,8 @@ function accountsSection(data) {
         message: "Checking account status",
       };
     const plainReason = {
-      "Adapter disabled by security policy": "Not enabled for runs on this server",
+      "Adapter disabled by security policy":
+        "Not enabled for runs on this server",
       "CLI is missing or not executable": "Not installed on this server",
     };
     card.append(
@@ -503,6 +504,144 @@ function renderOperations(data) {
     ),
   );
   content.append(service);
+  if (data.resources) {
+    const r = data.resources,
+      b = r.service,
+      storage = node("section", undefined, "operation-section");
+    const bytes = (value) =>
+      value >= 1024 ** 3
+        ? (value / 1024 ** 3).toFixed(1) + " GiB"
+        : (value / 1024 ** 2).toFixed(1) + " MiB";
+    storage.append(
+      node("h3", "Storage and limits"),
+      node(
+        "p",
+        bytes(r.freeBytes) +
+          " free · " +
+          bytes(r.limits.reserveBytes) +
+          " reserved for recovery",
+      ),
+      node(
+        "p",
+        "Output is limited to " +
+          bytes(r.limits.logBytes) +
+          " per run/check. Worktrees are monitored at " +
+          bytes(r.limits.worktreeBytes) +
+          ".",
+        "muted",
+      ),
+    );
+    storage.append(
+      node(
+        "p",
+        b.available && b.memoryMax && b.tasksMax && b.cpuCores
+          ? "Service caps: " +
+              bytes(b.memoryMax) +
+              " memory · " +
+              b.cpuCores +
+              " CPU cores · " +
+              b.tasksMax +
+              " processes/threads"
+          : "Service caps are not verified yet. The administrator resource update is still required.",
+        "muted",
+      ),
+    );
+    const preview = button("Review storage cleanup", async () => {
+      preview.disabled = true;
+      try {
+        const plan = await api("/api/storage", { action: "preview" });
+        const details = node("div");
+        details.append(
+          node(
+            "p",
+            plan.items.length +
+              " eligible tasks · approximately " +
+              bytes(plan.bytes) +
+              " reclaimable.",
+          ),
+        );
+        details.append(
+          node(
+            "p",
+            "Only archived conversations with runs older than 30 days qualify. Unresolved or committed edits, failed read-only runs, answers and conversation history are kept. Deleting a discarded worktree is permanent.",
+            "muted",
+          ),
+        );
+        for (const item of plan.items)
+          details.append(
+            node(
+              "p",
+              item.id.slice(0, 8) +
+                " · " +
+                (item.worktree ? "worktree and " : "") +
+                item.logs +
+                " raw logs · " +
+                bytes(item.bytes),
+            ),
+          );
+        if (plan.skipped.length)
+          details.append(
+            node(
+              "p",
+              plan.skipped.length +
+                " tasks need manual review and will be kept.",
+            ),
+          );
+        if (plan.items.length) {
+          const approve = button("Approve cleanup", async () => {
+            if (
+              !confirm(
+                "Permanently remove only the worktrees and raw logs in this preview? Saved answers and task history are kept.",
+              )
+            )
+              return;
+            approve.disabled = true;
+            try {
+              const result = await api("/api/storage", {
+                action: "cleanup",
+                fingerprint: plan.fingerprint,
+              });
+              notice(
+                result.removed.length +
+                  " tasks cleaned; " +
+                  result.errors.length +
+                  " require review.",
+              );
+              dialog.close();
+              await loadOperations(false);
+            } catch (e) {
+              notice(e.message);
+              approve.disabled = false;
+            }
+          });
+          details.append(approve);
+        }
+        const dialog = node("dialog");
+        dialog.append(node("h2", "Review storage cleanup"), details);
+        const close = button("Close", () => dialog.close());
+        dialog.append(close);
+        dialog.addEventListener("close", () => {
+          dialog.remove();
+          preview.disabled = false;
+        });
+        document.body.append(dialog);
+        dialog.showModal();
+      } catch (e) {
+        notice(e.message);
+        preview.disabled = false;
+      }
+    });
+    storage.append(
+      preview,
+      node(
+        "p",
+        "Deployment backups have a separate administrator-only retention policy. Cleanup here cannot access them.",
+        "hint",
+      ),
+    );
+    content.append(storage);
+  }
+
   const current = data.tasks.filter(
       (item) => pending(item.status) || item.review === "pending",
     ),
@@ -884,11 +1023,7 @@ function renderThread(data) {
       const execution = JSON.parse(t.execution);
       if (t.status === "waiting_for_approval")
         response.append(
-          node(
-            "p",
-            executionSummary(execution),
-            "approval-summary",
-          ),
+          node("p", executionSummary(execution), "approval-summary"),
         );
       response.append(executionDetails(execution));
     }
@@ -1031,7 +1166,9 @@ function renderThread(data) {
       }
       actions.append(button("Account status", () => openPreferences()));
     }
-    actions.append(button(t.log ? "View log" : "Activity", () => openRun(t.id)));
+    actions.append(
+      button(t.log ? "View log" : "Activity", () => openRun(t.id)),
+    );
     response.append(actions);
     const meta = node("details");
     meta.append(
@@ -1232,8 +1369,7 @@ async function refresh() {
       (selected || projectId)
     ) {
       // The remembered conversation was archived, removed or rolled back: start fresh.
-      if (e.message.startsWith("Project"))
-        projectId = projects[0]?.id ?? null;
+      if (e.message.startsWith("Project")) projectId = projects[0]?.id ?? null;
       reset();
       notice();
     } else if (signedIn) notice(e.message);
@@ -1488,10 +1624,27 @@ async function openReview(id) {
   const checkState = value.checks
     ? value.checks.tree !== value.tree
       ? "Outdated · the changes differ from what was checked"
-      : { passed: "Passed on exactly these changes", failed: "Failed", running: "Running…", cancelled: "Stopped", timed_out: "Time limit reached", stale: "Outdated · files changed while checking", interrupted: "Interrupted" }[value.checks.status] ?? value.checks.status
+      : ({
+          passed: "Passed on exactly these changes",
+          failed: "Failed",
+          running: "Running…",
+          cancelled: "Stopped",
+          timed_out: "Time limit reached",
+          stale: "Outdated · files changed while checking",
+          interrupted: "Interrupted",
+        }[value.checks.status] ?? value.checks.status)
     : "Not run yet";
   const checksBox = node("section", undefined, "review-checks");
-  checksBox.append(node("h3", "Checks"), node("p", checkState, value.checks?.status === "passed" && value.checks.tree === value.tree ? "good" : "muted"));
+  checksBox.append(
+    node("h3", "Checks"),
+    node(
+      "p",
+      checkState,
+      value.checks?.status === "passed" && value.checks.tree === value.tree
+        ? "good"
+        : "muted",
+    ),
+  );
   if (value.checks?.output)
     checksBox.append(node("pre", value.checks.output, "result"));
   content.prepend(checksBox);
@@ -1515,7 +1668,9 @@ async function openReview(id) {
       $("revision-dialog").showModal();
     });
     revise.disabled = value.truncated || !!value.blocked.length;
-    const setUp = button("Set up checks", () => openCheckSetup(value.project, id));
+    const setUp = button("Set up checks", () =>
+      openCheckSetup(value.project, id),
+    );
     const check = button("Run checks", async () => {
       await api("/api/action", { op: "validate", id, tree: value.tree });
       checking = id;
@@ -1538,13 +1693,18 @@ async function openReview(id) {
       !value.blocked.length &&
       passed;
     let next;
-    if (value.conflicts?.length) next = "Resolve the conflicts first. Use Request revisions to ask your agent.";
-    else if (value.truncated || value.blocked.length) next = "Resolve the warnings above before committing.";
+    if (value.conflicts?.length)
+      next =
+        "Resolve the conflicts first. Use Request revisions to ask your agent.";
+    else if (value.truncated || value.blocked.length)
+      next = "Resolve the warnings above before committing.";
     else if (!checksReady)
       next = setup?.error
         ? "This project has no supported checks yet: " + setup.error
         : "Prepare this project’s dependencies, then run checks on these changes.";
-    else if (!passed) next = "Run checks on these exact changes. A pass is required before you can commit.";
+    else if (!passed)
+      next =
+        "Run checks on these exact changes. A pass is required before you can commit.";
     if (commitReady) {
       const field = node("div", undefined, "commit-field");
       const label = node("label", "Commit message"),
@@ -1572,7 +1732,11 @@ async function openReview(id) {
       actions.append(commit, revise);
     } else {
       (checksReady ? check : setUp).classList.add("primary");
-      actions.append(checksReady ? check : setUp, checksReady ? setUp : check, revise);
+      actions.append(
+        checksReady ? check : setUp,
+        checksReady ? setUp : check,
+        revise,
+      );
     }
     if (next) checksBox.append(node("p", next, "next-step"));
 
@@ -2733,12 +2897,18 @@ const plainPlace = (text) =>
     .replace(/worktree/gi, "project copy");
 function plainDuration(ms) {
   const seconds = Math.round(ms / 1000);
-  return seconds < 90 ? seconds + " seconds" : Math.round(seconds / 60) + " min";
+  return seconds < 90
+    ? seconds + " seconds"
+    : Math.round(seconds / 60) + " min";
 }
 function plainModel(selection) {
   return (
-    (selection.model === "provider" ? "Provider default model" : selection.model) +
-    (selection.effort === "provider" ? "" : " · " + selection.effort + " effort")
+    (selection.model === "provider"
+      ? "Provider default model"
+      : selection.model) +
+    (selection.effort === "provider"
+      ? ""
+      : " · " + selection.effort + " effort")
   );
 }
 function executionSummary(value) {
@@ -2757,7 +2927,9 @@ function executionDetails(value) {
     row(
       "Most access allowed",
       (plainAccess[value.settings.access] ?? value.settings.access) +
-        (value.sources?.access ? " · " + plainSource(value.sources.access) : ""),
+        (value.sources?.access
+          ? " · " + plainSource(value.sources.access)
+          : ""),
     );
   details.append(
     summary,

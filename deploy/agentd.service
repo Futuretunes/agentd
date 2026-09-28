@@ -42,5 +42,16 @@ RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 StandardOutput=journal
 StandardError=journal
 
+# Limits apply to the whole service, including workers and checks.
+MemoryHigh=3221225472
+MemoryMax=4294967296
+MemorySwapMax=0
+TasksMax=256
+CPUQuota=200%
+LimitNOFILE=4096
+LimitCORE=0
+OOMPolicy=kill
+KillMode=control-group
+
 [Install]
 WantedBy=multi-user.target

@@ -38,8 +38,9 @@ def canonical(value):
 def config(path):
     c = json.loads(Path(path).read_text())
     required = {'app','state','deployment','user','runnerUnit','mobileUnit','node','npm','healthUrl','configFiles','controlSocket'}
-    optional={'gatewayUser','gatewaySocket'}
+    optional={'gatewayUser','gatewaySocket','resourceProfile'}
     if (set(c)-optional) != required or bool(c.get('gatewayUser')) != bool(c.get('gatewaySocket')): raise ValueError('Unexpected or missing configuration field')
+    if c.get('resourceProfile') not in (None,'standard-v1'): raise ValueError('Unknown resource profile')
     paths = [canonical(c[k]) for k in ('app','state','deployment')]
     for i, a in enumerate(paths):
         if any(a == b or a in b.parents or b in a.parents for b in paths[i+1:]): raise ValueError('Application, state and deployment paths must be disjoint')
@@ -61,7 +62,10 @@ def inventory(c):
     result = {}
     for key in ('runnerUnit','mobileUnit'):
         unit = c[key]
-        text = capture(['systemctl','show',unit,*['--property='+p for p in (PROPERTIES+(['SupplementaryGroups','RuntimeDirectory','RuntimeDirectoryMode','PrivateDevices'] if c.get('gatewayUser') else []))]])
+        resource_properties=[]
+        if c.get('resourceProfile'):
+            from apply_resources import PROPERTIES as resource_properties
+        text = capture(['systemctl','show',unit,*['--property='+p for p in (PROPERTIES+resource_properties+(['SupplementaryGroups','RuntimeDirectory','RuntimeDirectoryMode','PrivateDevices'] if c.get('gatewayUser') else []))]])
         properties = dict(line.split('=',1) for line in text.splitlines() if '=' in line)
         if properties.get('NeedDaemonReload') == 'yes': raise ValueError('Reload and review changed unit files before updating')
         for name, value in {'User':c.get('gatewayUser',c['user']) if key=='mobileUnit' else c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','CapabilityBoundingSet':'','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes'}.items():
@@ -108,6 +112,9 @@ def inventory(c):
                 if properties.get('ReadWritePaths',''): raise ValueError('Gateway must not have writable application paths')
                 hidden={str(Path(c['state']).parent),pwd.getpwnam(c['user']).pw_dir,str(Path(c['controlSocket']).parent),'/etc/agentd'}
                 if not hidden.issubset(set(properties.get('InaccessiblePaths','').split())): raise ValueError('Gateway private paths must be inaccessible')
+        if c.get('resourceProfile'):
+            from apply_resources import EXPECTED
+            if any(properties.get(k)!=v for k,v in EXPECTED[key].items()):raise ValueError('Service resource profile mismatch: '+key)
         hashes = {}
         for name in files:
             if not name: raise ValueError('Missing unit file')
@@ -291,7 +298,7 @@ if __name__ == '__main__':
         if root.is_symlink() or root.stat().st_uid!=0 or root.stat().st_mode & 0o077: raise ValueError('Deployment directory must be root-owned mode 700')
         with (root/'update.lock').open('w') as lock:
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-            if (root/'pending.json').exists() or (root/'gateway-pending.json').exists(): raise ValueError('An interrupted update requires administrator recovery; see pending.json')
+            if (root/'pending.json').exists() or (root/'gateway-pending.json').exists() or (root/'resources-pending.json').exists(): raise ValueError('An interrupted update requires administrator recovery; see pending.json')
             current=inventory(c); record=root/'installed.json'
             previous=json.loads(record.read_text()) if record.exists() else None
             if previous and previous['configuration']!=current: raise ValueError('Installed configuration drifted; review and reconcile it before updating')
@@ -301,6 +308,8 @@ if __name__ == '__main__':
             for unit in (c['runnerUnit'],c['mobileUnit']): run(['systemctl','is-active','--quiet',unit])
             print(json.dumps({'version':manifest['version'],'revision':manifest['revision'],'taskSchemaVersion':manifest['taskSchemaVersion'],'configuration':'unchanged' if previous else 'adopt existing'}),flush=True)
             if args.command=='install':
+                from backup_retention import admission,completed,prune
+                admission(c)
                 # Same filesystem as app for atomic renames. Private backup is not exposed to workers.
                 backup=Path(tempfile.mkdtemp(prefix='agentd-backup-',dir=Path(c['app']).parent))
                 temporary=Path(tempfile.mkdtemp(prefix='agentd-validation-',dir=Path(c['app']).parent)); temporary.chmod(0o755)
@@ -309,6 +318,7 @@ if __name__ == '__main__':
                     test_candidate(c,stage,temporary,files,manifest)
                     # Source files must still match after validation; npm may only add dependencies.
                     verify_candidate(stage,files,manifest)
+                    admission(c)
                     journal=root/'pending.json'
                     journal.write_text(json.dumps({'backup':str(backup),'version':manifest['version']})+'\n'); journal.chmod(0o600)
                     try:
@@ -318,6 +328,11 @@ if __name__ == '__main__':
                         print('Inspect the backup and pending.json before another update.',file=sys.stderr)
                         raise
                     journal.unlink()
+                    try:
+                        completed(c,backup,previous)
+                        count=prune(c)
+                        print('Expired completed managed backups removed: '+str(count))
+                    except (OSError,ValueError):print('Backup retention requires administrator review; application update succeeded.')
                     print('Application update complete. Backup: '+str(backup))
                     print('Units, configuration, project checkouts and native account profiles were preserved.')
                 finally: shutil.rmtree(temporary)

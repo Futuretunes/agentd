@@ -24,5 +24,16 @@ ProtectControlGroups=true
 RestrictSUIDSGID=true
 CapabilityBoundingSet=
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Limits apply to the whole service, including workers and checks.
+MemoryHigh=402653184
+MemoryMax=536870912
+MemorySwapMax=0
+TasksMax=64
+CPUQuota=50%
+LimitNOFILE=1024
+LimitCORE=0
+OOMPolicy=kill
+KillMode=control-group
+
 [Install]
 WantedBy=multi-user.target

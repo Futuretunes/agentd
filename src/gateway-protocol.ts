@@ -4,6 +4,8 @@ import { chmodSync, chownSync, lstatSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute } from "node:path";
 
 const fields: Record<string, string> = {
+  "storage-preview": "owner",
+  "storage-cleanup": "owner fingerprint",
   capabilities: "",
   operations: "",
   projects: "",

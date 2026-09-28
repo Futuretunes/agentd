@@ -153,6 +153,25 @@ export function mobile(c: Config) {
           return;
         }
         const accountOwner = createHash("sha256").update(id).digest("hex");
+        if (path === "/api/storage" && req.method === "POST") {
+          const input = await body(req);
+          if (!["preview", "cleanup"].includes(input.action))
+            throw Error("Unsupported storage action");
+          send(
+            200,
+            await call({
+              op:
+                input.action === "preview"
+                  ? "storage-preview"
+                  : "storage-cleanup",
+              owner: accountOwner,
+              ...(input.action === "cleanup"
+                ? { fingerprint: input.fingerprint }
+                : {}),
+            }),
+          );
+          return;
+        }
         if (path === "/api/account" && req.method === "GET") {
           send(200, await call({ op: "account-session", owner: accountOwner }));
           return;

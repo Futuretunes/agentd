@@ -56,3 +56,9 @@ The GUI has no sudo or update endpoint. A future narrowly scoped management serv
 ## Gateway identity profile
 
 Version 0.22 introduces an explicit, separately journalled [gateway transition](gateway-boundary.md). Ordinary updates still never change accounts or units. After migration, the update configuration includes `gatewayUser` and `gatewaySocket`, and `configFiles` includes the separate gateway JSON and TLS files. A pending `gateway-pending.json` blocks ordinary updates just like an application transaction marker. The old profile's fingerprint format remains unchanged so the migration starts from the existing reviewed baseline, without re-adoption.
+
+## Resource profile and backup retention
+
+Version 0.23 adds `resourceProfile: standard-v1` through the explicit `scripts/apply_resources.py` transition. The updater preserves the existing fingerprint format until that transition is recorded. `resources-pending.json` blocks ordinary updates after an interrupted transition. Restore only its dedicated resource drop-ins and backed-up update configuration/record during manual recovery; never restore native credential profiles.
+
+Successful newly marked application backups retain at least three copies and 30 days; pins, failed/legacy backups and configuration backups are excluded from automatic removal. Prospective backup size and free-space reserve are checked before installation. See [resource and retention policy](resource-retention.md) for the exact boundaries and administrator preview tool.
