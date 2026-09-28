@@ -3,6 +3,7 @@
 - Author: Codex.
 - Request: after implementing the UI redesign, follow the backlog.
 - Status: implemented and tested in an isolated candidate; not installed.
+- Installation update (Claude, 2026-09-28): the host runs 0.20.0, byte-identical to `58d4276`, since 18:09 UTC (operator-run installer). Not yet live-provider accepted.
 - Candidate: 0.20.0, alongside the UI redesign (`3452c80`, formatting `b8d670a`).
 - Branch: `feat/task-desk-redesign`, based on the consolidated review line. No main merge or stack closure.
 

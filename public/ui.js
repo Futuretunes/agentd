@@ -108,46 +108,125 @@ export function renderMarkdown(text) {
   }
   return box;
 }
+// Git patch parser. Header lines (index, ---, +++, mode, rename) only exist between
+// "diff --git" and the first "@@" of a file; inside hunks every line is content,
+// including removed "-- comment" lines that appear as "--- comment".
+const unquote = (path) =>
+  path.startsWith('"') && path.endsWith('"')
+    ? path.slice(1, -1).replace(/\\(.)/g, "$1")
+    : path;
+const stripPrefix = (path) => unquote(path).replace(/^[ab]\//, "");
 export function diffFiles(patch) {
   const files = [];
+  let file = null,
+    inHunk = false;
   for (const line of String(patch).slice(0, 180000).split("\n")) {
-    if (line.startsWith("diff --git ") || !files.length)
-      files.push({
-        name: line.startsWith("diff --git ") ? line.slice(11) : "Changes",
+    if (line.startsWith("diff --git ")) {
+      const names = /^diff --git (?:a\/)?(.+?) (?:b\/)?(.+)$/.exec(line);
+      file = {
+        name: names ? unquote(names[2]) : line.slice(11),
+        status: "modified",
+        additions: 0,
+        deletions: 0,
+        binary: false,
         lines: [],
-      });
-    files.at(-1).lines.push(line);
+      };
+      files.push(file);
+      inHunk = false;
+      continue;
+    }
+    if (!file) {
+      if (!line) continue;
+      file = { name: "Changes", status: "modified", additions: 0, deletions: 0, binary: false, lines: [] };
+      files.push(file);
+    }
+    if (line.startsWith("@@")) {
+      inHunk = true;
+      file.lines.push(line);
+      continue;
+    }
+    if (!inHunk) {
+      if (line.startsWith("new file mode")) file.status = "added";
+      else if (line.startsWith("deleted file mode")) file.status = "deleted";
+      else if (line.startsWith("rename from ")) {
+        file.status = "renamed";
+        file.from = unquote(line.slice(12));
+      } else if (line.startsWith("rename to ")) file.name = unquote(line.slice(10));
+      else if (line.startsWith("+++ ") && line !== "+++ /dev/null")
+        file.name = stripPrefix(line.slice(4));
+      else if (line.startsWith("--- ") && file.status === "deleted" && line !== "--- /dev/null")
+        file.name = stripPrefix(line.slice(4));
+      else if (line.startsWith("Binary files ") || line === "GIT binary patch")
+        file.binary = true;
+      continue;
+    }
+    if (line.startsWith("+")) file.additions++;
+    else if (line.startsWith("-")) file.deletions++;
+    file.lines.push(line);
   }
+  // A trailing newline in the patch produces one empty line; it is not content.
+  for (const f of files) if (f.lines.at(-1) === "") f.lines.pop();
   return files;
+}
+export function diffStats(patch) {
+  const files = diffFiles(patch);
+  return {
+    files: files.length,
+    additions: files.reduce((n, f) => n + f.additions, 0),
+    deletions: files.reduce((n, f) => n + f.deletions, 0),
+  };
 }
 export function renderDiff(patch) {
   const box = el("div", undefined, "file-review");
   for (const file of diffFiles(patch)) {
     const details = el("details"),
-      summary = el("summary", file.name);
+      summary = el("summary", undefined, "file-summary");
     details.open = true;
+    summary.append(el("span", file.name, "file-name"));
+    if (file.status !== "modified")
+      summary.append(
+        el(
+          "span",
+          file.status === "added"
+            ? "New"
+            : file.status === "deleted"
+              ? "Deleted"
+              : "Renamed from " + file.from,
+          "file-status " + file.status,
+        ),
+      );
+    summary.append(
+      el("span", `+${file.additions} −${file.deletions}`, "file-counts"),
+    );
     details.append(summary);
     const pre = el("pre", undefined, "diff");
+    if (file.binary)
+      pre.append(el("span", "Binary file changed. Review it locally.", "diff-line"));
     let old = 0,
       next = 0;
     for (const line of file.lines) {
-      if (/^(diff --git |index |--- |\+\+\+ )/.test(line)) continue;
       const hunk = /^@@ -(\d+)(?:,\d+)? \+(\d+)/.exec(line);
       if (hunk) {
         old = Number(hunk[1]);
         next = Number(hunk[2]);
+        const row = el("span", undefined, "diff-line hunk");
+        const gutter = el("span", "\t", "line-number");
+        gutter.setAttribute("aria-hidden", "true");
+        row.append(gutter, document.createTextNode(line + "\n"));
+        pre.append(row);
+        continue;
       }
-      const added = line.startsWith("+") && !line.startsWith("+++"),
-        removed = line.startsWith("-") && !line.startsWith("---"),
-        context = line.startsWith(" ");
+      if (line.startsWith("\\")) {
+        pre.append(el("span", line + "\n", "diff-line note"));
+        continue;
+      }
+      const added = line.startsWith("+"),
+        removed = line.startsWith("-"),
+        context = !added && !removed;
       const row = el(
         "span",
         undefined,
-        added
-          ? "diff-line addition"
-          : removed
-            ? "diff-line deletion"
-            : "diff-line",
+        added ? "diff-line addition" : removed ? "diff-line deletion" : "diff-line",
       );
       const gutter = el(
         "span",
@@ -156,6 +235,8 @@ export function renderDiff(patch) {
       );
       gutter.setAttribute("aria-hidden", "true");
       row.append(gutter, document.createTextNode(line + "\n"));
+      if (added || removed)
+        row.setAttribute("aria-label", (added ? "Added: " : "Removed: ") + line.slice(1));
       pre.append(row);
     }
     details.append(pre);
@@ -228,6 +309,8 @@ export function setupShell() {
     if (!e.target.closest("#conversation-menu"))
       $("conversation-menu").open = false;
     else if (e.target.closest("button")) $("conversation-menu").open = false;
+    if (!e.target.closest("#run-picker")) $("run-picker").open = false;
+    else if (e.target.closest("#run-options")) $("run-picker").open = false;
   });
   // Native dialogs supply modality and focus restoration. Give dynamic dialogs names too.
   const nameDialogs = () => {

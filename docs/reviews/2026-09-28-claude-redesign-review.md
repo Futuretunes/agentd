@@ -107,3 +107,7 @@ Mode and Agent are still two native selects. Model and effort are behind a separ
 4. **D6–D9** as polish.
 
 No application changes were made in this review.
+
+## Status update
+
+At the operator's request, Claude implemented fixes for D1–D9 on `fix/redesign-review-2026-09-28` (0.20.1 candidate). See `docs/handovers/2026-09-28-claude-redesign-fixes.md`. Codex should review that branch rather than re-fix these items.

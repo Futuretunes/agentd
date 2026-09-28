@@ -1,6 +1,5 @@
-import { renderMarkdown, renderDiff, setupShell } from "./ui.js";
+import { renderMarkdown, renderDiff, diffStats, setupShell } from "./ui.js";
 const $ = (id) => document.getElementById(id);
-let operationsView = "activity";
 let nextRun = {},
   composerPolicy = null;
 const composerKey = () => projectId + ":" + selected + ":" + $("adapter").value;
@@ -11,41 +10,31 @@ let projectId = null,
   busy = false,
   generation = 0;
 let policy = { editAdapters: [], enabledAdapters: ["codex", "claude"] };
-function renderAgents() {
-  const box = $("adapter-info");
-  box.replaceChildren(node("h2", "Your agents"));
-  for (const value of policy.adapters ?? []) {
-    const item = node("div", undefined, "agent-availability");
-    item.append(
-      node("strong", value.name),
-      node(
-        "p",
-        value.available
-          ? "Available · " +
-              value.modes
-                .map((mode) =>
-                  mode === "edit"
-                    ? "Edit files"
-                    : mode === "chat"
-                      ? "Chat only"
-                      : "Ask",
-                )
-                .join(" and ")
-          : value.reason,
-        "muted",
-      ),
+const modeNames = { ask: "Ask", chat: "Chat only", edit: "Edit" };
+// One composer control shows the agent, requested model and mode for the next run.
+function renderPicker() {
+  const agent = policy.adapters?.find((a) => a.id === $("adapter").value);
+  const model = $("selection-summary").dataset.model;
+  $("picker-summary").textContent =
+    (agent?.name ?? "No agent") + (model ? " · " + model : "");
+  $("picker-mode").textContent = modeNames[$("mode").value] ?? "Ask";
+  const reasons = (policy.adapters ?? [])
+    .filter((a) => !a.available)
+    .map(
+      (a) =>
+        a.name +
+        ": " +
+        ({
+          "Adapter disabled by security policy": "not enabled on this server",
+          "CLI is missing or not executable": "not installed",
+        }[a.reason] ??
+          a.reason ??
+          "unavailable"),
     );
-    if (value.available)
-      item.append(node("p", "Sign-in is checked when a run starts.", "muted"));
-    box.append(item);
-  }
-  box.append(
-    node(
-      "p",
-      "Cursor supports text and file changes. Terminal tools, plugins and image input are unavailable.",
-      "muted",
-    ),
-  );
+  if (agent?.id === "cursor")
+    reasons.push("Cursor accepts text only; images are unavailable.");
+  $("agent-reasons").textContent = reasons.join(" · ");
+  $("agent-reasons").hidden = !reasons.length;
 }
 function applyPolicy() {
   if (policy.adapters) {
@@ -89,18 +78,14 @@ function applyPolicy() {
     ? "Text conversation only. No project files, terminal, editing, web browsing or plugins."
     : "";
   $("policy-hint").textContent = !policy.enabledAdapters.length
-    ? "No agents are available. Open Agents for details."
+    ? "No agents are available. Open Settings for details."
     : chat
       ? "Chat only · text you send and prior conversation context · no project access or execution tools."
       : policy.strictWorkers
         ? "Isolated workers · provider-only network access · approval required."
         : "Each message waits for approval before an agent starts.";
-  if (!$("adapter-info").hidden) renderAgents();
+  renderPicker();
 }
-$("agents-menu").onclick = () => {
-  $("adapter-info").hidden = !$("adapter-info").hidden;
-  renderAgents();
-};
 $("adapter").onchange = $("mode").onchange = () => {
   applyPolicy();
   saveDraft();
@@ -332,6 +317,143 @@ function operationTask(item) {
   );
   return card;
 }
+function accountsSection(data) {
+  const agents = node("div");
+  for (const value of data.adapters) {
+    const card = node("div", undefined, "operation-agent"),
+      account = value.account ?? {
+        state: "checking",
+        message: "Checking account status",
+      };
+    const plainReason = {
+      "Adapter disabled by security policy": "Not enabled for runs on this server",
+      "CLI is missing or not executable": "Not installed on this server",
+    };
+    card.append(
+      node("strong", value.name),
+      node(
+        "p",
+        account.state === "signed_in"
+          ? `Signed in${account.method ? " · " + account.method : ""}`
+          : account.state === "unavailable"
+            ? ""
+            : account.message,
+        account.state === "signed_in"
+          ? "good"
+          : account.state === "signed_out"
+            ? "attention"
+            : "muted",
+      ),
+      node(
+        "p",
+        value.available
+          ? "Available · " +
+              value.modes
+                .map((mode) =>
+                  mode === "edit"
+                    ? "Edit files"
+                    : mode === "chat"
+                      ? "Chat only"
+                      : "Ask",
+                )
+                .join(" and ")
+          : (plainReason[value.reason] ?? value.reason),
+        "muted",
+      ),
+    );
+    const actions = node("div", undefined, "actions");
+    if (value.id === "cursor" && value.installed)
+      card.append(
+        node(
+          "p",
+          "Uses your Cursor account. Your plan and on-demand billing settings apply; agentd cannot verify remaining allowance.",
+          "muted",
+        ),
+      );
+    if (value.renewal)
+      card.append(
+        node(
+          "p",
+          value.renewal.message,
+          value.renewal.state === "reconnect_required" ? "attention" : "muted",
+        ),
+      );
+    if (value.installed && !value.enabled)
+      card.append(
+        node(
+          "p",
+          "Not enabled for runs on this server. You can still sign in ahead of time.",
+          "muted",
+        ),
+      );
+    const login = button(
+      account.state === "signed_in" ? "Reconnect account" : "Sign in",
+      () => startAccount(value.id, "login"),
+    );
+    login.hidden = !value.installed;
+    login.disabled =
+      !value.installed ||
+      !!data.service.activeTask ||
+      data.service.queueDepth > 0 ||
+      data.service.accountChange ||
+      data.service.renewing;
+    actions.append(login);
+    if (account.state === "signed_in") {
+      const logout = button(
+        "Sign out",
+        async () => {
+          if (
+            confirm(
+              "Sign out of " +
+                value.name +
+                " on this server? Future runs will need a new login.",
+            )
+          )
+            await startAccount(value.id, "logout");
+        },
+        "danger",
+      );
+      logout.disabled = login.disabled;
+      actions.append(logout);
+    }
+    card.append(actions);
+    for (const line of card.querySelectorAll("p"))
+      if (!line.textContent) line.remove();
+    agents.append(card);
+  }
+  agents.append(
+    node(
+      "p",
+      "Usage limits are not shown: the native CLIs do not report them reliably.",
+      "muted",
+    ),
+    button("Refresh account status", () =>
+      api("/api/account", { action: "refresh" }),
+    ),
+  );
+  if (data.service.renewing)
+    agents.append(
+      node("p", "Renewing the account before the next approved run.", "muted"),
+    );
+  if (data.service.accountChange)
+    agents.append(
+      node(
+        "p",
+        "An account change is in progress. Work resumes when it finishes.",
+        "attention",
+      ),
+      button("View sign-in", () => showAccount()),
+    );
+  else if (data.service.activeTask || data.service.queueDepth > 0)
+    agents.append(
+      node(
+        "p",
+        "Finish or stop current work before changing accounts.",
+        "muted",
+      ),
+    );
+  return agents;
+}
 function renderOperations(data) {
   const content = $("operations-content");
   content.replaceChildren();
@@ -381,127 +503,6 @@ function renderOperations(data) {
     ),
   );
   content.append(service);
-  const agents = node("section", undefined, "operation-section");
-  agents.append(node("h3", "Agents and usage"));
-  for (const value of data.adapters) {
-    const card = node("div", undefined, "operation-agent"),
-      account = value.account ?? {
-        state: "checking",
-        message: "Checking account status",
-      };
-    card.append(
-      node("strong", value.name),
-      node(
-        "p",
-        account.state === "signed_in"
-          ? `Signed in${account.method ? " · " + account.method : ""}`
-          : account.message,
-        account.state === "signed_in"
-          ? "good"
-          : account.state === "signed_out"
-            ? "attention"
-            : "muted",
-      ),
-      node(
-        "p",
-        value.available
-          ? "Available · " +
-              value.modes
-                .map((mode) =>
-                  mode === "edit"
-                    ? "Edit files"
-                    : mode === "chat"
-                      ? "Chat only"
-                      : "Ask",
-                )
-                .join(" and ")
-          : value.reason,
-        "muted",
-      ),
-      node("p", value.usage.message, "muted"),
-    );
-    const actions = node("div", undefined, "actions");
-    if (value.id === "cursor")
-      card.append(
-        node(
-          "p",
-          "Uses your Cursor account. Your plan and on-demand billing settings apply; agentd cannot verify remaining allowance.",
-          "muted",
-        ),
-      );
-    if (value.renewal)
-      card.append(
-        node(
-          "p",
-          value.renewal.message,
-          value.renewal.state === "reconnect_required" ? "attention" : "muted",
-        ),
-      );
-    const login = button(
-      account.state === "signed_in" ? "Reconnect account" : "Sign in",
-      () => startAccount(value.id, "login"),
-    );
-    login.disabled =
-      !value.installed ||
-      !!data.service.activeTask ||
-      data.service.queueDepth > 0 ||
-      data.service.accountChange ||
-      data.service.renewing;
-    actions.append(login);
-    if (account.state === "signed_in") {
-      const logout = button(
-        "Sign out",
-        async () => {
-          if (
-            confirm(
-              "Sign out of " +
-                value.name +
-                " on this server? Future runs will need a new login.",
-            )
-          )
-            await startAccount(value.id, "logout");
-        },
-        "danger",
-      );
-      logout.disabled = login.disabled;
-      actions.append(logout);
-    }
-    card.append(actions);
-    agents.append(card);
-  }
-  agents.append(
-    button("Refresh account status", () =>
-      api("/api/account", { action: "refresh" }),
-    ),
-  );
-  if (data.service.renewing)
-    agents.append(
-      node("p", "Renewing the account before the next approved run.", "muted"),
-    );
-  if (data.service.accountChange)
-    agents.append(
-      node(
-        "p",
-        "An account change is in progress. Work resumes when it finishes.",
-        "attention",
-      ),
-      button("View sign-in", () => showAccount()),
-    );
-  else if (data.service.activeTask || data.service.queueDepth > 0)
-    agents.append(
-      node(
-        "p",
-        "Finish or stop current work before changing accounts.",
-        "muted",
-      ),
-    );
-  agents.hidden = operationsView !== "accounts";
-  content.append(agents);
-  if (operationsView === "accounts") {
-    summary.hidden = true;
-    service.hidden = true;
-    return;
-  }
   const current = data.tasks.filter(
       (item) => pending(item.status) || item.review === "pending",
     ),
@@ -555,11 +556,21 @@ async function loadOperations(show = true) {
     operationsBusy = false;
   }
 }
-$("operations-menu").onclick = () => {
-  operationsView = "activity";
-  $("operations-dialog").querySelector("h2").textContent = "Activity";
-  loadOperations();
-};
+$("operations-menu").onclick = () => loadOperations();
+let accountsBusy = false;
+async function loadAccounts(show = true) {
+  if (accountsBusy) return;
+  accountsBusy = true;
+  const box = $("settings-accounts");
+  try {
+    if (show) box.replaceChildren(node("p", "Checking agents…", "muted"));
+    box.replaceChildren(accountsSection(await api("/api/operations")));
+  } catch (e) {
+    box.replaceChildren(node("p", e.message, "error"));
+  } finally {
+    accountsBusy = false;
+  }
+}
 $("operations-close").onclick = () => $("operations-dialog").close();
 const accountDialog = node("dialog");
 accountDialog.id = "account-dialog";
@@ -703,10 +714,10 @@ async function updateAccount() {
       );
     } else
       accountContent.append(
-        button("Back to Operations", async () => {
+        button("Back to Settings", async () => {
           accountDialog.close();
           accountContent.replaceChildren();
-          await loadOperations();
+          await loadAccounts(false);
         }),
       );
   } catch (e) {
@@ -766,11 +777,6 @@ function empty() {
   const intro = node("div", undefined, "welcome");
   intro.append(
     node("div", "◈", "welcome-icon"),
-    node(
-      "p",
-      projects.find((p) => p.id === projectId)?.name ?? "Your workspace",
-      "eyebrow",
-    ),
     node("h2", "What shall we work on?"),
     node(
       "p",
@@ -802,6 +808,7 @@ function empty() {
 }
 function renderThread(data) {
   $("thread-title").textContent = data.conversation.title;
+  document.title = data.conversation.title + " · agentd";
   const d = $("detail"),
     nearBottom = d.scrollHeight - d.scrollTop - d.clientHeight < 120;
   d.replaceChildren();
@@ -879,7 +886,7 @@ function renderThread(data) {
         response.append(
           node(
             "p",
-            `${execution.permissions.filesystem} · Requested model: ${execution.selection.model === "provider" ? "provider default" : execution.selection.model}`,
+            executionSummary(execution),
             "approval-summary",
           ),
         );
@@ -922,14 +929,6 @@ function renderThread(data) {
       actions.append(
         button("Cancel", () => api("/api/action", { op: "cancel", id: t.id })),
       );
-    else if (["queued", "running"].includes(t.status))
-      actions.append(
-        button(
-          "Stop run",
-          () => api("/api/action", { op: "cancel", id: t.id }),
-          "danger",
-        ),
-      );
     if (
       !pageBefore &&
       !archivedView &&
@@ -953,20 +952,21 @@ function renderThread(data) {
         }),
       );
     if (t.mode === "edit") {
-      response.append(
-        node(
-          "p",
-          "Edit files · " + (t.review ?? "changes require a separate review"),
-          "muted",
-        ),
-      );
+      const reviewState = {
+        pending: "Changes are waiting for your review.",
+        committed: "Changes committed to a local branch.",
+        discarded: "Changes were discarded.",
+        superseded: "Changes continue in a later revision request.",
+      }[t.review];
+      if (reviewState) response.append(node("p", reviewState, "muted"));
       if (t.worktree && !pending(t.status))
-        actions.append(
+        actions.prepend(
           button(
             t.review === "committed"
               ? "View committed changes"
               : "Review changes",
             () => openReview(t.id),
+            t.review === "pending" ? "primary" : "",
           ),
         );
     }
@@ -1024,27 +1024,22 @@ function renderThread(data) {
           response.append(
             node(
               "p",
-              "This agent or work mode is unavailable. Open Agents for the reason.",
+              "This agent or work mode is unavailable. Settings shows the reason.",
               "muted",
             ),
           );
       }
-      actions.append(button("Account status", () => loadOperations()));
+      actions.append(button("Account status", () => openPreferences()));
     }
-    actions.append(button("View log", () => openRun(t.id)));
+    actions.append(button(t.log ? "View log" : "Activity", () => openRun(t.id)));
     response.append(actions);
     const meta = node("details");
     meta.append(
-      node("summary", "Run details"),
+      node("summary", "Run history"),
       node(
         "p",
-        `Revision ${t.revision.slice(0, 12)} · ${new Date(t.created).toLocaleString()}`,
+        `Based on commit ${t.revision.slice(0, 7)} · sent ${new Date(t.created).toLocaleString()}`,
         "muted",
-      ),
-      node(
-        "p",
-        t.worktree ?? "A worktree will be created after approval.",
-        "path",
       ),
     );
     response.append(meta);
@@ -1160,9 +1155,15 @@ async function refresh() {
         });
       if (epoch !== generation || key !== composerKey()) return;
       composerPolicy = { key, allowedModes: value.allowedModes };
-      $("selection-summary").textContent = value.effective
-        ? `${value.effective.selection.model === "provider" ? "Provider default" : value.effective.selection.model} · ${value.effective.selection.effort === "provider" ? "default effort" : value.effective.selection.effort + " effort"}`
-        : "Choose model & effort";
+      const effective = value.effective?.selection;
+      $("selection-summary").dataset.model = effective
+        ? effective.model === "provider"
+          ? "Default model"
+          : effective.model
+        : "";
+      $("selection-summary").textContent = effective
+        ? `${effective.model === "provider" ? "Provider default model" : effective.model} · ${effective.effort === "provider" ? "default effort" : effective.effort + " effort"}`
+        : "Choose a model and effort";
       applyPolicy();
     }
     if (selected) {
@@ -1183,14 +1184,16 @@ async function refresh() {
     } else {
       archivedView = false;
       $("thread-title").textContent = "New conversation";
+      document.title = "agentd";
       latest = null;
       if (!fingerprint) {
         empty();
         fingerprint = "empty";
       }
     }
-    $("stop-current").hidden =
-      !latest || !["queued", "running"].includes(latest.status);
+    const running = !!latest && ["queued", "running"].includes(latest.status);
+    $("stop-current").hidden = !running;
+    $("send").hidden = running;
     $("rename").hidden = !selected;
     $("archive").hidden = !selected;
     const locked =
@@ -1218,13 +1221,22 @@ async function refresh() {
                 ? "Review, request revisions, commit or discard these changes before continuing."
                 : "Approve or stop the current run before sending the next message."
               : $("mode").value === "chat"
-                ? "Text only · paste any context you want to discuss. Each message waits for approval."
-                : $("adapter").value === "cursor"
-                  ? "Each message waits for approval. Text and keyboard dictation are supported; Cursor image input is unavailable."
-                  : "Each message waits for approval. Images and keyboard dictation are supported.";
+                ? "Chat only · text you paste here, no project access."
+                : "";
     if ($("operations-dialog").open) void loadOperations(false);
+    if ($("preferences-dialog").open) void loadAccounts(false);
   } catch (e) {
-    if (signedIn) notice(e.message);
+    if (
+      signedIn &&
+      /^(Conversation|Project) not found$/.test(e.message) &&
+      (selected || projectId)
+    ) {
+      // The remembered conversation was archived, removed or rolled back: start fresh.
+      if (e.message.startsWith("Project"))
+        projectId = projects[0]?.id ?? null;
+      reset();
+      notice();
+    } else if (signedIn) notice(e.message);
   } finally {
     busy = false;
     if (epoch !== generation) refresh();
@@ -1432,14 +1444,11 @@ async function openReview(id) {
   reviewTask = id;
   reviewTree = value.tree;
   const content = $("review-content");
-  content.replaceChildren(
-    node(
-      "p",
-      `${value.files.length} changed ${value.files.length === 1 ? "file" : "files"}`,
-      "muted",
-    ),
-    node("pre", value.summary, "path"),
-  );
+  const stats = diffStats(value.patch);
+  $("review-stats").textContent =
+    `${value.files.length} ${value.files.length === 1 ? "file" : "files"} changed · +${stats.additions} −${stats.deletions}` +
+    (value.commit ? " · committed" : "");
+  content.replaceChildren();
   if (value.mergeParent)
     content.append(
       node(
@@ -1476,31 +1485,37 @@ async function openReview(id) {
       ),
     );
   content.append(renderDiff(value.patch));
-  content.append(
-    node("h3", "Checks"),
-    node(
-      "p",
-      value.checks
-        ? `${value.checks.status}${value.checks.tree !== value.tree ? " · outdated for these changes" : ""}`
-        : "Not run. Checks are required before committing.",
-      "muted",
-    ),
-  );
+  const checkState = value.checks
+    ? value.checks.tree !== value.tree
+      ? "Outdated · the changes differ from what was checked"
+      : { passed: "Passed on exactly these changes", failed: "Failed", running: "Running…", cancelled: "Stopped", timed_out: "Time limit reached", stale: "Outdated · files changed while checking", interrupted: "Interrupted" }[value.checks.status] ?? value.checks.status
+    : "Not run yet";
+  const checksBox = node("section", undefined, "review-checks");
+  checksBox.append(node("h3", "Checks"), node("p", checkState, value.checks?.status === "passed" && value.checks.tree === value.tree ? "good" : "muted"));
   if (value.checks?.output)
-    content.append(node("pre", value.checks.output, "result"));
+    checksBox.append(node("pre", value.checks.output, "result"));
+  content.prepend(checksBox);
   const actions = $("review-actions");
   actions.replaceChildren();
   if (value.decision === "pending") {
+    // Know whether checks can run before offering them as the next step.
+    let setup = null;
+    try {
+      setup = await api(
+        "/api/check-setup?project=" +
+          encodeURIComponent(value.project) +
+          "&task=" +
+          encodeURIComponent(id),
+      );
+    } catch {}
+    const checksReady = !!setup?.plan?.ready;
     const revise = button("Request revisions", () => {
       revisionTarget = { id, tree: value.tree };
       $("revision-prompt").value = "";
       $("revision-dialog").showModal();
     });
     revise.disabled = value.truncated || !!value.blocked.length;
-    actions.append(revise);
-    actions.append(
-      button("Set up checks", () => openCheckSetup(value.project, id)),
-    );
+    const setUp = button("Set up checks", () => openCheckSetup(value.project, id));
     const check = button("Run checks", async () => {
       await api("/api/action", { op: "validate", id, tree: value.tree });
       checking = id;
@@ -1511,58 +1526,55 @@ async function openReview(id) {
           "danger",
         ),
       );
-      notice("Checks are running. The result will appear here.");
+      checksBox.lastChild.textContent = "Running…";
     });
-    check.disabled = !!value.conflicts?.length;
-    actions.append(check);
-    const commit = button(
-      "Approve commit",
-      async () => {
-        const message = prompt("Commit message", "Apply reviewed changes");
-        if (message === null) return;
-        await api("/api/action", {
-          op: "commit",
-          id,
-          tree: value.tree,
-          message,
-        });
-        notice("Committed to a new local branch. Nothing was pushed.");
-        await openReview(id);
-      },
-      "primary",
-    );
-    commit.disabled =
-      (!value.files.length && !value.mergeParent) ||
-      !!value.conflicts?.length ||
-      value.truncated ||
-      !!value.blocked.length ||
-      value.checks?.status !== "passed" ||
-      value.checks?.tree !== value.tree;
-    actions.append(commit);
-    if (!commit.disabled) actions.prepend(commit);
-    if (commit.disabled) {
-      check.classList.add("primary");
-      actions.prepend(check);
-      commit.classList.remove("primary");
-      content.append(
-        node(
-          "p",
-          value.conflicts?.length
-            ? "Resolve conflicts before running checks."
-            : value.truncated || value.blocked.length
-              ? "Resolve the review warnings before committing."
-              : "Next: prepare dependencies if needed, then run checks on these changes. A passing result is required before commit approval.",
-          "next-step",
-        ),
+    check.disabled = !!value.conflicts?.length || !checksReady;
+    const passed =
+      value.checks?.status === "passed" && value.checks?.tree === value.tree;
+    const commitReady =
+      (value.files.length || value.mergeParent) &&
+      !value.conflicts?.length &&
+      !value.truncated &&
+      !value.blocked.length &&
+      passed;
+    let next;
+    if (value.conflicts?.length) next = "Resolve the conflicts first. Use Request revisions to ask your agent.";
+    else if (value.truncated || value.blocked.length) next = "Resolve the warnings above before committing.";
+    else if (!checksReady)
+      next = setup?.error
+        ? "This project has no supported checks yet: " + setup.error
+        : "Prepare this project’s dependencies, then run checks on these changes.";
+    else if (!passed) next = "Run checks on these exact changes. A pass is required before you can commit.";
+    if (commitReady) {
+      const field = node("div", undefined, "commit-field");
+      const label = node("label", "Commit message"),
+        input = node("input");
+      input.id = "commit-message";
+      input.maxLength = 100;
+      input.value = "Apply reviewed changes";
+      label.htmlFor = input.id;
+      field.append(label, input);
+      checksBox.append(field);
+      const commit = button(
+        "Commit",
+        async () => {
+          await api("/api/action", {
+            op: "commit",
+            id,
+            tree: value.tree,
+            message: input.value.trim() || "Apply reviewed changes",
+          });
+          notice("Committed to a new local branch. Nothing was pushed.");
+          await openReview(id);
+        },
+        "primary",
       );
-    } else
-      content.append(
-        node(
-          "p",
-          "Checks passed for these exact changes. Ready for your commit approval.",
-          "next-step",
-        ),
-      );
+      actions.append(commit, revise);
+    } else {
+      (checksReady ? check : setUp).classList.add("primary");
+      actions.append(checksReady ? check : setUp, checksReady ? setUp : check, revise);
+    }
+    if (next) checksBox.append(node("p", next, "next-step"));
 
     actions.append(
       button(
@@ -2066,6 +2078,7 @@ async function openCheckSetup(project, task) {
 }
 $("check-setup-close").onclick = () => {
   $("check-setup-dialog").close();
+  if (reviewTask && $("review-dialog").open) void openReview(reviewTask);
   setupTarget = null;
 };
 async function updateCheckSetup() {
@@ -2704,30 +2717,55 @@ settingsForm.append(
 );
 settingsDialog.append(settingsHead, settingsForm);
 document.body.append(settingsDialog);
-const settingsButton = button("Advanced defaults", () => openSettings());
-settingsButton.id = "settings-menu";
-$("preferences-dialog").append(settingsButton);
 let settingsData = null,
   settingsEpoch = 0;
+const plainAccess = {
+  edit: "Can edit files in an isolated copy",
+  read: "Read-only",
+  chat: "No project access",
+  blocked: "Runs disabled",
+};
+const plainSource = (source) =>
+  source === "Installation" ? "server default" : source.toLowerCase();
+const plainPlace = (text) =>
+  String(text)
+    .replace(/isolated worktree/gi, "isolated copy of the project")
+    .replace(/worktree/gi, "project copy");
+function plainDuration(ms) {
+  const seconds = Math.round(ms / 1000);
+  return seconds < 90 ? seconds + " seconds" : Math.round(seconds / 60) + " min";
+}
+function plainModel(selection) {
+  return (
+    (selection.model === "provider" ? "Provider default model" : selection.model) +
+    (selection.effort === "provider" ? "" : " · " + selection.effort + " effort")
+  );
+}
 function executionSummary(value) {
-  return `${value.permissions.filesystem} · ${value.permissions.network} · ${Math.round(value.timeoutMs / 1000)} seconds. Requested model: ${value.selection.model === "provider" ? "Provider default" : value.selection.model}; effort: ${value.selection.effort === "provider" ? "Provider default" : value.selection.effort}.`;
+  return `${plainPlace(value.permissions.filesystem)} · ${plainModel(value.selection)} · up to ${plainDuration(value.timeoutMs)}`;
 }
 function executionDetails(value) {
   const details = node("details"),
-    summary = node("summary", "Run settings and model choice");
-  details.append(
-    summary,
-    node("p", executionSummary(value)),
-    node("p", value.selection.reason, "muted"),
-  );
-  for (const [key, source] of Object.entries(value.sources))
-    details.append(
-      node("p", `${key}: ${value.settings[key]} — ${source}`, "muted"),
+    summary = node("summary", "Details");
+  const list = node("dl", undefined, "run-facts");
+  const row = (term, text) => list.append(node("dt", term), node("dd", text));
+  row("Files", plainPlace(value.permissions.filesystem));
+  row("Network", plainPlace(value.permissions.network));
+  row("Model", plainModel(value.selection) + " (requested)");
+  row("Time limit", plainDuration(value.timeoutMs));
+  if (value.settings?.access)
+    row(
+      "Most access allowed",
+      (plainAccess[value.settings.access] ?? value.settings.access) +
+        (value.sources?.access ? " · " + plainSource(value.sources.access) : ""),
     );
   details.append(
+    summary,
+    list,
     node(
       "p",
-      "Actual model and effort: unknown / provider-managed. Shell, MCP and extra host paths are unavailable.",
+      (value.selection.reason ? value.selection.reason + " " : "") +
+        "Shell, plugins and extra folders are never available.",
       "muted",
     ),
   );
@@ -3093,12 +3131,23 @@ $("stop-current").onclick = async () => {
     notice(error.message);
   }
 };
-$("accounts-open").onclick = () => {
-  operationsView = "accounts";
-  $("operations-dialog").querySelector("h2").textContent = "Agents & accounts";
-  loadOperations();
+function openPreferences() {
+  if (!$("preferences-dialog").open) $("preferences-dialog").showModal();
+  void loadAccounts();
+}
+$("preferences-menu").onclick = openPreferences;
+// Settings hands over to the focused editors instead of stacking modals.
+$("github-settings").onclick = () => {
+  $("preferences-dialog").close();
+  $("github-open").click();
 };
-$("github-settings").onclick = () => $("github-open").click();
+$("settings-defaults").onclick = () => {
+  $("preferences-dialog").close();
+  openSettings("project-agent");
+};
+accountDialog.addEventListener("close", () => {
+  if ($("preferences-dialog").open) void loadAccounts(false);
+});
 const projectSettingsAction = $("project-menu").onclick;
 $("project-menu").onclick = () => {
   $("project-info").hidden = true;

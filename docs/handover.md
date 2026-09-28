@@ -1,6 +1,19 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-claude-redesign-review.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-claude-redesign-fixes.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## 0.20.1 candidate: redesign review fixes — 2026-09-28
+
+At the operator's request, Claude fixed D1–D9 on `fix/redesign-review-2026-09-28` ([handover](handovers/2026-09-28-claude-redesign-fixes.md)).
+
+- The diff view shows every changed line (regression tests added).
+- A stale conversation falls back cleanly.
+- Settings is one panel.
+- The composer has a single agent/model/mode picker, and Send becomes Stop.
+- Run details use plain language.
+- The review is a side panel whose next step reflects check readiness.
+
+Linux: 101/101 tests, 0 skipped. **Not installed.** The host runs 0.20.0 (installed 18:09 UTC, byte-identical to `58d4276`), and that supersedes the "installed 0.19.0" lines below. Claude holds the frontend for this item; base further `public/` work on this branch.
 
 ## Claude review of 0.20.0 — 2026-09-28
 
@@ -79,6 +92,7 @@ This review-response update records findings and bounded diagnostic evidence; it
 
 ## History and maintenance
 
+- [2026-09-28 — Fixes for redesign review D1–D9](handovers/2026-09-28-claude-redesign-fixes.md)
 - [2026-09-28 — Claude review of the 0.20.0 redesign](handovers/2026-09-28-claude-redesign-review.md)
 - [2026-09-28 — Exact-tree checks and isolation CI](handovers/2026-09-28-snapshot-checks.md)
 - [2026-09-28 — Task desk redesign](handovers/2026-09-28-task-desk-redesign.md)
