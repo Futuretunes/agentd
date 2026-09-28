@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-sensitive-data.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-bounded-review.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.27.0 — bounded large reviews
+
+[Handover](handovers/2026-09-28-bounded-review.md): oversized patches return a bounded, unapprovable review instead of raw Git buffer errors. Multi-megabyte reproduction passes locally; exact Linux/CI pending. Includes prior overnight safeguards; installed 0.22.0 unchanged. Next: actor attribution and missing mutation audits, then cumulative staging.
 
 ## Candidate 0.26.0 — shared sensitive-data checks
 

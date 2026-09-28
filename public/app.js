@@ -1607,7 +1607,7 @@ async function openReview(id) {
     content.append(
       node(
         "p",
-        "Sensitive filenames require manual resolution: " +
+        "These changes require separate review: " +
           value.blocked.join(", "),
         "error",
       ),

@@ -132,3 +132,7 @@ Implemented on `feat/shared-git-policy`: minimal explicit environment, disabled 
 ## R13 / R14 candidate — sensitive data and binary classification
 
 Shared credential filename/content policy now covers exact review blobs, outgoing commit history, commit messages and PR text. Suspect/unscannable review patches are withheld; GUI commit/publication remain blocked. Binary detection uses Git numstat metadata instead of a phrase in the diff. Full large-diff/binary review workflows remain deferred. Exact archive `3af7da7` passed 125/125 Linux tests, zero skips; CI passed, draft #29 open. Not installed. See [handover](handovers/2026-09-28-sensitive-data.md).
+
+## R15 candidate — bounded oversized reviews
+
+Git output overflow now becomes a fixed error without raw output; review converts it to an unapprovable truncated result. Patch generation is capped at 180 KB before buffering a full diff. Real multi-megabyte reproduction passes. Exact Linux/CI pending; not installed. See [handover](handovers/2026-09-28-bounded-review.md). R14 large-file paginated review remains future work.

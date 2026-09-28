@@ -43,8 +43,6 @@ export const gitPolicy = Object.freeze([
   "-c",
   "tag.gpgSign=false",
   "-c",
-  "diff.external=",
-  "-c",
   "core.pager=cat",
 ]);
 export function gitEnvironment(
@@ -64,18 +62,32 @@ export function gitEnvironment(
     ...(index ? { GIT_INDEX_FILE: index } : {}),
   };
 }
+export class GitOutputLimitError extends Error {
+  constructor() {
+    super(
+      "Git output exceeds the safe review limit. Reduce the changes or review them separately.",
+    );
+    this.name = "GitOutputLimitError";
+  }
+}
 function raw(
   repo: string,
   args: string[],
   options: { index?: string; maxBuffer?: number } = {},
 ) {
-  return execFileSync("/usr/bin/git", [...gitPolicy, "-C", repo, ...args], {
-    encoding: "utf8",
-    env: gitEnvironment(undefined, options.index),
-    timeout: 15000,
-    maxBuffer: options.maxBuffer ?? 4 * 1024 * 1024,
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  try {
+    return execFileSync("/usr/bin/git", [...gitPolicy, "-C", repo, ...args], {
+      encoding: "utf8",
+      env: gitEnvironment(undefined, options.index),
+      timeout: 15000,
+      maxBuffer: options.maxBuffer ?? 4 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOBUFS")
+      throw new GitOutputLimitError();
+    throw error;
+  }
 }
 // Do not follow includes, then refuse them as well as repository-defined executable
 // drivers and transport overrides. Overrides above suppress ordinary hooks and fsmonitor.
