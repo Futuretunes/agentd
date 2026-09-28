@@ -52,6 +52,21 @@ class DeploymentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'newer'):update.idle(state,1)
         with closing(sqlite3.connect(state/'tasks.sqlite',isolation_level=None)) as db:db.execute('PRAGMA user_version=1');db.execute("INSERT INTO tasks VALUES('queued')")
         with self.assertRaisesRegex(ValueError,'active'):update.idle(state,1)
+    def test_inventory_binds_real_state_and_hides_environment_values(self):
+        c=json.loads((Path(__file__).resolve().parents[1]/'deploy/update.example.json').read_text())
+        mobile=self.root/'mobile.json';mobile.write_text(json.dumps({'socket':c['controlSocket'],'publicDir':c['app']+'/public'}));c['configFiles']=[str(mobile)]
+        unit=self.root/'unit.service';unit.write_text('fixture unit')
+        def capture(args):
+            runner=args[2]==c['runnerUnit']
+            environment=('AGENTD_STATE_DIR='+c['state']+' AGENTD_CONTROL_SOCKET='+c['controlSocket']+' AGENTD_RUNNER=1') if runner else 'AGENTD_MOBILE_CONFIG='+str(mobile)
+            properties={'User':c['user'],'Group':c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','CapabilityBoundingSet':'','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelTunables':'no' if runner else 'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes','LockPersonality':'yes','RestrictAddressFamilies':'AF_UNIX AF_INET AF_INET6 AF_NETLINK','FragmentPath':str(unit),'DropInPaths':'','EnvironmentFiles':'','Environment':environment+' PRIVATE=fixture-secret','ExecStart':'{ path='+c['node']+' ; argv[]='+c['node']+' '+c['app']+'/src/'+('server.ts' if runner else 'mobile.ts')+' ; }'}
+            return '\n'.join(k+'='+v for k,v in properties.items())
+        with patch.object(update,'capture',side_effect=capture):
+            value=update.inventory(c);self.assertNotIn('fixture-secret',json.dumps(value))
+        def wrong(args): return capture(args).replace('AGENTD_STATE_DIR='+c['state'],'AGENTD_STATE_DIR=/different/state')
+        with patch.object(update,'capture',side_effect=wrong):
+            with self.assertRaisesRegex(ValueError,'state/socket differs'):update.inventory(c)
+
     def fixture(self):
         app=self.root/'app';app.mkdir();(app/'version').write_text('old')
         stage=self.root/'stage';stage.mkdir();(stage/'version').write_text('new')

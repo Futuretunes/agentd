@@ -10,6 +10,7 @@ from pathlib import Path
 import pwd
 import re
 import shutil
+import shlex
 import socket
 import sqlite3
 import subprocess
@@ -19,7 +20,7 @@ import time
 import urllib.request
 from release import verify, extract
 
-PROPERTIES = ['User', 'Group', 'WorkingDirectory', 'ExecStart', 'Environment', 'EnvironmentFiles', 'FragmentPath', 'DropInPaths', 'NoNewPrivileges', 'CapabilityBoundingSet', 'ProtectSystem', 'ProtectHome', 'PrivateTmp', 'ProtectKernelTunables', 'ProtectKernelModules', 'ProtectControlGroups', 'RestrictSUIDSGID', 'LockPersonality', 'RestrictAddressFamilies', 'ReadWritePaths', 'ReadOnlyPaths', 'InaccessiblePaths', 'SystemCallFilter', 'RestrictNamespaces', 'ProtectProc', 'ProcSubset']
+PROPERTIES = ['NeedDaemonReload', 'User', 'Group', 'WorkingDirectory', 'ExecStart', 'Environment', 'EnvironmentFiles', 'FragmentPath', 'DropInPaths', 'NoNewPrivileges', 'CapabilityBoundingSet', 'ProtectSystem', 'ProtectHome', 'PrivateTmp', 'ProtectKernelTunables', 'ProtectKernelModules', 'ProtectControlGroups', 'RestrictSUIDSGID', 'LockPersonality', 'RestrictAddressFamilies', 'ReadWritePaths', 'ReadOnlyPaths', 'InaccessiblePaths', 'SystemCallFilter', 'RestrictNamespaces', 'ProtectProc', 'ProcSubset']
 
 def run(args, **kwargs):
     return subprocess.run(args, check=True, text=True, **kwargs)
@@ -56,12 +57,31 @@ def inventory(c):
         unit = c[key]
         text = capture(['systemctl','show',unit,*['--property='+p for p in PROPERTIES]])
         properties = dict(line.split('=',1) for line in text.splitlines() if '=' in line)
+        if properties.get('NeedDaemonReload') == 'yes': raise ValueError('Reload and review changed unit files before updating')
         for name, value in {'User':c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','CapabilityBoundingSet':'','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes','LockPersonality':'yes'}.items():
             if properties.get(name) != value: raise ValueError('Unsupported service security configuration: '+name)
         if key == 'runnerUnit' and (properties.get('ProtectKernelTunables') != 'no' or 'AF_NETLINK' not in properties.get('RestrictAddressFamilies','').split()): raise ValueError('Unsupported worker namespace configuration')
         # Hash all selected effective properties, including Environment. Never print them.
         files = [properties.get('FragmentPath',''), *properties.get('DropInPaths','').split()]
         files.extend(re.findall(r'(\S+) \(ignore_errors=(?:yes|no)\)',properties.get('EnvironmentFiles','')))
+        environment = dict(item.split('=',1) for item in shlex.split(properties.get('Environment','')) if '=' in item)
+        env_files = re.findall(r'(\S+) \(ignore_errors=(?:yes|no)\)',properties.get('EnvironmentFiles',''))
+        for name in env_files:
+            for line in Path(name).read_text().splitlines():
+                if not line.strip() or line.lstrip().startswith(('#',';')): continue
+                parts=shlex.split(line,comments=False)
+                if len(parts)!=1 or '=' not in parts[0]: raise ValueError('Unsupported EnvironmentFile syntax; review deployment configuration')
+                env_key,value=parts[0].split('=',1); environment[env_key]=value
+        entry='server.ts' if key == 'runnerUnit' else 'mobile.ts'
+        if ('path='+c['node']+' ;') not in properties.get('ExecStart','') or ('argv[]='+c['node']+' '+c['app']+'/src/'+entry+' ;') not in properties.get('ExecStart',''): raise ValueError('Unsupported service entry point')
+        if key=='runnerUnit':
+            if environment.get('AGENTD_STATE_DIR','/srv/agentd/state')!=c['state'] or environment.get('AGENTD_CONTROL_SOCKET',str(Path(c['state'])/'control.sock'))!=c['controlSocket']: raise ValueError('Configured state/socket differs from service')
+            if environment.get('AGENTD_RUNNER')!='1': raise ValueError('Task runner must be enabled')
+        else:
+            mobile_config=environment.get('AGENTD_MOBILE_CONFIG','/etc/agentd/mobile.json')
+            if mobile_config not in c['configFiles']: raise ValueError('Include the mobile configuration in configFiles')
+            mobile=json.loads(Path(mobile_config).read_text())
+            if mobile.get('socket')!=c['controlSocket'] or mobile.get('publicDir')!=str(Path(c['app'])/'public'): raise ValueError('Mobile configuration differs from update target')
         hashes = {}
         for name in files:
             if not name: raise ValueError('Missing unit file')
@@ -74,7 +94,7 @@ def inventory(c):
 def idle(state, maximum):
     with closing(sqlite3.connect((state/'tasks.sqlite').as_uri()+'?mode=ro',uri=True)) as db:
         version = db.execute('PRAGMA user_version').fetchone()[0]
-        if version > maximum: raise ValueError('Database is newer than this release')
+        if version < 0 or version > maximum: raise ValueError('Database is newer than this release')
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         for table, column, states in [('tasks','status',('queued','running','cancelling')),('repository_jobs','state',('running',)),('dependency_jobs','state',('running',)),('publications','state',('preparing','publishing','pushing','branch_published','creating_pr')),('review_jobs','state',('preparing',))]:
             if table in tables and db.execute(f'SELECT 1 FROM {table} WHERE {column} IN ({",".join("?" for _ in states)}) LIMIT 1',states).fetchone():
