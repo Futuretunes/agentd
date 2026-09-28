@@ -21,7 +21,7 @@ Native output and authorization codes are never written to task logs or audit re
 
 ## Limits
 
-This implements guided login and manual reconnect. Durable renewal of refresh tokens produced inside disposable workers is still a separate backlog item; agentd does not copy worker-modified credential files back into the trusted profile. Codex execution remains disabled by the existing worker policy even after a successful account login. Usage/credit reporting, automatic retry, and privileged administration remain separate work.
+This implements guided login and manual reconnect. Durable renewal of refresh tokens produced inside disposable workers is still a separate backlog item; agentd does not copy worker-modified credential files back into the trusted profile. Codex repository execution remains disabled even after a successful account login. The optional v0.10.0 Chat only policy enables text Q&A in an empty sandbox; it does not enable Ask or Edit. Usage/credit reporting, automatic retry, and privileged administration remain separate work.
 
 Validated against Claude Code 2.1.283 and Codex CLI 0.157.1. Native login startup was checked in empty profiles without completing authorization; the operator completed and verified live Claude reconnection through the GUI on 2026-09-28. Full Codex browser consent remains a separate acceptance check.
 

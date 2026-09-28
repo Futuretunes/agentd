@@ -32,3 +32,8 @@ test('discovery distinguishes installation from policy without running CLI or ch
   value=discover([],['claude']).find(x=>x.id==='claude');assert.equal(value.installed,true);assert.equal(value.available,false);assert.match(value.reason,/security policy/);assert.deepEqual(value.modes,[]);
  }finally{if(prior===undefined)delete process.env.AGENTD_CLAUDE_BIN;else process.env.AGENTD_CLAUDE_BIN=prior;rmSync(root,{recursive:true,force:true});}
 });
+test('chat-only policy exposes no repository modes and rejects image or other-provider chat',()=>{
+ const value=discover(['claude'],['claude'],true,true).find(x=>x.id==='codex');assert.deepEqual(value.modes,['chat']);assert.equal(value.available,true);
+ const [command,args]=invocation('codex',{prompt:'--unsafe $(touch file)',mode:'chat',images:[]});assert.equal(command,process.execPath);assert.match(args[0],/codex-chat\.ts$/);assert.equal(args.at(-1),'--unsafe $(touch file)');
+ assert.throws(()=>invocation('claude',{prompt:'test',mode:'chat',images:[]}));assert.throws(()=>invocation('codex',{prompt:'test',mode:'chat',images:['image']}));
+});

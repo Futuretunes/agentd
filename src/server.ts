@@ -18,7 +18,7 @@ export function start(options: Options) {
   if (schema?.value !== '1') { db.close(); throw new Error('Unsupported state schema'); }
   db.prepare('INSERT INTO service_events(at, kind) VALUES (?, ?)').run(new Date().toISOString(), 'started');
   const boots = Number(db.prepare("SELECT count(*) AS n FROM service_events WHERE kind = 'started'").get()?.n);
-  const tasks = options.taskRunner ? runner({ editing: process.env.AGENTD_EDITING === '1', editAdapters: (process.env.AGENTD_EDIT_ADAPTERS??'').split(',').filter(Boolean), enabledAdapters: (process.env.AGENTD_ENABLED_ADAPTERS??'codex,claude').split(',').filter(Boolean), strictWorkers: process.env.AGENTD_STRICT_WORKERS === '1', stateDir: options.stateDir, projectsDir: process.env.AGENTD_PROJECTS_DIR, repo: process.env.AGENTD_REPO ?? (() => { throw new Error('AGENTD_REPO is required when the runner is enabled'); })(), worktrees: process.env.AGENTD_WORKTREES ?? join(options.stateDir, 'worktrees'), logs: process.env.AGENTD_LOGS ?? join(options.stateDir, 'logs') }) : undefined;
+  const tasks = options.taskRunner ? runner({ codexChat: process.env.AGENTD_CODEX_CHAT === '1', editing: process.env.AGENTD_EDITING === '1', editAdapters: (process.env.AGENTD_EDIT_ADAPTERS??'').split(',').filter(Boolean), enabledAdapters: (process.env.AGENTD_ENABLED_ADAPTERS??'codex,claude').split(',').filter(Boolean), strictWorkers: process.env.AGENTD_STRICT_WORKERS === '1', stateDir: options.stateDir, projectsDir: process.env.AGENTD_PROJECTS_DIR, repo: process.env.AGENTD_REPO ?? (() => { throw new Error('AGENTD_REPO is required when the runner is enabled'); })(), worktrees: process.env.AGENTD_WORKTREES ?? join(options.stateDir, 'worktrees'), logs: process.env.AGENTD_LOGS ?? join(options.stateDir, 'logs') }) : undefined;
   const started = performance.now();
   let requests = 0;
   const server = createServer((req, res) => {
@@ -36,7 +36,7 @@ export function start(options: Options) {
       try {
         db.prepare('SELECT 1').get();
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ok', service: 'agentd', version: '0.9.0', schemaVersion: 1,
+        res.end(JSON.stringify({ status: 'ok', service: 'agentd', version: '0.10.0', schemaVersion: 1,
           scheduler: tasks ? 'serial' : 'disabled', workerDispatch: !!tasks, starts: boots }));
       } catch {
         res.writeHead(503, { 'Content-Type': 'application/json' });
@@ -64,7 +64,7 @@ export function start(options: Options) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.umask(0o077);
   const app = start({ stateDir: process.env.AGENTD_STATE_DIR ?? '/srv/agentd/state', port: Number(process.env.AGENTD_PORT ?? 8787), taskRunner: process.env.AGENTD_RUNNER === "1" });
-  app.server.on('listening', () => console.log(JSON.stringify({ event: 'listening', address: app.server.address(), version: '0.9.0' })));
+  app.server.on('listening', () => console.log(JSON.stringify({ event: 'listening', address: app.server.address(), version: '0.10.0' })));
   app.server.on('error', (error) => { console.error(JSON.stringify({ event: 'server_error', message: error.message })); process.exit(1); });
   let stopping = false;
   for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => {

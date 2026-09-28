@@ -152,3 +152,14 @@ test('retry protects partial edits until review is resolved',async()=>{
   assert.equal(readFileSync(join(working.worktree,'partial.txt'),'utf8'),'keep me');assert.equal(retry.worktree,null);
  }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
 });
+test('chat capability cannot enable Codex repository tools and always requests empty isolation',async()=>{
+ const f=await fixture();await f.app.close();let seen;
+ assert.throws(()=>runner({...f.config,codexChat:true}),/hardened/);
+ const app=runner({...f.config,strictWorkers:true,codexChat:true,enabledAdapters:['claude'],isolate:(...args)=>{seen=args;return{command:args[2],args:args[3],cleanup(){}};}});await once(app.server,'listening');
+ try{
+  assert.deepEqual(app.request({op:'capabilities'}).adapters.find(a=>a.id==='codex').modes,['chat']);
+  for(const mode of ['ask','edit'])assert.throws(()=>app.request({op:'create',adapter:'codex',mode,prompt:'test'}),/work mode/);
+  assert.throws(()=>app.request({op:'create',adapter:'codex',mode:'chat',prompt:'test',attachments:['image']}),/text/);
+  const task=app.request({op:'create',adapter:'codex',mode:'chat',prompt:'read'});assert.equal(task.status,'waiting_for_approval');app.request({op:'approve',id:task.id});await status(app,task.id,['succeeded']);assert.equal(seen[6],false);assert.equal(seen[7],true);
+ }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
+});

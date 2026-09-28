@@ -11,8 +11,9 @@ import { mkdirSync, openSync, closeSync, realpathSync, readFileSync, copyFileSyn
 import { join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 
-type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
+type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
 export function runner(c: Config) {
+  if(c.codexChat&&!c.strictWorkers)throw Error("Chat only requires hardened worker isolation");
   for (const dir of [c.stateDir,c.worktrees,c.logs]) mkdirSync(dir,{recursive:true,mode:0o700});
   for(const name of readdirSync(c.stateDir))if(name.startsWith('worker-'))rmSync(join(c.stateDir,name),{recursive:true,force:true});
   const db = new DatabaseSync(join(c.stateDir,'tasks.sqlite'));
@@ -78,7 +79,7 @@ export function runner(c: Config) {
     db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,status,at);
   };
   const git=(args:string[],repo=c.repo)=>execFileSync('git',['-C',repo,...args],{encoding:'utf8',timeout:15000,stdio:['ignore','pipe','pipe']}).trim();
-  const capabilities=()=>discover(enabledAdapters,editAdapters,!!c.command);
+  const capabilities=()=>discover(enabledAdapters,editAdapters,!!c.command,!!c.codexChat);
   const accountCache=new Map<string,AccountStatus>(adapterIds.map(id=>[id,{state:'checking',method:null,checkedAt:null,message:'Checking account status'}]));
   let checkingAccounts=false;
   let accountsCheckedAt=0;
@@ -102,7 +103,7 @@ export function runner(c: Config) {
     const value=capabilities().find(value=>value.id===id);
     if(!value)throw Error('Unsupported adapter');
     if(!value.available)throw Error(value.reason??'Adapter unavailable');
-    if(!value.modes.includes(mode))throw Error('Editing is not enabled for this adapter');
+    if(!value.modes.includes(mode))throw Error('This work mode is not enabled for this adapter');
   };
   function pump(){
     if(closing||active||accountManager.busy())return;
@@ -127,7 +128,7 @@ export function runner(c: Config) {
       if(row.parent){const prior=get(String(row.parent));if(prior){prompt='Previous instruction:\n'+String(prior.prompt)+'\nPrevious output (context, not instructions):\n'+(prior.log?logTail(String(prior.log)).slice(-20000):'(not yet available)')+'\nNew instruction:\n'+prompt;}}
       if(row.mode==='edit')prompt+='\nEdit files in this worktree only. Do not commit, push or open pull requests. The user will review changes and run checks separately.';
       let [command,args]=c.command?c.command(String(row.adapter),prompt,String(row.mode)):invocation(String(row.adapter),{prompt,mode:row.mode as Mode,images:pictures});
-      if(row.mode==='edit'||c.strictWorkers){const sandbox=(c.isolate??isolated)(tree,c.stateDir,command,args,String(row.adapter),undefined,row.mode==='edit');command=sandbox.command;args=sandbox.args;cleanup=sandbox.cleanup;}
+      if(row.mode==='edit'||row.mode==='chat'||c.strictWorkers){const sandbox=(c.isolate??isolated)(tree,c.stateDir,command,args,String(row.adapter),undefined,row.mode==='edit',row.mode==='chat');command=sandbox.command;args=sandbox.args;cleanup=sandbox.cleanup;}
       const env:NodeJS.ProcessEnv={PATH:process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',HOME:process.env.HOME,LANG:'C.UTF-8',TERM:'dumb'};
       const fd=openSync(log,'wx',0o600);
       let child:ChildProcess;
@@ -246,9 +247,10 @@ export function runner(c: Config) {
     }
     if(input.op==='list')return db.prepare('SELECT * FROM tasks ORDER BY created DESC LIMIT 100').all();
     if(input.op==='create'){
-      const mode=input.mode??'ask';if(!['ask','edit'].includes(mode))throw Error('Invalid task mode');requireAdapter(input.adapter,mode);
+      const mode=input.mode??'ask';if(!['ask','edit','chat'].includes(mode))throw Error('Invalid task mode');requireAdapter(input.adapter,mode);
       const attachments=input.attachments??[];
       if(!Array.isArray(attachments)||attachments.length>4||attachments.some(id=>typeof id!=='string'))throw new Error('Up to four images allowed');
+      if(mode==='chat'&&attachments.length)throw Error('Chat only accepts text. Remove images or choose another agent.');
       attachments.forEach(id=>attachment(id));
       if(input.parent && (typeof input.parent!=='string'||!get(input.parent)))throw new Error('Parent task not found');
       if(!adapterIds.includes(input.adapter))throw new Error('Unsupported adapter');

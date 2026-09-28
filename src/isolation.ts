@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {git} from './changes.ts';
 
 // Explicit mounts only: unrelated projects, daemon state, sockets and profiles are absent.
-export function isolated(worktree:string,stateDir:string,command:string,args:string[],adapter?:string,dependencies?:string,writable=true){
+export function isolated(worktree:string,stateDir:string,command:string,args:string[],adapter?:string,dependencies?:string,writable=true,promptOnly=false){
   if(process.platform!=='linux')throw Error('Worker isolation requires Linux with bubblewrap');
   if(adapter&&!['claude','codex'].includes(adapter))throw Error('Unsupported adapter');
   const runtime=mkdtempSync(join(stateDir,'worker-')),home=join(runtime,'home');mkdirSync(home,{mode:0o700});
@@ -19,7 +19,8 @@ export function isolated(worktree:string,stateDir:string,command:string,args:str
       const files=adapter==='codex'?['.codex/auth.json']:['.claude.json','.claude/.credentials.json'];
       for(const file of files){const source=join(hostHome,file);if(existsSync(source)){mkdirSync(dirname(join(home,file)),{recursive:true,mode:0o700});copyFileSync(source,join(home,file));}}
     }
-    const common=realpathSync(resolve(worktree,git(worktree,['rev-parse','--git-common-dir'])));
+    if(promptOnly&&(adapter!=='codex'||writable||dependencies))throw Error('Invalid chat isolation policy');
+    const common=promptOnly?null:realpathSync(resolve(worktree,git(worktree,['rev-parse','--git-common-dir'])));
     const executable=realpathSync(command),node=realpathSync(process.execPath),source=dirname(fileURLToPath(import.meta.url));
     const mounts=['--die-with-parent','--new-session','--unshare-pid','--unshare-ipc','--unshare-net','--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/run'];
     // System runtime only. Never bind the host root, /home, /srv or /var wholesale.
@@ -28,21 +29,26 @@ export function isolated(worktree:string,stateDir:string,command:string,args:str
     if(!node.startsWith('/usr/')){const prefix=dirname(dirname(node));mounts.push('--ro-bind',prefix,prefix);}
     // Pin the child entry/check code to this application, never a repository-supplied path.
     mounts.push('--bind',home,hostHome,'--ro-bind',source,source);
-    if(adapter&&!executable.startsWith('/usr/')){
-      const modules=executable.indexOf('/node_modules/');
-      const install=modules<0?executable:executable.slice(0,modules+14)+executable.slice(modules+14).split('/')[0];
+    const native=promptOnly?realpathSync(args[1]):executable;
+    if(adapter&&!native.startsWith('/usr/')){
+      const modules=native.indexOf('/node_modules/');
+      const install=modules<0?native:native.slice(0,modules+14)+native.slice(modules+14).split('/')[0];
       mounts.push('--ro-bind',install,install);
     }
-    mounts.push('--ro-bind',common,common,writable?'--bind':'--ro-bind',worktree,worktree,'--ro-bind',join(worktree,'.git'),join(worktree,'.git'),'--chdir',worktree,'--setenv','HOME',hostHome);
+    if(promptOnly){const empty=join(runtime,'empty');mkdirSync(empty,{mode:0o700});mounts.push('--ro-bind',empty,worktree);}
+    else mounts.push('--ro-bind',common!,common!,writable?'--bind':'--ro-bind',worktree,worktree,'--ro-bind',join(worktree,'.git'),join(worktree,'.git'));
+    mounts.push('--chdir',worktree,'--setenv','HOME',hostHome);
     if(dependencies)mounts.push('--ro-bind',realpathSync(dependencies),join(worktree,'node_modules'));
-    let childCommand=executable,childArgs=args;
+    // The original CLI path may be a symlink in the hidden service profile.
+    const nativeArgs=promptOnly?[args[0],native,...args.slice(2)]:args;
+    let childCommand=executable,childArgs=nativeArgs;
     if(adapter){
       const network=join(runtime,'network');mkdirSync(network,{mode:0o700});const socket=join(network,'egress.sock');
       // Separate host process: DNS and outbound connections happen outside the worker namespace.
       broker=spawn(node,[join(source,'egress-proxy.ts'),socket,adapter,String(process.pid)],{env:{PATH:'/usr/local/bin:/usr/bin:/bin'},stdio:'ignore'});
       broker.on('error',()=>{});
       mounts.push('--ro-bind',network,'/run/agentd-egress');
-      childCommand=node;childArgs=[join(source,'worker-entry.ts'),'/run/agentd-egress/egress.sock',executable,...args];
+      childCommand=node;childArgs=[join(source,'worker-entry.ts'),'/run/agentd-egress/egress.sock',executable,...nativeArgs];
     }
     return {command:process.env.AGENTD_BWRAP_BIN??'/usr/bin/bwrap',args:[...mounts,'--',childCommand,...childArgs],cleanup};
   }catch(error){cleanup();throw error;}

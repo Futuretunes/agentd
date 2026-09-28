@@ -10,7 +10,7 @@ Implemented in v0.7.0: a read-only Operations Center for desktop and phone. It s
 
 Implemented in v0.8.0: guided native Claude and Codex account login, reconnect, sign-out and immediate status refresh in Operations. Login uses a temporary profile, preserves previous credentials on failure/cancellation, and excludes concurrent worker execution. Live Claude GUI reconnection was verified by the operator on 2026-09-28. Codex login startup is tested; its full browser consent still needs operator validation. See [account setup](accounts.md).
 
-Implemented in v0.9.0 (awaiting deployment acceptance): safe GUI retry of the latest failed, stopped, timed-out or interrupted run, with preserved inputs/revision, a fresh worktree and fresh approval. Duplicate requests reuse the same attempt, and partial edits require review first. See [task recovery](task-recovery.md).
+Implemented in v0.9.0 (installed; GUI acceptance pending): safe GUI retry of the latest failed, stopped, timed-out or interrupted run, with preserved inputs/revision, a fresh worktree and fresh approval. Duplicate requests reuse the same attempt, and partial edits require review first. See [task recovery](task-recovery.md).
 
 The eventual product must let the operator manage everything through the desktop/mobile GUI, without SSH, shell commands, manual file edits, or copying installer output into chat. This is a product acceptance requirement, not just a visual redesign. Current terminal-based administration is temporary.
 
@@ -26,7 +26,7 @@ Acceptance: a nontechnical operator can complete the supported setup, sign-in, p
 High-priority follow-up:
 
 - Durable Claude session renewal. Refreshes inside disposable workers are currently discarded. Design a trusted credential lifecycle outside repository-controlled workers, handle token rotation and concurrent refresh safely, and test expired sessions without exposing credentials or weakening isolation. GUI reconnect now provides the manual recovery path.
-- **Next proposed: tool-free Codex Q&A using the ChatGPT subscription.** Separate prompt-only conversation from repository inspection and editing. Validate that commands, patches, MCP, hooks and other execution paths are unavailable under the existing host restrictions; keep provider-only networking and approval. The current Ask mode can execute read-only commands, so it is not tool-free. Do not enable it just by changing a label or prompt.
+- Implemented in v0.10.0, pending live installation: **Codex Chat only**, text Q&A through the native ChatGPT login, with no advertised tools and no repository mounted. The pinned CLI rejects injected execution calls; its read-only policy rejects patches. See [Chat only](codex-chat.md). Native Ask and Edit remain disabled for Codex.
 - Restore Codex availability only through a validated solution compatible with the host's namespace restrictions. No inner-sandbox bypass.
 
 Planned, with no release-date commitment:
