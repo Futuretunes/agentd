@@ -12,6 +12,7 @@ import re
 import shutil
 import shlex
 import socket
+import stat
 import sqlite3
 import subprocess
 import sys
@@ -131,7 +132,7 @@ def control_idle(c):
         elif value.get('busy'): raise ValueError('Finish account changes before updating')
 
 # Run with the service account but a disposable home; no candidate tests run as root.
-def test_candidate(c, stage, temporary):
+def test_candidate(c, stage, temporary, files, manifest):
     account = pwd.getpwnam(c['user'])
     home = temporary/'home'; home.mkdir(); os.chown(home,account.pw_uid,account.pw_gid)
     for root, dirs, files in os.walk(stage):
@@ -149,6 +150,8 @@ def test_candidate(c, stage, temporary):
     command([c['npm'],'ci','--ignore-scripts','--no-audit','--no-fund'])
     command([c['npm'],'run','typecheck'])
     command([c['node'],'scripts/test-isolation-ci.mjs'])
+    # Reject links, special files and altered content before privileged ownership changes.
+    verify_candidate(stage, files, manifest)
     # All deployed code is immutable to the service account after validation.
     for root, dirs, files in os.walk(stage):
         os.chown(root,0,0); os.chmod(root,0o755)
@@ -158,15 +161,42 @@ def test_candidate(c, stage, temporary):
                 os.chown(path,0,0); os.chmod(path,0o755 if path.stat().st_mode & 0o111 else 0o644)
 
 def unexpected_files(stage, files):
-    # Validation may add dependencies under node_modules only. Anything else that
-    # appeared in the candidate (outside the manifest) must not be deployed.
-    allowed=set(files)|{'release-manifest.json'}
-    for directory, dirs, names in os.walk(stage):
+    # npm creates internal bin links. Permit those only inside node_modules;
+    # reject links out of the candidate, including a replaced dependency root.
+    stage = Path(stage)
+    dependencies = stage / 'node_modules'
+    allowed = set(files) | {'release-manifest.json'}
+    for directory, dirs, names in os.walk(stage, followlinks=False):
         for name in [*dirs, *names]:
-            path=Path(directory)/name; relative=path.relative_to(stage).as_posix()
-            if relative=='node_modules' or relative.startswith('node_modules/'): continue
-            if path.is_symlink(): raise ValueError('Candidate contains an unexpected link: '+relative)
-            if path.is_file() and relative not in allowed: raise ValueError('Candidate contains an unexpected file: '+relative)
+            path = Path(directory) / name
+            relative = path.relative_to(stage).as_posix()
+            info = path.lstat()
+            mode = info.st_mode
+            if stat.S_ISREG(mode) and info.st_nlink != 1:
+                raise ValueError('Candidate contains a hard-linked file: ' + relative)
+            dependency = relative.startswith('node_modules/')
+            if stat.S_ISLNK(mode):
+                if not dependency:
+                    raise ValueError('Candidate contains an unexpected link: ' + relative)
+                try:
+                    target = path.resolve(strict=True)
+                    target.relative_to(dependencies.resolve(strict=True))
+                except (OSError, ValueError, RuntimeError):
+                    raise ValueError('Dependency link escapes or cannot be resolved: ' + relative)
+                if not (target.is_file() or target.is_dir()):
+                    raise ValueError('Dependency link targets a special file: ' + relative)
+            elif not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
+                raise ValueError('Candidate contains a special file: ' + relative)
+            elif stat.S_ISREG(mode) and not dependency and relative not in allowed:
+                raise ValueError('Candidate contains an unexpected file: ' + relative)
+
+def verify_candidate(stage, files, manifest):
+    unexpected_files(stage, files)
+    for name, data in files.items():
+        if (stage/name).read_bytes() != data:
+            raise ValueError('Candidate changed during validation')
+    if json.loads((stage/'release-manifest.json').read_text()) != manifest:
+        raise ValueError('Release manifest changed during validation')
 
 def same_filesystem(c):
     # Rollback renames state into the backup next to the application. A rename
@@ -259,11 +289,9 @@ if __name__ == '__main__':
                 temporary=Path(tempfile.mkdtemp(prefix='agentd-validation-',dir=Path(c['app']).parent)); temporary.chmod(0o755)
                 try:
                     stage=temporary/'app'; extract(files,manifest,stage)
-                    test_candidate(c,stage,temporary)
+                    test_candidate(c,stage,temporary,files,manifest)
                     # Source files must still match after validation; npm may only add dependencies.
-                    for name,data in files.items():
-                        if (stage/name).is_symlink() or (stage/name).read_bytes()!=data: raise ValueError('Candidate changed during validation')
-                    unexpected_files(stage,files)
+                    verify_candidate(stage,files,manifest)
                     journal=root/'pending.json'
                     journal.write_text(json.dumps({'backup':str(backup),'version':manifest['version']})+'\n'); journal.chmod(0o600)
                     try:

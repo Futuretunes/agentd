@@ -1,6 +1,12 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-combined-0.21.1.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-candidate-validation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.21.2 — installer validation follow-up
+
+Based on Claude's installed `release/0.21.1`, not a duplicate integration. Read-only health/manifest independently confirm 0.21.1 at `be16009` and both services active. A duplicate local merge was aborted before any commit, publication or deployment. See [handover](handovers/2026-09-28-candidate-validation.md) and [review response](reviews/2026-09-28-claude-combined-0.21.1-response.md).
+
+Review found remaining candidate-file validation gaps, corrected before proceeding with R5 service identity changes. Candidate 0.21.2 preserves Claude's complete frontend and both earlier updater hardenings; it is not installed. R5 gateway separation remains the next substantive boundary item, and no service/account configuration has changed.
 
 ## Installed 0.21.1 — combined release (deployed 18:53 UTC via the managed updater)
 

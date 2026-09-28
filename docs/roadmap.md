@@ -45,6 +45,10 @@ High-priority follow-up:
 
 Implemented and installed (read-only health/service confirmation, 2026-09-28): task desk UI/UX redesign and R4 exact-tree checks with legacy check invalidation. R11 has a non-skipping Linux CI job; protected-branch enforcement remains. Final candidate Linux validation: 99/99, no skips. See [handover](handovers/2026-09-28-snapshot-checks.md). Next engineering work: release-baseline decision, tracked reproducible deployment/task-schema migration and remaining backend reviewability. Actual-phone acceptance and other open UX/engineering findings remain.
 
+## Installed 0.21.1; candidate 0.21.2
+
+Claude combined the UI fixes with managed deployment and installed 0.21.1 (`be16009`); independent health/manifest verification confirms it. The separate 0.20.1 and duplicate integration paths are superseded. A follow-up installer review reproduced acceptance of unexpected special files and external dependency-root links. Candidate 0.21.2 rejects those, hard links and changed manifests before privileged ownership changes; it is not installed. See [handover](handovers/2026-09-28-candidate-validation.md). R5 gateway identity/socket separation remains next, after this installer correction.
+
 ## Installed 0.21.0 — release and schema foundations
 
 Administrator acceptance found a gateway/runner compatibility-check mismatch (`LockPersonality`); corrected without changing either unit. A second compatibility correction aligns omitted mobile JSON keys with runtime defaults. The operator completed deployment; independent health confirms 0.21.0, task schema 1 and both services active.

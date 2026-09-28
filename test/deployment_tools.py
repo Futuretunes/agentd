@@ -128,6 +128,38 @@ class DeploymentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'unexpected file: public/extra.js'):update.unexpected_files(stage,files)
         (stage/'public/extra.js').unlink();(stage/'src/link').symlink_to('/etc/passwd')
         with self.assertRaisesRegex(ValueError,'unexpected link: src/link'):update.unexpected_files(stage,files)
+    def test_dependency_links_must_remain_inside_candidate(self):
+        stage=self.root/'links';stage.mkdir();outside=self.root/'outside';outside.mkdir()
+        deps=stage/'node_modules';deps.symlink_to(outside,target_is_directory=True)
+        with self.assertRaisesRegex(ValueError,'unexpected link: node_modules'):update.unexpected_files(stage,{})
+        deps.unlink();(deps/'pkg').mkdir(parents=True);(deps/'.bin').mkdir()
+        (deps/'pkg/cli.js').write_text('fixture')
+        link=deps/'.bin/tool';link.symlink_to('../pkg/cli.js')
+        update.unexpected_files(stage,{})
+        link.unlink();link.symlink_to(outside,target_is_directory=True)
+        with self.assertRaisesRegex(ValueError,'escapes'):update.unexpected_files(stage,{})
+        link.unlink();link.symlink_to('missing')
+        with self.assertRaisesRegex(ValueError,'cannot be resolved'):update.unexpected_files(stage,{})
+
+    def test_special_files_are_rejected_before_reading_candidate(self):
+        stage=self.root/'special';stage.mkdir()
+        for name in ('source.pipe','node_modules/pkg/pipe'):
+            path=stage/name;path.parent.mkdir(parents=True,exist_ok=True);os.mkfifo(path)
+            with self.assertRaisesRegex(ValueError,'special file'):update.unexpected_files(stage,{})
+            path.unlink()
+
+    def test_hardlinks_are_rejected_before_ownership_changes(self):
+        stage=self.root/'hardlinks';stage.mkdir();original=self.root/'external';original.write_text('fixture')
+        os.link(original,stage/'package.json')
+        with self.assertRaisesRegex(ValueError,'hard-linked'):update.unexpected_files(stage,{'package.json':b'fixture'})
+
+    def test_manifest_is_revalidated_after_candidate_tests(self):
+        stage=self.root/'verified';stage.mkdir();files={'package.json':b'{}'};manifest={'version':'fixture'}
+        (stage/'package.json').write_bytes(b'{}');(stage/'release-manifest.json').write_text(json.dumps(manifest))
+        update.verify_candidate(stage,files,manifest)
+        (stage/'release-manifest.json').write_text('{"version":"changed"}')
+        with self.assertRaisesRegex(ValueError,'manifest changed'):update.verify_candidate(stage,files,manifest)
+
     def test_rollback_requires_one_filesystem(self):
         app=self.root/'opt/app';app.mkdir(parents=True);state=self.root/'srv/state';state.mkdir(parents=True)
         c={'app':str(app),'state':str(state)};update.same_filesystem(c)
