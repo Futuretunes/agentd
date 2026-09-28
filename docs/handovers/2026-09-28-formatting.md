@@ -10,7 +10,7 @@ Pinned Prettier 3.9.9, explicit TypeScript/JavaScript source, browser, test and 
 
 ## Validation
 
-Formatting check and typecheck passed. Exact Linux archive/test and CI validation pending. No model requests, login/consent, installation or cleanup. A second formatter pass was necessary for one runner expression; the final check is stable.
+Formatting check and typecheck passed. Exact archive `9d4374c2930702497ef82976798da672b5c6358c` passed all 136 Linux tests with zero skips, typecheck and formatting check. SHA-256: `b229f23123ee14f11cfed3f731263a5df9e735706e1853d1b1e0bea725b6030f`. Local macOS tests passed 128 with 8 Linux-only skips. Draft #36; CI run 36484009612 pending. No model requests, login/consent, installation or cleanup. A second formatter pass was necessary for one runner expression; the final check is stable.
 
 ## Next
 

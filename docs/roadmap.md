@@ -159,4 +159,4 @@ Task/project creation now supports unique session-scoped request IDs, canonical 
 
 ## R2 formatting progress — candidate 0.32.0
 
-Pinned formatter and CI style checks cover TypeScript/JavaScript runtime, browser, tests and scripts. Mechanical formatting is separate from behavior changes. Typecheck remains the static analysis gate; semantic lint policy, module decomposition and explicit operation compatibility remain open. Exact Linux/CI validation pending; uninstalled.
+Pinned formatter and CI style checks cover TypeScript/JavaScript runtime, browser, tests and scripts. Mechanical formatting is separate from behavior changes. Typecheck remains the static analysis gate; semantic lint policy, module decomposition and explicit operation compatibility remain open. 136/136 Linux tests passed with zero skips; CI pending; uninstalled.
