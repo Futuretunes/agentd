@@ -4,13 +4,13 @@
 - Request: next backlog work; user clarified that the combined release was already installed.
 - Status: implemented and tested; not installed.
 - Draft PR: [#24](https://github.com/Futuretunes/agentd/pull/24).
-- Staged source: `0473e2b18ec89c1b868e9dee47c96fd8c13cf75e`; archive SHA-256 `5c28859641e99561c88559654f8c5dfaf10c02a12999c9723bc4265f96d3353d`. Later handover commits do not change the staged archive.
+- Staged source: `add2d08f23cfea40814514219e0da57567eac004`; archive SHA-256 `eed770e0f56c4086c5d480c93c558cb18c0c9f33c3eaead809faa42c96cf5be8`. Later handover commits do not change the staged archive.
 - Installed: 0.21.1 at `be16009`, read-only health/manifest confirms task schema 1, starts 32, both services active.
 - Candidate: 0.21.2; branch `fix/candidate-validation-boundaries`, based on `release/0.21.1` at `d042b77`.
 
 ## Follow-up — validation caller regression
 
-The operator's installer ran all 107 tests, then refused `tsconfig.json` before service shutdown or swap. Reproduced through `test_candidate`: an `os.walk` loop shadowed the `files` argument, replacing the manifest mapping with a directory listing before `verify_candidate`. Renamed the manifest argument and walk variables. Added a full validation-flow fixture (systemd/chown mocked, real filesystem and verifier): valid manifest files survive all three test commands, tampering fails before root ownership changes. This regression failed with the exact reported error before the fix. Earlier standalone verifier tests missed this calling-path defect. No unit/policy change or rejection bypass.
+The operator's installer ran all 107 tests, then refused `tsconfig.json` before service shutdown or swap. Reproduced through `test_candidate`: an `os.walk` loop shadowed the `files` argument, replacing the manifest mapping with a directory listing before `verify_candidate`. Renamed the manifest argument and walk variables. Added a full validation-flow fixture (systemd/chown mocked, real filesystem and verifier): valid manifest files survive all three test commands, tampering fails before root ownership changes. This regression failed with the exact reported error before the fix. Earlier standalone verifier tests missed this calling-path defect. No unit/policy change or rejection bypass. Corrected source `add2d08` passed 14 Python deployment fixtures, all 107 Linux tests with zero skips/failures, and GitHub Node 24/26 plus required Linux isolation. The same staged launcher now references the corrected archive. Read-only production health still reports 0.21.1, starts 32; the failed attempt did not reach service shutdown or create a pending transaction, so no rollback/journal cleanup is needed.
 
 ## Changes
 
@@ -20,7 +20,7 @@ The installed validator accepted external node_modules root links and unexpected
 
 ## Validation
 
-Local: 13 Python deployment tests passed, TypeScript passed, five UI regressions passed. Exact installed function reproduced acceptance of an external dependency-root link and a FIFO; regressions now reject both. Final staged Linux suite: 107 passed, zero failures/skips. The stricter validator separately accepted the real prepared npm dependency tree (including internal bin links). No real provider requests or root installation.
+Local: 14 Python deployment tests passed, TypeScript passed, five UI regressions passed. Exact installed function reproduced acceptance of an external dependency-root link and a FIFO; regressions now reject both. Final staged Linux suite: 107 passed, zero failures/skips. The stricter validator separately accepted the real prepared npm dependency tree (including internal bin links). No real provider requests or root installation.
 
 ## Deployment and constraints
 
