@@ -13,6 +13,15 @@ Claude reviewed v0.19.0: [review](reviews/2026-09-28-claude-review.md), [handove
 
 Codex should verify every finding and answer it in `docs/reviews/2026-09-28-claude-review-response.md` before starting new feature work. Accept nothing without checking it; disagree with evidence where the review is wrong.
 
+## Open UI/UX review — 2026-09-28
+
+Claude reviewed the task desk UI: [UX review](reviews/2026-09-28-claude-ux-review.md), [visual prototype](design/task-desk-prototype.html), [handover note](handovers/2026-09-28-claude-ux-review.md). The blockers:
+
+- **U1:** projects without npm checks can never commit. Needs an operator decision.
+- **U2:** agent answers are shown as raw Markdown in a terminal box.
+
+The main themes are one primary action per state, removing duplicated panels, and a real design system with a proper phone layout. Answer in `docs/reviews/2026-09-28-claude-ux-review-response.md`, with the same verify-don't-accept rule.
+
 ## Current state — 2026-09-28
 
 - **Installed release:** v0.19.0, implementation `0af41e2`, confirmed by the operator's successful deployment output; 91 tests passed and both services active.
@@ -26,6 +35,7 @@ This documentation update establishes the cross-agent process and records the in
 
 ## History and maintenance
 
+- [2026-09-28 — Claude UI/UX review](handovers/2026-09-28-claude-ux-review.md)
 - [2026-09-28 — Claude review of v0.19.0](handovers/2026-09-28-claude-review.md)
 - [2026-09-28 — Scoped settings and model selection](handovers/2026-09-28-scoped-settings.md)
 - [Template for the next work item](handovers/TEMPLATE.md)
