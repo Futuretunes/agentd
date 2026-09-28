@@ -4,8 +4,8 @@
 - Request: continue with the next work item after UI redesign/exact-tree checks.
 - Status: implemented and tested; not installed.
 - Candidate: 0.21.0. Installed 0.20.0 confirmed by read-only health and active runner/mobile services on 2026-09-28.
-- PR: [#23](https://github.com/Futuretunes/agentd/pull/23), draft. Implementation commits `d47df63`, `b2bc2e9`, `a58f364`, `af7ca04`.
-- Staged release revision: `af7ca046e876d2351bb0c96fc27e71839bc1d458`; archive SHA-256 `2df6775ed0f40378ef0674dfa7069c7b8bfbde9f8403325fd10244ae2ddd833e`. Subsequent handover-only changes do not change this candidate.
+- PR: [#23](https://github.com/Futuretunes/agentd/pull/23), draft. Implementation commits `d47df63`, `b2bc2e9`, `a58f364`, `af7ca04`, `8b7c4a2`.
+- Staged release revision: `8b7c4a2d725ae74024cf55231a96ecfa50ab44a8`; archive SHA-256 `b65a2c00483030334ceae0ce9066ae4f0461e1085e52b7932b579fd38ddc1199`. Subsequent handover-only changes do not change this candidate.
 - Branch: `feat/reproducible-deployment`, based on `feat/task-desk-redesign` at `58d4276` (PR #22). No main merge or PR-stack closure.
 
 ## Follow-up — gateway compatibility correction
@@ -14,7 +14,7 @@ The first administrator attempt refused `LockPersonality` before application/dat
 
 ## Follow-up — omitted mobile defaults
 
-A second preflight refusal exposed another updater/runtime mismatch: mobile startup supplies fixed socket/public-directory defaults when JSON omits those keys, but the updater required explicit values. Inventory now uses the same defaults for absent keys; explicit null, empty or mismatching values remain rejected with field-specific errors. Fixtures cover fully/partly omitted defaults and all invalid overrides. Neither mobile configuration nor service policy is changed. The refusal is before service stop, backup or migration; installation remains pending.
+A second preflight refusal exposed another updater/runtime mismatch: mobile startup supplies fixed socket/public-directory defaults when JSON omits those keys, but the updater required explicit values. Inventory now uses the same defaults for absent keys; explicit null, empty or mismatching values remain rejected with field-specific errors. Fixtures cover fully/partly omitted defaults and all invalid overrides. Corrected candidate `8b7c4a2` passed all 105 Linux tests with zero skips/failures, all seven Python deployment fixtures, and GitHub Node 24/26 plus Required Linux isolation. The existing launcher now references its verified archive; rerun the same administrator command. Read-only health still shows 0.20.0, starts 30. Neither mobile configuration nor service policy is changed. The refusal is before service stop, backup or migration; installation remains pending.
 
 ## Changes
 
