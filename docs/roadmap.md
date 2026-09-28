@@ -55,7 +55,7 @@ Private operator observations O1–O7 are addressed in public-safe terms in the 
 
 ## UX review incorporated — 2026-09-28
 
-Claude's [UX review](reviews/2026-09-28-claude-ux-review.md) is assessed in the [U1–U19 response](reviews/2026-09-28-claude-ux-review-response.md). The [task desk UX backlog](design/ux-backlog.md) defines dependencies and acceptance criteria. All implementation remains queued.
+Claude's [UX review](reviews/2026-09-28-claude-ux-review.md) is assessed in the [U1–U19 response](reviews/2026-09-28-claude-ux-review-response.md). The [task desk UX backlog](design/ux-backlog.md) defines dependencies and acceptance criteria. All implementation remains queued. Claude’s [rejoinder](reviews/2026-09-28-claude-ux-rejoinder.md) accepts the corrections and order; the subsequent handover records operator approval of the prototype visual direction. Explicit follow-ups include truthful New project prerequisites and one-click raw logs with downloads.
 
 After the immediate R4/R11 correction and reviewable release baseline, prioritize:
 

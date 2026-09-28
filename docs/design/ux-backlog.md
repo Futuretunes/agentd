@@ -10,7 +10,7 @@ Next corrective implementation remains R4/R11: exact-snapshot checks and mandato
 
 Priority: high. Status: messaging and broader check-profile design queued; manual-review exception awaiting an operator decision.
 
-- Explain supported project/check prerequisites before users invest in an edit; remove any implication that all empty or non-npm projects can already complete commit/publish.
+- Replace the New project promise “Choose Edit files to build it, then review changes before committing” with explicit supported-check prerequisites; this copy correction does not depend on approving a manual-review exception. Explain supported project/check prerequisites before users invest in an edit; remove any implication that all empty or non-npm projects can already complete commit/publish.
 - Extend check profiles deliberately for documentation-only and additional language projects, with versioned policy and exact-content evidence.
 - Decide separately whether a recorded manual-review path is ever allowed and what it guarantees. Until explicitly approved and designed, retain the existing commit check requirement.
 - Acceptance: supported and unsupported projects show truthful next steps; no fabricated passing check or hidden bypass. Link to R4 and broader check profiles in the roadmap.
@@ -19,7 +19,7 @@ Priority: high. Status: messaging and broader check-profile design queued; manua
 
 Priority: high; first UX implementation after corrective prerequisites.
 
-- Distinguish final answers from raw diagnostics; render a bounded safe Markdown subset with code-copy controls using safe DOM construction. Treat provider output as untrusted. Preserve strict CSP, block executable URLs/HTML and avoid automatic remote image/resource loads.
+- Keep full raw logs one click away through “View log” and preserve authenticated downloads. Distinguish final answers from raw diagnostics; render a bounded safe Markdown subset with code-copy controls using safe DOM construction. Treat provider output as untrusted. Preserve strict CSP, block executable URLs/HTML and avoid automatic remote image/resource loads.
 - Show one primary action for each state, concise approval details and accurate success/needs-review/account/capability language. Preserve all separate approvals and refreshed policy snapshots.
 - Replace misleading Dictate behavior with honest keyboard-dictation guidance. Keep suggestion focus and saved drafts; do not auto-submit them.
 - Put recoverable errors beside the active control, including within dialogs. Clear obsolete messages and use short-lived success notices only where no action is required.
