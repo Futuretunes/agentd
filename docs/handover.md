@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.22.0 — separate web gateway
 
-R5 is implemented on `feat/separate-web-gateway`; [latest handover](handovers/2026-09-28-separate-web-gateway.md). Runner-enforced browser protocol, runner-owned images, separate gateway UID/socket/configuration and a rollback-capable identity migration are ready for Linux candidate validation. Local suite: 112 tests, 105 passed, seven Linux-only skips, zero failures. Installed remains 0.21.2. Actual UID/mount namespace acceptance is an installer gate, not yet verified. No model tasks or deployment occurred. Next: finish staging/Claude review, then operator installation and R6.
+R5 is implemented on `feat/separate-web-gateway`; [latest handover](handovers/2026-09-28-separate-web-gateway.md). Runner-enforced browser protocol, runner-owned images, separate gateway UID/socket/configuration and a rollback-capable identity migration are staged in [draft PR #25](https://github.com/Futuretunes/agentd/pull/25). Exact source `8f03334` passed 112/112 Linux tests with zero skips and all Node 24/26/Linux-isolation CI jobs. Installed remains 0.21.2. Actual UID/mount namespace acceptance is an installer gate, not yet verified. No model tasks or deployment occurred. Next: Claude review and operator installation, then verified identity acceptance and R6.
 
 ## Installed 0.21.2 — installer validation follow-up
 
