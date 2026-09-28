@@ -36,3 +36,17 @@ test('changing settings during credential preparation cannot dispatch the previo
 test('model discovery changes invalidate pins instead of silently falling back and cannot race account changes',async()=>{
  let release;const f=await fixture({modelDiscovery:()=>new Promise(r=>release=r)});try{const t=f.app.request({op:'create',adapter:'claude',prompt:'read',overrides:{model:'sonnet'}});f.app.request({op:'models-refresh',agent:'claude'});assert.throws(()=>f.app.request({op:'approve',id:t.id}),/Finish/);assert.throws(()=>f.app.request({op:'account-start',adapter:'claude',action:'login',owner:'a'.repeat(64)}),/model discovery/);await sleep(0);release([models[0]]);for(let i=0;i<100&&f.app.request({op:'settings-view',agent:'claude'}).catalog.busy;i++)await sleep(10);assert.match(f.app.request({op:'show',id:t.id}).task.settings_error,/catalog/);assert.throws(()=>f.app.request({op:'approve',id:t.id}),/catalog/);}finally{await f.close();}
 });
+
+test('follow-up context can be disabled per run and changed answer content invalidates approval',async()=>{
+ const prompts=[];const f=await fixture({command:(_id,prompt)=>{prompts.push(prompt);return [process.execPath,['-e',"console.log('saved answer');console.error('PRIVATE TOOL STDERR')"]];}});
+ try{
+  assert.throws(()=>settings({context:'logs'}),/previous/);
+  const first=f.app.request({op:'create',adapter:'claude',prompt:'first instruction'});f.app.request({op:'approve',id:first.id});const done=await wait(f,first.id,'succeeded');
+  const next=f.app.request({op:'create',adapter:'claude',parent:first.id,prompt:'follow up'}),old=JSON.parse(next.execution);assert.equal(old.context.source,'saved_answer');
+  writeFileSync(done.log+'.answer','changed saved answer');
+  assert.throws(()=>f.app.request({op:'approve',id:next.id,fingerprint:old.fingerprint}),/Settings changed/);
+  const fresh=JSON.parse(f.app.request({op:'show',id:next.id}).task.execution);assert.notEqual(fresh.fingerprint,old.fingerprint);f.app.request({op:'approve',id:next.id,fingerprint:fresh.fingerprint});await wait(f,next.id,'succeeded');assert.match(prompts[1],/changed saved answer/);assert.ok(!prompts[1].includes('PRIVATE TOOL STDERR'));
+  const clean=f.app.request({op:'create',adapter:'claude',conversation:next.conversation,prompt:'start fresh context',overrides:{context:'none'}});assert.equal(JSON.parse(clean.execution).context.source,'disabled');f.app.request({op:'approve',id:clean.id});await wait(f,clean.id,'succeeded');assert.equal(prompts[2],'start fresh context');
+  save(f,{context:'none'});const later=f.app.request({op:'create',adapter:'claude',conversation:next.conversation,prompt:'continue'});assert.equal(JSON.parse(later.execution).settings.context,'none');
+ }finally{await f.close();}
+});

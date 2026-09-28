@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-public-errors.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-followup-context.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.31.0 — explicit follow-up context
+
+[Handover](handovers/2026-09-28-followup-context.md): inherited project/conversation/agent and next-run settings can include the previous saved answer or omit prior context. Raw logs are never included. Bounded JSON reference content is hashed into approval snapshots and checked again before invocation. Focused tests passed; exact Linux/CI pending. Production remains 0.22.0. Continue durable creation receipts (R10) and cumulative release staging.
 
 ## Candidate 0.30.0 — safe browser error boundary
 

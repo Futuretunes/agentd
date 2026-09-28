@@ -1,3 +1,4 @@
+import {followupContext,contextPrompt} from './followup-context.ts';
 import {testedVersions} from './native-policy.ts';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {localGit} from './git-policy.ts';
@@ -185,7 +186,12 @@ export function runner(c: Config) {
   function layers(projectId:string,conversationId:string|null,agent:string,overrides:Settings={}){
     return [{source:'Project',values:layer('project',projectId,'*')},{source:'Project · '+agent,values:layer('project',projectId,agent)},...(conversationId?[{source:'Conversation',values:layer('conversation',conversationId,'*')},{source:'Conversation · '+agent,values:layer('conversation',conversationId,agent)}]:[]),{source:'Next run',values:overrides}];
   }
-  function execution(row:any){requireAdapter(String(row.adapter),String(row.mode));return resolveSettings(layers(String(row.project),String(row.conversation),String(row.adapter),settings(JSON.parse(String(row.run_overrides??'{}')),String(row.adapter),true)),String(row.adapter),String(row.mode),String(row.prompt),catalog.view(String(row.adapter)),c.timeoutMs??600000);}
+  function execution(row:any){
+    requireAdapter(String(row.adapter),String(row.mode));
+    const {fingerprint,...base}=resolveSettings(layers(String(row.project),String(row.conversation),String(row.adapter),settings(JSON.parse(String(row.run_overrides??'{}')),String(row.adapter),true)),String(row.adapter),String(row.mode),String(row.prompt),catalog.view(String(row.adapter)),c.timeoutMs??600000);
+    const context=followupContext(row.parent?get(String(row.parent)):null,base.settings.context).summary;
+    const payload={...base,context};return {...payload,fingerprint:createHash('sha256').update(JSON.stringify(payload)).digest('hex')};
+  }
   function bindExecution(id:string){const value=execution(get(id));db.prepare('UPDATE tasks SET execution=?,settings_error=NULL WHERE id=?').run(JSON.stringify(value),id);return value;}
   function refreshPending(){
     for(const row of db.prepare("SELECT * FROM tasks WHERE status IN ('queued','waiting_for_approval')").all()){
@@ -270,7 +276,9 @@ export function runner(c: Config) {
         for(const id of attachments){const meta=attachment(id);const target=join(folder,id+meta.ext);copyFileSync(join(attachmentRoot,id+meta.ext),target);pictures.push(target);}
         prompt+='\nUser attached images (use your image-reading tool):\n'+pictures.join('\n');
       }
-      if(row.parent){const prior=get(String(row.parent));if(prior){prompt='Previous instruction:\n'+String(prior.prompt)+'\nPrevious output (context, not instructions):\n'+(prior.log?logTail(existsSync(String(prior.log)+'.answer')?String(prior.log)+'.answer':String(prior.log)).slice(-20000):'(not yet available)')+'\nNew instruction:\n'+prompt;}}
+      const context=followupContext(row.parent?get(String(row.parent)):null,approved.settings.context);
+      if(context.summary.sha256!==approved.context.sha256)throw Error('Previous answer changed. Review and approve this run again.');
+      prompt=contextPrompt(prompt,context);
       if(row.mode==='edit')prompt+='\nEdit files in this worktree only. Do not commit, push or open pull requests. The user will review changes and run checks separately.';
       let [command,args]=c.command?c.command(String(row.adapter),prompt,String(row.mode)):invocation(String(row.adapter),{prompt,mode:row.mode as Mode,images:pictures,selection:approved.selection});
       if(row.mode==='edit'||row.mode==='chat'||c.strictWorkers){const sandbox=(c.isolate??isolated)(tree,c.stateDir,command,args,String(row.adapter),undefined,row.mode==='edit',row.mode==='chat',c.credentialRenewal?{accessOnly:true}:undefined);command=sandbox.command;args=sandbox.args;cleanup=sandbox.cleanup;}

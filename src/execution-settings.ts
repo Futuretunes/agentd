@@ -1,6 +1,6 @@
 import {nativeLimits} from './native-policy.ts';
 import {createHash} from 'node:crypto';
-export type Settings={access?:'blocked'|'chat'|'read'|'edit';model?:string;effort?:string;timeoutSeconds?:number};
+export type Settings={access?:'blocked'|'chat'|'read'|'edit';model?:string;effort?:string;timeoutSeconds?:number;context?:'previous_answer'|'none'};
 export type Model={id:string;name:string;efforts:string[];tier?:'light'|'balanced'|'deep'};
 export type Catalog={models:Model[];source:string;checkedAt:string|null;error?:string|null};
 export const agents=['claude','codex','cursor'];
@@ -8,17 +8,18 @@ export const efforts=['none','low','medium','high','xhigh','max','ultra'];
 export function settings(value:unknown,agent='*',next=false):Settings{
  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid settings');const out:Settings={};
  for(const [key,v] of Object.entries(value)){
-  if(!['access','model','effort','timeoutSeconds'].includes(key)||(next&&key==='access'))throw Error('Unsupported setting');
+  if(!['access','model','effort','timeoutSeconds','context'].includes(key)||(next&&key==='access'))throw Error('Unsupported setting');
   if(v===null)continue;
   if(key==='access'){if(!['blocked','chat','read','edit'].includes(String(v)))throw Error('Invalid access profile');out.access=v as Settings['access'];}
   if(key==='model'){if(typeof v!=='string'||!/^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,99}$/.test(v)||(agent==='*'&&!['auto','provider'].includes(v)))throw Error('Choose a listed model for a specific agent');out.model=v;}
   if(key==='effort'){if(typeof v!=='string'||!['auto','provider',...efforts].includes(v)||(agent==='*'&&!['auto','provider'].includes(v)))throw Error('Choose supported effort for a specific agent');out.effort=v;}
+  if(key==='context'){if(v!=='previous_answer'&&v!=='none')throw Error('Choose previous saved answer or no previous context');out.context=v;}
   if(key==='timeoutSeconds'){if(!Number.isInteger(v)||Number(v)<30||Number(v)>600)throw Error('Run limit must be 30–600 seconds');out.timeoutSeconds=Number(v);}
  }return out;
 }
 export function resolveSettings(layers:Array<{source:string;values:Settings}>,agent:string,mode:string,prompt:string,catalog:Catalog,maxMs=600000){
  if(!agents.includes(agent)||!['ask','edit','chat'].includes(mode))throw Error('Unsupported agent or mode');
- const values:Settings={access:'edit',model:'provider',effort:'provider',timeoutSeconds:mode==='edit'?600:120},sources:Record<string,string>={access:'Installation',model:'Installation',effort:'Installation',timeoutSeconds:'Installation'};
+ const values:Settings={access:'edit',model:'provider',effort:'provider',context:'previous_answer',timeoutSeconds:mode==='edit'?600:120},sources:Record<string,string>={access:'Installation',model:'Installation',effort:'Installation',context:'Installation',timeoutSeconds:'Installation'};
  for(const layer of layers)for(const [k,v] of Object.entries(layer.values)){(values as any)[k]=v;sources[k]=layer.source;}
  const allowed=values.access==='edit'?['ask','edit','chat']:values.access==='read'?['ask','chat']:values.access==='chat'?['chat']:[];
  if(!allowed.includes(mode))throw Error('This run is blocked by the effective access profile. Change settings or start a compatible run.');

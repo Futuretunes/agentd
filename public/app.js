@@ -2980,6 +2980,17 @@ function executionDetails(value) {
   row("Network", plainPlace(value.permissions.network));
   row("Model", plainModel(value.selection) + " (requested)");
   row("Time limit", plainDuration(value.timeoutMs));
+  row(
+    "Previous context",
+    value.settings?.context === "none"
+      ? "Not included"
+      : value.context?.source === "saved_answer"
+        ? "Previous saved answer" +
+          (value.context.truncated ? " (shortened)" : "")
+        : value.context
+          ? "No completed saved answer available"
+          : "Previous saved answer when available",
+  );
   if (value.nativeLimits?.maxTurns)
     row("Native turn limit", String(value.nativeLimits.maxTurns) + " turns");
   if (value.nativeLimits?.testedVersion)
@@ -3132,6 +3143,23 @@ function renderSettings(data) {
   };
   populateEffort();
   model.onchange = populateEffort;
+  field(
+    "context",
+    "Previous conversation context",
+    [
+      ["", "Inherit"],
+      ["previous_answer", "Previous saved answer only"],
+      ["none", "No previous context"],
+    ],
+    values.context,
+  );
+  settingsContent.append(
+    node(
+      "p",
+      "Only the previous completed saved answer and a short excerpt of its question may be included. Raw execution logs are excluded. This does not change access permissions or reset the project revision.",
+      "muted",
+    ),
+  );
   field(
     "timeoutSeconds",
     "Maximum run time",
@@ -3337,7 +3365,13 @@ settingsForm.onsubmit = async (e) => {
   e.preventDefault();
   if (!settingsData) return;
   const values = {};
-  for (const name of ["access", "model", "effort", "timeoutSeconds"]) {
+  for (const name of [
+    "access",
+    "model",
+    "effort",
+    "timeoutSeconds",
+    "context",
+  ]) {
     const input = settingsForm.elements.namedItem(name);
     if (input.disabled || !input.value) continue;
     values[name] =

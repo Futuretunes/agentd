@@ -148,3 +148,7 @@ Operations exposes normalized installed CLI version, expected tested version, fr
 ## R18 candidate — browser-safe errors
 
 Runner gateway and HTTPS boundaries now preserve reviewed fixed error guidance and normalize unknown exceptions plus stored task/job/check error metadata. No raw subprocess buffers or dynamic exception text are promoted to public error messages. Private administrator responses and authorized user content/logs remain separate. Exact archive `b003248` passed 130/130 Linux tests with zero skips; CI passed. Not installed. See [handover](handovers/2026-09-28-public-errors.md).
+
+## R16 candidate — explicit, approval-bound follow-up context
+
+Added inherited and next-run previous-answer/no-context settings, visible in run details. Only completed saved answers and a bounded question excerpt are eligible; legacy raw logs, diagnostics, failed-run output and unsafe linked files are excluded. JSON-encoded content is bounded and hashed into approval fingerprints; changed content requires new approval. Labels/encoding remain guidance, not a prompt-injection security boundary. Exact Linux/CI pending; not installed. See [handover](handovers/2026-09-28-followup-context.md).
