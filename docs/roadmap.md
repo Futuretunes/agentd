@@ -120,3 +120,7 @@ Separate web UID, restricted runner socket, runner-owned attachments and journal
 ## R6 candidate — resources and retention
 
 Implemented on `feat/resource-retention`: bounded task/check output, disk reserve and tracked-checkout limits, monitored worktree growth, approval-gated archived-task cleanup, provenance-based managed backup retention and explicit service CPU/memory/process profile. See [handover](handovers/2026-09-28-resource-retention.md). Not installed; exact archive passed 118/118 Linux tests, zero skips, and all CI jobs. Draft #26 is ready for Claude review. Still open: per-worker cgroups, hard filesystem quotas, attachment/dependency retention, cleanup crash reconciliation and privileged GUI administration. Continue R7 next, per the operator's overnight backlog instruction.
+
+## R7 candidate — explicit worker hardening
+
+Implemented shared explicit namespace/capability policy and fail-closed libseccomp launch for workers/checks/renewal/dependency preparation. Development Linux suite passed 120/120 with zero skips; staging/CI pending, not installed. See [handover](handovers/2026-09-28-worker-hardening.md). No host relaxation or Codex tool-policy expansion. Next overnight items: R12 shared Git policy, then R13 sensitive-data policy. R8 authentication redesign still needs a reviewed consent design.

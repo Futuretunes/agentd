@@ -66,7 +66,8 @@ def main():
         if any(root.glob('*pending.json')):raise ValueError('Resolve pending recovery before resource changes')
         previous=json.loads((root/'installed.json').read_text());current=update.inventory(c)
         if current!=previous['configuration']:raise ValueError('Installed configuration drifted')
-        if previous['release']['version']!='0.23.0':raise ValueError('Install compatible 0.23.0 application first')
+        installed=json.loads((Path(c['app'])/'release-manifest.json').read_text())
+        if installed!=previous['release'] or 'src/resources.ts' not in installed.get('files',{}):raise ValueError('Install a compatible managed resources application first')
         for key,desired in EXPECTED.items():
             actual=properties(c,key)
             # Existing restrictive deployments need a deliberate custom review, never an automatic relaxation.

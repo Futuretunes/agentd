@@ -4,7 +4,7 @@ These instructions describe a fresh deployment. Do not run them blindly over an 
 
 ## Service account and files
 
-Install Node.js 24+ at `/usr/local/bin/node` (or adjust both unit files), Git, Python 3 and OpenSSL using trusted distribution/vendor installation instructions. Create a dedicated account with home `/var/lib/agentd`, without sudo privileges:
+Install Node.js 24+ at `/usr/local/bin/node` (or adjust both unit files), Git, Python 3, bubblewrap 0.8+ with user-namespace disabling support, libseccomp2 and OpenSSL using trusted distribution/vendor installation instructions. Create a dedicated account with home `/var/lib/agentd`, without sudo privileges:
 
 ```sh
 sudo useradd --system --create-home --home-dir /var/lib/agentd --shell /bin/bash agentd

@@ -1,3 +1,4 @@
+import {namespacePolicy,sandboxCommand} from './sandbox-policy.ts';
 import {cursorCredentialPath,cursorSettings,cursorTeam} from './cursor-policy.ts';
 import {existsSync,copyFileSync,mkdirSync,rmSync,mkdtempSync,realpathSync,lstatSync,readdirSync,writeFileSync} from 'node:fs';
 import {join,resolve,dirname} from 'node:path';
@@ -26,7 +27,7 @@ export function isolated(worktree:string,stateDir:string,command:string,args:str
     if(promptOnly&&(adapter!=='codex'||writable||dependencies))throw Error('Invalid chat isolation policy');
     const common=empty?null:realpathSync(resolve(worktree,git(worktree,['rev-parse','--git-common-dir'])));
     const executable=realpathSync(command),node=realpathSync(process.execPath),source=dirname(fileURLToPath(import.meta.url));
-    const mounts=['--die-with-parent','--new-session','--unshare-pid','--unshare-ipc','--unshare-net','--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/run'];
+    const mounts=[...namespacePolicy,'--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/run'];
     // System runtime only. Never bind the host root, /home, /srv or /var wholesale.
     for(const path of ['/usr','/bin','/sbin','/lib','/lib64'])if(existsSync(path))mounts.push('--ro-bind',path,path);
     for(const path of ['/etc/ssl/certs','/etc/ca-certificates','/etc/ld.so.cache','/etc/nsswitch.conf','/etc/passwd','/etc/group','/etc/hosts','/etc/localtime'])if(existsSync(path))mounts.push('--ro-bind',realpathSync(path),path);
@@ -65,6 +66,6 @@ export function isolated(worktree:string,stateDir:string,command:string,args:str
       mounts.push('--ro-bind',network,'/run/agentd-egress');
       childCommand=node;childArgs=[join(source,'worker-entry.ts'),'/run/agentd-egress/egress.sock',executable,...nativeArgs];
     }
-    return {command:process.env.AGENTD_BWRAP_BIN??'/usr/bin/bwrap',args:[...mounts,'--',childCommand,...childArgs],cleanup};
+    return {...sandboxCommand([...mounts,'--',childCommand,...childArgs],process.env.AGENTD_BWRAP_BIN??'/usr/bin/bwrap'),cleanup};
   }catch(error){cleanup();throw error;}
 }

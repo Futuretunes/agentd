@@ -1,3 +1,4 @@
+import {namespacePolicy,sandboxCommand} from './sandbox-policy.ts';
 import {readFileSync,lstatSync,realpathSync,mkdirSync,mkdtempSync,writeFileSync,rmSync,readdirSync,existsSync} from 'node:fs';
 import {join,dirname,sep} from 'node:path';import {createHash} from 'node:crypto';import {spawn} from 'node:child_process';import {fileURLToPath} from 'node:url';import {checkRepositorySize} from './repositories.ts';
 export function checkManifest(repo:string){
@@ -21,13 +22,13 @@ export function dependencySandbox(stage:string,state:string){
  const runtime=mkdtempSync(join(state,'worker-dependencies-')),home=join(runtime,'home'),network=join(runtime,'network');mkdirSync(home);mkdirSync(network);writeFileSync(join(home,'user.npmrc'),'');writeFileSync(join(home,'global.npmrc'),'');
  const source=dirname(fileURLToPath(import.meta.url)),node=realpathSync(process.execPath),npm=realpathSync(join(dirname(process.execPath),'npm'));
  const broker=spawn(node,[join(source,'egress-proxy.ts'),join(network,'egress.sock'),'npm',String(process.pid)],{env:{PATH:'/usr/local/bin:/usr/bin:/bin'},stdio:'ignore'});broker.on('error',()=>{});
- const mounts=['--die-with-parent','--new-session','--unshare-pid','--unshare-ipc','--unshare-net','--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/run'];
+ const mounts=[...namespacePolicy,'--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/run'];
  for(const path of ['/usr','/bin','/sbin','/lib','/lib64'])if(existsSync(path))mounts.push('--ro-bind',path,path);
  for(const path of ['/etc/ssl/certs','/etc/ca-certificates','/etc/ld.so.cache','/etc/nsswitch.conf','/etc/passwd','/etc/group','/etc/hosts'])if(existsSync(path))mounts.push('--ro-bind',realpathSync(path),path);
  if(!node.startsWith('/usr/'))mounts.push('--ro-bind',dirname(dirname(node)),dirname(dirname(node)));
  if(!npm.startsWith('/usr/'))mounts.push('--ro-bind',dirname(dirname(npm)),dirname(dirname(npm)));
  mounts.push('--ro-bind',source,source,'--bind',stage,'/workspace','--bind',home,'/home/checks','--ro-bind',network,'/run/dependency-egress','--chdir','/workspace','--setenv','HOME','/home/checks');
- return {command:'/usr/bin/bwrap',args:[...mounts,'--',node,join(source,'worker-entry.ts'),'/run/dependency-egress/egress.sock',node,npm,'ci','--engine-strict','--ignore-scripts','--no-audit','--no-fund','--include=dev','--registry=https://registry.npmjs.org','--userconfig=/home/checks/user.npmrc','--globalconfig=/home/checks/global.npmrc','--cache=/workspace/.cache'],cleanup(){broker.kill('SIGTERM');rmSync(runtime,{recursive:true,force:true});}};
+ return {...sandboxCommand([...mounts,'--',node,join(source,'worker-entry.ts'),'/run/dependency-egress/egress.sock',node,npm,'ci','--engine-strict','--ignore-scripts','--no-audit','--no-fund','--include=dev','--registry=https://registry.npmjs.org','--userconfig=/home/checks/user.npmrc','--globalconfig=/home/checks/global.npmrc','--cache=/workspace/.cache']),cleanup(){broker.kill('SIGTERM');rmSync(runtime,{recursive:true,force:true});}};
 }
 export type DependencyPreparation=(stage:string,state:string,signal:AbortSignal)=>Promise<void>;
 export const prepareDependencies:DependencyPreparation=async(stage,state,signal)=>{
