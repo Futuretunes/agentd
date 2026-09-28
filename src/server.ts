@@ -1,3 +1,4 @@
+import {homedir} from 'node:os';
 import { runner } from './runner.ts';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
@@ -20,7 +21,7 @@ export function start(options: Options) {
   if (schema?.value !== '1') { db.close(); throw new Error('Unsupported state schema'); }
   db.prepare('INSERT INTO service_events(at, kind) VALUES (?, ?)').run(new Date().toISOString(), 'started');
   const boots = Number(db.prepare("SELECT count(*) AS n FROM service_events WHERE kind = 'started'").get()?.n);
-  const tasks = options.taskRunner ? runner({ credentialRenewal:process.env.AGENTD_CREDENTIAL_RENEWAL==='1', codexChat: process.env.AGENTD_CODEX_CHAT === '1', editing: process.env.AGENTD_EDITING === '1', editAdapters: (process.env.AGENTD_EDIT_ADAPTERS??'').split(',').filter(Boolean), enabledAdapters: (process.env.AGENTD_ENABLED_ADAPTERS??'codex,claude').split(',').filter(Boolean), strictWorkers: process.env.AGENTD_STRICT_WORKERS === '1', stateDir: options.stateDir, projectsDir: process.env.AGENTD_PROJECTS_DIR, repo: process.env.AGENTD_REPO ?? (() => { throw new Error('AGENTD_REPO is required when the runner is enabled'); })(), worktrees: process.env.AGENTD_WORKTREES ?? join(options.stateDir, 'worktrees'), logs: process.env.AGENTD_LOGS ?? join(options.stateDir, 'logs') }) : undefined;
+  const tasks = options.taskRunner ? runner({ githubRoot:join(homedir(),'.agentd-github'), credentialRenewal:process.env.AGENTD_CREDENTIAL_RENEWAL==='1', codexChat: process.env.AGENTD_CODEX_CHAT === '1', editing: process.env.AGENTD_EDITING === '1', editAdapters: (process.env.AGENTD_EDIT_ADAPTERS??'').split(',').filter(Boolean), enabledAdapters: (process.env.AGENTD_ENABLED_ADAPTERS??'codex,claude').split(',').filter(Boolean), strictWorkers: process.env.AGENTD_STRICT_WORKERS === '1', stateDir: options.stateDir, projectsDir: process.env.AGENTD_PROJECTS_DIR, repo: process.env.AGENTD_REPO ?? (() => { throw new Error('AGENTD_REPO is required when the runner is enabled'); })(), worktrees: process.env.AGENTD_WORKTREES ?? join(options.stateDir, 'worktrees'), logs: process.env.AGENTD_LOGS ?? join(options.stateDir, 'logs') }) : undefined;
   const started = performance.now();
   let requests = 0;
   const server = createServer((req, res) => {

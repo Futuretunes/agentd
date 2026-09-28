@@ -10,6 +10,7 @@ agentd queues tasks, waits for approval, and runs Codex or Claude Code in a dedi
 
 - Codex and Claude Code adapters using their installed CLIs and existing account logins; agentd does not require provider API keys.
 - Reviewable edits, snapshot-bound test results and explicitly approved local branch commits.
+- GitHub repository import, branch selection, guided private-repository sign-in and safe forward-only updates.
 - Projects with local repositories, persistent conversations, rename and archive controls.
 - Durable SQLite queue, explicit approval, one active worker, timeouts and process-group cancellation.
 - Commit-pinned, detached Git worktrees for each task.
@@ -64,7 +65,7 @@ npm run agentctl -- cancel TASK_ID
 
 Every newly created task waits for approval. Follow-ups create separate tasks; they do not inject instructions into a running session.
 
-Use **＋** beside Projects to create an empty project, then **New conversation** to start work. Existing repositories can be registered by an administrator with `npm run agentctl -- project-register "Project name" /absolute/repository/path`. Registration is available only through the private control socket, not the browser. GitHub publication alone does not register a repository.
+Use **＋** beside Projects to create an empty project or choose **Import from GitHub**, paste a repository URL, find branches and import one. Use **GitHub connection** for private repositories. Imported projects offer **Pull updates** in Project details; start a new conversation to use the updated revision. See [GitHub repositories](docs/repositories.md). Existing repositories can be registered by an administrator with `npm run agentctl -- project-register "Project name" /absolute/repository/path`. Registration is available only through the private control socket, not the browser. GitHub publication alone does not register a repository.
 
 See [deployment](docs/deployment.md), [architecture](docs/architecture.md), [security](SECURITY.md), [roadmap](docs/roadmap.md) and [contributing](CONTRIBUTING.md).
 

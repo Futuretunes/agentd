@@ -55,6 +55,15 @@ export function mobile(c:Config){
     try{const value=await call({op:'account-session',owner:accountOwner});if(value?.session&&value.busy)await call({op:'account-cancel',owner:accountOwner,session:value.session.id});}catch{}
     sessions.delete(id);res.setHeader('Set-Cookie','agentd_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');send(200,{ok:true});return;
    }
+   if(path==='/api/github'&&req.method==='GET'){send(200,await call({op:'github-status',owner:accountOwner}));return;}
+   if(path==='/api/github'&&req.method==='POST'){
+    const input=await body(req);if(!['start','cancel','logout'].includes(input.action))throw Error('Unsupported GitHub action');send(200,await call({op:'github-'+input.action,owner:accountOwner,session:input.session}));return;
+   }
+   if(path==='/api/repositories'&&req.method==='GET'){send(200,await call({op:'repository-jobs'}));return;}
+   if(path==='/api/repositories'&&req.method==='POST'){
+    const input=await body(req);if(input.action==='cancel'){send(200,await call({op:'repository-cancel',job:input.job}));return;}
+    if(input.action!=='start')throw Error('Unsupported repository action');send(200,await call({op:'repository-start',kind:input.kind,url:input.url,branch:input.branch,name:input.name,project:input.project}));return;
+   }
    if(path==='/api/capabilities'&&req.method==='GET'){send(200,await call({op:'capabilities'}));return;}
    if(path==='/api/operations'&&req.method==='GET'){send(200,await call({op:'operations'}));return;}
    const parameters=new URL(req.url??'/',c.origin).searchParams;

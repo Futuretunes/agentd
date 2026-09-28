@@ -13,6 +13,9 @@ for(const path of ['/api/history','/api/archived-projects','/api/tasks/00000000-
 await req('/api/history?q=literal%25&filter=archived&before=42',null,cookie);assert.deepEqual(calls.at(-1),{op:'history',query:'literal%',filter:'archived',before:42});
 await req('/api/conversations/00000000-0000-0000-0000-000000000000?before=31',null,cookie);assert.equal(calls.at(-1).before,31);
 for(const op of ['project-archive','project-restore','conversation-restore']){assert.equal((await req('/api/action',{op,id:'x'},cookie,'https://evil.example')).status,403);await req('/api/action',{op,id:'x'},cookie);assert.equal(calls.at(-1).op,op);}
+for(const path of ['/api/github','/api/repositories']){assert.equal((await req(path)).status,401);assert.equal((await req(path,{action:'start'},cookie,'https://evil.example')).status,403);}
+await req('/api/github',{action:'start',owner:'spoof',profile:'/tmp'},cookie);assert.equal(calls.at(-1).op,'github-start');assert.match(calls.at(-1).owner,/^[a-f0-9]{64}$/);assert.equal(calls.at(-1).profile,undefined);
+await req('/api/repositories',{action:'start',kind:'import',url:'https://github.com/a/b',branch:'main',name:'Example',repo:'/tmp',command:'evil'},cookie);assert.deepEqual(calls.at(-1),{op:'repository-start',kind:'import',url:'https://github.com/a/b',branch:'main',name:'Example'});
 await req('/api/operations',null,cookie);assert.equal(calls.at(-1).op,'operations');
 assert.equal((await req('/api/account')).status,401);
 assert.equal((await req('/api/account',{action:'start',adapter:'claude',operation:'login'},cookie,'https://evil.example')).status,403);

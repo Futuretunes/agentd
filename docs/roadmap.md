@@ -23,7 +23,9 @@ The eventual product must let the operator manage everything through the desktop
 
 Acceptance: a nontechnical operator can complete the supported setup, sign-in, project/task lifecycle, usage monitoring, update and recovery journeys from the GUI alone. Validate these journeys on a phone as well as desktop, including expired logins, exhausted limits, unavailable providers, interrupted runs and failed updates. External provider availability and manual consent must be explained rather than hidden.
 
-Implemented in v0.12.0, pending installation: [workspace history and recovery](workspace-history.md) adds searchable conversation history with older-turn pagination, reversible project/conversation archiving, run timelines and authenticated output downloads, and browser-tab draft recovery. Desktop and phone-width flows were checked with fixtures; no model work was submitted.
+Implemented and installed in v0.12.0: [workspace history and recovery](workspace-history.md) adds searchable conversation history with older-turn pagination, reversible project/conversation archiving, run timelines and authenticated output downloads, and browser-tab draft recovery. Desktop and phone-width flows were checked with fixtures; no model work was submitted.
+
+Implemented in v0.13.0, pending installation: [GitHub import and safe updates](repositories.md), including branch discovery, guided native GitHub device sign-in for private repositories, background progress/cancellation, and clean fast-forward updates. Public clone and native login startup verified on the VM; private-repository consent requires operator acceptance.
 
 High-priority follow-up:
 
@@ -34,7 +36,8 @@ High-priority follow-up:
 Planned, with no release-date commitment:
 
 - Cursor integration through the adapter contract, including installation and native/subscription authentication validation.
-- Browser repository import, approved GitHub publishing, broader check profiles and revision requests before committing.
+- GUI setup for project check profiles and dependencies, so imported repositories can run meaningful checks and complete approved commits without terminal setup. Recommended next item.
+- Approved GitHub branch publishing / pull requests and revision requests before committing.
 - Further worker credential separation, resource limits and stronger isolation beyond the single-operator profile.
 - Structured results, task-specific validation and richer event streams.
 - Mobile notifications and approvals through ntfy; durable interrupts and resumable sessions.
