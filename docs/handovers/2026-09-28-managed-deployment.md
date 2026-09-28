@@ -4,6 +4,8 @@
 - Request: continue with the next work item after UI redesign/exact-tree checks.
 - Status: implemented and tested; not installed.
 - Candidate: 0.21.0. Installed 0.20.0 confirmed by read-only health and active runner/mobile services on 2026-09-28.
+- PR: [#23](https://github.com/Futuretunes/agentd/pull/23), draft. Implementation commits `d47df63`, `b2bc2e9`.
+- Staged release revision: `b2bc2e9712796fd14992d04fbfcfda34ffdaaaa9`; archive SHA-256 `84ab1641b56f0a40f93985379cc55c09a482de465c4dc8b8976824b8dd4fb4a4`. Subsequent handover-only changes do not change this candidate.
 - Branch: `feat/reproducible-deployment`, based on `feat/task-desk-redesign` at `58d4276` (PR #22). No main merge or PR-stack closure.
 
 ## Changes
@@ -14,7 +16,7 @@ R3: `scripts/release.py` packages an exact Git commit reproducibly, includes pre
 
 ## Validation
 
-TypeScript passed. Full local suite: 105 tests, 98 passed, 7 Linux-only skips, zero failures. Isolated VM candidate: 105 passed, zero failures/skips with `node scripts/test-isolation-ci.mjs`. Python release/update fixtures additionally cover deterministic exact-commit archives, dirty-file exclusion, hash mismatch, unsafe archives, idle/future-schema refusal, effective-state binding and secret-free fingerprints, pre-swap drift rejection, failed-readiness app/state rollback and successful release recording. Targeted schema cases cover legacy ancestry, failed ancestry and malformed-check recovery rollback, missing-index refusal and byte-identical future-schema rejection with worker markers preserved. The desktop sandbox initially prevented socket tests; the permitted local rerun passed. No live model or native account-consent requests. Full root/systemd deployment is not performed here; it remains administrator acceptance.
+TypeScript passed. Full local suite: 105 tests, 98 passed, 7 Linux-only skips, zero failures. Isolated VM candidate: 105 passed, zero failures/skips with `node scripts/test-isolation-ci.mjs`. Python release/update fixtures additionally cover deterministic exact-commit archives, dirty-file exclusion, hash mismatch, unsafe archives, idle/future-schema refusal, effective-state binding and secret-free fingerprints, pre-swap drift rejection, failed-readiness app/state rollback and successful release recording. Targeted schema cases cover legacy ancestry, failed ancestry and malformed-check recovery rollback, missing-index refusal and byte-identical future-schema rejection with worker markers preserved. The desktop sandbox initially prevented socket tests; the permitted local rerun passed. No live model or native account-consent requests. Final staged archive rerun: 105 passed, zero skips/failures. GitHub CI at `b2bc2e9` passed Node 24, Node 26 and Required Linux isolation (both push and PR runs). Full root/systemd deployment is not performed here; it remains administrator acceptance.
 
 ## Deployment and rollback
 
