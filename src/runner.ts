@@ -1,3 +1,4 @@
+import {previewPublication,executePublication,githubPullAPI,publicationText,type PullAPI,type PublishPlan} from './publishing.ts';
 import {checkManifest,prepareDependencies,writeManifests,type DependencyPreparation} from './check-setup.ts';
 import {adapterIds,invocation,discover,probeAccount,type AccountStatus,type Mode} from './adapters.ts';
 import {renewals,renewalFailure} from './renewal.ts';
@@ -15,7 +16,7 @@ import { mkdirSync, openSync, closeSync, realpathSync, readFileSync, copyFileSyn
 import { join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 
-type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
+type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
 export function runner(c: Config) {
   if(c.credentialRenewal&&!c.strictWorkers)throw Error('Credential renewal requires hardened isolation');
   if(c.codexChat&&!c.strictWorkers)throw Error("Chat only requires hardened worker isolation");
@@ -50,6 +51,9 @@ export function runner(c: Config) {
   db.exec("CREATE TABLE IF NOT EXISTS dependency_jobs(id TEXT PRIMARY KEY,project TEXT,task TEXT,fingerprint TEXT,state TEXT,error TEXT,updated TEXT)");
   db.exec("UPDATE dependency_jobs SET state='interrupted',error='Service restarted. Prepare dependencies again.' WHERE state='running'");
   for(const job of db.prepare("SELECT id FROM dependency_jobs WHERE state!='succeeded'").all())if(/^[a-f0-9-]{36}$/.test(String(job.id)))rmSync(join(c.stateDir,'dependencies',String(job.id)),{recursive:true,force:true});
+  db.exec("CREATE TABLE IF NOT EXISTS publications(id TEXT PRIMARY KEY,task TEXT,owner TEXT,state TEXT,plan TEXT,error TEXT,url TEXT,updated TEXT,expires INTEGER)");
+  db.exec("UPDATE publications SET state='needs_attention',error='Service stopped during publication. GitHub may already contain the branch or PR. Preview again to reconcile.' WHERE state IN ('publishing','pushing','branch_published','creating_pr')");
+  db.exec("UPDATE publications SET state='expired',error='Service restarted. Create a fresh preview.' WHERE state IN ('preparing','ready')");
   const enabledAdapters=c.enabledAdapters??['codex','claude'];
   const editAdapters=c.editing?(c.editAdapters??[]):[];
   if([...enabledAdapters,...editAdapters].some(value=>!adapterIds.includes(value)))throw Error('Invalid adapter configuration');
@@ -98,7 +102,7 @@ export function runner(c: Config) {
   const projectBusy=(id:string)=>repositoryWork?.project===id;
   function startRepository(input:any){
     if(closing)throw Error('Service is stopping. Try again after it restarts.');
-    if(repositoryWork||dependencyWork||github.busy())throw Error('Wait for the current repository or GitHub connection operation.');
+    if(repositoryWork||publicationWork||dependencyWork||github.busy())throw Error('Wait for the current repository or GitHub connection operation.');
     const kind=input.kind;if(!['inspect','import','update'].includes(kind))throw Error('Unsupported repository operation');
     const existing=kind==='update'?project(input.project):null;
     if(existing){if(existing.archived)throw Error('Restore this project before updating it.');if(!existing.github_url||!existing.github_branch)throw Error('Only projects imported from GitHub can be updated here.');
@@ -128,7 +132,7 @@ export function runner(c: Config) {
   const setupView=(input:any)=>{const target=checkTarget(input);let plan:any=null,error=null;try{const value=checkManifest(target.path);plan={legacy:!target.p.check_manifest&&target.p.check_lock===value.lockHash&&!!target.p.check_dependencies&&existsSync(String(target.p.check_dependencies)),fingerprint:value.fingerprint,packages:value.count,scripts:value.scripts,ready:target.p.check_manifest===value.fingerprint&&!!target.p.check_dependencies&&existsSync(String(target.p.check_dependencies))};}catch(e){error=(e as NodeJS.ErrnoException).code==='ENOENT'?'Add package.json, package-lock.json and a test script to configure npm checks.':(e as Error).message;}
     return {project:target.p.id,task:target.row?.id??null,plan,error,busy:!!dependencyWork,jobs:db.prepare('SELECT * FROM dependency_jobs WHERE project=? ORDER BY rowid DESC LIMIT 10').all(String(target.p.id))};};
   const startSetup=(input:any)=>{
-    if(dependencyWork||repositoryWork||active||accountBusy()||preparing||db.prepare("SELECT id FROM tasks WHERE status='queued'").get())throw Error('Wait for current work before preparing dependencies.');
+    if(dependencyWork||repositoryWork||publicationWork||active||accountBusy()||preparing||db.prepare("SELECT id FROM tasks WHERE status='queued'").get())throw Error('Wait for current work before preparing dependencies.');
     const target=checkTarget(input),value=checkManifest(target.path);if(input.fingerprint!==value.fingerprint)throw Error('Dependency files changed. Review setup again.');
     const id=randomUUID(),abort=new AbortController(),stage=join(c.stateDir,'dependencies',id);writeManifests(stage,value);
     db.prepare('INSERT INTO dependency_jobs VALUES(?,?,?,?,?,?,?)').run(id,target.p.id,target.row?.id??null,value.fingerprint,'running',null,new Date().toISOString());audit('approve-dependencies',target.row?String(target.row.id):null,{project:target.p.id,fingerprint:value.fingerprint,packages:value.count});
@@ -137,6 +141,30 @@ export function runner(c: Config) {
     }catch(e){try{rmSync(stage,{recursive:true,force:true});}catch{}db.prepare('UPDATE dependency_jobs SET state=?,error=?,updated=? WHERE id=?').run(abort.signal.aborted?'cancelled':'failed',(e as Error).message,new Date().toISOString(),id);}finally{dependencyWork=undefined;if(!closing)setImmediate(pump);}});
     dependencyWork={id,abort,done};return {id,state:'running'};
   };
+  let publicationWork:{done:Promise<void>;abort:AbortController}|undefined;
+  const publicationView=(task:string)=>db.prepare('SELECT id,task,state,plan,error,url,updated,expires FROM publications WHERE task=? ORDER BY rowid DESC LIMIT 5').all(task).map((row:any)=>({...row,plan:row.plan?JSON.parse(row.plan):null}));
+  const publishTarget=(id:string)=>{const row=get(id);if(!row||row.review!=='committed'||!row.commit_sha)throw Error('Approve a local commit with passing checks before publishing.');const p=project(String(row.project));if(p.archived)throw Error('Restore this project before publishing.');return {row,p};};
+  const approvedCommit=(projectId:string,sha:string,tree:string)=>{const row=db.prepare("SELECT checks FROM tasks WHERE project=? AND commit_sha=? AND review='committed'").get(projectId,sha);if(!row)return false;const checks=JSON.parse(String(row.checks??'{}'));return checks.status==='passed'&&checks.tree===tree;};
+  function startPublication(input:any,approve=false){
+    if(!/^[a-f0-9]{64}$/.test(input.owner??''))throw Error('Authenticated browser session required.');
+    if(publicationWork||repositoryWork||dependencyWork||github.busy())throw Error('Wait for current publishing, repository, dependency or GitHub sign-in work.');
+    const profile=github.profile();if(!profile&&!c.pullAPI)throw Error('Connect GitHub before preparing publication.');
+    const stored=approve?db.prepare('SELECT * FROM publications WHERE id=?').get(input.id):null;
+    if(approve&&(!stored||stored.owner!==input.owner||stored.state!=='ready'||Number(stored.expires)<Date.now()))throw Error('This approval expired or belongs to another browser. Create a fresh preview.');
+    const task=String(stored?.task??input.task),{row,p}=publishTarget(task),published=publicationView(task).find(job=>job.state==='published');if(published)return published;
+    const plan:PublishPlan|null=approve?JSON.parse(String(stored!.plan)):null;if(approve&&input.fingerprint!==plan!.fingerprint)throw Error('Preview changed. Review it again.');
+    if(plan&&plan.head!==row.commit_sha)throw Error('Approved local commit changed. Preview again.');
+    const fields=approve?plan!:publicationText(input.title,input.body),base=approve?plan!.base:branchName(input.base),id=approve?String(stored!.id):randomUUID(),abort=new AbortController(),gitCommand=c.repositoryCommand??repositoryGit({stateDir:c.stateDir,githubProfile:profile});
+    if(approve){db.prepare("UPDATE publications SET state='publishing',error=NULL,updated=? WHERE id=?").run(new Date().toISOString(),id);audit('approve-publication',task,{publication:id,fingerprint:plan!.fingerprint,destination:plan!.destination,head:plan!.head,base:plan!.base,baseSha:plan!.baseSha});}
+    else db.prepare('INSERT INTO publications VALUES(?,?,?,?,?,?,?,?,?)').run(id,task,input.owner,'preparing',null,null,null,new Date().toISOString(),Date.now()+900000);
+    const done=Promise.resolve().then(async()=>{try{
+      if(!approve){const preview=await previewPublication({git:gitCommand,repo:String(p.repo),task,head:String(row.commit_sha),base,title:fields.title,body:fields.body,approved:(sha,tree)=>approvedCommit(String(p.id),sha,tree),signal:abort.signal});db.prepare("UPDATE publications SET state='ready',plan=?,updated=?,expires=? WHERE id=?").run(JSON.stringify(preview),new Date().toISOString(),Date.now()+900000,id);}
+      else {for(const commit of plan!.commits){const tree=await gitCommand(String(p.repo),['rev-parse',commit.sha+'^{tree}'],abort.signal);if(!approvedCommit(String(p.id),commit.sha,tree))throw Error('Commit approval or check results changed. Preview again.');}
+        const result=await executePublication(gitCommand,c.pullAPI??githubPullAPI(c.stateDir,profile!),String(p.repo),plan!,abort.signal,stage=>db.prepare('UPDATE publications SET state=?,updated=? WHERE id=?').run(stage,new Date().toISOString(),id));
+        db.prepare("UPDATE publications SET state='published',url=?,error=?,updated=? WHERE id=?").run(result.url,result.reused?'Existing pull request reused; its current title, description and state were kept.':null,new Date().toISOString(),id);audit('published',task,{publication:id,url:result.url,head:plan!.head,reused:result.reused});}
+    }catch(error){db.prepare('UPDATE publications SET state=?,error=?,updated=? WHERE id=?').run(approve?'needs_attention':'failed',(error as Error).message,new Date().toISOString(),id);}finally{publicationWork=undefined;}});
+    publicationWork={done,abort};return publicationView(task).find(job=>job.id===id);
+  }
   const capabilities=()=>discover(enabledAdapters,editAdapters,!!c.command,!!c.codexChat);
   const accountCache=new Map<string,AccountStatus>(adapterIds.map(id=>[id,{state:'checking',method:null,checkedAt:null,message:'Checking account status'}]));
   let preparing:string|undefined,preparation:Promise<void>|undefined;
@@ -254,13 +282,16 @@ export function runner(c: Config) {
   }
   function request(input:any){
     if(closing)throw new Error('Service is stopping');
+    if(input.op==='publication-status'){publishTarget(input.task);return publicationView(input.task);}
+    if(input.op==='publication-preview')return startPublication(input);
+    if(input.op==='publication-approve')return startPublication(input,true);
     if(input.op==='check-setup')return setupView(input);
     if(input.op==='check-prepare')return startSetup(input);
     if(input.op==='check-cancel'){if(!dependencyWork||dependencyWork.id!==input.id)throw Error('Preparation not found.');dependencyWork.abort.abort();return {ok:true};}
     if(input.op==='github-status')return github.view(input.owner);
-    if(input.op==='github-start'){if(repositoryWork)throw Error('Wait for the repository operation.');return github.start(input.owner);}
+    if(input.op==='github-start'){if(repositoryWork||publicationWork)throw Error('Wait for the repository or publishing operation.');return github.start(input.owner);}
     if(input.op==='github-cancel')return github.cancel(input.owner,input.session);
-    if(input.op==='github-logout'){if(repositoryWork)throw Error('Wait for the repository operation.');return github.logout();}
+    if(input.op==='github-logout'){if(repositoryWork||publicationWork)throw Error('Wait for the repository or publishing operation.');return github.logout();}
     if(input.op==='repository-jobs')return repositoryView();
     if(input.op==='repository-start')return startRepository(input);
     if(input.op==='repository-cancel'){if(!repositoryWork||repositoryWork.id!==input.job)throw Error('Repository operation not found.');repositoryWork.abort.abort();return {ok:true};}
@@ -273,7 +304,7 @@ export function runner(c: Config) {
     if(input.op==='account-code')return accountManager.submit(input.owner,input.session,input.code);
     if(input.op==='account-cancel')return accountManager.cancel(input.owner,input.session);
     if(input.op==='account-refresh'){refreshAccounts(true);return {ok:true};}
-    if(input.op==='capabilities'){const adapters=capabilities();return {adapterSchemaVersion:1,adapters,editing:adapters.some(value=>value.modes.includes('edit')),editAdapters:adapters.filter(value=>value.modes.includes('edit')).map(value=>value.id),enabledAdapters:adapters.filter(value=>value.available).map(value=>value.id),strictWorkers:!!c.strictWorkers,publishing:false};}
+    if(input.op==='capabilities'){const adapters=capabilities();return {adapterSchemaVersion:1,adapters,editing:adapters.some(value=>value.modes.includes('edit')),editAdapters:adapters.filter(value=>value.modes.includes('edit')).map(value=>value.id),enabledAdapters:adapters.filter(value=>value.available).map(value=>value.id),strictWorkers:!!c.strictWorkers,publishing:true};}
     if(input.op==='operations'){
       refreshAccounts();
       const counts:Record<string,number>={waiting_for_approval:0,queued:0,running:0,cancelling:0,succeeded:0,failed:0,cancelled:0,timed_out:0,interrupted:0};
@@ -311,7 +342,7 @@ export function runner(c: Config) {
       db.prepare('INSERT INTO projects(id,name,repo,created) VALUES(?,?,?,?)').run(id,name,repo,new Date().toISOString());return project(id);
     }
     if(input.op==='project-archive'||input.op==='project-restore'){
-      if(dependencyWork||projectBusy(input.id))throw Error('Wait for the repository update.');
+      if(dependencyWork||publicationWork||projectBusy(input.id))throw Error('Wait for the repository or publishing operation.');
       const p=project(input.id),archive=input.op==='project-archive';
       if(archive&&db.prepare("SELECT id FROM tasks WHERE project=? AND (status IN ('waiting_for_approval','queued','running','cancelling') OR review='pending') LIMIT 1").get(input.id))throw Error('Finish or cancel pending runs and resolve reviews before archiving this project.');
       if(archive&&active&&get(active.id)?.project===p.id)throw Error('Stop the current checks before archiving this project.');
@@ -473,5 +504,5 @@ export function runner(c: Config) {
   const controlPath=process.env.AGENTD_CONTROL_SOCKET??socket;
   server.listen(controlPath);
   server.on('listening',()=>pump());
-  return {request,server,async close(){closing=true;dependencyWork?.abort.abort();await dependencyWork?.done;repositoryWork?.abort.abort();await repositoryWork?.done;await github.close();clearInterval(accountTimer);await accountManager.close();await renewalManager?.close();await preparation;const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
+  return {request,server,async close(){closing=true;publicationWork?.abort.abort();await publicationWork?.done;dependencyWork?.abort.abort();await dependencyWork?.done;repositoryWork?.abort.abort();await repositoryWork?.done;await github.close();clearInterval(accountTimer);await accountManager.close();await renewalManager?.close();await preparation;const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
 }

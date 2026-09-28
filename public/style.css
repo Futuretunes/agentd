@@ -14,3 +14,6 @@
 #repository-form,#repository-import:not([hidden]){display:grid;gap:10px;margin-top:16px}#repository-form input,#repository-import input,#repository-import select{width:100%;min-width:0;max-width:100%}#repository-status section{padding:14px 0;border-top:1px solid var(--line)}#github-content pre{font-size:24px;letter-spacing:2px}#github-content a{display:block;color:var(--accent);padding:12px 0}
 
 #check-setup-dialog{width:min(700px,95vw);max-height:90dvh;overflow:auto}#check-setup-content section{padding:14px 0;border-top:1px solid var(--line)}#check-setup-content .diff{white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0}
+
+#publishing-dialog{width:min(900px,95vw);max-width:900px;max-height:90dvh;overflow:auto}#publishing-form{display:grid;gap:10px}#publishing-form input,#publishing-form textarea{width:100%;min-width:0}#publishing-content .path{overflow-wrap:anywhere}#publishing-content .diff{white-space:pre-wrap;overflow-wrap:anywhere;max-height:45dvh;overflow:auto}#publishing-content details{padding:12px 0;border-top:1px solid var(--line)}#publishing-content summary{cursor:pointer;overflow-wrap:anywhere}#publishing-content a{display:inline-block;color:var(--accent);padding:12px 0}@media(max-width:620px){#publishing-dialog{padding:18px}}
+#publishing-close{align-self:start}

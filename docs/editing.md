@@ -1,6 +1,6 @@
 # Reviewable editing
 
-Choose **Ask** for read-only questions, or **Edit files** to request changes. Every turn requires run approval. After an edit, choose **Review changes**, inspect the diff, run checks, and explicitly approve a commit. Commits create an `agentd/<task-id>` branch. The project's checked-out branch is not changed. Nothing is pushed and no pull request is created by this release.
+Choose **Ask** for read-only questions, or **Edit files** to request changes. Every turn requires run approval. After an edit, choose **Review changes**, inspect the diff, run checks, and explicitly approve a commit. Commits create an `agentd/<task-id>` branch. The project's checked-out branch is not changed. Nothing is pushed during commit approval. Use the separate [GitHub publication approval](publishing.md) to upload the reviewed commits and create a draft pull request.
 
 The next conversation turn starts from the preceding approved commit. Resolve the previous review before continuing. Discarding a review retains its worktree for inspection but does not carry those edits forward. Asking the agent to revise an uncommitted change set is not yet supported.
 

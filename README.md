@@ -9,6 +9,7 @@ agentd queues tasks, waits for approval, and runs Codex or Claude Code in a dedi
 ## Available today
 
 - Codex and Claude Code adapters using their installed CLIs and existing account logins; agentd does not require provider API keys.
+- Approval-gated GitHub publishing with exact commit previews, dedicated branches and draft pull requests.
 - GUI npm dependency setup with explicit approval, isolated public-registry downloads and install scripts disabled.
 - Reviewable edits, snapshot-bound test results and explicitly approved local branch commits.
 - GitHub repository import, branch selection, guided private-repository sign-in and safe forward-only updates.
@@ -72,7 +73,7 @@ See [deployment](docs/deployment.md), [architecture](docs/architecture.md), [sec
 
 ## Reviewable editing
 
-See [editing setup and limitations](docs/editing.md). Editing is disabled by default. No changes are pushed or published automatically.
+See [editing setup and limitations](docs/editing.md). Editing is disabled by default. No changes are pushed or published automatically. After committing reviewed edits, choose **Publish to GitHub**, prepare a preview, then explicitly approve the branch upload and draft pull request. See [publishing](docs/publishing.md).
 
 ## Hardened workers
 
