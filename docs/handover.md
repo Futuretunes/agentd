@@ -2,6 +2,17 @@
 
 Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-scoped-settings.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
+## Open review — 2026-09-28
+
+Claude reviewed v0.19.0: [review](reviews/2026-09-28-claude-review.md), [handover note](handovers/2026-09-28-claude-review.md). It has 4 high findings:
+
+- **R1:** stacked unmerged PRs are what runs in production.
+- **R2:** code density prevents meaningful review.
+- **R3:** the deployed configuration isn't in the repo.
+- **R4:** checks don't cover git-ignored files. Reproduced.
+
+Codex should verify every finding and answer it in `docs/reviews/2026-09-28-claude-review-response.md` before starting new feature work. Accept nothing without checking it; disagree with evidence where the review is wrong.
+
 ## Current state — 2026-09-28
 
 - **Installed release:** v0.19.0, implementation `0af41e2`, confirmed by the operator's successful deployment output; 91 tests passed and both services active.
@@ -15,6 +26,7 @@ This documentation update establishes the cross-agent process and records the in
 
 ## History and maintenance
 
+- [2026-09-28 — Claude review of v0.19.0](handovers/2026-09-28-claude-review.md)
 - [2026-09-28 — Scoped settings and model selection](handovers/2026-09-28-scoped-settings.md)
 - [Template for the next work item](handovers/TEMPLATE.md)
 - [Remaining backlog](roadmap.md)
