@@ -1,3 +1,4 @@
+import { admissionBlocked, type Operation, type BusyState } from "./operation-policy.ts";
 import { prepareWorktree } from "./worktree-preparation.ts";
 import { creationRequests } from "./creation-requests.ts";
 import { followupContext, contextPrompt } from "./followup-context.ts";
@@ -271,11 +272,52 @@ export function runner(c: Config) {
         ...row,
         result: row.result ? JSON.parse(String(row.result)) : null,
       }));
+  function blocked(operation: Operation) {
+    const read = (state: BusyState): boolean => {
+      switch (state) {
+        case "repository":
+          return !!repositoryWork;
+        case "publication":
+          return !!publicationWork;
+        case "dependency":
+          return !!dependencyWork;
+        case "github":
+          return github.busy();
+        case "worker":
+          return !!active;
+        case "account":
+          return accountBusy();
+        case "queued":
+          return !!db.prepare("SELECT id FROM tasks WHERE status='queued'").get();
+        case "probes":
+          return checkingAccounts;
+        case "closing":
+          return closing;
+        case "models":
+          return catalog.busy();
+        case "preparing":
+          return !!preparing;
+        case "renewal":
+          return !!renewalManager?.busy();
+        case "renewalProbe":
+          return !!renewalManager && checkingAccounts;
+        case "unsettled":
+          return !!db
+            .prepare(
+              "SELECT id FROM tasks WHERE status IN ('queued','running','cancelling')",
+            )
+            .get();
+        case "reviewPreparation":
+          return !!db.prepare("SELECT id FROM review_jobs WHERE state='preparing'").get();
+      }
+    };
+    return admissionBlocked(operation, read);
+  }
   const projectBusy = (id: string) => repositoryWork?.project === id;
   function startRepository(input: any) {
     requireSpace([c.stateDir, c.worktrees], limits.reserveBytes);
     if (closing) throw Error("Service is stopping. Try again after it restarts.");
-    if (repositoryWork || publicationWork || dependencyWork || github.busy())
+    if (blocked("repository"))
       throw Error("Wait for the current repository or GitHub connection operation.");
     const kind = input.kind;
     if (!["inspect", "import", "update"].includes(kind))
@@ -458,15 +500,7 @@ export function runner(c: Config) {
   };
   const startSetup = (input: any) => {
     requireSpace([c.stateDir], limits.reserveBytes);
-    if (
-      dependencyWork ||
-      repositoryWork ||
-      publicationWork ||
-      active ||
-      accountBusy() ||
-      preparing ||
-      db.prepare("SELECT id FROM tasks WHERE status='queued'").get()
-    )
+    if (blocked("dependencies"))
       throw Error("Wait for current work before preparing dependencies.");
     const target = checkTarget(input),
       value = checkManifest(target.path);
@@ -582,7 +616,7 @@ export function runner(c: Config) {
   function startPublication(input: any, approve = false) {
     if (!/^[a-f0-9]{64}$/.test(input.owner ?? ""))
       throw Error("Authenticated browser session required.");
-    if (publicationWork || repositoryWork || dependencyWork || github.busy())
+    if (blocked("publication"))
       throw Error(
         "Wait for current publishing, repository, dependency or GitHub sign-in work.",
       );
@@ -801,15 +835,7 @@ export function runner(c: Config) {
       throw Error("Preview expired. Prepare it again.");
     const task = String(stored?.task ?? input.task),
       { row, p } = latestCommitted(task);
-    if (
-      publicationWork ||
-      repositoryWork ||
-      dependencyWork ||
-      active ||
-      accountBusy() ||
-      github.busy() ||
-      db.prepare("SELECT id FROM tasks WHERE status='queued'").get()
-    )
+    if (blocked("feedback"))
       throw Error(
         "Wait for current work before preparing GitHub feedback or integration.",
       );
@@ -1178,14 +1204,7 @@ export function runner(c: Config) {
   let checkingAccounts = false;
   let accountsCheckedAt = 0;
   const refreshAccounts = (force = false) => {
-    if (
-      checkingAccounts ||
-      closing ||
-      active ||
-      catalog.busy() ||
-      accountBusy() ||
-      (!force && Date.now() - accountsCheckedAt < 300000)
-    )
+    if (blocked("accountProbe") || (!force && Date.now() - accountsCheckedAt < 300000))
       return;
     checkingAccounts = true;
     void Promise.all(
@@ -1260,15 +1279,7 @@ export function runner(c: Config) {
       throw Error("This work mode is not enabled for this adapter");
   };
   function pump() {
-    if (
-      closing ||
-      active ||
-      dependencyWork ||
-      catalog.busy() ||
-      accountBusy() ||
-      (renewalManager && checkingAccounts)
-    )
-      return;
+    if (blocked("dispatch")) return;
     const row = db
       .prepare("SELECT * FROM tasks WHERE status='queued' ORDER BY created,id LIMIT 1")
       .get();
@@ -1490,7 +1501,7 @@ export function runner(c: Config) {
     }
   }
   function available(row: any) {
-    if (active || db.prepare("SELECT id FROM tasks WHERE status='queued'").get())
+    if (blocked("review"))
       throw Error("Wait for the active worker before reviewing changes");
     if (
       row.mode !== "edit" ||
@@ -1526,7 +1537,7 @@ export function runner(c: Config) {
   };
   function validate(row: any, expected: string) {
     requireSpace([c.stateDir, c.worktrees, c.logs], limits.reserveBytes);
-    if (accountBusy() || dependencyWork)
+    if (blocked("checks"))
       throw Error("Finish account or dependency preparation before running checks");
     if (projectBusy(String(row.project))) throw Error("Wait for the repository update.");
     available(row);
@@ -1709,21 +1720,7 @@ export function runner(c: Config) {
       return images.upload(input);
     }
     if (input.op === "storage-preview" || input.op === "storage-cleanup") {
-      if (
-        active ||
-        preparing ||
-        accountBusy() ||
-        dependencyWork ||
-        repositoryWork ||
-        publicationWork ||
-        catalog.busy() ||
-        db
-          .prepare(
-            "SELECT id FROM tasks WHERE status IN ('queued','running','cancelling')",
-          )
-          .get() ||
-        db.prepare("SELECT id FROM review_jobs WHERE state='preparing'").get()
-      )
+      if (blocked("storage"))
         throw Error("Wait for current work before reviewing storage cleanup");
       if (typeof input.owner !== "string" || !/^[a-f0-9]{64}$/.test(input.owner))
         throw Error("Browser owner required");
@@ -1745,14 +1742,7 @@ export function runner(c: Config) {
         throw Error("Conversation belongs to another project");
       if (!adapterIds.includes(agent)) throw Error("Unsupported adapter");
       if (input.op === "models-refresh") {
-        if (
-          active ||
-          preparing ||
-          accountBusy() ||
-          checkingAccounts ||
-          dependencyWork ||
-          catalog.busy()
-        )
+        if (blocked("models"))
           throw Error("Wait for active work or account checks before refreshing models");
         catalog.refresh(agent);
         audit("refresh-models", null, {
@@ -1859,13 +1849,13 @@ export function runner(c: Config) {
     }
     if (input.op === "github-status") return github.view(input.owner);
     if (input.op === "github-start") {
-      if (repositoryWork || publicationWork)
+      if (blocked("githubChange"))
         throw Error("Wait for the repository or publishing operation.");
       return github.start(input.owner);
     }
     if (input.op === "github-cancel") return github.cancel(input.owner, input.session);
     if (input.op === "github-logout") {
-      if (repositoryWork || publicationWork)
+      if (blocked("githubChange"))
         throw Error("Wait for the repository or publishing operation.");
       return github.logout();
     }
@@ -1884,14 +1874,7 @@ export function runner(c: Config) {
     if (input.op === "account-start") {
       if (!["login", "logout"].includes(input.action))
         throw Error("Unsupported account action");
-      if (
-        active ||
-        dependencyWork ||
-        preparing ||
-        renewalManager?.busy() ||
-        checkingAccounts ||
-        db.prepare("SELECT id FROM tasks WHERE status='queued'").get()
-      )
+      if (blocked("accountChange"))
         throw Error(
           "Wait for current work or account checks to finish before changing accounts.",
         );

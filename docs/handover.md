@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-overnight-batch.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-operation-admission.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.34.0 — explicit operation admission
+
+[Handover](handovers/2026-09-29-operation-admission.md): twelve admission checks now share a documented directional policy. Exhaustive legacy-state parity preserves behavior; exact Linux/CI pending. This is not a new global lock; manager/project/approval gates remain. Production unchanged, prior cumulative installer still staged until validation completes.
 
 ## Overnight batch — ready for shared review, not installed
 

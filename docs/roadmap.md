@@ -155,7 +155,7 @@ Added inherited and next-run previous-answer/no-context settings, visible in run
 
 ## R10 partial candidate — durable task/project creation receipts
 
-Task/project creation now supports unique session-scoped request IDs, canonical payload hashes and transactional result receipts. Same-session browser retries recover the original task/project across response loss or process restart; changed input cannot reuse an ID. The browser persists pending requests before sending and asks before treating edited uncertain input as different work. Explicit task-schema migration 1→2; old releases reject newer task state. Exact Linux/CI pending, not installed. Asynchronous Git preparation and idempotency/recovery review for remaining mutations are still open. See [handover](handovers/2026-09-28-creation-requests.md).
+Task/project creation now supports unique session-scoped request IDs, canonical payload hashes and transactional result receipts. Same-session browser retries recover the original task/project across response loss or process restart; changed input cannot reuse an ID. The browser persists pending requests before sending and asks before treating edited uncertain input as different work. Explicit task-schema migration 1→2; old releases reject newer task state. Exact 0.32.0 archive passed 136/136 Linux tests and CI; not installed. Asynchronous Git preparation and idempotency/recovery review for remaining mutations are still open. See [handover](handovers/2026-09-28-creation-requests.md).
 
 ## R2 formatting progress — candidate 0.32.0
 
@@ -164,3 +164,7 @@ Pinned formatter and CI style checks cover TypeScript/JavaScript runtime, browse
 ## R10 task preparation — candidate 0.33.0
 
 Task checkout/snapshot restoration no longer blocks the event loop; cancellation and shutdown hold the same worker slot and preserve partial files. Bounded helper execution uses the shared Git policy and resource admission. Other request-time Git operations and a complete operation compatibility model remain open. Exact archive `ba2c5a5` passed 139/139 Linux tests with zero skips, formatting, typecheck and CI. Not installed.
+
+## R2 admission policy — candidate 0.34.0
+
+Twelve global admission checks are centralized and documented, preserving all 32,768 combinations of the prior fifteen-state decision model. Manager-owned/project-specific and approval checks remain. This establishes a reviewable baseline; owned operation leases, domain decomposition and interleaving proofs remain open. Exact Linux/CI pending; not installed. See [operation compatibility](operation-compatibility.md).
