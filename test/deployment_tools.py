@@ -63,6 +63,10 @@ class DeploymentTests(unittest.TestCase):
             return '\n'.join(k+'='+v for k,v in properties.items())
         with patch.object(update,'capture',side_effect=capture):
             value=update.inventory(c);self.assertNotIn('fixture-secret',json.dumps(value))
+        def running(args): return capture(args).replace(' ; }',' ; start_time=[today] ; pid=123 ; status=0/0 }')
+        def restarted(args): return capture(args).replace(' ; }',' ; start_time=[tomorrow] ; pid=456 ; status=0/0 }')
+        with patch.object(update,'capture',side_effect=running): before=update.inventory(c)
+        with patch.object(update,'capture',side_effect=restarted): self.assertEqual(update.inventory(c),before)
         def wrong(args): return capture(args).replace('AGENTD_STATE_DIR='+c['state'],'AGENTD_STATE_DIR=/different/state')
         with patch.object(update,'capture',side_effect=wrong):
             with self.assertRaisesRegex(ValueError,'state/socket differs'):update.inventory(c)

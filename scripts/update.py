@@ -87,7 +87,10 @@ def inventory(c):
             if not name: raise ValueError('Missing unit file')
             path = canonical(name)
             hashes[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
-        result[unit] = {'properties':hashlib.sha256(text.encode()).hexdigest(),'files':hashes}
+        # ExecStart contains transient process results on systemd. Bind the
+        # configured command, never its PID, timestamps or exit status.
+        properties['ExecStart'] = properties['ExecStart'].split(' ; start_time=',1)[0]
+        result[unit] = {'properties':hashlib.sha256(json.dumps(properties,sort_keys=True).encode()).hexdigest(),'files':hashes}
     result['configuration'] = {name:hashlib.sha256(Path(name).read_bytes()).hexdigest() for name in c['configFiles']}
     return result
 
