@@ -2,11 +2,15 @@
 
 - Author: Codex.
 - Request: continue with the next work item after UI redesign/exact-tree checks.
-- Status: implemented and tested; not installed.
-- Candidate: 0.21.0. Installed 0.20.0 confirmed by read-only health and active runner/mobile services on 2026-09-28.
+- Status: implemented, tested and installed; service health independently verified.
+- Installed release: 0.21.0, confirmed by operator completion output and independent read-only health on 2026-09-28.
 - PR: [#23](https://github.com/Futuretunes/agentd/pull/23), draft. Implementation commits `d47df63`, `b2bc2e9`, `a58f364`, `af7ca04`, `8b7c4a2`.
-- Staged release revision: `8b7c4a2d725ae74024cf55231a96ecfa50ab44a8`; archive SHA-256 `b65a2c00483030334ceae0ce9066ae4f0461e1085e52b7932b579fd38ddc1199`. Subsequent handover-only changes do not change this candidate.
+- Installed source release revision: `8b7c4a2d725ae74024cf55231a96ecfa50ab44a8`; archive SHA-256 `b65a2c00483030334ceae0ce9066ae4f0461e1085e52b7932b579fd38ddc1199`. Subsequent handover-only changes do not change this candidate.
 - Branch: `feat/reproducible-deployment`, based on `feat/task-desk-redesign` at `58d4276` (PR #22). No main merge or PR-stack closure.
+
+## Installation acceptance
+
+The operator reports successful application update with a private rollback backup. Independent read-only verification returns status ok, version 0.21.0, schemaVersion 1, taskSchemaVersion 1, serial scheduler, workerDispatch true and starts 31; runner and mobile units are both active. The installer reports preserved units, configuration, project checkouts and native account profiles. Backup location remains in the operator's local output, outside public documentation. No model request or full GUI acceptance test was run. The earlier preflight-refusal notes below are historical; no retry is currently needed.
 
 ## Follow-up — gateway compatibility correction
 
@@ -30,7 +34,7 @@ TypeScript passed. Full local suite: 105 tests, 98 passed, 7 Linux-only skips, z
 
 ## Deployment and rollback
 
-Not deployed. Tracked procedure and limitations: `docs/managed-updates.md`. Source-only release archive, verifier, root-adoptable configuration and a thin launcher are staged in the operator account, outside the public repository. The launcher executes the tracked updater; it contains no separate update logic. Production 0.20.0 continues running. Application update intentionally preserves the agentd project checkout; application release and project revision can differ.
+Successfully deployed by the operator. Tracked procedure and limitations: `docs/managed-updates.md`. Source-only release archive, verifier, root-adoptable configuration and a thin launcher are staged in the operator account, outside the public repository. The launcher executes the tracked updater; it contains no separate update logic. Production 0.21.0 is running. Application update intentionally preserves the agentd project checkout; application release and project revision can differ.
 
 Power-loss rollback is not automatic: a private pending journal blocks further updates until administrator recovery. Source hashes are integrity evidence, not release signatures. First adoption requires explicit acceptance of existing configuration; drift reconciliation remains manual. Fresh account/TLS/native CLI setup and future GUI administration remain separate work. Do not downgrade by changing application files alone: older unversioned code can accept newer databases; restore a matching state backup.
 
@@ -38,4 +42,4 @@ Power-loss rollback is not automatic: a private pending journal blocks further u
 
 Review transaction boundaries, known legacy shapes, future-version rejection before cleanup, artifact allowlists, baseline drift detection, non-root validation boundary, stopped-state backups/ownership, rollback and interrupted-update instructions. Focus on false assurances: fixture rollback is not a real privileged deployment test, and green tests do not authorize production installation.
 
-The candidate is prepared for administrator installation; verify final PR/CI status and installed health after the operator runs it. Resolve R1 reviewed baseline and required CI enforcement with the operator before merging. Next engineering work is remaining R2 decomposition and R5/R6 boundary/resource controls; keep remaining UX/phone acceptance and U1 decision visible.
+Installation and service health are confirmed; full GUI/operator workflow acceptance remains distinct from service health. Resolve R1 reviewed baseline and required CI enforcement with the operator before merging. Next engineering work is remaining R2 decomposition and R5/R6 boundary/resource controls; keep remaining UX/phone acceptance and U1 decision visible.

@@ -2,9 +2,11 @@
 
 Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-managed-deployment.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
-## Candidate 0.21.0 — managed deployment and task schema
+## Installed 0.21.0 — managed deployment and task schema
 
-Current work: [handover](handovers/2026-09-28-managed-deployment.md), [draft PR #23](https://github.com/Futuretunes/agentd/pull/23). The initial `a58f364` installer refused the gateway personality setting before deployment; the tested role-specific correction `af7ca04` is staged, with 105/105 Linux tests and all CI jobs passing. A second preflight refusal revealed omitted mobile defaults; corrected candidate `8b7c4a2` is staged and matches runtime defaults while rejecting explicit mismatches (105/105 Linux tests and all CI jobs passed). See the handover follow-ups. Installed 0.20.0 was independently confirmed through loopback health and both services active on 2026-09-28; earlier installation statements below are historical. Candidate 0.21.0 adds transactional task-schema migration, exact-commit release packaging and a tracked administrator-only updater with configuration drift checks and rollback. No production deployment occurred. Candidate validation: typecheck and 105/105 Linux tests, zero skips; root deployment remains operator acceptance. Release-baseline merge strategy and protected-branch enforcement remain unresolved; no main merge is authorized by this note.
+[Handover](handovers/2026-09-28-managed-deployment.md), [draft PR #23](https://github.com/Futuretunes/agentd/pull/23). The operator successfully installed release `8b7c4a2`; independent read-only health confirms version 0.21.0, metadata schema 1, task schema 1, serial dispatch enabled, starts 31, and both services active. Pre-install validation passed 105/105 Linux tests with zero skips and all CI jobs. Two updater compatibility mistakes were corrected before deployment: gateway personality policy and omitted mobile JSON defaults. Units/configuration/native profiles and project checkouts were preserved according to installer output; no model acceptance test was submitted. Earlier deployment statements below are historical.
+
+Next recommended implementation: R5, separate web-gateway identity and socket authority from the task runner. R1 release-baseline strategy and protected-branch enforcement remain unresolved; no main merge is authorized by this note. GUI deployment management and automatic power-loss recovery remain backlog items.
 
 ## Candidate 0.20.0 — implementation ready
 
