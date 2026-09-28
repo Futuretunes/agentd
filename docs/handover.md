@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.32.0 — durable creation requests (task schema 2)
 
-[Handover](handovers/2026-09-28-creation-requests.md): task/project creation retries reuse a durable result bound to session and request content. Browser pending IDs survive same-tab refresh; different work after an uncertain send requires an explicit choice. Task schema 1→2 migration is transactional. Focused tests passed; exact Linux/CI pending. Production remains 0.22.0/schema 1. R10 asynchronous Git work and broader mutation recovery remain open.
+[Handover](handovers/2026-09-28-creation-requests.md): task/project creation retries reuse a durable result bound to session and request content. Browser pending IDs survive same-tab refresh; different work after an uncertain send requires an explicit choice. Task schema 1→2 migration is transactional. Exact archive `f71f0f5` passed 136/136 Linux tests with zero skips; typecheck passed, CI pending. Production remains 0.22.0/schema 1. R10 asynchronous Git work and broader mutation recovery remain open.
 
 ## Candidate 0.31.0 — explicit follow-up context
 

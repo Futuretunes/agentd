@@ -12,7 +12,7 @@
 
 ## Validation
 
-15 focused tests passed: duplicate task/conversation/project prevention, reordered equivalent input, restart recovery, changed input refusal, failed input correction, session scope, receipt uniqueness/rollback, browser response-loss staging, storage failure and explicit different-work confirmation. Actual gateway replay reuses the same task. Migration tests cover version-1 recovery rollback, successful upgrade and refusal to repair missing current receipts. Typecheck passed. Exact Linux/CI pending. No production or model/account/publication operations.
+15 focused tests passed: duplicate task/conversation/project prevention, reordered equivalent input, restart recovery, changed input refusal, failed input correction, session scope, receipt uniqueness/rollback, browser response-loss staging, storage failure and explicit different-work confirmation. Actual gateway replay reuses the same task. Migration tests cover version-1 recovery rollback, successful upgrade and refusal to repair missing current receipts. Typecheck passed. Exact archive `f71f0f54399a94dbedb792f1c93cbac74313efe7` (see Git for the full revision) passed 136/136 required Linux tests with zero skips and typecheck. Archive SHA-256: `cc84db4ebea7727409cc07fd0be0b01fd8e5922ed8db2c84f53c294a7e6d160b`. CI run 36483656873 is pending. No production or model/account/publication operations.
 
 ## Deployment and next
 
