@@ -156,3 +156,7 @@ Added inherited and next-run previous-answer/no-context settings, visible in run
 ## R10 partial candidate — durable task/project creation receipts
 
 Task/project creation now supports unique session-scoped request IDs, canonical payload hashes and transactional result receipts. Same-session browser retries recover the original task/project across response loss or process restart; changed input cannot reuse an ID. The browser persists pending requests before sending and asks before treating edited uncertain input as different work. Explicit task-schema migration 1→2; old releases reject newer task state. Exact Linux/CI pending, not installed. Asynchronous Git preparation and idempotency/recovery review for remaining mutations are still open. See [handover](handovers/2026-09-28-creation-requests.md).
+
+## R2 formatting progress — candidate 0.32.0
+
+Pinned formatter and CI style checks cover TypeScript/JavaScript runtime, browser, tests and scripts. Mechanical formatting is separate from behavior changes. Typecheck remains the static analysis gate; semantic lint policy, module decomposition and explicit operation compatibility remain open. Exact Linux/CI validation pending; uninstalled.

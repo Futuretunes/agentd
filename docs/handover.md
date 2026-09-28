@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-creation-requests.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-formatting.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.32.0 — reviewable formatting
+
+[Handover](handovers/2026-09-28-formatting.md): pinned formatter, CI check and separate mechanical source formatting. No intended behavior change; exact Linux/CI validation pending. R2 module decomposition/lock design remains open. Production stays 0.22.0.
 
 ## Candidate 0.32.0 — durable creation requests (task schema 2)
 
