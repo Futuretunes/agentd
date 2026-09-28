@@ -163,3 +163,15 @@ test('chat capability cannot enable Codex repository tools and always requests e
   const task=app.request({op:'create',adapter:'codex',mode:'chat',prompt:'read'});assert.equal(task.status,'waiting_for_approval');app.request({op:'approve',id:task.id});await status(app,task.id,['succeeded']);assert.equal(seen[6],false);assert.equal(seen[7],true);
  }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
 });
+test('renewal gates dispatch, excludes account changes, and honors cancellation and failure',async()=>{
+ const f=await fixture();await f.app.close();let release,fail=false,calls=0;
+ const renewal={ensure:()=>{calls++;return new Promise((resolve,reject)=>release=()=>fail?reject(Error('secret')):resolve());},view:()=>({state:'renewing',message:'Renewing'}),busy:()=>false,close:async()=>release?.()};
+ const app=runner({...f.config,strictWorkers:true,credentialRenewal:true,renewal,isolate:(_tree,_state,command,args)=>({command,args,cleanup(){}})});await once(app.server,'listening');
+ try{
+ const t=app.request({op:'create',adapter:'claude',prompt:'hello'});assert.equal(calls,0);app.request({op:'approve',id:t.id});for(let i=0;i<100&&!release;i++)await sleep(10);assert.equal(calls,1);assert.equal(app.request({op:'show',id:t.id}).task.status,'queued');assert.equal(app.request({op:'operations'}).service.renewing,true);
+ assert.throws(()=>app.request({op:'account-start',owner:'a'.repeat(64),adapter:'claude',action:'logout'}),/current work/);
+ app.request({op:'cancel',id:t.id});release();await sleep(20);assert.equal(app.request({op:'show',id:t.id}).task.status,'cancelled');assert.equal(app.request({op:'show',id:t.id}).task.worktree,null);
+ release=undefined;fail=true;const bad=app.request({op:'create',adapter:'claude',prompt:'hello'});app.request({op:'approve',id:bad.id});for(let i=0;i<100&&!release;i++)await sleep(10);release();const result=await status(app,bad.id,['failed']);assert.match(result.error,/reconnect/);assert.ok(!result.error.includes('secret'));assert.equal(result.worktree,null);
+ release=undefined;fail=false;const good=app.request({op:'create',adapter:'claude',prompt:'hello'});app.request({op:'approve',id:good.id});for(let i=0;i<100&&!release;i++)await sleep(10);release();await status(app,good.id,['succeeded']);
+ }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
+});

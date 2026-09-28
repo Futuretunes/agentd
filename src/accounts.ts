@@ -1,5 +1,5 @@
 import {spawn,type ChildProcess} from 'node:child_process';
-import {mkdirSync,mkdtempSync,readFileSync,writeFileSync,renameSync,rmSync,existsSync,lstatSync,readdirSync} from 'node:fs';
+import {mkdirSync,mkdtempSync,readFileSync,writeFileSync,renameSync,rmSync,existsSync,lstatSync,readdirSync,openSync,closeSync,fsyncSync} from 'node:fs';
 import {join} from 'node:path';
 import {homedir} from 'node:os';
 import {randomUUID} from 'node:crypto';
@@ -59,8 +59,8 @@ export function saveLogin(id:string,source:string,target:string){
   });
   const published:typeof prepared=[];
   try{
-    for(const item of prepared)writeFileSync(item.temp,JSON.stringify(item.value),{flag:'wx',mode:0o600});
-    for(const item of prepared){renameSync(item.temp,item.path);published.push(item);}
+    for(const item of prepared){const fd=openSync(item.temp,'wx',0o600);try{writeFileSync(fd,JSON.stringify(item.value));fsyncSync(fd);}finally{closeSync(fd);}}
+    for(const item of prepared){renameSync(item.temp,item.path);published.push(item);const fd=openSync(join(item.path,'..'),'r');try{fsyncSync(fd);}finally{closeSync(fd);}}
   }catch(error){
     for(const item of published.reverse()){if(item.previous){writeFileSync(item.temp,item.previous,{mode:0o600});renameSync(item.temp,item.path);}else rmSync(item.path,{force:true});}
     throw error;

@@ -21,8 +21,12 @@ Native output and authorization codes are never written to task logs or audit re
 
 ## Limits
 
-This implements guided login and manual reconnect. Durable renewal of refresh tokens produced inside disposable workers is still a separate backlog item; agentd does not copy worker-modified credential files back into the trusted profile. Codex repository execution remains disabled even after a successful account login. The optional v0.10.0 Chat only policy enables text Q&A in an empty sandbox; it does not enable Ask or Edit. Usage/credit reporting, automatic retry, and privileged administration remain separate work.
+This implements guided login and manual reconnect. With v0.11.0 renewal enabled, renewal runs in a dedicated trusted profile before approved work; agentd never copies worker-modified credential files back into that profile. Revoked or irrecoverable grants still require human reconnection. Codex repository execution remains disabled even after a successful account login. The optional v0.10.0 Chat only policy enables text Q&A in an empty sandbox; it does not enable Ask or Edit. Usage/credit reporting, automatic retry, and privileged administration remain separate work.
 
 Validated against Claude Code 2.1.283 and Codex CLI 0.157.1. Native login startup was checked in empty profiles without completing authorization; the operator completed and verified live Claude reconnection through the GUI on 2026-09-28. Full Codex browser consent remains a separate acceptance check.
 
 References: [OpenAI headless authentication](https://learn.chatgpt.com/docs/auth#login-on-headless-devices), [Claude CLI authentication commands](https://code.claude.com/docs/en/cli-reference).
+
+## Durable renewal
+
+With v0.11.0 renewal enabled, approved work first renews expiring native credentials in a trusted profile. Task workers receive no refresh grants. Operations explains when a human reconnect is needed. See [credential renewal](credential-renewal.md) for the durability and recovery boundary.

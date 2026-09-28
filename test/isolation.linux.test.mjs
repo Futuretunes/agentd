@@ -35,3 +35,23 @@ test('chat isolation hides repository files, Git metadata and project hooks',{sk
  assert.equal(readFileSync(join(tree,'SECRET'),'utf8'),'repository secret');
  }finally{sandbox?.cleanup();rmSync(root,{recursive:true,force:true});}
 });
+test('trusted renewal persists its profile while hiding repositories and daemon state',{skip:process.env.AGENTD_TEST_ISOLATION!=='1'},()=>{
+ const root=mkdtempSync(join(tmpdir(),'renew-isolate-')),tree=join(root,'tree'),state=join(root,'state'),profile=join(root,'profile');for(const p of [tree,state,profile])mkdirSync(p);
+ writeFileSync(join(tree,'SECRET'),'hidden');writeFileSync(join(state,'SECRET'),'hidden');writeFileSync(join(profile,'grant'),'synthetic');
+ const script=`import pathlib,os\nhome=pathlib.Path(os.environ['HOME'])\nassert (home/'grant').read_text()=='synthetic'\n(home/'grant').write_text('rotated')\nassert list(pathlib.Path('.').iterdir())==[]\nassert not pathlib.Path(${JSON.stringify(join(tree,'SECRET'))}).exists()\nassert not pathlib.Path(${JSON.stringify(state)}).exists()\nprint('TRUSTED_RENEWAL_OK')`;
+ const check=join(root,'check.py');writeFileSync(check,script);let sandbox;
+ try{sandbox=isolated(tree,state,'/usr/bin/python3',[check,'/usr/bin/python3'],'claude',undefined,false,false,{renewalHome:profile});sandbox.args.splice(sandbox.args.indexOf('--'),0,'--ro-bind',check,check);
+ assert.match(execFileSync(sandbox.command,sandbox.args,{encoding:'utf8',timeout:15000}),/TRUSTED_RENEWAL_OK/);sandbox.cleanup();sandbox=undefined;assert.equal(readFileSync(join(profile,'grant'),'utf8'),'rotated');
+ // A normal worker sees neither the durable profile nor its parent state directory.
+ sandbox=isolated(tree,state,'/usr/bin/python3',[check,'/usr/bin/python3'],'codex',undefined,false,true);writeFileSync(check,`import pathlib\nassert not pathlib.Path(${JSON.stringify(profile)}).exists()\nprint('WORKER_SEPARATION_OK')`);sandbox.args.splice(sandbox.args.indexOf('--'),0,'--ro-bind',check,check);assert.match(execFileSync(sandbox.command,sandbox.args,{encoding:'utf8',timeout:15000}),/WORKER_SEPARATION_OK/);
+ }finally{sandbox?.cleanup();rmSync(root,{recursive:true,force:true});}
+});
+test('access-only worker receives no refresh grant and cannot change durable credentials',{skip:process.env.AGENTD_TEST_ISOLATION!=='1'},()=>{
+ const prior=process.env.HOME,root=mkdtempSync(join(tmpdir(),'access-only-')),home=join(root,'home'),repo=join(root,'repo'),tree=join(root,'tree'),state=join(root,'state');for(const p of [home,repo,state])mkdirSync(p);
+ git(repo,['init','-b','main']);git(repo,['-c','user.name=test','-c','user.email=test@localhost','commit','--allow-empty','-m','base']);git(repo,['worktree','add','--detach',tree,'HEAD']);
+ mkdirSync(join(home,'.claude'));mkdirSync(join(home,'.agentd-renewal'));const file=join(home,'.claude/.credentials.json'),original=JSON.stringify({claudeAiOauth:{accessToken:'synthetic-access',refreshToken:'synthetic-grant',expiresAt:Date.now()+3600000}});writeFileSync(file,original);
+ process.env.HOME=home;let sandbox;
+ try{const script=`import os,json,pathlib\np=pathlib.Path(os.environ['HOME'])\nv=json.loads((p/'.claude/.credentials.json').read_text())\nassert 'refreshToken' not in v['claudeAiOauth']\nassert os.environ['CLAUDE_CODE_OAUTH_TOKEN']=='synthetic-access'\nassert not (p/'.agentd-renewal').exists()\n(p/'.claude/.credentials.json').write_text('worker-controlled')\nprint('ACCESS_ONLY_OK')`;
+ sandbox=isolated(tree,state,'/usr/bin/python3',['-c',script],'claude',undefined,false,false,{accessOnly:true});assert.match(execFileSync(sandbox.command,sandbox.args,{encoding:'utf8',timeout:15000}),/ACCESS_ONLY_OK/);assert.equal(readFileSync(file,'utf8'),original);
+ }finally{sandbox?.cleanup();if(prior===undefined)delete process.env.HOME;else process.env.HOME=prior;rmSync(root,{recursive:true,force:true});}
+});

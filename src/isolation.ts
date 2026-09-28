@@ -3,10 +3,11 @@ import {join,resolve,dirname} from 'node:path';
 import {homedir} from 'node:os';
 import {spawn,type ChildProcess} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {readCredentials,workerCredentials,durableJSON} from './credentials.ts';
 import {git} from './changes.ts';
 
 // Explicit mounts only: unrelated projects, daemon state, sockets and profiles are absent.
-export function isolated(worktree:string,stateDir:string,command:string,args:string[],adapter?:string,dependencies?:string,writable=true,promptOnly=false){
+export function isolated(worktree:string,stateDir:string,command:string,args:string[],adapter?:string,dependencies?:string,writable=true,promptOnly=false,credentials?:{renewalHome?:string;accessOnly?:boolean}){
   if(process.platform!=='linux')throw Error('Worker isolation requires Linux with bubblewrap');
   if(adapter&&!['claude','codex'].includes(adapter))throw Error('Unsupported adapter');
   const runtime=mkdtempSync(join(stateDir,'worker-')),home=join(runtime,'home');mkdirSync(home,{mode:0o700});
@@ -14,13 +15,15 @@ export function isolated(worktree:string,stateDir:string,command:string,args:str
   const cleanup=()=>{broker?.kill('SIGTERM');rmSync(runtime,{recursive:true,force:true});};
   try{
     const hostHome=homedir();
-    if(adapter){
+    if(adapter&&!credentials?.renewalHome){
       // Only the selected CLI's login is copied; no other provider or Git credentials.
       const files=adapter==='codex'?['.codex/auth.json']:['.claude.json','.claude/.credentials.json'];
-      for(const file of files){const source=join(hostHome,file);if(existsSync(source)){mkdirSync(dirname(join(home,file)),{recursive:true,mode:0o700});copyFileSync(source,join(home,file));}}
+      for(const file of files){const source=join(hostHome,file);if(existsSync(source)){mkdirSync(dirname(join(home,file)),{recursive:true,mode:0o700});if(credentials?.accessOnly&&file!=='.claude.json')durableJSON(join(home,file),workerCredentials(adapter,readCredentials(hostHome,adapter)));else copyFileSync(source,join(home,file));}}
     }
+    const authentication=!!credentials?.renewalHome,empty=promptOnly||authentication;
+    if(authentication&&(!adapter||writable||dependencies||promptOnly))throw Error('Invalid authentication isolation policy');
     if(promptOnly&&(adapter!=='codex'||writable||dependencies))throw Error('Invalid chat isolation policy');
-    const common=promptOnly?null:realpathSync(resolve(worktree,git(worktree,['rev-parse','--git-common-dir'])));
+    const common=empty?null:realpathSync(resolve(worktree,git(worktree,['rev-parse','--git-common-dir'])));
     const executable=realpathSync(command),node=realpathSync(process.execPath),source=dirname(fileURLToPath(import.meta.url));
     const mounts=['--die-with-parent','--new-session','--unshare-pid','--unshare-ipc','--unshare-net','--proc','/proc','--dev','/dev','--tmpfs','/tmp','--dir','/run'];
     // System runtime only. Never bind the host root, /home, /srv or /var wholesale.
@@ -28,19 +31,20 @@ export function isolated(worktree:string,stateDir:string,command:string,args:str
     for(const path of ['/etc/ssl/certs','/etc/ca-certificates','/etc/ld.so.cache','/etc/nsswitch.conf','/etc/passwd','/etc/group','/etc/hosts','/etc/localtime'])if(existsSync(path))mounts.push('--ro-bind',realpathSync(path),path);
     if(!node.startsWith('/usr/')){const prefix=dirname(dirname(node));mounts.push('--ro-bind',prefix,prefix);}
     // Pin the child entry/check code to this application, never a repository-supplied path.
-    mounts.push('--bind',home,hostHome,'--ro-bind',source,source);
-    const native=promptOnly?realpathSync(args[1]):executable;
+    mounts.push('--bind',credentials?.renewalHome??home,hostHome,'--ro-bind',source,source);
+    const native=empty?realpathSync(args[1]):executable;
     if(adapter&&!native.startsWith('/usr/')){
       const modules=native.indexOf('/node_modules/');
       const install=modules<0?native:native.slice(0,modules+14)+native.slice(modules+14).split('/')[0];
       mounts.push('--ro-bind',install,install);
     }
-    if(promptOnly){const empty=join(runtime,'empty');mkdirSync(empty,{mode:0o700});mounts.push('--ro-bind',empty,worktree);}
+    if(empty){const empty=join(runtime,'empty');mkdirSync(empty,{mode:0o700});mounts.push('--ro-bind',empty,worktree);}
     else mounts.push('--ro-bind',common!,common!,writable?'--bind':'--ro-bind',worktree,worktree,'--ro-bind',join(worktree,'.git'),join(worktree,'.git'));
     mounts.push('--chdir',worktree,'--setenv','HOME',hostHome);
+    if(credentials?.accessOnly&&adapter==='claude')mounts.push('--setenv','AGENTD_ACCESS_ONLY','claude');
     if(dependencies)mounts.push('--ro-bind',realpathSync(dependencies),join(worktree,'node_modules'));
     // The original CLI path may be a symlink in the hidden service profile.
-    const nativeArgs=promptOnly?[args[0],native,...args.slice(2)]:args;
+    const nativeArgs=empty?[args[0],native,...args.slice(2)]:args;
     let childCommand=executable,childArgs=nativeArgs;
     if(adapter){
       const network=join(runtime,'network');mkdirSync(network,{mode:0o700});const socket=join(network,'egress.sock');

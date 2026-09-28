@@ -54,11 +54,13 @@ function renderOperations(data){
   const agents=node('section',undefined,'operation-section');agents.append(node('h3','Agents and usage'));
   for(const value of data.adapters){const card=node('div',undefined,'operation-agent'),account=value.account??{state:'checking',message:'Checking account status'};card.append(node('strong',value.name),node('p',account.state==='signed_in'?`Signed in${account.method?' · '+account.method:''}`:account.message,account.state==='signed_in'?'good':account.state==='signed_out'?'attention':'muted'),node('p',value.available?'Available · '+value.modes.map(mode=>mode==='edit'?'Edit files':mode==='chat'?'Chat only':'Ask').join(' and '):value.reason,'muted'),node('p',value.usage.message,'muted'));
     const actions=node('div',undefined,'actions');
-    const login=button(account.state==='signed_in'?'Reconnect account':'Sign in',()=>startAccount(value.id,'login'));login.disabled=!value.installed||!!data.service.activeTask||data.service.queueDepth>0||data.service.accountChange;actions.append(login);
+    if(value.renewal)card.append(node('p',value.renewal.message,value.renewal.state==='reconnect_required'?'attention':'muted'));
+    const login=button(account.state==='signed_in'?'Reconnect account':'Sign in',()=>startAccount(value.id,'login'));login.disabled=!value.installed||!!data.service.activeTask||data.service.queueDepth>0||data.service.accountChange||data.service.renewing;actions.append(login);
     if(account.state==='signed_in'){const logout=button('Sign out',async()=>{if(confirm('Sign out of '+value.name+' on this server? Future runs will need a new login.'))await startAccount(value.id,'logout');},'danger');logout.disabled=login.disabled;actions.append(logout);}
     card.append(actions);agents.append(card);
   }
   agents.append(button('Refresh account status',()=>api('/api/account',{action:'refresh'})));
+  if(data.service.renewing)agents.append(node('p','Renewing the account before the next approved run.','muted'));
   if(data.service.accountChange)agents.append(node('p','An account change is in progress. Work resumes when it finishes.','attention'),button('View sign-in',()=>showAccount()));
   else if(data.service.activeTask||data.service.queueDepth>0)agents.append(node('p','Finish or stop current work before changing accounts.','muted'));
   content.append(agents);

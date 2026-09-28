@@ -25,8 +25,8 @@ Acceptance: a nontechnical operator can complete the supported setup, sign-in, p
 
 High-priority follow-up:
 
-- Durable Claude session renewal. Refreshes inside disposable workers are currently discarded. Design a trusted credential lifecycle outside repository-controlled workers, handle token rotation and concurrent refresh safely, and test expired sessions without exposing credentials or weakening isolation. GUI reconnect now provides the manual recovery path.
-- Implemented in v0.10.0, pending live installation: **Codex Chat only**, text Q&A through the native ChatGPT login, with no advertised tools and no repository mounted. The pinned CLI rejects injected execution calls; its read-only policy rejects patches. See [Chat only](codex-chat.md). Native Ask and Edit remain disabled for Codex.
+- Implemented in v0.11.0, pending installation and live acceptance: durable native Claude/Codex credential renewal, trusted rotation recovery, access-only worker snapshots and Operations guidance. See [credential renewal](credential-renewal.md). GUI reconnect remains necessary for revoked or irrecoverable grants.
+- Implemented and installed in v0.10.0: **Codex Chat only**, text Q&A through the native ChatGPT login, with no advertised tools and no repository mounted. The pinned CLI rejects injected execution calls; its read-only policy rejects patches. See [Chat only](codex-chat.md). Native Ask and Edit remain disabled for Codex.
 - Restore Codex availability only through a validated solution compatible with the host's namespace restrictions. No inner-sandbox bypass.
 
 Planned, with no release-date commitment:

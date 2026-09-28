@@ -1,3 +1,5 @@
+import {readCredentials} from './credentials.ts';
+import {homedir} from 'node:os';
 import {createServer,createConnection,type Socket} from 'node:net';
 import {spawn} from 'node:child_process';
 const [socket,command,...args]=process.argv.slice(2);const connections=new Set<Socket>();
@@ -19,6 +21,7 @@ server.listen(0,'127.0.0.1',()=>{
   const address=server.address();if(!address||typeof address==='string')throw Error('Proxy did not start');
   const proxy=`http://127.0.0.1:${address.port}`;
   const env={...process.env,HTTP_PROXY:proxy,HTTPS_PROXY:proxy,ALL_PROXY:proxy,http_proxy:proxy,https_proxy:proxy,all_proxy:proxy,NO_PROXY:'',no_proxy:'',NODE_USE_ENV_PROXY:'1',DISABLE_AUTOUPDATER:'1',DISABLE_TELEMETRY:'1',DISABLE_ERROR_REPORTING:'1'};
+  if(process.env.AGENTD_ACCESS_ONLY==='claude')(env as NodeJS.ProcessEnv).CLAUDE_CODE_OAUTH_TOKEN=readCredentials(homedir(),'claude').claudeAiOauth.accessToken;
   const child=spawn(command,args,{env,stdio:'inherit'});
   const stop=()=>{child.kill('SIGTERM');setTimeout(()=>child.kill('SIGKILL'),2000).unref();};
   process.on('SIGTERM',stop);process.on('SIGINT',stop);

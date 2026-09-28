@@ -77,3 +77,5 @@ See [editing setup and limitations](docs/editing.md). Editing is disabled by def
 The [hardened worker profile](docs/worker-security.md) isolates Ask and Edit tasks, limits outbound connections to selected provider destinations, and records approval decisions. The initial hardened deployment enables Claude only: Codex remains disabled where its inner sandbox cannot run under the host's namespace restrictions. No sandbox bypass is used. Since v0.10.0, the optional [Codex Chat only](docs/codex-chat.md) mode enables text Q&A in an empty sandbox while repository modes stay disabled.
 
 Open **Agents** in the task desk to see which native agents are available and why others are unavailable. Installation discovery does not verify account login. See the [adapter contract](docs/adapters.md) for extension and security requirements.
+
+Optional [durable native credential renewal](docs/credential-renewal.md) refreshes sessions before approved work and keeps refresh grants outside task workers. Operations explains when provider consent requires a GUI reconnect.
