@@ -1,3 +1,4 @@
+import { dependencyJobs } from "./dependency-jobs.ts";
 import { admissionBlocked, type Operation, type BusyState } from "./operation-policy.ts";
 import { prepareWorktree } from "./worktree-preparation.ts";
 import { creationRequests } from "./creation-requests.ts";
@@ -38,12 +39,7 @@ import {
   type PullAPI,
   type PublishPlan,
 } from "./publishing.ts";
-import {
-  checkManifest,
-  prepareDependencies,
-  writeManifests,
-  type DependencyPreparation,
-} from "./check-setup.ts";
+import { checkManifest, type DependencyPreparation } from "./check-setup.ts";
 import {
   adapterIds,
   invocation,
@@ -280,7 +276,7 @@ export function runner(c: Config) {
         case "publication":
           return !!publicationWork;
         case "dependency":
-          return !!dependencyWork;
+          return dependencyManager.busy();
         case "github":
           return github.busy();
         case "worker":
@@ -440,131 +436,19 @@ export function runner(c: Config) {
     repositoryWork = { id, project: existing ? String(existing.id) : null, abort, done };
     return repositoryView().find((job) => job.id === id);
   }
-  let dependencyWork:
-    { id: string; abort: AbortController; done: Promise<void> } | undefined;
-  const checkTarget = (input: any) => {
-    const p = project(input.project);
-    if (p.archived) throw Error("Restore this project first.");
-    const row = input.task ? get(input.task) : null;
-    if (
-      input.task &&
-      (!row ||
-        row.project !== p.id ||
-        row.review !== "pending" ||
-        !row.worktree ||
-        ["running", "queued", "cancelling", "waiting_for_approval"].includes(
-          String(row.status),
-        ))
-    )
-      throw Error("Select a finished edit awaiting review in this project.");
-    return { p, row, path: String(row?.worktree ?? p.repo) };
-  };
-  const setupView = (input: any) => {
-    const target = checkTarget(input);
-    let plan: any = null,
-      error = null;
-    try {
-      const value = checkManifest(target.path);
-      plan = {
-        legacy:
-          !target.p.check_manifest &&
-          target.p.check_lock === value.lockHash &&
-          !!target.p.check_dependencies &&
-          existsSync(String(target.p.check_dependencies)),
-        fingerprint: value.fingerprint,
-        packages: value.count,
-        scripts: value.scripts,
-        ready:
-          target.p.check_manifest === value.fingerprint &&
-          !!target.p.check_dependencies &&
-          existsSync(String(target.p.check_dependencies)),
-      };
-    } catch (e) {
-      error =
-        (e as NodeJS.ErrnoException).code === "ENOENT"
-          ? "Add package.json, package-lock.json and a test script to configure npm checks."
-          : (e as Error).message;
-    }
-    return {
-      project: target.p.id,
-      task: target.row?.id ?? null,
-      plan,
-      error,
-      busy: !!dependencyWork,
-      jobs: db
-        .prepare(
-          "SELECT * FROM dependency_jobs WHERE project=? ORDER BY rowid DESC LIMIT 10",
-        )
-        .all(String(target.p.id)),
-    };
-  };
-  const startSetup = (input: any) => {
-    requireSpace([c.stateDir], limits.reserveBytes);
-    if (blocked("dependencies"))
-      throw Error("Wait for current work before preparing dependencies.");
-    const target = checkTarget(input),
-      value = checkManifest(target.path);
-    if (input.fingerprint !== value.fingerprint)
-      throw Error("Dependency files changed. Review setup again.");
-    const id = randomUUID(),
-      abort = new AbortController(),
-      stage = join(c.stateDir, "dependencies", id);
-    writeManifests(stage, value);
-    db.prepare("INSERT INTO dependency_jobs VALUES(?,?,?,?,?,?,?)").run(
-      id,
-      target.p.id,
-      target.row?.id ?? null,
-      value.fingerprint,
-      "running",
-      null,
-      new Date().toISOString(),
-    );
-    audit("approve-dependencies", target.row ? String(target.row.id) : null, {
-      project: target.p.id,
-      fingerprint: value.fingerprint,
-      packages: value.count,
-    });
-    const done = Promise.resolve().then(async () => {
-      try {
-        await (c.prepareDependencies ?? prepareDependencies)(
-          stage,
-          c.stateDir,
-          abort.signal,
-        );
-        if (abort.signal.aborted) throw Error("Dependency preparation cancelled.");
-        if (checkManifest(checkTarget(input).path).fingerprint !== value.fingerprint)
-          throw Error(
-            "Dependency files changed. Previous setup was kept; review and prepare again.",
-          );
-        db.prepare(
-          "UPDATE projects SET check_dependencies=?,check_lock=?,check_manifest=? WHERE id=?",
-        ).run(
-          join(stage, "node_modules"),
-          value.lockHash,
-          value.fingerprint,
-          target.p.id,
-        );
-        db.prepare(
-          "UPDATE dependency_jobs SET state='succeeded',updated=? WHERE id=?",
-        ).run(new Date().toISOString(), id);
-      } catch (e) {
-        try {
-          rmSync(stage, { recursive: true, force: true });
-        } catch {}
-        db.prepare("UPDATE dependency_jobs SET state=?,error=?,updated=? WHERE id=?").run(
-          abort.signal.aborted ? "cancelled" : "failed",
-          (e as Error).message,
-          new Date().toISOString(),
-          id,
-        );
-      } finally {
-        dependencyWork = undefined;
-        if (!closing) setImmediate(pump);
-      }
-    });
-    dependencyWork = { id, abort, done };
-    return { id, state: "running" };
-  };
+  const dependencyManager = dependencyJobs({
+    db,
+    stateDir: c.stateDir,
+    limits,
+    project,
+    task: get,
+    blocked: () => blocked("dependencies"),
+    settled: () => {
+      if (!closing) setImmediate(pump);
+    },
+    audit,
+    prepare: c.prepareDependencies,
+  });
   let publicationWork: { done: Promise<void>; abort: AbortController } | undefined;
   const publicationView = (task: string) =>
     db
@@ -1839,14 +1723,9 @@ export function runner(c: Config) {
     }
     if (input.op === "publication-preview") return startPublication(input);
     if (input.op === "publication-approve") return startPublication(input, true);
-    if (input.op === "check-setup") return setupView(input);
-    if (input.op === "check-prepare") return startSetup(input);
-    if (input.op === "check-cancel") {
-      if (!dependencyWork || dependencyWork.id !== input.id)
-        throw Error("Preparation not found.");
-      dependencyWork.abort.abort();
-      return { ok: true };
-    }
+    if (input.op === "check-setup") return dependencyManager.view(input);
+    if (input.op === "check-prepare") return dependencyManager.start(input);
+    if (input.op === "check-cancel") return dependencyManager.cancel(input.id);
     if (input.op === "github-status") return github.view(input.owner);
     if (input.op === "github-start") {
       if (blocked("githubChange"))
@@ -1981,7 +1860,7 @@ export function runner(c: Config) {
         generatedAt: new Date().toISOString(),
         service: {
           state: "healthy",
-          dependencySetup: !!dependencyWork,
+          dependencySetup: dependencyManager.busy(),
           scheduler: "serial",
           activeTask: active?.id ?? null,
           queueDepth: counts.queued ?? 0,
@@ -1997,7 +1876,7 @@ export function runner(c: Config) {
     if (input.op === "audit")
       return db.prepare("SELECT * FROM audit ORDER BY id DESC LIMIT 100").all();
     if (input.op === "project-checks") {
-      if (dependencyWork || active)
+      if (dependencyManager.busy() || active)
         throw Error("Wait for checks or dependency preparation.");
       const p = project(input.id);
       if (typeof input.dependencies !== "string" || !isAbsolute(input.dependencies))
@@ -2058,7 +1937,7 @@ export function runner(c: Config) {
       return project(id);
     }
     if (input.op === "project-archive" || input.op === "project-restore") {
-      if (dependencyWork || publicationWork || projectBusy(input.id))
+      if (dependencyManager.busy() || publicationWork || projectBusy(input.id))
         throw Error("Wait for the repository or publishing operation.");
       const p = project(input.id),
         archive = input.op === "project-archive";
@@ -2337,7 +2216,7 @@ export function runner(c: Config) {
       }
       available(row);
       if (row.review !== "pending") throw Error("Only unresolved changes can be revised");
-      if (dependencyWork || projectBusy(String(row.project)))
+      if (dependencyManager.busy() || projectBusy(String(row.project)))
         throw Error("Wait for dependency or repository work.");
       if (
         conversation(String(row.conversation)).archived ||
@@ -2436,7 +2315,7 @@ export function runner(c: Config) {
         row.commit_sha
       )
         throw Error("Workspace is archived or the changes are already committed");
-      if (projectBusy(String(row.project)) || dependencyWork || active)
+      if (projectBusy(String(row.project)) || dependencyManager.busy() || active)
         throw Error("Wait for active work before restarting");
       let seed = row.seed_tree;
       if (row.mode === "edit" && row.worktree && row.review === "pending") {
@@ -2635,7 +2514,7 @@ export function runner(c: Config) {
     if (input.op === "approve") {
       if (projectBusy(String(row.project)))
         throw Error("Wait for the repository update.");
-      if (accountBusy() || catalog.busy() || dependencyWork)
+      if (accountBusy() || catalog.busy() || dependencyManager.busy())
         throw Error(
           "Finish the account change or dependency preparation before approving work",
         );
@@ -2713,8 +2592,7 @@ export function runner(c: Config) {
       closing = true;
       publicationWork?.abort.abort();
       await publicationWork?.done;
-      dependencyWork?.abort.abort();
-      await dependencyWork?.done;
+      await dependencyManager.close();
       repositoryWork?.abort.abort();
       await repositoryWork?.done;
       await github.close();

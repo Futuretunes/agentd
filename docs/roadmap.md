@@ -168,3 +168,7 @@ Task checkout/snapshot restoration no longer blocks the event loop; cancellation
 ## R2 admission policy — candidate 0.34.0
 
 Twelve global admission checks are centralized and documented, preserving all 32,768 combinations of the prior fifteen-state decision model. Manager-owned/project-specific and approval checks remain. This establishes a reviewable baseline; owned operation leases, domain decomposition and interleaving proofs remain open. Exact archive passed 141/141 Linux tests, zero skips, formatting, typecheck and CI; draft #38; not installed. See [operation compatibility](operation-compatibility.md).
+
+## R2 dependency domain — candidate 0.35.0
+
+Dependency preparation is extracted from the runner and owns its operation identity until cancellation/cleanup settles. Stale cancellations cannot affect a successor; shutdown closes admission and waits. Existing approval, fingerprint and cross-domain checks remain. Other domain extractions and dependency filesystem/SQL crash reconciliation remain open. Exact Linux/CI pending; not installed.

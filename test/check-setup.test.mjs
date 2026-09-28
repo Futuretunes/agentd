@@ -310,3 +310,49 @@ test("review setup uses the edited manifests and enables exact-content checks an
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+test("cancelling dependency setup before dispatch records cancellation without starting preparation", async () => {
+  const f = fixture();
+  let calls = 0;
+  const config = {
+    repo: f.repo,
+    stateDir: join(f.root, "state"),
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    command: () => [process.execPath, ["-e", ""]],
+    accountStatus: async () => ({ state: "signed_out" }),
+    prepareDependencies: async () => {
+      calls++;
+    },
+  };
+  const app = runner(config);
+  await once(app.server, "listening");
+  try {
+    const plan = app.request({ op: "check-setup", project: "default" }).plan;
+    const job = app.request({
+      op: "check-prepare",
+      project: "default",
+      fingerprint: plan.fingerprint,
+    });
+    app.request({ op: "check-cancel", id: job.id });
+    assert.equal(app.request({ op: "check-setup", project: "default" }).busy, true);
+    assert.throws(
+      () =>
+        app.request({
+          op: "check-prepare",
+          project: "default",
+          fingerprint: plan.fingerprint,
+        }),
+      /Wait/,
+    );
+    const result = await done(app);
+    assert.equal(result.jobs[0].state, "cancelled");
+    assert.equal(calls, 0);
+    assert.equal(result.plan.ready, false);
+    assert.equal(existsSync(join(config.stateDir, "dependencies", job.id)), false);
+    assert.throws(() => app.request({ op: "check-cancel", id: job.id }), /not found/);
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
