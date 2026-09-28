@@ -12,6 +12,10 @@
 
 The first administrator attempt refused `LockPersonality` before application/database changes. Read-only inspection confirms 0.20.0 remains healthy. Root cause: the updater applied the runner's personality-lock requirement to the gateway, although `deploy/agentd-mobile.service` never sets it. The corrected check still requires `yes` for the runner, accepts the gateway's existing `yes`/`no` value, and fingerprints that value so later drift is rejected. No unit or host protection is changed. Regression fixtures now match the shipped gateway template, verify both gateway values are recorded differently, refuse a disabled runner lock, and still reject disabled common protections. The corrected source archive and same operator launcher are staged. Seven Python deployment fixtures passed; the staged Linux suite passed 105/105 with zero skips/failures. GitHub Node 24/26 and required isolation jobs passed at `af7ca04`. The administrator can rerun the same launcher. No rollback or pending-journal cleanup is needed for this early preflight refusal.
 
+## Follow-up — omitted mobile defaults
+
+A second preflight refusal exposed another updater/runtime mismatch: mobile startup supplies fixed socket/public-directory defaults when JSON omits those keys, but the updater required explicit values. Inventory now uses the same defaults for absent keys; explicit null, empty or mismatching values remain rejected with field-specific errors. Fixtures cover fully/partly omitted defaults and all invalid overrides. Neither mobile configuration nor service policy is changed. The refusal is before service stop, backup or migration; installation remains pending.
+
 ## Changes
 
 R9: `src/task-database.ts` extracts schema/startup recovery from the runner, migrates unversioned historical data in one transaction, records user_version 1 and refuses future versions before task recovery/worker cleanup. Schema validation and failed legacy ancestry/recovery roll back all migration effects. Health reports taskSchemaVersion separately from metadata schemaVersion. The old defect-demonstration R9 block is retired in favor of acceptance regressions.
