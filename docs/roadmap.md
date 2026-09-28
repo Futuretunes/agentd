@@ -163,4 +163,4 @@ Pinned formatter and CI style checks cover TypeScript/JavaScript runtime, browse
 
 ## R10 task preparation — candidate 0.33.0
 
-Task checkout/snapshot restoration no longer blocks the event loop; cancellation and shutdown hold the same worker slot and preserve partial files. Bounded helper execution uses the shared Git policy and resource admission. Other request-time Git operations and a complete operation compatibility model remain open. Focused regressions pass; exact Linux/CI pending. Not installed.
+Task checkout/snapshot restoration no longer blocks the event loop; cancellation and shutdown hold the same worker slot and preserve partial files. Bounded helper execution uses the shared Git policy and resource admission. Other request-time Git operations and a complete operation compatibility model remain open. Exact archive `ba2c5a5` passed 139/139 Linux tests with zero skips, formatting, typecheck and CI. Not installed.

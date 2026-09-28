@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-async-preparation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-overnight-batch.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Overnight batch — ready for shared review, not installed
+
+[Consolidated handover](handovers/2026-09-28-overnight-batch.md) lists all twelve stacked work items, exact validation, staged cumulative release and remaining gaps. Production remains 0.22.0; candidate 0.33.0 uses task schema 2. Continue R2 operation compatibility and remaining R10 work without waiting for operator installation.
 
 ## Candidate 0.33.0 — responsive task preparation
 
-[Handover](handovers/2026-09-28-async-preparation.md): bounded child-process checkout preserves the worker slot, cancellation, shutdown and partial work. Focused tests passed; exact Linux/CI pending. R10 other synchronous Git operations and R2 lock/decomposition work remain open. Cumulative release is uninstalled; production 0.22.0 unchanged.
+[Handover](handovers/2026-09-28-async-preparation.md): bounded child-process checkout preserves the worker slot, cancellation, shutdown and partial work. Exact candidate `ba2c5a5` passed 139/139 Linux tests, zero skips, formatting, typecheck and CI. Draft #37 and a private cumulative installer are staged. R10 other synchronous Git operations and R2 lock/decomposition work remain open. Cumulative release is uninstalled; production 0.22.0 unchanged.
 
 ## Candidate 0.32.0 — reviewable formatting
 
