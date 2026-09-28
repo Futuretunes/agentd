@@ -1,4 +1,6 @@
+import { renderMarkdown, renderDiff, setupShell } from "./ui.js";
 const $ = (id) => document.getElementById(id);
+let operationsView = "activity";
 let nextRun = {},
   composerPolicy = null;
 const composerKey = () => projectId + ":" + selected + ":" + $("adapter").value;
@@ -210,7 +212,7 @@ const labels = {
   running: "Working",
   cancelling: "Stopping",
   cancelled: "Cancelled",
-  succeeded: "Finished · review result",
+  succeeded: "Finished",
   failed: "Failed",
   interrupted: "Interrupted",
   timed_out: "Time limit reached",
@@ -218,9 +220,22 @@ const labels = {
 const pending = (status) =>
   ["waiting_for_approval", "queued", "running", "cancelling"].includes(status);
 function notice(text = "") {
-  $("notice").textContent = text;
-  $("notice").hidden = !text;
+  const dialogs = [...document.querySelectorAll("dialog[open]")];
+  const active = dialogs.at(-1);
+  let target = $("notice");
+  if (active) {
+    target = active.querySelector(".dialog-notice");
+    if (!target) {
+      target = node("p", "", "dialog-notice error");
+      target.setAttribute("role", "alert");
+      active.append(target);
+    }
+  }
+  target.textContent = text;
+  target.hidden = !text;
+  if (active && text) target.scrollIntoView({ block: "nearest" });
 }
+
 function node(tag, text, cls) {
   const e = document.createElement(tag);
   if (text !== undefined) e.textContent = text;
@@ -480,7 +495,13 @@ function renderOperations(data) {
         "muted",
       ),
     );
+  agents.hidden = operationsView !== "accounts";
   content.append(agents);
+  if (operationsView === "accounts") {
+    summary.hidden = true;
+    service.hidden = true;
+    return;
+  }
   const current = data.tasks.filter(
       (item) => pending(item.status) || item.review === "pending",
     ),
@@ -529,12 +550,16 @@ async function loadOperations(show = true) {
     renderOperations(await api("/api/operations"));
   } catch (e) {
     notice(e.message);
-    if (show) $("operations-dialog").close();
+    // Keep the error inside the active dialog.
   } finally {
     operationsBusy = false;
   }
 }
-$("operations-menu").onclick = () => loadOperations();
+$("operations-menu").onclick = () => {
+  operationsView = "activity";
+  $("operations-dialog").querySelector("h2").textContent = "Activity";
+  loadOperations();
+};
 $("operations-close").onclick = () => $("operations-dialog").close();
 const accountDialog = node("dialog");
 accountDialog.id = "account-dialog";
@@ -798,7 +823,13 @@ function renderThread(data) {
               ? "◈ Codex"
               : "✳ Claude",
       ),
-      node("span", labels[t.status] ?? t.status, "status " + t.status),
+      node(
+        "span",
+        t.status === "succeeded" && t.review === "pending"
+          ? "Changes ready for review"
+          : (labels[t.status] ?? t.status),
+        "status " + t.status,
+      ),
     );
     response.append(head);
     if (t.outputTruncated)
@@ -809,27 +840,51 @@ function renderThread(data) {
           "muted",
         ),
       );
-    if (t.output)
+    if (t.answerTruncated)
       response.append(
-        node("pre", t.output.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, ""), "result"),
+        node("p", "Answer excerpt only. View log for more output.", "muted"),
+      );
+    if (t.answer) response.append(renderMarkdown(t.answer));
+    else if (t.output)
+      response.append(
+        node(
+          "p",
+          "Output is available in View log. This run has no separate answer record.",
+          "muted",
+        ),
       );
     else
       response.append(
         node(
           "p",
-          t.merge_parent && !t.log && t.status === "succeeded"
-            ? "Integration review prepared locally. No agent was run."
-            : t.status === "waiting_for_approval"
-              ? t.mode === "edit"
-                ? "This run may edit files in its worktree. Review your message, then approve."
-                : "Review your message, then approve this run."
-              : pending(t.status)
-                ? "Your agent’s output will appear here."
-                : "No output was recorded.",
+          t.status === "waiting_for_approval"
+            ? t.mode === "edit"
+              ? "Ready to edit this project in an isolated workspace."
+              : "Ready when you are."
+            : pending(t.status)
+              ? "Waiting for the agent’s response…"
+              : "No answer was recorded.",
           "muted",
         ),
       );
-    if (t.execution) response.append(executionDetails(JSON.parse(t.execution)));
+    if (["running", "queued", "cancelling"].includes(t.status)) {
+      const progress = node("p", "", "run-progress");
+      progress.dataset.started = t.updated;
+      progress.dataset.state = t.status;
+      response.append(progress);
+    }
+    if (t.execution) {
+      const execution = JSON.parse(t.execution);
+      if (t.status === "waiting_for_approval")
+        response.append(
+          node(
+            "p",
+            `${execution.permissions.filesystem} · Requested model: ${execution.selection.model === "provider" ? "provider default" : execution.selection.model}`,
+            "approval-summary",
+          ),
+        );
+      response.append(executionDetails(execution));
+    }
     if (t.settings_error)
       response.append(
         node("p", t.settings_error, "error"),
@@ -852,7 +907,7 @@ function renderThread(data) {
     if (t.status === "waiting_for_approval" && !t.settings_error) {
       actions.append(
         button(
-          "Approve & run",
+          "Run",
           () =>
             api("/api/action", {
               op: "approve",
@@ -861,11 +916,11 @@ function renderThread(data) {
             }),
           "primary",
         ),
-        button("Reject", () => api("/api/action", { op: "cancel", id: t.id })),
+        button("Cancel", () => api("/api/action", { op: "cancel", id: t.id })),
       );
     } else if (t.status === "waiting_for_approval")
       actions.append(
-        button("Reject", () => api("/api/action", { op: "cancel", id: t.id })),
+        button("Cancel", () => api("/api/action", { op: "cancel", id: t.id })),
       );
     else if (["queued", "running"].includes(t.status))
       actions.append(
@@ -976,7 +1031,7 @@ function renderThread(data) {
       }
       actions.append(button("Account status", () => loadOperations()));
     }
-    actions.append(button("Run activity", () => openRun(t.id)));
+    actions.append(button("View log", () => openRun(t.id)));
     response.append(actions);
     const meta = node("details");
     meta.append(
@@ -1036,48 +1091,56 @@ async function refresh() {
     $("workspace").hidden = false;
     if (!selected && !projects.some((p) => p.id === projectId))
       projectId = projects[0]?.id ?? null;
-    $("projects").replaceChildren(
-      ...projects.map((p) => {
-        const b = button(
-          "",
-          () => {
-            saveDraft();
-            projectId = p.id;
-            reset();
-          },
-          "project" + (p.id === projectId ? " selected" : ""),
-        );
-        b.append(
-          node("span", "▱ " + p.name),
-          node("small", String(p.conversations)),
-        );
-        return b;
-      }),
-    );
+    if (
+      $("projects").dataset.signature !== JSON.stringify([projects, projectId])
+    ) {
+      $("projects").dataset.signature = JSON.stringify([projects, projectId]);
+      $("projects").replaceChildren(
+        ...projects.map((p) => {
+          const b = button(
+            "",
+            () => {
+              saveDraft();
+              projectId = p.id;
+              reset();
+            },
+            "project" + (p.id === projectId ? " selected" : ""),
+          );
+          b.append(
+            node("span", "▱ " + p.name),
+            node("small", String(p.conversations)),
+          );
+          return b;
+        }),
+      );
+    }
     $("project-name").textContent =
       projects.find((p) => p.id === projectId)?.name ?? "Workspace";
     const threads = projectId
       ? await api("/api/projects/" + projectId + "/conversations")
       : [];
     if (epoch !== generation) return;
-    $("tasks").replaceChildren(
-      ...threads.map((t) => {
-        const b = button(
-          "",
-          () => reset(t.id),
-          "thread" + (selected === t.id ? " selected" : ""),
-        );
-        b.append(
-          node("span", t.title),
-          node("small", labels[t.status] ?? "New"),
-        );
-        return b;
-      }),
-    );
-    if (!threads.length)
-      $("tasks").append(
-        node("p", "Your conversations will appear here.", "empty-list"),
+    if ($("tasks").dataset.signature !== JSON.stringify([threads, selected])) {
+      $("tasks").dataset.signature = JSON.stringify([threads, selected]);
+      $("tasks").replaceChildren(
+        ...threads.map((t) => {
+          const b = button(
+            "",
+            () => reset(t.id),
+            "thread" + (selected === t.id ? " selected" : ""),
+          );
+          b.append(
+            node("span", t.title),
+            node("small", labels[t.status] ?? "New"),
+          );
+          return b;
+        }),
       );
+      if (!threads.length)
+        $("tasks").append(
+          node("p", "Your conversations will appear here.", "empty-list"),
+        );
+    }
     if (draftLocation !== draftKey()) {
       saveDraft();
       $("prompt").value = "";
@@ -1093,9 +1156,13 @@ async function refresh() {
           conversation: selected,
           agent: $("adapter").value,
           mode: $("mode").value,
+          overrides: nextRun[$("adapter").value] ?? {},
         });
       if (epoch !== generation || key !== composerKey()) return;
       composerPolicy = { key, allowedModes: value.allowedModes };
+      $("selection-summary").textContent = value.effective
+        ? `${value.effective.selection.model === "provider" ? "Provider default" : value.effective.selection.model} · ${value.effective.selection.effort === "provider" ? "default effort" : value.effective.selection.effort + " effort"}`
+        : "Choose model & effort";
       applyPolicy();
     }
     if (selected) {
@@ -1122,6 +1189,8 @@ async function refresh() {
         fingerprint = "empty";
       }
     }
+    $("stop-current").hidden =
+      !latest || !["queued", "running"].includes(latest.status);
     $("rename").hidden = !selected;
     $("archive").hidden = !selected;
     const locked =
@@ -1291,12 +1360,7 @@ $("project-menu").onclick = () => {
     }),
   );
 };
-$("voice").onclick = () => {
-  $("prompt").focus();
-  notice(
-    "Use your keyboard microphone to dictate, then review your message before sending.",
-  );
-};
+
 $("files").onchange = async () => {
   const epoch = generation;
   uploading = true;
@@ -1411,20 +1475,7 @@ async function openReview(id) {
         "error",
       ),
     );
-  const patch = node("pre", undefined, "diff");
-  for (const line of value.patch.split("\n"))
-    patch.append(
-      node(
-        "span",
-        line + "\n",
-        line.startsWith("+")
-          ? "addition"
-          : line.startsWith("-")
-            ? "deletion"
-            : "",
-      ),
-    );
-  content.append(patch);
+  content.append(renderDiff(value.patch));
   content.append(
     node("h3", "Checks"),
     node(
@@ -1488,6 +1539,31 @@ async function openReview(id) {
       value.checks?.status !== "passed" ||
       value.checks?.tree !== value.tree;
     actions.append(commit);
+    if (!commit.disabled) actions.prepend(commit);
+    if (commit.disabled) {
+      check.classList.add("primary");
+      actions.prepend(check);
+      commit.classList.remove("primary");
+      content.append(
+        node(
+          "p",
+          value.conflicts?.length
+            ? "Resolve conflicts before running checks."
+            : value.truncated || value.blocked.length
+              ? "Resolve the review warnings before committing."
+              : "Next: prepare dependencies if needed, then run checks on these changes. A passing result is required before commit approval.",
+          "next-step",
+        ),
+      );
+    } else
+      content.append(
+        node(
+          "p",
+          "Checks passed for these exact changes. Ready for your commit approval.",
+          "next-step",
+        ),
+      );
+
     actions.append(
       button(
         "Discard review",
@@ -2605,9 +2681,9 @@ settingsForm.append(
 );
 settingsDialog.append(settingsHead, settingsForm);
 document.body.append(settingsDialog);
-const settingsButton = button("Agent settings", () => openSettings());
+const settingsButton = button("Advanced defaults", () => openSettings());
 settingsButton.id = "settings-menu";
-$("project-menu").after(settingsButton);
+$("preferences-dialog").append(settingsButton);
 let settingsData = null,
   settingsEpoch = 0;
 function executionSummary(value) {
@@ -2634,9 +2710,10 @@ function executionDetails(value) {
   );
   return details;
 }
-async function openSettings() {
+async function openSettings(scope) {
   settingsAgent.value = $("adapter").value;
-  settingsScope.value = selected ? "conversation-agent" : "project-agent";
+  settingsScope.value =
+    scope ?? (selected ? "conversation-agent" : "project-agent");
   for (const o of settingsScope.options)
     o.disabled = o.value.startsWith("conversation") && !selected;
   settingsDialog.showModal();
@@ -2882,6 +2959,17 @@ function renderSettings(data) {
       "muted",
     ),
   );
+  const technical = node("details");
+  technical.append(node("summary", "How defaults and permissions work"));
+  for (const child of [...settingsContent.children]) {
+    if (child.tagName === "P" && child.classList.contains("muted"))
+      technical.append(child);
+  }
+  settingsContent.append(technical);
+  if (next) {
+    access.hidden = true;
+    settingsContent.querySelector('label[for="setting-access"]').hidden = true;
+  }
 }
 async function saveSettings(values, confirmed = false) {
   const data = settingsData,
@@ -2966,3 +3054,33 @@ settingsForm.onsubmit = async (e) => {
 setInterval(() => {
   if (settingsDialog.open && settingsData?.catalog.busy) void loadSettings();
 }, 1500);
+
+// UI composition preserves the existing action handlers and approval payloads.
+setupShell();
+$("run-options").onclick = () => openSettings("next");
+$("defaults-menu").onclick = () =>
+  openSettings(selected ? "conversation-agent" : "project-agent");
+$("project-defaults").onclick = () => openSettings("project-agent");
+$("stop-current").onclick = async () => {
+  if (!latest) return;
+  try {
+    await api("/api/action", { op: "cancel", id: latest.id });
+    await refresh();
+  } catch (error) {
+    notice(error.message);
+  }
+};
+$("accounts-open").onclick = () => {
+  operationsView = "accounts";
+  $("operations-dialog").querySelector("h2").textContent = "Agents & accounts";
+  loadOperations();
+};
+$("github-settings").onclick = () => $("github-open").click();
+const projectSettingsAction = $("project-menu").onclick;
+$("project-menu").onclick = () => {
+  $("project-info").hidden = true;
+  projectSettingsAction();
+  $("project-settings-dialog").showModal();
+};
+$("project-settings-close").onclick = () =>
+  $("project-settings-dialog").close();

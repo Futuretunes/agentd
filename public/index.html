@@ -6,10 +6,10 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <meta name="theme-color" content="#111316" />
+    <meta name="theme-color" content="#f7f6f3" />
     <title>agentd — Projects</title>
     <link rel="stylesheet" href="/style.css" />
-    <script src="/app.js" defer></script>
+    <script src="/app.js" type="module"></script>
   </head>
   <body>
     <section id="login" class="login">
@@ -28,48 +28,60 @@
       </form>
     </section>
     <div id="workspace" hidden>
-      <aside id="sidebar">
+      <button
+        id="drawer-backdrop"
+        hidden
+        aria-label="Close navigation"
+      ></button>
+      <aside id="sidebar" aria-label="Workspace navigation">
         <div class="sidebar-head">
           <a href="/" class="brand">◈ agentd</a
-          ><button id="logout" class="quiet">Sign out</button>
+          ><button id="drawer-close" aria-label="Close navigation">×</button>
         </div>
         <button id="new" class="new-chat">＋ New conversation</button>
+        <button id="history-menu" class="nav-action">
+          Search &amp; history
+        </button>
         <div class="section-label">
-          <span>PROJECTS</span
-          ><button id="add-project" aria-label="Create project">＋</button>
+          <span>Projects</span
+          ><button id="add-project" aria-label="Create or import project">
+            ＋
+          </button>
         </div>
         <nav id="projects" aria-label="Projects"></nav>
-        <div class="section-label"><span>CONVERSATIONS</span></div>
+        <div class="section-label"><span>Conversations</span></div>
         <nav id="tasks" aria-label="Conversations"></nav>
         <div class="sidebar-foot">
-          <span class="dot"></span> Connected to your workspace<br /><small
-            >You approve runs and commits</small
-          >
+          <button id="operations-menu" class="nav-action">Activity</button
+          ><button id="preferences-menu" class="nav-action">Settings</button
+          ><span class="connection">● Connected to your workspace</span>
         </div>
       </aside>
       <main class="desk">
         <header>
-          <div>
+          <button
+            id="drawer-open"
+            aria-label="Open navigation"
+            aria-expanded="false"
+            aria-controls="sidebar"
+          >
+            ☰
+          </button>
+          <div class="conversation-heading">
             <p class="eyebrow" id="project-name">Workspace</p>
             <h1 id="thread-title">New conversation</h1>
           </div>
-          <div class="header-actions">
-            <button id="rename" title="Rename conversation" hidden>
-              Rename</button
-            ><button id="archive" hidden>Archive</button
-            ><button id="history-menu">History</button
-            ><button id="operations-menu">Operations</button
-            ><button id="agents-menu">Agents</button
-            ><button id="project-menu">Project details</button>
-          </div>
+          <details id="conversation-menu" class="header-actions">
+            <summary aria-label="Conversation and project actions">•••</summary>
+            <div class="menu-panel">
+              <button id="rename" hidden>Rename conversation</button
+              ><button id="archive" hidden>Archive conversation</button
+              ><button id="project-menu">Project settings</button
+              ><button id="defaults-menu">Conversation defaults</button>
+            </div>
+          </details>
         </header>
-        <section id="project-info" hidden></section>
-        <section
-          id="adapter-info"
-          hidden
-          aria-label="Agent availability"
-        ></section>
-        <div id="detail" aria-live="polite"></div>
+        <div id="detail" role="region" aria-label="Conversation"></div>
         <div class="composer-wrap">
           <form id="compose">
             <label class="sr-only" for="prompt">Message your agent</label
@@ -83,16 +95,17 @@
             <div id="attachments"></div>
             <div class="compose-foot">
               <div class="tools">
-                <label class="attach" for="files" title="Attach images"
-                  >＋<span class="sr-only"> Attach images</span
+                <label class="attach" for="files"
+                  ><span aria-hidden="true">＋</span
+                  ><span class="sr-only">Attach images</span
                   ><input
                     id="files"
                     type="file"
                     accept="image/png,image/jpeg"
                     multiple
-                    hidden /></label
-                ><button type="button" id="voice">Dictate</button
-                ><select id="mode" aria-label="Work mode">
+                    class="file-input"
+                /></label>
+                <select id="mode" aria-label="Work mode">
                   <option value="ask">Ask</option>
                   <option value="chat">Chat only</option>
                   <option value="edit" disabled>Edit files</option></select
@@ -102,18 +115,59 @@
                   <option value="cursor">Cursor</option>
                 </select>
               </div>
-              <button class="primary" id="send">Send ↑</button>
+              <button type="button" id="stop-current" class="danger" hidden>
+                Stop</button
+              ><button class="primary" id="send">Send ↑</button>
             </div>
           </form>
+          <div class="composer-settings">
+            <button type="button" id="run-options">Model &amp; effort</button
+            ><span id="selection-summary"></span>
+          </div>
           <p class="hint" id="draft-hint"></p>
-          <p class="hint" id="policy-hint"></p>
+          <p class="hint" id="policy-hint" hidden></p>
           <p class="hint" id="hint">
             Each message waits for approval before an agent starts.
           </p>
         </div>
       </main>
     </div>
-    <p id="notice" role="status"></p>
+    <p id="notice" role="status" hidden></p>
+    <dialog id="preferences-dialog" aria-labelledby="preferences-heading">
+      <div class="review-head">
+        <h2 id="preferences-heading">Settings</h2>
+        <button id="preferences-close" aria-label="Close settings">×</button>
+      </div>
+      <div class="settings-grid">
+        <button id="accounts-open">Agents &amp; accounts</button
+        ><button id="github-settings">GitHub connection</button
+        ><button id="agents-menu">Agent capabilities</button>
+      </div>
+      <section
+        id="adapter-info"
+        hidden
+        aria-label="Agent capabilities"
+      ></section>
+      <label for="theme">Appearance</label
+      ><select id="theme">
+        <option value="system">Use device setting</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option></select
+      ><button id="logout" class="danger">Sign out of workspace</button>
+    </dialog>
+    <dialog
+      id="project-settings-dialog"
+      aria-labelledby="project-settings-heading"
+    >
+      <div class="review-head">
+        <h2 id="project-settings-heading">Project settings</h2>
+        <button id="project-settings-close" aria-label="Close project settings">
+          ×
+        </button>
+      </div>
+      <section id="project-info" hidden></section>
+      <button id="project-defaults">Agent defaults for this project</button>
+    </dialog>
     <dialog id="project-dialog">
       <form id="project-form">
         <p class="eyebrow">NEW PROJECT</p>
@@ -128,8 +182,8 @@
         />
         <p class="muted">
           Creates an empty local Git repository. You can plan and ask questions
-          here. Choose Edit files to build it, then review changes before
-          committing.
+          here. Edits can be committed only after supported npm checks pass.
+          Other check profiles are not available yet.
         </p>
         <div class="actions">
           <button type="button" id="project-close">Cancel</button

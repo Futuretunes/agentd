@@ -21,8 +21,8 @@ export function mobile(c:Config){
   const send=(status:number,value:unknown)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(value));};
   try{
    const path=(req.url??'/').split('?')[0];
-   if(req.method==='GET'&&['/','/app.js','/style.css'].includes(path)){
-    const file=path==='/'?'index.html':path.slice(1);res.writeHead(200,{'Content-Type':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.js')?'text/javascript':'text/css'});res.end(readFileSync(join(c.publicDir,file)));return;
+   if(req.method==='GET'&&['/','/app.js','/ui.js','/style.css','/fonts/geist-400.ttf','/fonts/geist-500.ttf','/fonts/geist-600.ttf'].includes(path)){
+    const file=path==='/'?'index.html':path.slice(1);res.writeHead(200,{'Content-Type':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.js')?'text/javascript':file.endsWith('.ttf')?'font/ttf':'text/css'});res.end(readFileSync(join(c.publicDir,file)));return;
    }
    if(req.method==='POST'){
     if(req.headers.origin!==c.origin||req.headers['content-type']!=='application/json'){send(403,{error:'Invalid request origin or content type'});return;}

@@ -53,9 +53,13 @@ Claude's [review](reviews/2026-09-28-claude-review.md) and Codex's [verified res
 
 Private operator observations O1–O7 are addressed in public-safe terms in the response. Protected-file contents and other accounts' privileges were not independently inspected; do not promote those observations to verified facts. Resolve the gates above before resuming ntfy and other feature work.
 
+## Operator priority update — 2026-09-28
+
+The operator explicitly requested the UI redesign first, then the backlog. Candidate 0.20.0 now implements the core layout, navigation, safe answer presentation, file review and responsive foundations. See [implementation handover](handovers/2026-09-28-task-desk-redesign.md). Not installed yet; actual-phone and full accessibility acceptance remain. Next corrective implementation is R4/R11; no main merge or check-policy waiver was authorized.
+
 ## UX review incorporated — 2026-09-28
 
-Claude's [UX review](reviews/2026-09-28-claude-ux-review.md) is assessed in the [U1–U19 response](reviews/2026-09-28-claude-ux-review-response.md). The [task desk UX backlog](design/ux-backlog.md) defines dependencies and acceptance criteria. All implementation remains queued. Claude’s [rejoinder](reviews/2026-09-28-claude-ux-rejoinder.md) accepts the corrections and order; the subsequent handover records operator approval of the prototype visual direction. Explicit follow-ups include truthful New project prerequisites and one-click raw logs with downloads.
+Claude's [UX review](reviews/2026-09-28-claude-ux-review.md) is assessed in the [U1–U19 response](reviews/2026-09-28-claude-ux-review-response.md). The [task desk UX backlog](design/ux-backlog.md) defines dependencies and acceptance criteria. The assessment below is the original plan; see the candidate implementation status above. Claude’s [rejoinder](reviews/2026-09-28-claude-ux-rejoinder.md) accepts the corrections and order; the subsequent handover records operator approval of the prototype visual direction. Explicit follow-ups include truthful New project prerequisites and one-click raw logs with downloads.
 
 After the immediate R4/R11 correction and reviewable release baseline, prioritize:
 

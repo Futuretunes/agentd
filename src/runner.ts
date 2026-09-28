@@ -15,7 +15,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
 import { homedir } from 'node:os';
 import { randomUUID,createHash } from 'node:crypto';
-import { mkdirSync, openSync, closeSync, realpathSync, readFileSync, copyFileSync, statSync, readSync, existsSync, readdirSync, rmSync } from 'node:fs';
+import { mkdirSync, openSync, writeSync, closeSync, realpathSync, readFileSync, copyFileSync, statSync, readSync, existsSync, readdirSync, rmSync } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 
@@ -308,7 +308,12 @@ export function runner(c: Config) {
       const env:NodeJS.ProcessEnv={PATH:process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',HOME:process.env.HOME,LANG:'C.UTF-8',TERM:'dumb'};
       const fd=openSync(log,'wx',0o600);
       let child:ChildProcess;
-      try{child=spawn(command,args,{cwd:tree,env,detached:true,stdio:['ignore',fd,fd]});}finally{closeSync(fd);}
+      const answerFd=openSync(log+'.answer','wx',0o600);let answerBytes=0;
+      try{
+        child=spawn(command,args,{cwd:tree,env,detached:true,stdio:['ignore','pipe',fd]});
+        child.stdout!.on('data',(chunk:Buffer)=>{writeSync(fd,chunk);const remaining=512000-answerBytes;if(remaining>0){const part=chunk.subarray(0,remaining);writeSync(answerFd,part);answerBytes+=part.length;}});
+        child.once('close',()=>{closeSync(fd);closeSync(answerFd);});
+      }catch(error){closeSync(fd);closeSync(answerFd);throw error;}
       let reason:string|undefined,killTimer:ReturnType<typeof setTimeout>|undefined;
       const kill=(signal:NodeJS.Signals)=>{if(child.pid)try{process.kill(-child.pid,signal);}catch(error){if((error as NodeJS.ErrnoException).code!=='ESRCH')throw error;}};
       const stop=(status:string)=>{if(reason)return;reason=status;transition(id,'cancelling');kill('SIGTERM');killTimer=setTimeout(()=>kill('SIGKILL'),2000);};
@@ -474,7 +479,7 @@ export function runner(c: Config) {
       if(!Number.isSafeInteger(before)||before<1)throw Error('Invalid conversation cursor');
       const rows=db.prepare('SELECT rowid AS sequence,* FROM tasks WHERE conversation=? AND rowid<? ORDER BY rowid DESC LIMIT 31').all(input.id,before);
       const more=rows.length>30,page=rows.slice(0,30).reverse();
-      return {conversation:thread,project:project(String(thread.project)),olderBefore:more?page[0].sequence:null,messages:page.map(row=>({...row,output:row.log?logTail(String(row.log)):'',outputTruncated:!!row.log&&existsSync(String(row.log))&&statSync(String(row.log)).size>60000,images:JSON.parse(String(row.attachments)).map((id:string)=>attachment(id))}))};
+      return {conversation:thread,project:project(String(thread.project)),olderBefore:more?page[0].sequence:null,messages:page.map(row=>({...row,answer:row.log&&existsSync(String(row.log)+'.answer')?logTail(String(row.log)+'.answer',60000):null,answerTruncated:!!row.log&&existsSync(String(row.log)+'.answer')&&statSync(String(row.log)+'.answer').size>60000,output:row.log?logTail(String(row.log)):'',outputTruncated:!!row.log&&existsSync(String(row.log))&&statSync(String(row.log)).size>60000,images:JSON.parse(String(row.attachments)).map((id:string)=>attachment(id))}))};
     }
     if(input.op==='conversation-restore'){
       const thread=conversation(input.id);if(project(String(thread.project)).archived)throw Error('Restore the project before restoring this conversation.');

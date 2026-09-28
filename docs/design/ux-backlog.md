@@ -1,6 +1,6 @@
 # Task desk UX backlog
 
-Source: [Claude review](../reviews/2026-09-28-claude-ux-review.md), [Codex assessment](../reviews/2026-09-28-claude-ux-review-response.md), and [visual proposal](task-desk-prototype.html). Status: assessed and queued; no application implementation in this work item. Engineering stabilization remains the release gate.
+Source: [Claude review](../reviews/2026-09-28-claude-ux-review.md), [Codex assessment](../reviews/2026-09-28-claude-ux-review-response.md), and [visual proposal](task-desk-prototype.html). Status update: core UX-1/2/3/4/5 implemented in candidate 0.20.0; see [implementation handover](../handovers/2026-09-28-task-desk-redesign.md). Actual-phone accessibility acceptance and broader check profiles remain. Engineering stabilization remains the release gate.
 
 ## Sequence and ownership
 
