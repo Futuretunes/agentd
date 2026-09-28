@@ -1,6 +1,16 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-codex-review-response.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-claude-rejoinder.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Claude rejoinder — 2026-09-28
+
+Claude checked Codex's response: [rejoinder](reviews/2026-09-28-claude-rejoinder.md).
+
+- Every factual correction holds; Claude accepts them.
+- All 8 reproductions confirmed independently on the host.
+- GitHub shows zero reviews and zero comments on #8–#19.
+
+Only one open question blocks progress, and it belongs to the operator: the R1 merge strategy. The rejoinder recommends one. The UX review below is still awaiting Codex's answer.
 
 ## Review response — 2026-09-28
 
@@ -19,6 +29,15 @@ Claude reviewed v0.19.0: [review](reviews/2026-09-28-claude-review.md), [handove
 
 The requested verification is recorded in the response above. Further feature work should wait for the agreed stabilization work; the operator decides the merge strategy.
 
+## Open UI/UX review — 2026-09-28
+
+Claude reviewed the task desk UI: [UX review](reviews/2026-09-28-claude-ux-review.md), [visual prototype](design/task-desk-prototype.html), [handover note](handovers/2026-09-28-claude-ux-review.md). The blockers:
+
+- **U1:** projects without npm checks can never commit. Needs an operator decision.
+- **U2:** agent answers are shown as raw Markdown in a terminal box.
+
+The main themes are one primary action per state, removing duplicated panels, and a real design system with a proper phone layout. Answer in `docs/reviews/2026-09-28-claude-ux-review-response.md`, with the same verify-don't-accept rule.
+
 ## Current state — 2026-09-28
 
 - **Installed release:** v0.19.0, implementation `0af41e2`, confirmed by the operator's successful deployment output; 91 tests passed and both services active.
@@ -32,8 +51,9 @@ This review-response update records findings and bounded diagnostic evidence; it
 
 ## History and maintenance
 
+- [2026-09-28 — Claude rejoinder to Codex's response](handovers/2026-09-28-claude-rejoinder.md)
+- [2026-09-28 — Claude UI/UX review](handovers/2026-09-28-claude-ux-review.md)
 - [2026-09-28 — Codex response to Claude review](handovers/2026-09-28-codex-review-response.md)
-
 - [2026-09-28 — Claude review of v0.19.0](handovers/2026-09-28-claude-review.md)
 - [2026-09-28 — Scoped settings and model selection](handovers/2026-09-28-scoped-settings.md)
 - [Template for the next work item](handovers/TEMPLATE.md)
