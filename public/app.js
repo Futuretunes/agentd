@@ -16,15 +16,32 @@ function applyPolicy(){
   const modes=policy.adapters?.find(a=>a.id===$('adapter').value)?.modes??['ask'];
   for(const option of $('mode').options)option.disabled=!modes.includes(option.value);
   if(!modes.includes($('mode').value))$('mode').value=modes[0]??'ask';
-  const chat=$('mode').value==='chat';$('files').disabled=chat;$('files').closest('label').hidden=chat;
+  const chat=$('mode').value==='chat';$('files').disabled=chat||submitting;$('files').closest('label').hidden=chat;
   $('mode').title=chat?'Text conversation only. No project files, terminal, editing, web browsing or plugins.':'';
   $('policy-hint').textContent=!policy.enabledAdapters.length?'No agents are available. Open Agents for details.':chat?'Chat only · text you send and prior conversation context · no project access or execution tools.':policy.strictWorkers?'Isolated workers · provider-only network access · approval required.':'Each message waits for approval before an agent starts.';
   if(!$('adapter-info').hidden)renderAgents();
 }
 $('agents-menu').onclick=()=>{$('adapter-info').hidden=!$('adapter-info').hidden;renderAgents();};
-$('adapter').onchange=$('mode').onchange=()=>{applyPolicy();if(!selected)fingerprint='';void refresh();};
+$('adapter').onchange=$('mode').onchange=()=>{applyPolicy();saveDraft();if(!selected)fingerprint='';void refresh();};
 let reviewTask=null,reviewTree=null,checking=false;
+let pageBefore=null,archivedView=false,submitting=false;
+try{const location=JSON.parse(sessionStorage.getItem('agentd-draft-v1:location')??'null');if(location){projectId=location.project;selected=location.conversation;}}catch{}
 let projects = [], latest = null, fingerprint = '', uploading = false, operationsBusy = false;
+const draftPrefix='agentd-draft-v1:';let draftLocation=null;
+function draftKey(){return projectId?draftPrefix+projectId+':'+(selected??'new'):null;}
+function saveDraft(){
+  if(!signedIn||!draftLocation)return;
+  try{const value={text:$('prompt').value,uploads,adapter:$('adapter').value,mode:$('mode').value};if(value.text||value.uploads.length)sessionStorage.setItem(draftLocation,JSON.stringify(value));else sessionStorage.removeItem(draftLocation);$('draft-hint').textContent=value.text||value.uploads.length?'Draft saved in this browser tab. Cleared when you sign out.':'';}catch{$('draft-hint').textContent='Draft could not be saved in this browser. Keep this page open.';}
+}
+function restoreDraft(){
+  if(!signedIn){draftLocation=null;return;}
+  try{if(projectId)sessionStorage.setItem(draftPrefix+'location',JSON.stringify({project:projectId,conversation:selected}));}catch{}
+  draftLocation=draftKey();if(!signedIn||!draftLocation)return;
+  try{const value=JSON.parse(sessionStorage.getItem(draftLocation)??'null');if(value&&typeof value.text==='string'){$('prompt').value=value.text.slice(0,16000);uploads=Array.isArray(value.uploads)?value.uploads.slice(0,4):[];$('adapter').value=value.adapter;$('mode').value=value.mode;applyPolicy();renderUploads();$('draft-hint').textContent='Draft restored from this browser tab.';}else $('draft-hint').textContent='';}catch{$('draft-hint').textContent='';}
+}
+function forgetDraft(key){try{if(key)sessionStorage.removeItem(key);}catch{} }
+function clearDrafts(){draftLocation=null;try{for(const key of Object.keys(sessionStorage))if(key.startsWith(draftPrefix))sessionStorage.removeItem(key);}catch{}$('prompt').value='';uploads=[];$('draft-hint').textContent='';}
+$('prompt').addEventListener('input',saveDraft);window.addEventListener('pagehide',saveDraft);
 const labels = {waiting_for_approval:'Ready for your approval',queued:'Queued',running:'Working',cancelling:'Stopping',cancelled:'Cancelled',succeeded:'Finished · review result',failed:'Failed',interrupted:'Interrupted',timed_out:'Time limit reached'};
 const pending = status => ['waiting_for_approval','queued','running','cancelling'].includes(status);
 function notice(text = '') { $('notice').textContent = text; $('notice').hidden = !text; }
@@ -32,7 +49,7 @@ function node(tag,text,cls) { const e = document.createElement(tag); if(text !==
 async function api(path,data) {
   const res = await fetch(path,{method:data?'POST':'GET',headers:data?{'Content-Type':'application/json'}:undefined,body:data?JSON.stringify(data):undefined});
   const value=await res.json();
-  if(res.status===401){signedIn=false;for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();if($('account-content'))$('account-content').replaceChildren();$('workspace').hidden=true;$('login').hidden=false;}
+  if(res.status===401){clearDrafts();signedIn=false;for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();if($('account-content'))$('account-content').replaceChildren();$('workspace').hidden=true;$('login').hidden=false;}
   if(!res.ok)throw Error(value.error??'Request failed'); return value;
 }
 function button(text,callback,cls='') {
@@ -44,7 +61,7 @@ function operationTask(item){
   if(item.error)card.append(node('p',item.error==='Exit 1'?'The agent stopped with an error. Open the conversation for details.':item.error,'error'));
   if(item.review==='pending')card.append(node('p','Changes are waiting for review.','attention'));
   if(item.checkStatus)card.append(node('p','Checks: '+item.checkStatus,'muted'));
-  card.append(button(['failed','timed_out','interrupted','cancelled'].includes(item.status)?'Open & recover':'Open conversation',async()=>{projectId=item.project;reset(item.conversation);$('operations-dialog').close();await refresh();}));return card;
+  card.append(button(['failed','timed_out','interrupted','cancelled'].includes(item.status)?'Open & recover':'Open conversation',async()=>{saveDraft();projectId=item.project;reset(item.conversation);$('operations-dialog').close();await refresh();}));return card;
 }
 function renderOperations(data){
   const content=$('operations-content');content.replaceChildren();
@@ -98,12 +115,12 @@ async function updateAccount(){
   }catch(e){accountContent.replaceChildren(node('p',e.message,'error'));}finally{accountPolling=false;}
 }
 setInterval(()=>{if(signedIn&&!document.hidden&&accountDialog.open)void updateAccount();},1500);
-function reset(thread=null) { selected=thread;generation++;fingerprint='';latest=null;uploads=[];renderUploads();$('prompt').value='';$('project-info').hidden=true; }
-function renderUploads(){ $('attachments').replaceChildren(...uploads.map(item=>button(item.name+' ×',()=>{uploads=uploads.filter(x=>x.id!==item.id);renderUploads();}))); }
+function reset(thread=null) { saveDraft();selected=thread;pageBefore=null;archivedView=false;generation++;fingerprint='';latest=null;draftLocation=null;uploads=[];renderUploads();$('prompt').value='';$('project-info').hidden=true;$('draft-hint').textContent='';restoreDraft(); }
+function renderUploads(){ saveDraft();$('attachments').replaceChildren(...uploads.map(item=>button(item.name+' ×',()=>{uploads=uploads.filter(x=>x.id!==item.id);renderUploads();}))); }
 function images(items){const box=node('div',undefined,'images');for(const item of items){const a=node('a');a.href='/api/images/'+item.id;a.target='_blank';a.rel='noopener';const img=node('img');img.src=a.href;img.alt=item.name;a.append(img);box.append(a);}return box;}
 function empty(){
   const d=$('detail');d.replaceChildren();const intro=node('div',undefined,'welcome');intro.append(node('div','◈','welcome-icon'),node('p',projects.find(p=>p.id===projectId)?.name??'Your workspace','eyebrow'),node('h2','What shall we work on?'),node('p','Start a conversation. Choose an agent. You decide when it runs.','muted'));
-  const ideas=node('div',undefined,'suggestions');for(const text of ($('mode').value==='chat'?['Help me think through a design','Explain a concept','Review text I paste here']:['Explain this project','Review the architecture','Plan the next milestone']))ideas.append(button(text,()=>{$('prompt').value=text;$('prompt').focus();}));intro.append(ideas);d.append(intro);
+  const ideas=node('div',undefined,'suggestions');for(const text of ($('mode').value==='chat'?['Help me think through a design','Explain a concept','Review text I paste here']:['Explain this project','Review the architecture','Plan the next milestone']))ideas.append(button(text,()=>{$('prompt').value=text;saveDraft();$('prompt').focus();}));intro.append(ideas);d.append(intro);
 }
 function renderThread(data){
   $('thread-title').textContent=data.conversation.title;
@@ -111,6 +128,7 @@ function renderThread(data){
   for(const t of data.messages){
     const turn=node('article',undefined,'turn');const user=node('div',undefined,'user-message');user.append(node('div',t.prompt,'message-text'),images(t.images??[]));turn.append(user);
     const response=node('div',undefined,'agent-message');const head=node('div',undefined,'message-head');head.append(node('strong',t.adapter==='codex'?'◈ Codex':'✳ Claude'),node('span',labels[t.status]??t.status,'status '+t.status));response.append(head);
+    if(t.outputTruncated)response.append(node('p','Showing the latest output. Open Run activity to download a larger excerpt.','muted'));
     if(t.output)response.append(node('pre',t.output.replace(/\x1b\[[0-9;]*[a-zA-Z]/g,''),'result'));else response.append(node('p',t.status==='waiting_for_approval'?t.mode==='edit'?'This run may edit files in its worktree. Review your message, then approve.':'Review your message, then approve this run.':pending(t.status)?'Your agent’s output will appear here.':'No output was recorded.','muted'));
     if(t.error)response.append(node('p',t.error,'error'));
     if(t.mode==='chat')response.append(node('p','Chat only · no project access or execution tools','muted'));
@@ -118,7 +136,7 @@ function renderThread(data){
     const actions=node('div',undefined,'actions');if(t.status==='waiting_for_approval'){actions.append(button('Approve & run',()=>api('/api/action',{op:'approve',id:t.id}),'primary'),button('Reject',()=>api('/api/action',{op:'cancel',id:t.id})));}
     else if(['queued','running'].includes(t.status))actions.append(button('Stop run',()=>api('/api/action',{op:'cancel',id:t.id}),'danger'));
     if(t.mode==='edit'){response.append(node('p','Edit files · '+(t.review??'changes require a separate review'),'muted'));if(t.worktree&&!pending(t.status))actions.append(button(t.review==='committed'?'View committed changes':'Review changes',()=>openReview(t.id)));}
-    if(t.id===data.messages.at(-1)?.id&&['failed','timed_out','interrupted','cancelled'].includes(t.status)){
+    if(!pageBefore&&!archivedView&&t.id===data.messages.at(-1)?.id&&['failed','timed_out','interrupted','cancelled'].includes(t.status)){
       const reason=t.status==='timed_out'?'This run reached its time limit. A retry starts over with the same limit.':t.status==='interrupted'?'The service stopped before the run finished.':t.status==='cancelled'?'This run was stopped.':'The agent could not complete this run. Check its output above; reconnect in Operations if it reports a sign-in problem.';
       response.append(node('p',reason,'attention'));
       if(t.review==='pending')response.append(node('p','Review any partial changes first. Commit them and send a follow-up, or discard the review to retry from the original revision. The old files are retained.','muted'));
@@ -133,9 +151,10 @@ function renderThread(data){
       }
       actions.append(button('Account status',()=>loadOperations()));
     }
+    actions.append(button('Run activity',()=>openRun(t.id)));
     response.append(actions);const meta=node('details');meta.append(node('summary','Run details'),node('p',`Revision ${t.revision.slice(0,12)} · ${new Date(t.created).toLocaleString()}`,'muted'),node('p',t.worktree??'A worktree will be created after approval.','path'));response.append(meta);turn.append(response);d.append(turn);
   }
-  if(data.messages.length===30)d.prepend(node('p','Showing the latest 30 turns.','muted'));
+  const pages=node('div',undefined,'actions history-navigation');if(data.olderBefore)pages.append(button('Earlier turns',()=>{pageBefore=data.olderBefore;fingerprint='';}));if(pageBefore)pages.append(button('Latest turns',()=>{pageBefore=null;fingerprint='';}));if(pages.childNodes.length)d.prepend(pages);
   if(nearBottom||!fingerprint)d.scrollTop=d.scrollHeight;
 }
 async function refresh(){
@@ -144,32 +163,33 @@ async function refresh(){
     const capabilities=await api('/api/capabilities');policy={editAdapters:capabilities.editAdapters??[],enabledAdapters:capabilities.enabledAdapters??['codex','claude'],strictWorkers:capabilities.strictWorkers,adapters:capabilities.adapters};applyPolicy();
     const list=await api('/api/projects');if(epoch!==generation)return;projects=list;
     signedIn=true;$('login').hidden=true;$('workspace').hidden=false;
-    if(!projects.some(p=>p.id===projectId))projectId=projects[0]?.id??null;
-    $('projects').replaceChildren(...projects.map(p=>{const b=button('',()=>{projectId=p.id;reset();},'project'+(p.id===projectId?' selected':''));b.append(node('span','▱ '+p.name),node('small',String(p.conversations)));return b;}));
+    if(!selected&&!projects.some(p=>p.id===projectId))projectId=projects[0]?.id??null;
+    $('projects').replaceChildren(...projects.map(p=>{const b=button('',()=>{saveDraft();projectId=p.id;reset();},'project'+(p.id===projectId?' selected':''));b.append(node('span','▱ '+p.name),node('small',String(p.conversations)));return b;}));
     $('project-name').textContent=projects.find(p=>p.id===projectId)?.name??'Workspace';
     const threads=projectId?await api('/api/projects/'+projectId+'/conversations'):[];if(epoch!==generation)return;
     $('tasks').replaceChildren(...threads.map(t=>{const b=button('',()=>reset(t.id),'thread'+(selected===t.id?' selected':''));b.append(node('span',t.title),node('small',labels[t.status]??'New'));return b;}));
     if(!threads.length)$('tasks').append(node('p','Your conversations will appear here.','empty-list'));
-    if(selected){const data=await api('/api/conversations/'+selected);if(epoch!==generation)return;latest=data.messages.at(-1);const next=JSON.stringify(data);if(next!==fingerprint){renderThread(data);fingerprint=next;}}
-    else{$('thread-title').textContent='New conversation';latest=null;if(!fingerprint){empty();fingerprint='empty';}}
+    if(draftLocation!==draftKey()){saveDraft();$('prompt').value='';uploads=[];restoreDraft();renderUploads();}
+    if(selected){const data=await api('/api/conversations/'+selected+(pageBefore?'?before='+pageBefore:''));if(epoch!==generation)return;archivedView=!!data.conversation.archived||!!data.project.archived;$('project-name').textContent=data.project.name;latest=data.messages.at(-1);const next=JSON.stringify(data);if(next!==fingerprint){renderThread(data);fingerprint=next;}}
+    else{archivedView=false;$('thread-title').textContent='New conversation';latest=null;if(!fingerprint){empty();fingerprint='empty';}}
     $('rename').hidden=!selected;$('archive').hidden=!selected;
-    const locked=latest&&(pending(latest.status)||latest.review==='pending');$('send').disabled=!!locked||uploading||!projectId||!policy.enabledAdapters.length;
-    $('hint').textContent=locked?latest?.review==='pending'?'Review and commit or discard these changes before continuing.':'Approve or stop the current run before sending the next message.':$('mode').value==='chat'?'Text only · paste any context you want to discuss. Each message waits for approval.':'Each message waits for approval. Images and keyboard dictation are supported.';
+    const locked=latest&&(pending(latest.status)||latest.review==='pending');$('send').disabled=submitting||!!pageBefore||archivedView||!!locked||uploading||!projectId||!policy.enabledAdapters.length;
+    $('hint').textContent=archivedView?'This conversation is archived. Restore it through History to continue.':pageBefore?'Viewing earlier turns. Return to the latest turns to continue.':locked?latest?.review==='pending'?'Review and commit or discard these changes before continuing.':'Approve or stop the current run before sending the next message.':$('mode').value==='chat'?'Text only · paste any context you want to discuss. Each message waits for approval.':'Each message waits for approval. Images and keyboard dictation are supported.';
     if($('operations-dialog').open)void loadOperations(false);
   }catch(e){if(signedIn)notice(e.message);}finally{busy=false;if(epoch!==generation)refresh();}
 }
 $('loginform').onsubmit=async e=>{e.preventDefault();try{await api('/api/login',{key:$('key').value});$('key').value='';notice();await refresh();}catch(e){notice(e.message);}};
-$('logout').onclick=async()=>{try{await api('/api/logout',{});signedIn=false;reset();projectId=null;$('workspace').hidden=true;$('login').hidden=false;}catch(e){notice(e.message);}};
+$('logout').onclick=async()=>{try{await api('/api/logout',{});clearDrafts();signedIn=false;reset();projectId=null;$('workspace').hidden=true;$('login').hidden=false;}catch(e){notice(e.message);}};
 $('new').onclick=()=>{reset();refresh();$('prompt').focus();};
 $('add-project').onclick=()=>$('project-dialog').showModal();
 $('project-close').onclick=()=>$('project-dialog').close();
-$('project-form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{const p=await api('/api/action',{op:'project-create',name:$('project-input').value});projectId=p.id;reset();$('project-dialog').close();$('project-input').value='';notice();await refresh();}catch(e){notice(e.message);}finally{b.disabled=false;}};
+$('project-form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{const p=await api('/api/action',{op:'project-create',name:$('project-input').value});saveDraft();projectId=p.id;reset();$('project-dialog').close();$('project-input').value='';notice();await refresh();}catch(e){notice(e.message);}finally{b.disabled=false;}};
 $('rename').onclick=async()=>{const name=prompt('Conversation name',$('thread-title').textContent);if(name===null)return;try{await api('/api/action',{op:'conversation-rename',id:selected,name});fingerprint='';await refresh();}catch(e){notice(e.message);}};
 $('archive').onclick=async()=>{if(!confirm('Archive this conversation? Its runs and files will be kept.'))return;try{await api('/api/action',{op:'conversation-archive',id:selected});reset();await refresh();}catch(e){notice(e.message);}};
-$('project-menu').onclick=()=>{const box=$('project-info');box.hidden=!box.hidden;const p=projects.find(p=>p.id===projectId);if(!p)return;box.replaceChildren(node('strong',p.name),node('p',p.repo,'path'),node('p','Local Git repository · Ask or Edit files, with approval before each run','muted'),button('Rename project',async()=>{const name=prompt('Project name',p.name);if(name===null)return;await api('/api/action',{op:'project-rename',id:p.id,name});box.hidden=true;}));};
+$('project-menu').onclick=()=>{const box=$('project-info');box.hidden=!box.hidden;const p=projects.find(p=>p.id===projectId);if(!p)return;box.replaceChildren(node('strong',p.name),node('p',p.repo,'path'),node('p','Local Git repository · Ask or Edit files, with approval before each run','muted'),button('Rename project',async()=>{const name=prompt('Project name',p.name);if(name===null)return;await api('/api/action',{op:'project-rename',id:p.id,name});box.hidden=true;}),button('Archive project',async()=>{if(!confirm('Archive this project and hide its conversations? Files and history will be kept. You can restore it in History.'))return;await api('/api/action',{op:'project-archive',id:p.id});saveDraft();projectId=null;reset();box.hidden=true;}));};
 $('voice').onclick=()=>{$('prompt').focus();notice('Use your keyboard microphone to dictate, then review your message before sending.');};
 $('files').onchange=async()=>{const epoch=generation;uploading=true;$('send').disabled=true;try{const files=Array.from($('files').files);if(uploads.length+files.length>4)throw Error('Attach up to four images.');for(const file of files){if(file.size>5*1024*1024)throw Error('Each image must be at most 5 MB.');const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});const item=await api('/api/upload',{name:file.name,data});if(epoch!==generation)break;uploads.push(item);renderUploads();}}catch(e){notice(e.message);}finally{$('files').value='';uploading=false;refresh();}};
-$('compose').onsubmit=async e=>{e.preventDefault();$('send').disabled=true;const epoch=generation;try{const t=await api('/api/action',{op:'create',project:projectId,conversation:selected,adapter:$('adapter').value,mode:$('mode').value,prompt:$('prompt').value,attachments:uploads.map(x=>x.id)});if(epoch===generation){reset(t.conversation);notice();}await refresh();}catch(e){notice(e.message);await refresh();}};
+$('compose').onsubmit=async e=>{e.preventDefault();if(submitting||pageBefore||archivedView)return;submitting=true;$('prompt').disabled=true;$('send').disabled=true;applyPolicy();const epoch=generation;const submittedDraft=draftLocation;try{const t=await api('/api/action',{op:'create',project:projectId,conversation:selected,adapter:$('adapter').value,mode:$('mode').value,prompt:$('prompt').value,attachments:uploads.map(x=>x.id)});forgetDraft(submittedDraft);if(epoch===generation){draftLocation=null;reset(t.conversation);notice();}await refresh();}catch(e){notice(e.message);}finally{submitting=false;$('prompt').disabled=false;applyPolicy();await refresh();}};
 async function openReview(id){
   const value=await api('/api/tasks/'+id+'/review');reviewTask=id;reviewTree=value.tree;
   const content=$('review-content');content.replaceChildren(node('p',`${value.files.length} changed ${value.files.length===1?'file':'files'}`,'muted'),node('pre',value.summary,'path'));
@@ -189,4 +209,26 @@ async function openReview(id){
 }
 $('review-close').onclick=()=>{$('review-dialog').close();reviewTask=null;};
 setInterval(async()=>{if(!checking)return;const id=checking;try{const data=await api('/api/tasks/'+id);const checks=JSON.parse(data.task.checks??'{}');if(checks.status!=='running'){checking=false;if(reviewTask===id)await openReview(id);notice();}}catch(e){checking=false;notice(e.message);}},2000);
+let historyEpoch=0,historyCursor=null;
+async function loadHistory(before=null){
+  const epoch=++historyEpoch,query=$('history-query').value,filter=$('history-filter').value;
+  $('history-results').replaceChildren(node('p','Searching…','muted'));$('history-pages').replaceChildren();
+  try{const [result,archived]=await Promise.all([api('/api/history?q='+encodeURIComponent(query)+'&filter='+filter+(before?'&before='+before:'')),api('/api/archived-projects')]);if(epoch!==historyEpoch||!$('history-dialog').open)return;
+    $('history-results').replaceChildren();for(const item of result.items){const card=node('article',undefined,'operation-task');card.append(node('strong',item.title),node('p',item.projectName+' · '+(labels[item.status]??'New')+(item.archived||item.projectArchived?' · Archived':''),'muted'));const actions=node('div',undefined,'actions');actions.append(button('Open',()=>{saveDraft();projectId=item.project;reset(item.id);$('history-dialog').close();}));
+      if(item.projectArchived)actions.append(button('Restore project',async()=>{await api('/api/action',{op:'project-restore',id:item.project});await loadHistory(before);}));
+      else if(item.archived)actions.append(button('Restore conversation',async()=>{await api('/api/action',{op:'conversation-restore',id:item.id});await loadHistory(before);}));card.append(actions);$('history-results').append(card);}
+    if(!result.items.length)$('history-results').append(node('p','No conversations match this search.','muted'));
+    historyCursor=result.next;$('history-pages').replaceChildren();if(before)$('history-pages').append(button('Newest results',()=>loadHistory()));if(historyCursor)$('history-pages').append(button('More results',()=>loadHistory(historyCursor)));
+    $('archived-projects').replaceChildren();if(filter!=='active'&&archived.length){$('archived-projects').append(node('h3','Archived projects'));for(const p of archived)$('archived-projects').append(button('Restore '+p.name,async()=>{await api('/api/action',{op:'project-restore',id:p.id});await loadHistory();}));}
+  }catch(e){if(epoch===historyEpoch)$('history-results').replaceChildren(node('p',e.message,'error'));}
+}
+$('history-menu').onclick=()=>{$('history-dialog').showModal();void loadHistory();};$('history-close').onclick=()=>{$('history-dialog').close();historyEpoch++;};$('history-form').onsubmit=e=>{e.preventDefault();void loadHistory();};$('history-filter').onchange=()=>loadHistory();
+let runId=null,runBusy=false,runFingerprint='';
+async function openRun(id){runId=id;runFingerprint='';$('run-dialog').showModal();$('run-content').replaceChildren(node('p','Loading activity…','muted'));await updateRun();}
+async function updateRun(){if(runBusy||!runId||!$('run-dialog').open)return;runBusy=true;const id=runId;try{const data=await api('/api/tasks/'+id);if(runId!==id||!$('run-dialog').open)return;const signature=JSON.stringify(data);if(signature===runFingerprint)return;runFingerprint=signature;
+ const box=$('run-content');box.replaceChildren(node('p',labels[data.task.status]??data.task.status,'status '+data.task.status));const timeline=node('ol',undefined,'run-timeline');for(const event of data.events){const row=node('li');row.append(node('strong',labels[event.status]??event.status),node('span',new Date(event.at).toLocaleString(),'muted'));timeline.append(row);}box.append(timeline);
+ if(data.task.error)box.append(node('p',data.task.error,'error'));box.append(node('h3','Latest output'),node('p','The live view shows up to 60 KB. Downloads contain the latest 512 KB and identify omitted output.','muted'),node('pre',data.output||'No output recorded yet.','result'));
+ const link=node('a','Download latest output','output-download');link.href='/api/tasks/'+id+'/output';link.download='agentd-'+id+'.txt';box.append(link);if(['queued','running'].includes(data.task.status))box.append(button('Stop run',()=>api('/api/action',{op:'cancel',id}),'danger'));
+ }catch(e){if(runId===id)$('run-content').replaceChildren(node('p',e.message,'error'));}finally{runBusy=false;}}
+$('run-close').onclick=()=>{$('run-dialog').close();runId=null;};setInterval(()=>{if(signedIn&&!document.hidden)void updateRun();},2000);
 notice();refresh();setInterval(()=>{if(signedIn&&!document.hidden)refresh();},3000);

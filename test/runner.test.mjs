@@ -175,3 +175,6 @@ test('renewal gates dispatch, excludes account changes, and honors cancellation 
  release=undefined;fail=false;const good=app.request({op:'create',adapter:'claude',prompt:'hello'});app.request({op:'approve',id:good.id});for(let i=0;i<100&&!release;i++)await sleep(10);release();await status(app,good.id,['succeeded']);
  }finally{await app.close();rmSync(f.root,{recursive:true,force:true});}
 });
+test('output downloads are bounded and identify omitted content while events preserve run history',async()=>{
+ const f=await fixture();try{const t=f.app.request({op:'create',adapter:'claude',prompt:'hello'});assert.equal(f.app.request({op:'task-output',id:t.id}).text,'No output recorded.');f.app.request({op:'approve',id:t.id});const row=await status(f.app,t.id,['succeeded']);writeFileSync(row.log,'x'.repeat(600000)+'END');const output=f.app.request({op:'task-output',id:t.id});assert.equal(output.truncated,true);assert.match(output.text,/Earlier output omitted/);assert.ok(output.text.endsWith('END'));assert.ok(output.text.length<513000);const page=f.app.request({op:'conversation-show',id:t.conversation});assert.equal(page.messages[0].outputTruncated,true);assert.deepEqual(f.app.request({op:'show',id:t.id}).events.map(e=>e.status),['waiting_for_approval','queued','running','succeeded']);}finally{await f.app.close();rmSync(f.root,{recursive:true,force:true});}
+});

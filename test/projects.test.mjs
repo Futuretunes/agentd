@@ -51,3 +51,27 @@ test('operations summarizes global work and sanitized account health without pro
   assert.equal(value.adapters.find(x=>x.id==='claude').account.state,'signed_in');assert.equal(value.adapters[0].usage.state,'unavailable');assert.equal(accountChecks,2);assert.ok(!serialized.includes('private model output'));assert.ok(!value.tasks.some(x=>'prompt' in x||'log' in x||'worktree' in x));
  }finally{await app.close();rmSync(root,{recursive:true,force:true});}
 });
+test('archive and restore preserve files and history, prevent hidden pending work, and survive restart',async()=>{
+ const root=mkdtempSync(join(tmpdir(),'archive-')),config={stateDir:join(root,'state'),repo:repo(root,'original'),worktrees:join(root,'trees'),logs:join(root,'logs'),command:()=>[process.execPath,['-e','console.log("done")']]};let app=runner(config);await once(app.server,'listening');
+ try{
+  const p=app.request({op:'project-create',name:'Archive me'}),t=app.request({op:'create',project:p.id,adapter:'claude',prompt:'unfinished'});
+  assert.throws(()=>app.request({op:'project-archive',id:p.id}),/pending/);app.request({op:'cancel',id:t.id});app.request({op:'conversation-archive',id:t.conversation});
+  app.request({op:'project-archive',id:p.id});assert.ok(!app.request({op:'projects'}).some(x=>x.id===p.id));assert.equal(app.request({op:'archived-projects'})[0].id,p.id);
+  assert.throws(()=>app.request({op:'conversation-restore',id:t.conversation}),/Restore the project/);assert.throws(()=>app.request({op:'create',project:p.id,adapter:'claude',prompt:'bad'}),/archived/);
+  await app.close();app=runner(config);await once(app.server,'listening');assert.equal(app.request({op:'history',filter:'archived'}).items[0].id,t.conversation);
+  app.request({op:'project-restore',id:p.id});assert.equal(app.request({op:'conversations',project:p.id}).length,0);app.request({op:'conversation-restore',id:t.conversation});assert.equal(app.request({op:'conversations',project:p.id})[0].id,t.conversation);assert.equal(app.request({op:'conversation-show',id:t.conversation}).messages[0].id,t.id);
+  assert.equal(execFileSync('git',['-C',p.repo,'rev-list','--count','HEAD'],{encoding:'utf8'}).trim(),'1');
+ }finally{await app.close();rmSync(root,{recursive:true,force:true});}
+});
+test('history search is literal and paginated; older turns retain chronology without gaps',async()=>{
+ const root=mkdtempSync(join(tmpdir(),'history-')),app=runner({stateDir:join(root,'state'),repo:repo(root,'original'),worktrees:join(root,'trees'),logs:join(root,'logs'),command:()=>[process.execPath,[]]});await once(app.server,'listening');
+ try{
+  let conversation;const ids=[];for(let n=0;n<65;n++){const task=app.request({op:'create',adapter:'claude',prompt:n===30?'needle %_ literal':'Turn '+n,...(conversation?{conversation}:{})});conversation=task.conversation;ids.push(task.id);app.request({op:'cancel',id:task.id});}
+  app.request({op:'conversation-rename',id:conversation,name:'Long conversation'});
+  for(let n=0;n<55;n++){const t=app.request({op:'create',adapter:'claude',prompt:'Separate '+n});app.request({op:'cancel',id:t.id});}
+  const first=app.request({op:'history'}),second=app.request({op:'history',before:first.next});assert.equal(first.items.length,50);assert.equal(second.items.length,6);assert.equal(new Set([...first.items,...second.items].map(x=>x.id)).size,56);assert.equal(second.next,null);
+  assert.equal(app.request({op:'history',query:'%_'}).items.length,1);assert.equal(app.request({op:'history',query:'needle'}).items[0].id,conversation);assert.equal(app.request({op:'history',query:"' OR 1=1 --"}).items.length,0);
+  const pages=[];let before;do{const page=app.request({op:'conversation-show',id:conversation,...(before?{before}:{})});pages.unshift(...page.messages.map(x=>x.id));before=page.olderBefore;}while(before);assert.deepEqual(pages,ids);
+  assert.throws(()=>app.request({op:'history',before:-1}),/Invalid/);assert.throws(()=>app.request({op:'conversation-show',id:conversation,before:0}),/Invalid/);
+ }finally{await app.close();rmSync(root,{recursive:true,force:true});}
+});

@@ -68,9 +68,9 @@ export function runner(c: Config) {
     const path=join(attachmentRoot,id+'.json');
     return JSON.parse(readFileSync(path,'utf8'));
   };
-  const logTail=(path:string)=>{
+  const logTail=(path:string,limit=60000)=>{
     if(!existsSync(path))return '';
-    const fd=openSync(path,'r');try{const size=statSync(path).size;const b=Buffer.alloc(Math.min(size,60000));readSync(fd,b,0,b.length,Math.max(0,size-b.length));return b.toString('utf8');}finally{closeSync(fd);}
+    const fd=openSync(path,'r');try{const size=statSync(path).size;const b=Buffer.alloc(Math.min(size,limit));readSync(fd,b,0,b.length,Math.max(0,size-b.length));return b.toString('utf8');}finally{closeSync(fd);}
   };
   let active: {id:string; child:ChildProcess; done:Promise<void>; stop:(status:string)=>void}|undefined;
   let closing=false;
@@ -241,6 +241,27 @@ export function runner(c: Config) {
       }
       db.prepare('INSERT INTO projects(id,name,repo,created) VALUES(?,?,?,?)').run(id,name,repo,new Date().toISOString());return project(id);
     }
+    if(input.op==='project-archive'||input.op==='project-restore'){
+      const p=project(input.id),archive=input.op==='project-archive';
+      if(archive&&db.prepare("SELECT id FROM tasks WHERE project=? AND (status IN ('waiting_for_approval','queued','running','cancelling') OR review='pending') LIMIT 1").get(input.id))throw Error('Finish or cancel pending runs and resolve reviews before archiving this project.');
+      if(archive&&active&&get(active.id)?.project===p.id)throw Error('Stop the current checks before archiving this project.');
+      db.prepare('UPDATE projects SET archived=? WHERE id=?').run(archive?1:0,input.id);
+      audit(input.op,null,{project:input.id});return project(input.id);
+    }
+    if(input.op==='archived-projects')return db.prepare('SELECT id,name,created FROM projects WHERE archived=1 ORDER BY name,id').all();
+    if(input.op==='history'){
+      const query=input.query??'',filter=input.filter??'active',before=input.before??Number.MAX_SAFE_INTEGER;
+      if(typeof query!=='string'||query.length>200||!['active','archived','all'].includes(filter)||!Number.isSafeInteger(before)||before<1)throw Error('Invalid history search');
+      const rows=db.prepare(`SELECT c.rowid AS sequence,c.id,c.title,c.project,c.archived,p.name AS projectName,p.archived AS projectArchived,
+        (SELECT status FROM tasks t WHERE t.conversation=c.id ORDER BY t.rowid DESC LIMIT 1) AS status,
+        (SELECT max(updated) FROM tasks t WHERE t.conversation=c.id) AS updated
+        FROM conversations c JOIN projects p ON p.id=c.project WHERE c.rowid<?
+        AND (?='all' OR (?='archived' AND (c.archived=1 OR p.archived=1)) OR (?='active' AND c.archived=0 AND p.archived=0))
+        AND (?='' OR instr(lower(c.title),lower(?))>0 OR instr(lower(p.name),lower(?))>0
+          OR EXISTS(SELECT 1 FROM tasks t WHERE t.conversation=c.id AND instr(lower(t.prompt),lower(?))>0))
+        ORDER BY c.rowid DESC LIMIT 51`).all(before,filter,filter,filter,query,query,query,query);
+      const more=rows.length>50;return {items:rows.slice(0,50),next:more?rows[49].sequence:null};
+    }
     if(input.op==='project-rename'){project(input.id);db.prepare('UPDATE projects SET name=? WHERE id=?').run(title(input.name),input.id);return project(input.id);}
     if(input.op==='conversations'){
       project(input.project);
@@ -250,15 +271,21 @@ export function runner(c: Config) {
         FROM conversations c WHERE c.project=? AND c.archived=0 ORDER BY updated DESC LIMIT 100`).all(input.project);
     }
     if(input.op==='conversation-show'){
-      const thread=conversation(input.id);
-      const rows=db.prepare('SELECT * FROM (SELECT rowid AS sequence,* FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 30) ORDER BY created,sequence').all(input.id);
-      return {conversation:thread,project:project(String(thread.project)),messages:rows.map(row=>({...row,output:row.log?logTail(String(row.log)):'',images:JSON.parse(String(row.attachments)).map((id:string)=>attachment(id))}))};
+      const thread=conversation(input.id),before=input.before??Number.MAX_SAFE_INTEGER;
+      if(!Number.isSafeInteger(before)||before<1)throw Error('Invalid conversation cursor');
+      const rows=db.prepare('SELECT rowid AS sequence,* FROM tasks WHERE conversation=? AND rowid<? ORDER BY rowid DESC LIMIT 31').all(input.id,before);
+      const more=rows.length>30,page=rows.slice(0,30).reverse();
+      return {conversation:thread,project:project(String(thread.project)),olderBefore:more?page[0].sequence:null,messages:page.map(row=>({...row,output:row.log?logTail(String(row.log)):'',outputTruncated:!!row.log&&existsSync(String(row.log))&&statSync(String(row.log)).size>60000,images:JSON.parse(String(row.attachments)).map((id:string)=>attachment(id))}))};
+    }
+    if(input.op==='conversation-restore'){
+      const thread=conversation(input.id);if(project(String(thread.project)).archived)throw Error('Restore the project before restoring this conversation.');
+      db.prepare('UPDATE conversations SET archived=0 WHERE id=?').run(input.id);audit(input.op,null,{conversation:input.id});return conversation(input.id);
     }
     if(input.op==='conversation-rename'){conversation(input.id);db.prepare('UPDATE conversations SET title=? WHERE id=?').run(title(input.name),input.id);return conversation(input.id);}
     if(input.op==='conversation-archive'){
       conversation(input.id);
       if(db.prepare("SELECT id FROM tasks WHERE conversation=? AND (status IN ('waiting_for_approval','queued','running','cancelling') OR review='pending')").get(input.id))throw new Error('Finish or cancel pending tasks before archiving');
-      db.prepare('UPDATE conversations SET archived=1 WHERE id=?').run(input.id);return {ok:true};
+      db.prepare('UPDATE conversations SET archived=1 WHERE id=?').run(input.id);audit(input.op,null,{conversation:input.id});return {ok:true};
     }
     if(input.op==='list')return db.prepare('SELECT * FROM tasks ORDER BY created DESC LIMIT 100').all();
     if(input.op==='create'){
@@ -320,6 +347,10 @@ export function runner(c: Config) {
         db.exec('COMMIT');
       }catch(error){db.exec('ROLLBACK');throw error;}
       return get(id);
+    }
+    if(input.op==='task-output'){
+      const path=row.log?String(row.log):null,truncated=!!path&&existsSync(path)&&statSync(path).size>512000;
+      return {text:(truncated?'[Earlier output omitted; latest 512 KB follows.]\n':'')+(path?logTail(path,512000):'No output recorded.'),truncated};
     }
     if(input.op==='review')return review(row);
     if(input.op==='validate'){const result=validate(row,input.tree);audit('run-checks',input.id,{tree:input.tree});return result;}

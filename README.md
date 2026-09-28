@@ -79,3 +79,5 @@ The [hardened worker profile](docs/worker-security.md) isolates Ask and Edit tas
 Open **Agents** in the task desk to see which native agents are available and why others are unavailable. Installation discovery does not verify account login. See the [adapter contract](docs/adapters.md) for extension and security requirements.
 
 Optional [durable native credential renewal](docs/credential-renewal.md) refreshes sessions before approved work and keeps refresh grants outside task workers. Operations explains when provider consent requires a GUI reconnect.
+
+[Workspace history and recovery](docs/workspace-history.md) provides search, reversible archives, run activity and browser-tab draft recovery.

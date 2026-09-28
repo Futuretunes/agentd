@@ -23,9 +23,11 @@ The eventual product must let the operator manage everything through the desktop
 
 Acceptance: a nontechnical operator can complete the supported setup, sign-in, project/task lifecycle, usage monitoring, update and recovery journeys from the GUI alone. Validate these journeys on a phone as well as desktop, including expired logins, exhausted limits, unavailable providers, interrupted runs and failed updates. External provider availability and manual consent must be explained rather than hidden.
 
+Implemented in v0.12.0, pending installation: [workspace history and recovery](workspace-history.md) adds searchable conversation history with older-turn pagination, reversible project/conversation archiving, run timelines and authenticated output downloads, and browser-tab draft recovery. Desktop and phone-width flows were checked with fixtures; no model work was submitted.
+
 High-priority follow-up:
 
-- Implemented in v0.11.0, pending installation and live acceptance: durable native Claude/Codex credential renewal, trusted rotation recovery, access-only worker snapshots and Operations guidance. See [credential renewal](credential-renewal.md). GUI reconnect remains necessary for revoked or irrecoverable grants.
+- Implemented and installed in v0.11.0; native renewal and both worker modes verified by the operator: durable native Claude/Codex credential renewal, trusted rotation recovery, access-only worker snapshots and Operations guidance. See [credential renewal](credential-renewal.md). GUI reconnect remains necessary for revoked or irrecoverable grants.
 - Implemented and installed in v0.10.0: **Codex Chat only**, text Q&A through the native ChatGPT login, with no advertised tools and no repository mounted. The pinned CLI rejects injected execution calls; its read-only policy rejects patches. See [Chat only](codex-chat.md). Native Ask and Edit remain disabled for Codex.
 - Restore Codex availability only through a validated solution compatible with the host's namespace restrictions. No inner-sandbox bypass.
 
