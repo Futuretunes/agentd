@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-worker-hardening.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-git-policy.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.25.0 — shared Git policy
+
+[Git policy handover](handovers/2026-09-28-git-policy.md): repository import/update, task worktrees, snapshots, reviews, size checks and cleanup now share configuration and environment safeguards. Focused local regressions passed 18/18; exact Linux/CI validation pending. Cumulative with resources/retention and worker hardening; installed 0.22.0 unchanged. Next: R13 sensitive-data checks.
 
 ## Candidate 0.24.0 — worker hardening
 

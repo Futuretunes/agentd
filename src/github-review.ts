@@ -1,11 +1,11 @@
 import {createHash} from 'node:crypto';
-import {execFileSync} from 'node:child_process';
-import {githubURL,branchName,gitPolicy,type RepositoryGit} from './repositories.ts';
+import {localGit,gitOutput,assertGitConfig} from './git-policy.ts';
+import {githubURL,branchName,type RepositoryGit} from './repositories.ts';
 import {githubRequest,verifiedPull,type PublishPlan} from './publishing.ts';
 import {treeSnapshot} from './changes.ts';
-export function integrationGit(repo:string,args:string[]){return execFileSync('git',[...gitPolicy,'-C',repo,...args],{encoding:'utf8',env:{PATH:process.env.PATH,GIT_CONFIG_GLOBAL:'/dev/null',GIT_CONFIG_NOSYSTEM:'1',GIT_ATTR_NOSYSTEM:'1',GIT_LITERAL_PATHSPECS:'1',LANG:'C.UTF-8'},timeout:15000,maxBuffer:4*1024*1024,stdio:['ignore','pipe','pipe']}).trim();}
+export const integrationGit=localGit;
 const git=integrationGit;
-export function integrationConfig(repo:string){try{git(repo,['config','--includes','--get-regexp','^(merge\\..*\\.driver|filter\\..*\\.(clean|smudge|process)|diff\\.external|diff\\..*\\.(command|textconv))$']);throw Error('Custom merge or checkout drivers are unsupported in base integration.');}catch(e){if((e as any).status!==1)throw e;}}
+export const integrationConfig=assertGitConfig;
 export type ReviewAPI=(destination:string,number:number,resource:'pull'|'comments'|'reviews'|'discussion',page:number,signal:AbortSignal)=>Promise<any>;
 export function githubReviewAPI(state:string,profile:string,executable='/usr/local/bin/gh'):ReviewAPI{return (destination,number,resource,page,signal)=>{
  if(!Number.isSafeInteger(number)||number<1||!Number.isSafeInteger(page)||page<1||page>3)throw Error('Invalid GitHub review request');
@@ -41,7 +41,7 @@ export async function prepareIntegration(command:RepositoryGit,repo:string,head:
  if(await command(repo,['merge-base','--is-ancestor',baseSha,head],signal,false,undefined,true)!=='NOT_ANCESTOR')throw Error('This commit already includes the current base. No integration is needed.');
  // A configured external driver could execute outside the worker boundary. Refuse it.
  integrationConfig(repo);
- let output:string;try{output=execFileSync('git',[...gitPolicy,'-c','merge.renormalize=false','-c','merge.conflictStyle=merge','-C',repo,'merge-tree','--write-tree','--name-only','--no-messages','-z',baseSha,head],{encoding:'utf8',env:{PATH:process.env.PATH,GIT_CONFIG_GLOBAL:'/dev/null',GIT_CONFIG_NOSYSTEM:'1',GIT_ATTR_NOSYSTEM:'1',LANG:'C.UTF-8'},timeout:15000,maxBuffer:4*1024*1024,stdio:['ignore','pipe','pipe']});}catch(e){if((e as any).status!==1)throw Error('Could not prepare a safe merge. The history may be shallow or unsupported.');output=String((e as any).stdout);}
+ let output:string;try{output=gitOutput(repo,['-c','merge.renormalize=false','-c','merge.conflictStyle=merge','merge-tree','--write-tree','--name-only','--no-messages','-z',baseSha,head]);}catch(e){if((e as any).status!==1)throw Error('Could not prepare a safe merge. The history may be shallow or unsupported.');output=String((e as any).stdout);}
  const [tree,...parts]=output.split('\0');if(!/^[a-f0-9]{40}$/.test(tree))throw Error('Invalid merge preview');const conflicts=parts.filter(Boolean);
  if(conflicts.length>100)throw Error('Too many conflicts for this workflow');
  if(conflicts.length){const ancestor=git(repo,['merge-base',baseSha,head]);for(const path of conflicts){

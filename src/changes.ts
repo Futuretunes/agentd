@@ -1,11 +1,8 @@
-import {execFileSync} from 'node:child_process';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {join} from 'node:path';
 
-const env = () => ({...process.env,GIT_CONFIG_GLOBAL:'/dev/null',GIT_CONFIG_NOSYSTEM:'1',GIT_TERMINAL_PROMPT:'0'});
-export function git(repo:string,args:string[],extra:NodeJS.ProcessEnv={}) {
-  return execFileSync('git',['-c','core.hooksPath=/dev/null','-C',repo,...args],{encoding:'utf8',env:{...env(),...extra},timeout:15000,maxBuffer:4*1024*1024,stdio:['ignore','pipe','pipe']}).trim();
-}
+export {localGit as git} from "./git-policy.ts";
+import {localGit as git} from "./git-policy.ts";
 export function snapshot(worktree:string,revision:string,stateDir:string) {
   if(git(worktree,['rev-parse','HEAD'])!==revision)throw Error('Worktree HEAD changed outside the review workflow');
   const temp=mkdtempSync(join(stateDir,'review-'));

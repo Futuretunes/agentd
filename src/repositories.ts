@@ -12,7 +12,8 @@ export function githubURL(value:unknown){
 export function branchName(value:unknown){
   if(typeof value!=='string'||!value||value.length>200||!/^[-A-Za-z0-9_./]+$/.test(value)||value.startsWith('-')||value.startsWith('/')||value.endsWith('/')||value.endsWith('.')||value.includes('..')||value.includes('//')||value.split('/').some(p=>p.startsWith('.')||p.endsWith('.lock'))||value==='HEAD')throw Error('Choose a valid branch name.');return value;
 }
-export const gitPolicy=['-c','core.hooksPath=/dev/null','-c','protocol.allow=never','-c','protocol.https.allow=always','-c','http.followRedirects=false','-c','http.sslVerify=true','-c','http.proxy=','-c','credential.helper=','-c','core.protectNTFS=true','-c','core.protectHFS=true','-c','fetch.fsckObjects=true','-c','transfer.fsckObjects=true','-c','submodule.recurse=false','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false'];
+export {gitPolicy} from './git-policy.ts';
+import {gitPolicy,gitEnvironment,assertGitConfig} from './git-policy.ts';
 export function checkRepositorySize(path:string){
  let total=0,count=0;const scan=(dir:string)=>{for(const name of readdirSync(dir)){if(++count>100000)throw Error('Repository exceeds the file limit.');const p=join(dir,name),s=lstatSync(p);if(s.isSymbolicLink())continue;if(s.isDirectory())scan(p);else total+=s.size;if(total>512*1024*1024)throw Error('Repository exceeds the 512 MB limit.');}};scan(path);
 }
@@ -22,11 +23,12 @@ export function repositoryGit(options:{stateDir:string;githubProfile?:string;gh?
   const home=mkdtempSync(join(options.stateDir,'git-home-'));mkdirSync(join(home,'templates'));
   try{
    const ip=network?await resolve():null;if(signal.aborted)throw Error('Repository operation cancelled.');
-   const config=[...gitPolicy,'-c','init.templateDir='+join(home,'templates')];
+   assertGitConfig(cwd);
+   const config=[...gitPolicy,...(network?['-c','protocol.https.allow=always']:[]),'-c','init.templateDir='+join(home,'templates')];
    if(ip)config.push('-c','http.curloptResolve=github.com:443:'+ip);
    if(network&&options.githubProfile)config.push('-c','credential.helper='+ (options.gh??'/usr/local/bin/gh')+' auth git-credential');
    return await new Promise<string>((resolve,reject)=>{
-    const env={HOME:home,XDG_CONFIG_HOME:home,GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'/dev/null',GIT_TERMINAL_PROMPT:'0',GIT_LFS_SKIP_SMUDGE:'1',PATH:'/usr/local/bin:/usr/bin:/bin',LANG:'C.UTF-8',GH_CONFIG_DIR:options.githubProfile??join(home,'gh'),GH_PROMPT_DISABLED:'1',GH_HOST:'github.com'};
+    const env={...gitEnvironment(home),GH_CONFIG_DIR:options.githubProfile??join(home,'gh'),GH_PROMPT_DISABLED:'1',GH_HOST:'github.com'};
     const child=spawn('/usr/bin/git',[...config,...args],{cwd,env,detached:true,stdio:['ignore','pipe','ignore']});let output='',stopped=false;
     const kill=()=>{stopped=true;if(child.pid)try{process.kill(-child.pid,'SIGKILL');}catch{}};
     const timer=setTimeout(kill,120000);signal.addEventListener('abort',kill,{once:true});if(signal.aborted)kill();

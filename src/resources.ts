@@ -1,3 +1,4 @@
+import {gitOutput} from "./git-policy.ts";
 import {
   constants,
   openSync,
@@ -13,7 +14,7 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { execFileSync, type ChildProcess } from "node:child_process";
+import { type ChildProcess } from "node:child_process";
 
 export const resourceLimits = Object.freeze({
   logBytes: 8 * 1024 * 1024,
@@ -209,21 +210,7 @@ export function checkoutBudget(
   revision: string,
   limits: Limits = resourceLimits,
 ) {
-  const data = execFileSync(
-    "git",
-    [
-      "-c",
-      "core.hooksPath=/dev/null",
-      "-C",
-      repo,
-      "ls-tree",
-      "-r",
-      "-l",
-      "-z",
-      revision,
-    ],
-    { encoding: "utf8", timeout: 15000, maxBuffer: 16 * 1024 * 1024 },
-  );
+  const data = gitOutput(repo,["ls-tree","-r","-l","-z",revision],{maxBuffer:16*1024*1024});
   let bytes = 0,
     entries = 0;
   for (const item of data.split("\0")) {

@@ -10,7 +10,7 @@ import {
   realpathSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { execFileSync } from "node:child_process";
+import {gitOutput} from "./git-policy.ts";
 import { inventory } from "./resources.ts";
 import type { DatabaseSync } from "node:sqlite";
 const ageMs = 30 * 86400000;
@@ -22,12 +22,7 @@ export function retention(
   audit: (action: string, task: string | null, detail?: unknown) => unknown,
 ) {
   const plans = new Map<string, { fingerprint: string; expires: number }>();
-  const git = (repo: string, args: string[]) =>
-    execFileSync(
-      "git",
-      ["-c", "core.hooksPath=/dev/null", "-C", repo, ...args],
-      { encoding: "utf8", timeout: 5000, stdio: ["ignore", "pipe", "pipe"] },
-    );
+  const git = gitOutput;
   function candidates(now: number) {
     return db
       .prepare(

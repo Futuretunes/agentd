@@ -1,3 +1,4 @@
+import {localGit} from './git-policy.ts';
 import {resourceLimits,checkoutBudget,requireSpace,freeBytes,captureOutput,monitorWorktree,serviceBudget,type Limits} from './resources.ts';
 import {retention} from './retention.ts';
 import {attachmentStore} from './attachment-store.ts';
@@ -17,7 +18,7 @@ import {snapshot,commitSnapshot,restoreSnapshot,checkSnapshot} from './changes.t
 import {isolated} from './isolation.ts';
 import {fileURLToPath} from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
-import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { homedir } from 'node:os';
 import { randomUUID,createHash } from 'node:crypto';
 import { mkdirSync, openSync, writeSync, closeSync, realpathSync, readFileSync, copyFileSync, statSync, readSync, existsSync, readdirSync, rmSync } from 'node:fs';
@@ -62,7 +63,7 @@ export function runner(c: Config) {
     db.prepare('UPDATE tasks SET status=?,updated=?,error=? WHERE id=?').run(status,at,error,id);
     db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,status,at);
   };
-  const git=(args:string[],repo=c.repo)=>execFileSync('git',['-C',repo,...args],{encoding:'utf8',timeout:15000,stdio:['ignore','pipe','pipe']}).trim();
+  const git=(args:string[],repo=c.repo)=>localGit(repo,args);
   const github=githubAccount(c.githubRoot??join(c.stateDir,'github'));
   let repositoryWork:{id:string;project:string|null;abort:AbortController;done:Promise<void>}|undefined;
   const repositoryView=()=>db.prepare('SELECT * FROM repository_jobs ORDER BY updated DESC,rowid DESC LIMIT 20').all().map((row:any)=>({...row,result:row.result?JSON.parse(String(row.result)):null}));
