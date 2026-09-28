@@ -18,7 +18,7 @@ writeFileSync(join(home,'MARKER'),'not exposed');
 const server=createServer(async(req,res)=>{
  try{
   let raw='';for await(const b of req)raw+=b;
-  const value=JSON.parse(raw);assert.ok(!value.tools||value.tools.length===0,'Native CLI advertised tools');
+  const value=JSON.parse(raw);assert.equal(value.model,'gpt-6-luna');assert.equal(value.reasoning?.effort,'low');assert.ok(!value.tools||value.tools.length===0,'Native CLI advertised tools');
   if(count){const outputs=value.input.filter(x=>x.type?.endsWith('_output'));assert.equal(outputs.length,injected.length);for(const item of outputs)assert.match(String(item.output),item.call_id==='call_patch'?/patch rejected: writing is blocked by read-only sandbox/:/unsupported call|unknown tool/i);}
   const items=count++===0?injected:[{type:'message',id:'msg_ok',role:'assistant',status:'completed',content:[{type:'output_text',text:'CHAT_OFFLINE_OK',annotations:[]}]}];
   res.writeHead(200,{'content-type':'text/event-stream'});
@@ -31,9 +31,9 @@ const server=createServer(async(req,res)=>{
 try{
  server.listen(0,'127.0.0.1');await once(server,'listening');
  const override=['model_provider="probe"','model_providers.probe.name="offline probe"',`model_providers.probe.base_url="http://127.0.0.1:${server.address().port}/v1"`,'model_providers.probe.wire_api="responses"','model_providers.probe.requires_openai_auth=false'];
- const child=spawn(cli,[...override.flatMap(v=>['-c',v]),...chatArguments(cli,'Reply with OK',env)],{cwd:home,env,stdio:['ignore','pipe','pipe']});
+ const child=spawn(cli,[...override.flatMap(v=>['-c',v]),...chatArguments(cli,'Reply with OK',env,{model:'gpt-6-luna',effort:'low'})],{cwd:home,env,stdio:['ignore','pipe','pipe']});
  child.stdout.on('data',b=>output+=b);child.stderr.on('data',()=>{});
  const timer=setTimeout(()=>child.kill('SIGKILL'),20000);const [code]=await once(child,'close');clearTimeout(timer);
  assert.equal(fail,'');assert.equal(code,0);assert.equal(count,2);assert.match(output,/CHAT_OFFLINE_OK/);assert.equal(existsSync(join(home,'SHOULD_NOT_EXIST')),false);assert.equal(readFileSync(join(home,'MARKER'),'utf8'),'not exposed');
- console.log('codex: zero tools advertised; injected command, patch, subagent, browser, image and MCP calls rejected; text response received (offline)');
+ console.log('codex: zero tools advertised; injected command, patch, subagent, browser, image and MCP calls rejected; text response received with requested Luna/low selection (offline)');
 }finally{server.closeAllConnections();server.close();rmSync(root,{recursive:true,force:true});}

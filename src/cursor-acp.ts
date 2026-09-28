@@ -1,11 +1,12 @@
+import {selectionArguments,type Selection} from './adapters.ts';
 import {spawn,execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {stripVTControlCharacters} from 'node:util';
 import {cursorPermission,cursorVersion} from './cursor-policy.ts';
-export async function runCursor(binary:string,mode:string,prompt:string,output:(text:string)=>void= text=>process.stdout.write(text)){
+export async function runCursor(binary:string,mode:string,prompt:string,output:(text:string)=>void= text=>process.stdout.write(text),selection?:Selection){
  if(!['ask','edit'].includes(mode))throw Error('Unsupported Cursor mode');
  if(execFileSync(binary,['--version'],{encoding:'utf8',timeout:10000,stdio:['ignore','pipe','ignore']}).trim()!==cursorVersion)throw Error('Cursor CLI version changed. Install the tested release.');
- const child=spawn(binary,['--sandbox','enabled',...(mode==='ask'?['--mode','ask']:[]),'acp'],{stdio:['pipe','pipe','ignore']});
+ const child=spawn(binary,[...selectionArguments('cursor',selection),'--sandbox','enabled',...(mode==='ask'?['--mode','ask']:[]),'acp'],{stdio:['pipe','pipe','ignore']});
  let sequence=0,buffer='',session='',bytes=0,closed=false,denied=false;const pending=new Map<number,{resolve:(v:any)=>void;reject:(e:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
  const fail=(message:string)=>{for(const p of pending.values()){clearTimeout(p.timer);p.reject(Error(message));}pending.clear();};
  const send=(value:any)=>child.stdin.write(JSON.stringify({jsonrpc:'2.0',...value})+'\n');
@@ -21,4 +22,4 @@ export async function runCursor(binary:string,mode:string,prompt:string,output:(
  try{const init=await request('initialize',{protocolVersion:1,clientCapabilities:{fs:{readTextFile:false,writeTextFile:false},terminal:false},clientInfo:{name:'agentd',version:'0.18.0'}});if(init?.protocolVersion!==1)throw Error('Unsupported Cursor protocol');await request('authenticate',{methodId:'cursor_login'});const created=await request('session/new',{cwd:process.cwd(),mcpServers:[]});if(typeof created?.sessionId!=='string')throw Error('Cursor did not create a session');session=created.sessionId;await request('session/set_mode',{sessionId:session,modeId:mode==='edit'?'agent':'ask'});const result=await request('session/prompt',{sessionId:session,prompt:[{type:'text',text:prompt}]});if(result?.stopReason!=='end_turn'||denied)throw Error(denied?'Cursor requested a tool outside the approved file-only policy. No broader permission was granted.':'Cursor did not finish this turn');}
  finally{process.off('SIGTERM',stop);process.off('SIGINT',stop);child.stdin.end();child.kill('SIGKILL');fail('Cursor session ended');}
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){try{await runCursor(process.argv[2],process.argv[3],process.argv[4]);}catch(e){console.error((e as Error).message);process.exitCode=1;}}
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){try{await runCursor(process.argv[2],process.argv[3],process.argv[4],undefined,process.argv[5]?JSON.parse(process.argv[5]):undefined);}catch(e){console.error((e as Error).message);process.exitCode=1;}}

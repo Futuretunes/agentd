@@ -1,7 +1,9 @@
+import {settings,resolveSettings,type Settings} from './execution-settings.ts';
+import {modelCatalog,discoverModels} from './model-catalog.ts';
 import {integrationGit,integrationConfig,githubReviewAPI,loadFeedback,selectedFeedback,prepareIntegration,unresolvedConflicts,type ReviewAPI} from './github-review.ts';
 import {previewPublication,executePublication,githubPullAPI,publicationText,type PullAPI,type PublishPlan} from './publishing.ts';
 import {checkManifest,prepareDependencies,writeManifests,type DependencyPreparation} from './check-setup.ts';
-import {adapterIds,invocation,discover,probeAccount,type AccountStatus,type Mode} from './adapters.ts';
+import {adapterIds,invocation,discover,probeAccount,verifySelectionVersion,type AccountStatus,type Mode} from './adapters.ts';
 import {renewals,renewalFailure} from './renewal.ts';
 import {githubURL,branchName,repositoryGit,inspectRepository,updateRepository,type RepositoryGit} from './repositories.ts';
 import {githubAccount} from './github-account.ts';
@@ -17,7 +19,7 @@ import { mkdirSync, openSync, closeSync, realpathSync, readFileSync, copyFileSyn
 import { join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 
-type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; reviewAPI?:ReviewAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
+type Config = { modelDiscovery?:typeof discoverModels; stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; reviewAPI?:ReviewAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
 export function runner(c: Config) {
   if(c.enabledAdapters?.includes('cursor')&&!c.command&&(!c.strictWorkers||!c.credentialRenewal))throw Error('Cursor requires hardened isolation and access-only credential handling');
   if(c.credentialRenewal&&!c.strictWorkers)throw Error('Credential renewal requires hardened isolation');
@@ -44,6 +46,9 @@ export function runner(c: Config) {
     if(!columns.includes(name))db.exec(`ALTER TABLE tasks ADD COLUMN ${name} ${definition}`);
   }
   db.exec("UPDATE tasks SET review='pending' WHERE mode='edit' AND worktree IS NOT NULL AND review IS NULL AND status IN ('interrupted','failed','cancelled','timed_out','succeeded')");
+  for(const name of ['execution','run_overrides','settings_error','restart_of'])if(!columns.includes(name))db.exec(`ALTER TABLE tasks ADD COLUMN ${name} TEXT`);
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS tasks_restart_of ON tasks(restart_of) WHERE restart_of IS NOT NULL');
+  db.exec('CREATE TABLE IF NOT EXISTS execution_settings(scope TEXT,scope_id TEXT,agent TEXT,settings TEXT,updated TEXT,PRIMARY KEY(scope,scope_id,agent))');
   const projectColumns=db.prepare('PRAGMA table_info(projects)').all().map(x=>x.name);
   for(const name of ['check_dependencies','check_lock','github_url','github_branch','check_manifest'])if(!projectColumns.includes(name))db.exec(`ALTER TABLE projects ADD COLUMN ${name} TEXT`);
   db.prepare("UPDATE tasks SET checks=? WHERE json_extract(checks,'$.status')='running'").run(JSON.stringify({status:'interrupted'}));
@@ -195,6 +200,7 @@ export function runner(c: Config) {
       if(integration){integrationConfig(repo);integrationGit(repo,['worktree','add','--detach',worktree!,plan.baseSha]);try{integrationGit(worktree!,['read-tree','--reset','-u',plan.tree]);}catch(error){git(['worktree','remove','--force',worktree!],repo);throw error;}}
       db.exec('BEGIN');try{
         db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,seed_tree,merge_parent,conflict_paths,worktree,review) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,row.adapter,integration?'Integrate '+plan.base+' at '+plan.baseSha+'. Review the combined changes and resolve any conflicts before checks and commit.':chosen!.prompt,integration?plan.baseSha:row.commit_sha,integration?'succeeded':'waiting_for_approval',at,at,row.project,row.conversation,'[]',row.id,'edit',integration?plan.tree:null,integration?plan.head:null,integration?JSON.stringify(plan.conflicts):null,worktree,integration?'pending':null);
+        if(!integration)bindExecution(id);
         db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,integration?'succeeded':'waiting_for_approval',at);
         db.prepare("UPDATE review_jobs SET state='applied',result=?,selection=?,updated=? WHERE id=?").run(id,chosen?.selection??null,at,stored!.id);
         audit(integration?'approve-integration':'import-feedback',id,{source:task,preview:stored!.id,fingerprint:plan.fingerprint,selection:chosen?.selection??null});db.exec('COMMIT');
@@ -211,6 +217,27 @@ export function runner(c: Config) {
     }catch(error){db.prepare("UPDATE review_jobs SET state='failed',error=? WHERE id=?").run((error as Error).message,id);}finally{publicationWork=undefined;}});publicationWork={done,abort};return {id,state:'preparing'};
   }
   const capabilities=()=>discover(enabledAdapters,editAdapters,!!c.command,!!c.codexChat);
+
+  const catalog=modelCatalog(join(c.stateDir,'model-catalog'),()=>{refreshPending();setImmediate(pump);},c.modelDiscovery);
+  const layer=(scope:string,id:string,agent:string)=>JSON.parse(String(db.prepare('SELECT settings FROM execution_settings WHERE scope=? AND scope_id=? AND agent=?').get(scope,id,agent)?.settings??'{}')) as Settings;
+  function layers(projectId:string,conversationId:string|null,agent:string,overrides:Settings={}){
+    return [{source:'Project',values:layer('project',projectId,'*')},{source:'Project · '+agent,values:layer('project',projectId,agent)},...(conversationId?[{source:'Conversation',values:layer('conversation',conversationId,'*')},{source:'Conversation · '+agent,values:layer('conversation',conversationId,agent)}]:[]),{source:'Next run',values:overrides}];
+  }
+  function execution(row:any){requireAdapter(String(row.adapter),String(row.mode));return resolveSettings(layers(String(row.project),String(row.conversation),String(row.adapter),settings(JSON.parse(String(row.run_overrides??'{}')),String(row.adapter),true)),String(row.adapter),String(row.mode),String(row.prompt),catalog.view(String(row.adapter)),c.timeoutMs??600000);}
+  function bindExecution(id:string){const value=execution(get(id));db.prepare('UPDATE tasks SET execution=?,settings_error=NULL WHERE id=?').run(JSON.stringify(value),id);return value;}
+  function refreshPending(){
+    for(const row of db.prepare("SELECT * FROM tasks WHERE status IN ('queued','waiting_for_approval')").all()){
+      try{const value=execution(row),prior=row.execution?JSON.parse(String(row.execution)):null;if(value.fingerprint!==prior?.fingerprint||row.settings_error){db.prepare('UPDATE tasks SET execution=?,settings_error=NULL WHERE id=?').run(JSON.stringify(value),row.id);transition(String(row.id),'waiting_for_approval');audit('invalidate-run-approval',String(row.id),{fingerprint:value.fingerprint});}}
+      catch(error){db.prepare('UPDATE tasks SET settings_error=? WHERE id=?').run((error as Error).message,row.id);if(row.status==='queued')transition(String(row.id),'waiting_for_approval');}
+    }
+  }
+  function stillApproved(row:any){try{const current=execution(row);if(!row.execution||current.fingerprint!==JSON.parse(String(row.execution)).fingerprint){refreshPending();return false;}return true;}catch{refreshPending();return false;}}
+  function settingsView(projectId:string,conversationId:string|null,agent:string,mode='ask',prompt='',overrides:Settings={}){
+    project(projectId);if(conversationId&&conversation(conversationId).project!==projectId)throw Error('Conversation belongs to another project');
+    const scopeLayers=layers(projectId,conversationId,agent,overrides);let effective=null,error=null;try{requireAdapter(agent,mode);effective=resolveSettings(scopeLayers,agent,mode,prompt,catalog.view(agent),c.timeoutMs??600000);}catch(e){error=(e as Error).message;}
+    const access=scopeLayers.reduce((value,l)=>l.values.access??value,'edit'),modes=access==='edit'?['ask','edit','chat']:access==='read'?['ask','chat']:access==='chat'?['chat']:[];
+    return {allowedModes:(capabilities().find(a=>a.id===agent)?.modes??[]).filter(m=>modes.includes(m)),project:projectId,conversation:conversationId,agent,layers:scopeLayers,effective,error,catalog:catalog.view(agent),supported:capabilities().find(a=>a.id===agent),maximum:{hostPaths:false,shell:false,mcp:false,network:'Selected provider only',timeoutSeconds:Math.floor((c.timeoutMs??600000)/1000)},active:db.prepare("SELECT id,status,execution,conversation FROM tasks WHERE project=? AND status IN ('running','cancelling')").all(projectId)};
+  }
   const accountCache=new Map<string,AccountStatus>(adapterIds.map(id=>[id,{state:'checking',method:null,checkedAt:null,message:'Checking account status'}]));
   let preparing:string|undefined,preparation:Promise<void>|undefined;
   const renewalManager=c.credentialRenewal?(c.renewal??renewals({stateDir:c.stateDir})):undefined;
@@ -218,13 +245,13 @@ export function runner(c: Config) {
   let checkingAccounts=false;
   let accountsCheckedAt=0;
   const refreshAccounts=(force=false)=>{
-    if(checkingAccounts||closing||active||accountBusy()||(!force&&Date.now()-accountsCheckedAt<300000))return;checkingAccounts=true;
+    if(checkingAccounts||closing||active||catalog.busy()||accountBusy()||(!force&&Date.now()-accountsCheckedAt<300000))return;checkingAccounts=true;
     void Promise.all(adapterIds.map(async id=>{
       try{accountCache.set(id,await (c.accountStatus??probeAccount)(id));}
       catch{accountCache.set(id,{state:'error',method:null,checkedAt:new Date().toISOString(),message:'Could not verify sign-in'});}
     })).finally(()=>{accountsCheckedAt=Date.now();checkingAccounts=false;if(!closing)setImmediate(pump);});
   };
-  const accountManager=accounts({root:join(c.stateDir,'account-sessions'),changed:()=>{renewalManager?.reconcile?.();accountsCheckedAt=0;refreshAccounts();if(!closing)setImmediate(pump);}});
+  const accountManager=accounts({root:join(c.stateDir,'account-sessions'),changed:()=>{catalog.invalidate();renewalManager?.reconcile?.();accountsCheckedAt=0;refreshAccounts();if(!closing)setImmediate(pump);}});
   setImmediate(()=>refreshAccounts(true));
   const accountTimer=setInterval(()=>refreshAccounts(true),300000);accountTimer.unref();
   const operationError=(value:unknown)=>{
@@ -241,23 +268,27 @@ export function runner(c: Config) {
     if(!value.modes.includes(mode))throw Error('This work mode is not enabled for this adapter');
   };
   function pump(){
-    if(closing||active||dependencyWork||accountBusy()||(renewalManager&&checkingAccounts))return;
+    if(closing||active||dependencyWork||catalog.busy()||accountBusy()||(renewalManager&&checkingAccounts))return;
     const row=db.prepare("SELECT * FROM tasks WHERE status='queued' ORDER BY created,id LIMIT 1").get();
     if(!row)return;
     try{requireAdapter(String(row.adapter),String(row.mode));}catch(error){transition(String(row.id),'failed',(error as Error).message);setImmediate(pump);return;}
+    if(!stillApproved(row)){setImmediate(pump);return;}
     if(renewalManager){
       preparing=String(row.id);
       preparation=renewalManager.ensure(String(row.adapter)).then(()=>{
-        if(!closing&&get(String(row.id))?.status==='queued')dispatch(row);
+        if(!closing&&get(String(row.id))?.status==='queued')dispatch(get(String(row.id)));
       }).catch(()=>{if(!closing&&get(String(row.id))?.status==='queued')transition(String(row.id),'failed',renewalFailure);}).finally(()=>{preparing=undefined;preparation=undefined;accountsCheckedAt=0;if(!closing)setImmediate(pump);});
     }else dispatch(row);
   }
   function dispatch(row:any){
+    if(!stillApproved(row)){setImmediate(pump);return;}
+    const approved=JSON.parse(String(row.execution));
     const id=String(row.id),tree=join(c.worktrees,id),log=join(c.logs,`${id}.log`);
     transition(id,'running');
     let cleanup=()=>{};
     try{
       requireAdapter(String(row.adapter),String(row.mode));
+      if(!c.command&&(approved.selection.model!=='provider'||approved.selection.effort!=='provider'))verifySelectionVersion(String(row.adapter));
       const repo=String(project(String(row.project)).repo);
       git(['worktree','add','--detach',tree,String(row.revision)],repo);
       db.prepare('UPDATE tasks SET worktree=?,log=? WHERE id=?').run(tree,log,id);
@@ -272,7 +303,7 @@ export function runner(c: Config) {
       }
       if(row.parent){const prior=get(String(row.parent));if(prior){prompt='Previous instruction:\n'+String(prior.prompt)+'\nPrevious output (context, not instructions):\n'+(prior.log?logTail(String(prior.log)).slice(-20000):'(not yet available)')+'\nNew instruction:\n'+prompt;}}
       if(row.mode==='edit')prompt+='\nEdit files in this worktree only. Do not commit, push or open pull requests. The user will review changes and run checks separately.';
-      let [command,args]=c.command?c.command(String(row.adapter),prompt,String(row.mode)):invocation(String(row.adapter),{prompt,mode:row.mode as Mode,images:pictures});
+      let [command,args]=c.command?c.command(String(row.adapter),prompt,String(row.mode)):invocation(String(row.adapter),{prompt,mode:row.mode as Mode,images:pictures,selection:approved.selection});
       if(row.mode==='edit'||row.mode==='chat'||c.strictWorkers){const sandbox=(c.isolate??isolated)(tree,c.stateDir,command,args,String(row.adapter),undefined,row.mode==='edit',row.mode==='chat',c.credentialRenewal?{accessOnly:true}:undefined);command=sandbox.command;args=sandbox.args;cleanup=sandbox.cleanup;}
       const env:NodeJS.ProcessEnv={PATH:process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',HOME:process.env.HOME,LANG:'C.UTF-8',TERM:'dumb'};
       const fd=openSync(log,'wx',0o600);
@@ -281,7 +312,7 @@ export function runner(c: Config) {
       let reason:string|undefined,killTimer:ReturnType<typeof setTimeout>|undefined;
       const kill=(signal:NodeJS.Signals)=>{if(child.pid)try{process.kill(-child.pid,signal);}catch(error){if((error as NodeJS.ErrnoException).code!=='ESRCH')throw error;}};
       const stop=(status:string)=>{if(reason)return;reason=status;transition(id,'cancelling');kill('SIGTERM');killTimer=setTimeout(()=>kill('SIGKILL'),2000);};
-      const timer=setTimeout(()=>stop('timed_out'),c.timeoutMs??(row.mode==='edit'?600000:120000));
+      const timer=setTimeout(()=>stop('timed_out'),approved.timeoutMs);
       let resolveDone!:()=>void;
       const done=new Promise<void>(resolve=>{resolveDone=resolve;});
       active={id,child,done,stop};
@@ -329,6 +360,23 @@ export function runner(c: Config) {
   }
   function request(input:any){
     if(closing)throw new Error('Service is stopping');
+    if(input.op==='settings-view'||input.op==='settings-save'||input.op==='models-refresh'){
+      const projectId=String(input.project??'default'),conversationId=input.conversation?String(input.conversation):null,agent=String(input.agent??'claude');
+      project(projectId);if(conversationId&&conversation(conversationId).project!==projectId)throw Error('Conversation belongs to another project');
+      if(!adapterIds.includes(agent))throw Error('Unsupported adapter');
+      if(input.op==='models-refresh'){if(active||preparing||accountBusy()||checkingAccounts||dependencyWork||catalog.busy())throw Error('Wait for active work or account checks before refreshing models');catalog.refresh(agent);audit('refresh-models',null,{adapter:agent,actor:input.owner?'browser':'local'});}
+      if(input.op==='settings-save'){
+        if(!['project','conversation'].includes(input.scope))throw Error('Invalid settings scope');const scopeId=input.scope==='project'?projectId:conversationId;if(!scopeId)throw Error('Start a conversation before saving conversation settings');
+        const target=input.agentScope==='*'?'*':agent,values=settings(input.values,target),before=layer(input.scope,scopeId,target);
+        if(target!=='*'&&values.model&&!['auto','provider'].includes(values.model)&&!catalog.view(agent).models.some(m=>m.id===values.model))throw Error('Refresh native models and choose a listed model');
+        const revision=JSON.stringify(before);if(input.previous!==undefined&&input.previous!==revision)throw Error('Settings changed in another browser. Reload before saving.');
+        if(values.access==='edit'&&target!=='*'&&!capabilities().find(a=>a.id===agent)?.modes.includes('edit'))throw Error('Editing is outside this agent’s installation policy');
+        db.exec('BEGIN');try{db.prepare('INSERT INTO execution_settings(scope,scope_id,agent,settings,updated) VALUES(?,?,?,?,?) ON CONFLICT(scope,scope_id,agent) DO UPDATE SET settings=excluded.settings,updated=excluded.updated').run(input.scope,scopeId,target,JSON.stringify(values),new Date().toISOString());if(target!=='*')resolveSettings([...layers(projectId,input.scope==='project'?null:conversationId,agent),{source:'Validation',values:{access:'edit'}}],agent,'ask','',catalog.view(agent));audit('change-execution-settings',null,{scope:input.scope,id:scopeId,agent:target,before,after:values,actor:input.owner?'browser':'local'});refreshPending();db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}
+      }
+      return settingsView(projectId,conversationId,agent,String(input.mode??'ask'),String(input.prompt??'').slice(0,16000),settings(input.overrides??{},agent,true));
+    }
+
+    if(closing)throw new Error('Service is stopping');
     if(typeof input.op==='string'&&input.op.startsWith('feedback-'))return feedback(input);
     if(input.op==='publication-targets')return publicationTargets(input.task);
     if(input.op==='publication-status'){publishTarget(input.task);return publicationView(input.task);}
@@ -345,6 +393,7 @@ export function runner(c: Config) {
     if(input.op==='repository-start')return startRepository(input);
     if(input.op==='repository-cancel'){if(!repositoryWork||repositoryWork.id!==input.job)throw Error('Repository operation not found.');repositoryWork.abort.abort();return {ok:true};}
     if(input.op==='account-session')return {session:accountManager.view(input.owner),busy:accountManager.busy()};
+    if(input.op==='account-start'&&catalog.busy())throw Error('Wait for model discovery before changing accounts');
     if(input.op==='account-start'){
       if(!['login','logout'].includes(input.action))throw Error('Unsupported account action');
       if(active||dependencyWork||preparing||renewalManager?.busy()||checkingAccounts||db.prepare("SELECT id FROM tasks WHERE status='queued'").get())throw Error('Wait for current work or account checks to finish before changing accounts.');
@@ -353,7 +402,7 @@ export function runner(c: Config) {
     if(input.op==='account-code')return accountManager.submit(input.owner,input.session,input.code);
     if(input.op==='account-cancel')return accountManager.cancel(input.owner,input.session);
     if(input.op==='account-refresh'){refreshAccounts(true);return {ok:true};}
-    if(input.op==='capabilities'){const adapters=capabilities();return {adapterSchemaVersion:1,adapters,editing:adapters.some(value=>value.modes.includes('edit')),editAdapters:adapters.filter(value=>value.modes.includes('edit')).map(value=>value.id),enabledAdapters:adapters.filter(value=>value.available).map(value=>value.id),strictWorkers:!!c.strictWorkers,publishing:true};}
+    if(input.op==='capabilities'){const adapters=capabilities();return {adapterSchemaVersion:1,adapters,editing:adapters.some(value=>value.modes.includes('edit')),editAdapters:adapters.filter(value=>value.modes.includes('edit')).map(value=>value.id),enabledAdapters:adapters.filter(value=>value.available).map(value=>value.id),strictWorkers:!!c.strictWorkers,publishing:true,scopedSettings:true};}
     if(input.op==='operations'){
       refreshAccounts();
       const counts:Record<string,number>={waiting_for_approval:0,queued:0,running:0,cancelling:0,succeeded:0,failed:0,cancelled:0,timed_out:0,interrupted:0};
@@ -469,6 +518,7 @@ export function runner(c: Config) {
       try{
         if(!thread)db.prepare('INSERT INTO conversations(id,project,title,created) VALUES(?,?,?,?)').run(conversationId,projectId,input.prompt.trim().slice(0,100),at);
         db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(id,input.adapter,input.prompt,revision,'waiting_for_approval',at,at,projectId,conversationId,JSON.stringify(attachments),parent?.id??null,mode);
+        db.prepare('UPDATE tasks SET run_overrides=? WHERE id=?').run(JSON.stringify(settings(input.overrides??{},input.adapter,true)),id);bindExecution(id);
 
         db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);
         db.exec('COMMIT');
@@ -492,10 +542,20 @@ export function runner(c: Config) {
       git(['update-ref','refs/agentd/revisions/'+id,value.tree],String(project(String(row.project)).repo));
       db.exec('BEGIN');try{
         db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,revision_of,seed_tree) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,row.adapter,input.prompt,row.revision,'waiting_for_approval',at,at,row.project,row.conversation,row.attachments,row.id,'edit',row.id,value.tree);
-        db.prepare('UPDATE tasks SET merge_parent=?,conflict_paths=? WHERE id=?').run(row.merge_parent,row.conflict_paths,id);
+        db.prepare('UPDATE tasks SET merge_parent=?,conflict_paths=?,run_overrides=? WHERE id=?').run(row.merge_parent,row.conflict_paths,JSON.stringify(settings(input.overrides??{},String(row.adapter),true)),id);bindExecution(id);
         db.prepare("UPDATE tasks SET review='superseded' WHERE id=?").run(row.id);
         db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);audit('request-revision',id,{revisionOf:row.id,tree:value.tree});db.exec('COMMIT');
       }catch(error){db.exec('ROLLBACK');throw error;}return get(id);
+    }
+    if(input.op==='restart-settings'){
+      const existing=db.prepare('SELECT * FROM tasks WHERE restart_of=?').get(row.id);if(existing)return existing;
+      if(!['failed','cancelled','timed_out','interrupted'].includes(String(row.status)))throw Error('Stop the active run before restarting with new settings');
+      if(db.prepare('SELECT id FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 1').get(row.conversation)?.id!==row.id)throw Error('Only the latest run can restart');
+      if(project(String(row.project)).archived||conversation(String(row.conversation)).archived||row.commit_sha)throw Error('Workspace is archived or the changes are already committed');
+      if(projectBusy(String(row.project))||dependencyWork||active)throw Error('Wait for active work before restarting');
+      let seed=row.seed_tree;if(row.mode==='edit'&&row.worktree&&row.review==='pending'){const value=review(row);if(value.blocked.length||value.truncated)throw Error('Review oversized or sensitive changes before restarting');seed=value.tree;}
+      const id=randomUUID(),at=new Date().toISOString();if(seed)git(['update-ref','refs/agentd/restarts/'+id,String(seed)],String(project(String(row.project)).repo));
+      db.exec('BEGIN');try{db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,seed_tree,restart_of,merge_parent,conflict_paths) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,row.adapter,row.prompt,row.revision,'waiting_for_approval',at,at,row.project,row.conversation,row.attachments,row.parent,row.mode,seed??null,row.id,row.merge_parent,row.conflict_paths);bindExecution(id);if(row.review==='pending')db.prepare("UPDATE tasks SET review='superseded' WHERE id=?").run(row.id);db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);audit('restart-with-settings',id,{original:row.id,seed:seed??null});db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}return get(id);
     }
     if(input.op==='retry'){
       if(projectBusy(String(row.project)))throw Error('Wait for the repository update.');
@@ -517,7 +577,7 @@ export function runner(c: Config) {
       try{
         // Keep the original context, not the failed attempt's output or partial edits.
         db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,retry_of) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,row.adapter,row.prompt,row.revision,'waiting_for_approval',at,at,row.project,row.conversation,row.attachments,row.parent,row.mode,row.id);
-        db.prepare('UPDATE tasks SET merge_parent=?,conflict_paths=? WHERE id=?').run(row.merge_parent,row.conflict_paths,id);
+        db.prepare('UPDATE tasks SET merge_parent=?,conflict_paths=?,run_overrides=? WHERE id=?').run(row.merge_parent,row.conflict_paths,row.run_overrides,id);bindExecution(id);
         if(row.seed_tree)db.prepare('UPDATE tasks SET seed_tree=? WHERE id=?').run(row.seed_tree,id);
         db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);
         audit('retry-run',id,{retryOf:row.id});
@@ -547,10 +607,12 @@ export function runner(c: Config) {
     if(input.op==='show')return {task:row,output:row.log?logTail(String(row.log)):'',images:JSON.parse(String(row.attachments)).map((id:string)=>attachment(id)),events:db.prepare('SELECT status,at FROM events WHERE task=? ORDER BY id').all(input.id)};
     if(input.op==='approve'){
       if(projectBusy(String(row.project)))throw Error('Wait for the repository update.');
-      if(accountBusy()||dependencyWork)throw Error('Finish the account change or dependency preparation before approving work');
+      if(accountBusy()||catalog.busy()||dependencyWork)throw Error('Finish the account change or dependency preparation before approving work');
       if(row.status!=='waiting_for_approval')throw new Error('Task is not waiting for approval');
       requireAdapter(String(row.adapter),String(row.mode));
-      audit('approve-run',input.id,{adapter:row.adapter,mode:row.mode,revision:row.revision});
+      const approved=execution(row);if(row.settings_error||!row.execution||approved.fingerprint!==JSON.parse(String(row.execution)).fingerprint){refreshPending();throw Error('Settings changed. Review the updated run before approving.');}
+      if(input.fingerprint!==undefined&&input.fingerprint!==approved.fingerprint)throw Error('The approval preview is stale. Review the updated settings.');
+      audit('approve-run',input.id,{adapter:row.adapter,mode:row.mode,revision:row.revision,execution:approved});
       transition(input.id,'queued');setImmediate(pump);return get(input.id);
     }
     if(input.op==='cancel'){
@@ -562,6 +624,7 @@ export function runner(c: Config) {
     }
     throw new Error('Unknown operation');
   }
+  refreshPending();
   const socket=join(c.stateDir,'control.sock');
   // systemd RuntimeDirectory supplies a fresh socket directory at every start.
   const server=createServer(connection=>{
@@ -579,5 +642,5 @@ export function runner(c: Config) {
   const controlPath=process.env.AGENTD_CONTROL_SOCKET??socket;
   server.listen(controlPath);
   server.on('listening',()=>pump());
-  return {request,server,async close(){closing=true;publicationWork?.abort.abort();await publicationWork?.done;dependencyWork?.abort.abort();await dependencyWork?.done;repositoryWork?.abort.abort();await repositoryWork?.done;await github.close();clearInterval(accountTimer);await accountManager.close();await renewalManager?.close();await preparation;const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
+  return {request,server,async close(){closing=true;publicationWork?.abort.abort();await publicationWork?.done;dependencyWork?.abort.abort();await dependencyWork?.done;repositoryWork?.abort.abort();await repositoryWork?.done;await github.close();await catalog.close();clearInterval(accountTimer);await accountManager.close();await renewalManager?.close();await preparation;const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
 }

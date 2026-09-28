@@ -1,33 +1,29 @@
-# Automatic model and effort selection — backlog requirements
+# Model and effort selection
 
-Requested by the operator on 2026-09-28. Planned alongside configurable agent settings after the GitHub workflow and Cursor CLI integration. Define the shared adapter capability model during Cursor work; these controls are not yet implemented.
+Implemented in v0.19.0 through **Agent settings**, using the same scope hierarchy as [permissions](environment-permissions.md). Defaults remain **Provider default**, preserving existing behavior. Choose **Auto** or a listed native model; reasoning effort is independently inherited, automatic, provider-managed or explicitly selected where supported. **Next run only** saves a browser-tab draft override, consumed on submission.
 
-## Goal and selection
+## What is requested and what is known
 
-Choose a model and reasoning effort appropriate to each task, minimizing avoidable subscription usage without sacrificing the required quality. Simple questions, narrow edits and routine checks should not automatically consume the strongest model at maximum effort. Architecture, ambiguous debugging, security-sensitive changes and complex multi-file work may justify stronger reasoning from the start.
+Each pending run displays its requested model, effort, selection reason and inheritance before approval. The immutable run snapshot retains those values in history. Actual model/effort remain explicitly unknown/provider-managed: a native alias, provider routing or organization policy may differ from the request. CLI installation and metadata do not prove subscription entitlement. Providers verify availability when a run starts; failure does not silently substitute another model.
 
-Use task type, ambiguity, scope, risk, available context, previous failures and verifiable results. Prefer deterministic routing rules first; do not spend a heavyweight model request just to classify a simple task. If a lightweight planning call is warranted, count and disclose it. Compare expected total work, including retries: the smallest model is not always the most economical choice. Do not equate output length with reasoning effort or assume effort labels mean the same thing across providers.
+**Refresh native models** makes metadata requests only. It does not create a model conversation or submit a prompt. Failed refreshes preserve the previous catalog with an error/freshness indicator. Account changes invalidate cached choices. Removed explicit model pins block pending work rather than falling back. Refresh requires idle workers and account operations. Metadata and selection use the tested CLI versions; an unexpected executable version blocks explicit selection pending compatibility verification.
 
-The orchestrator owns and enforces the selection policy. Workers may propose a change with a reason; they cannot silently choose unlimited resources. Native automatic model routing is a distinct option, not a claim that agentd knows the model a provider actually selected.
+- **Claude Code 2.1.283:** native Haiku, Sonnet and Opus aliases after verifying CLI model/effort flags. Sonnet/Opus offer low/medium/high; Haiku has no independent effort in this adapter. These are CLI aliases, not account-specific entitlement discovery.
+- **Codex 0.157.1:** native app-server `model/list` metadata, including advertised effort levels. No thread or turn is created. Selection is passed into the existing tool-free Chat-only invocation; repository inspection/editing remain disabled.
+- **Cursor 2026.09.26-dd393fe:** native `models` output, normally requiring sign-in. Explicit model IDs are passed to the same restricted ACP worker. Independent effort is unavailable; listed model variants may encode provider reasoning choices. No guessed model IDs are added.
 
-## GUI and manual control
+## Auto routing
 
-Support Auto or an explicit model, and Auto or an explicit supported effort independently. Allow project defaults, project-specific agent settings, conversation overrides, conversation-specific agent settings and a next-run override. Use the same visible inheritance and reset controls as environment settings. A manually pinned choice must not be silently replaced by automatic routing.
+Auto is agentd's deterministic policy, version 1. A short summary/explanation/README or typo task chooses an approved light tier; security/authentication, architecture, migration, race/deadlock, cryptography, multi-file work or a long prompt chooses a deep tier; otherwise it chooses a balanced tier. It uses only known tier mappings: Claude aliases and the verified Codex GPT-6 family. With no suitable mapped model, Auto explicitly requests Provider default and records why. Cursor currently has no agentd tier mapping.
 
-Before approval, display the selected agent, requested model, effort, Auto/manual source, and a short reason such as “Small documentation edit; light reasoning should be sufficient.” Show these in the running task and retained run history too. Distinguish the requested choice from the actual model reported by the native CLI; if actual model or effort cannot be verified, label it unknown or provider-managed. Record policy version and selection rationale for audit and troubleshooting, without requesting private chain-of-thought.
+Auto effort requests low/medium/high for the corresponding task class only where the chosen model advertises it, otherwise an available medium or Provider default. Explicit unsupported combinations are rejected. Manual model pins are never replaced. Shared cross-agent scopes support Auto/Provider default; concrete models belong to per-agent or next-run scopes.
 
-Model/effort controls must list only supported combinations for the installed CLI and current account where discoverable. Handle removed models, unavailable subscriptions and unsupported effort controls explicitly. Never pass arbitrary user-entered flags, fall back silently, or infer availability from installation alone. Selecting a model does not expand tool, filesystem or network permissions.
+This is a first routing heuristic, not measured cost optimization. There is no classifier call, automatic retry, model escalation, API-key fallback, paid-overage change or precise credit estimate. Provider billing settings remain provider-controlled. Usage is unavailable until a reliable native interface exists.
 
-## Resource policy and escalation
+## Validation and remaining work
 
-Offer a clear default preference for the least costly capable choice. Allow limits on automatic escalation, attempts and run duration, and an allowed-model list per agent. Use reliable reported usage when available; label estimates as estimates and usage as unavailable otherwise. Subscription consumption is not interchangeable with a cash/token price, and no precise savings promise can be made without measurements.
+Fixture tests cover precedence, manual pins, unsupported combinations, sanitized metadata, literal arguments, stale approvals and account/worker concurrency. An offline real-Codex test verifies requested model/effort on the outgoing request while proving zero tools are advertised and injected calls remain rejected. Claude/Codex native metadata was verified without credentials or model calls. Cursor's authenticated catalog and live selected-model acceptance remain operator checks.
 
-Escalate only with a concrete reason, such as unresolved ambiguity or failed task validation. A sign-in, network or sandbox failure should trigger recovery, not a more expensive model. Avoid unbounded retries and cycles between agents. Display escalation events and the new choice. Changes beyond the user's approved model/effort envelope require fresh approval; never enable paid overages or switch to separately billed API credentials automatically.
+Future work: account-specific capability reporting where supported, actual-model reporting, richer native effort controls, measured routing quality, explicit allowed-model budgets and separately approved bounded escalation. None may widen environment permissions.
 
-## Changes during a conversation
-
-Settings are editable at any time. Apply them to future turns; show which choice an active run is actually using. For a running task, use a validated native switch only if its semantics are supported and visible; otherwise offer stop/restart with preserved partial work and fresh approval. Pending tasks whose resolved selection changes must have their approval refreshed. Retry/resume must respect manual pins and current account capabilities, and preserve selection history across restart.
-
-## Acceptance
-
-Use fixtures to cover simple versus complex tasks, manual precedence, model/effort capability mismatches, bounded escalation, provider-managed/unknown results, stale account information, limits, queued/running changes and restart persistence. Verify that no routing decision bypasses run approval, security policy, or billing preferences. Validate desktop and phone controls. Evaluate routing quality on representative tasks using correctness and total attempts/usage, not just whether the selected model was cheap. Live subscription trials require an explicit small test budget; routine regression tests make no model requests.
+Native references: [Codex configuration](https://learn.chatgpt.com/docs/config-file/config-reference), [Claude model configuration](https://code.claude.com/docs/en/model-config), [Cursor CLI parameters](https://cursor.com/docs/cli/reference/parameters).

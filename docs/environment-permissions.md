@@ -1,34 +1,25 @@
-# Configurable agent environments — backlog requirements
+# Scoped environment permissions
 
-Requested by the operator on 2026-09-28. This is a design brief, not an implemented permission switch. Implement after the GitHub workflow and Cursor CLI integration; develop the common policy model during Cursor work if useful.
+Implemented in v0.19.0. Open **Agent settings** in the desktop or phone interface.
 
-## Operator experience
+## Inheritance and consent
 
-The operator can choose and change environment permissions from the GUI per project, per conversation (chat session), and per native agent CLI. Isolated worktrees remain the default. A project can use different effective settings for Claude, Codex and Cursor; a conversation can override the relevant project defaults without changing other conversations or projects.
+Settings resolve in this order: installation defaults → project defaults → this agent in the project → conversation defaults → this agent in the conversation. Each field can inherit independently; **Reset this scope to inherited** removes the whole override. Later scopes may widen a project default, but never exceed the installation's supported maximum. This is a single-operator preference hierarchy, not a multi-user authorization system.
 
-Define unambiguous precedence: installation defaults → project defaults → project-specific agent settings → conversation defaults → conversation-specific agent settings. Every selection remains inside the administrator's supported maximum permissions. Display both the effective value and the source it inherits from; offer reset-to-inherited controls. Changing the selected agent recomputes and displays its policy rather than copying incompatible flags from the previous CLI.
+Choose **Disable runs**, **Chat only**, **Read-only project access**, or **Allow isolated edits**. The actual run mode can be narrower: permission to edit does not turn an Ask request into an edit. Claude and Cursor support Ask/Edit; Codex supports Chat only. A Chat-only profile therefore prevents Claude/Cursor runs until a compatible profile is selected. The composer disables unavailable modes. Shared defaults can apply across agents; incompatible individual capabilities remain blocked.
 
-Offer understandable presets plus advanced controls. Final preset names and capabilities need validation against each CLI. Candidate dimensions:
+The dialog shows effective filesystem/network/tool access and where each field comes from. Saving a scope shows an inline confirmation with the proposed values. Changes are audited with scope, agent, old/new values, actor category and time. Browser identity comes from the authenticated session; clients cannot supply control commands or executable paths. Model metadata discovery is serialized against active work and credential/account changes.
 
-- Filesystem: no project access, read-only project access, writable isolated worktree, and explicitly selected additional paths with separate read/write grants.
-- Tools: file reading/editing, shell execution, browser access, MCP and other available tools, with supported per-tool approval choices.
-- Network: offline where feasible, provider-only, additional approved destinations, and an explicitly approved broader network profile where supportable.
-- Native CLI approvals: supported provider-specific controls, mapped to a normalized policy without claiming identical behavior across providers.
-- Resource limits and credential scope, exposed only where enforcement is implemented and tested.
+## Queued and running work
 
-A broader profile must explain what extra data can be read, what can be changed, and where data can be sent. Scope consent to the selected project/conversation and agent; record the actor, old/new policy and time. CLI configuration supplied by a repository, prompt or agent must not expand these grants. Daemon state, administrative sockets, host credentials and GitHub publishing credentials stay outside ordinary task access; host administration requires a separate management boundary.
+Pending runs carry a resolved settings snapshot and fingerprint. Effective changes invalidate approval; a stale browser cannot approve a different snapshot. Dispatch checks again, including after asynchronous credential renewal. Existing completed runs retain their original history; legacy completed runs have no invented snapshot.
 
-## Changes at any time
+Active processes keep their approved settings. Save your changes, choose **Stop active run**, then **Restart with current settings** on the stopped turn. The new attempt preserves uncommitted edits in a snapshot, keeps the original worktree, and requires approval. Existing next-run pins are cleared for this explicit restart so the newly saved settings apply. Unsafe/oversized partial changes or committed/stale turns cannot be restarted this way. Fresh checks and commit/publication approvals remain necessary. Ordinary Retry retains its existing semantics.
 
-The GUI remains editable while work is queued or running, but must distinguish desired settings from the policy actually applied to each attempt.
+Maximum runtime can be 30 seconds to 10 minutes, capped by the administrator's configured timeout. Model/effort/runtime can also be overridden for the next submitted run; access requires a persistent scoped setting.
 
-- Unstarted tasks: invalidate prior run approval when effective permissions change, and require fresh approval of the new policy.
-- Running tasks: show that the existing sandbox retains its original policy. Offer an explicit stop-and-restart under the new policy, preserving partial work for review and requiring approval for the new attempt. Do not promise instantaneous revocation or silently expand a live process's permissions.
-- Subsequent turns: inherit the newly selected policy; show overrides and resets clearly.
-- Retries/resume: verify effective permissions and native capabilities again; bind the resulting attempt to a policy snapshot and audit it.
+## Installation ceiling and remaining work
 
-Commit, publish and merge approvals remain separate from environment access. Native CLI permission flags do not replace operating-system isolation. Unsupported combinations are disabled with an explanation, not mapped silently to a bypass or unrestricted mode. Failure to enforce an approved setting prevents execution.
+The hardened installation retains isolated worktrees, read-only Git metadata, selected-provider-only outbound access, file-only tools and separate checks/commit/publish approvals. Shell, web, MCP, additional host paths, unrestricted network and native sandbox bypasses are **not** enabled by these controls. Worker credential snapshots still exclude refresh grants. Broader presets require separate implementation and adversarial enforcement tests; they remain on the backlog.
 
-## Acceptance
-
-Test inheritance and each agent override, configuration changes between creation/approval/dispatch, running-task transitions, restart persistence and audit records. Verify actual filesystem/network/tool restrictions with adversarial fixture tasks, including repository configuration attempting to widen access. Verify desktop and phone controls and explanations. Clearly distinguish capability discovery from tested enforcement. Existing conversations migrate to their current restrictive policy.
+Tests cover inheritance, persistence, stale approvals, credential-preparation races, catalog invalidation, immutable active settings and snapshot-preserving restarts. Existing Linux isolation and provider-egress tests remain mandatory. Desktop/phone fixture testing makes no live model requests.

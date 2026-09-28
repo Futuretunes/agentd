@@ -8,6 +8,8 @@ agentd queues tasks, waits for approval, and runs Codex, Claude Code or Cursor i
 
 ## Available today
 
+- Scoped GUI permissions and model/effort choices for projects, conversations and individual agents, with visible inheritance and fresh approval when pending settings change.
+
 - Codex, Claude Code and Cursor adapters using their installed CLIs and existing account logins; agentd does not require provider API keys.
 - Approval-gated GitHub publishing with exact commit previews, dedicated branches, draft pull requests and approved forward updates to existing draft PRs.
 - GUI npm dependency setup with explicit approval, isolated public-registry downloads and install scripts disabled.
@@ -87,3 +89,5 @@ Optional [durable native credential renewal](docs/credential-renewal.md) refresh
 [Workspace history and recovery](docs/workspace-history.md) provides search, reversible archives, run activity and browser-tab draft recovery.
 
 GitHub reviews: [selected comment import and safe conflict handling](docs/github-feedback.md).
+
+Use **Agent settings** for inherited access profiles, native model/effort choices and next-run overrides. See [environment permissions](docs/environment-permissions.md) and [model selection](docs/model-selection.md). Existing installations retain Provider default until you choose Auto or a specific model.

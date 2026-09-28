@@ -70,6 +70,10 @@ export function mobile(c:Config){
     const input=await body(req);if(input.action==='cancel'){send(200,await call({op:'repository-cancel',job:input.job}));return;}
     if(input.action!=='start')throw Error('Unsupported repository action');send(200,await call({op:'repository-start',kind:input.kind,url:input.url,branch:input.branch,name:input.name,project:input.project}));return;
    }
+   if(path==='/api/settings'&&req.method==='POST'){
+    const input=await body(req);if(!['view','save','refresh-models'].includes(input.action))throw Error('Unsupported settings action');
+    send(200,await call({op:input.action==='refresh-models'?'models-refresh':'settings-'+input.action,project:input.project,conversation:input.conversation,agent:input.agent,scope:input.scope,agentScope:input.agentScope,values:input.values,previous:input.previous,mode:input.mode,prompt:input.prompt,overrides:input.overrides,owner:accountOwner}));return;
+   }
    if(path==='/api/capabilities'&&req.method==='GET'){send(200,await call({op:'capabilities'}));return;}
    if(path==='/api/operations'&&req.method==='GET'){send(200,await call({op:'operations'}));return;}
    const parameters=new URL(req.url??'/',c.origin).searchParams;
@@ -88,7 +92,8 @@ export function mobile(c:Config){
    const match=path.match(/^\/api\/tasks\/([0-9a-f-]{36})$/);
    if(match&&req.method==='GET'){send(200,await call({op:'show',id:match[1]}));return;}
    if(path==='/api/action'&&req.method==='POST'){
-    const input=await body(req);if(!['create','retry','revise','approve','cancel','validate','commit','discard','project-create','project-rename','conversation-rename','conversation-archive','conversation-restore','project-archive','project-restore'].includes(input.op))throw new Error('Unsupported action');
+    const input=await body(req);if(!['create','retry','restart-settings','revise','approve','cancel','validate','commit','discard','project-create','project-rename','conversation-rename','conversation-archive','conversation-restore','project-archive','project-restore'].includes(input.op))throw new Error('Unsupported action');
+    if(input.op==='approve'&&(typeof input.fingerprint!=='string'||!/^[0-9a-f]{64}$/.test(input.fingerprint)))throw Error('Refresh the run preview before approving.');
     send(200,await call(input));return;
    }
    if(path==='/api/upload'&&req.method==='POST'){

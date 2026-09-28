@@ -2,11 +2,18 @@ import {readCredentials} from './credentials.ts';
 import {accessSync,constants,statSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {join,isAbsolute} from 'node:path';
-import {execFile} from 'node:child_process';
+import {execFile,execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 export type Mode='ask'|'edit'|'chat';
-export type Invocation={prompt:string;mode:Mode;images:readonly string[]};
+export type Selection={model:string;effort:string};
+export type Invocation={prompt:string;mode:Mode;images:readonly string[];selection?:Selection};
+export function selectionArguments(id:string,selection?:Selection){
+ if(!selection)return [];const {model,effort}=selection;
+ if(!/^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,99}$/.test(model)||!['provider','none','low','medium','high','xhigh','max','ultra'].includes(effort))throw Error('Invalid model selection');
+ if(id==='cursor'&&effort!=='provider')throw Error('Cursor effort must be selected through a native model variant');
+ return [...(model==='provider'?[]:['--model',model]),...(effort==='provider'?[]:id==='claude'?['--effort',effort]:['-c','model_reasoning_effort='+JSON.stringify(effort)])];
+}
 export type Adapter={
   id:string;name:string;images:boolean;
   executable:()=>string;
@@ -25,15 +32,19 @@ const registry:readonly Adapter[]=[
 ];
 export const adapterIds=registry.map(adapter=>adapter.id);
 export function adapter(id:string){const value=registry.find(value=>value.id===id);if(!value)throw Error('Unsupported adapter');return value;}
+export function verifySelectionVersion(id:string){
+ const versions:Record<string,string>={claude:'2.1.283 (Claude Code)',codex:'codex-cli 0.157.1',cursor:'2026.09.26-dd393fe'};
+ try{const found=execFileSync(adapter(id).executable(),['--version'],{encoding:'utf8',timeout:5000,maxBuffer:4096,stdio:['ignore','pipe','ignore'],env:{HOME:homedir(),PATH:process.env.PATH,AGENT_CLI_CREDENTIAL_STORE:'file',NO_OPEN_BROWSER:'1',DIRENV_DISABLE:'1'}}).trim();if(found!==versions[id])throw Error();}catch{throw Error('Model selection requires the tested native CLI version. Check Operations before retrying.');}
+}
 export function invocation(id:string,input:Invocation):[string,string[]]{
   if(input.mode==='chat'){
     if(id!=='codex'||input.images.length)throw Error('Chat only supports Codex text prompts');
-    return [process.execPath,[fileURLToPath(new URL('./codex-chat.ts',import.meta.url)),adapter(id).executable(),input.prompt]];
+    return [process.execPath,[fileURLToPath(new URL('./codex-chat.ts',import.meta.url)),adapter(id).executable(),input.prompt,JSON.stringify(input.selection??{model:"provider",effort:"provider"})]];
   }
-  if(id==='cursor'&&['ask','edit'].includes(input.mode)){if(input.images.length)throw Error('Cursor currently accepts text only');return [process.execPath,[fileURLToPath(new URL('./cursor-acp.ts',import.meta.url)),adapter(id).executable(),input.mode,input.prompt]];}
+  if(id==='cursor'&&['ask','edit'].includes(input.mode)){if(input.images.length)throw Error('Cursor currently accepts text only');return [process.execPath,[fileURLToPath(new URL('./cursor-acp.ts',import.meta.url)),adapter(id).executable(),input.mode,input.prompt,JSON.stringify(input.selection??{model:"provider",effort:"provider"})]];}
   if(!['ask','edit'].includes(input.mode))throw Error('Unsupported work mode');
   const value=adapter(id);if(input.images.length&&!value.images)throw Error('This adapter does not support images');
-  return [value.executable(),value.arguments(input)];
+  return [value.executable(),[...selectionArguments(id,input.selection),...value.arguments(input)]];
 }
 function installed(path:string){try{return isAbsolute(path)&&statSync(path).isFile()&&(accessSync(path,constants.X_OK),true);}catch{return false;}}
 export function discover(enabled:readonly string[],editing:readonly string[],customCommand=false,chatOnly=false){
