@@ -41,9 +41,13 @@ High-priority follow-up:
 - Implemented and installed in v0.10.0: **Codex Chat only**, text Q&A through the native ChatGPT login, with no advertised tools and no repository mounted. The pinned CLI rejects injected execution calls; its read-only policy rejects patches. See [Chat only](codex-chat.md). Native Ask and Edit remain disabled for Codex.
 - Restore Codex availability only through a validated solution compatible with the host's namespace restrictions. No inner-sandbox bypass.
 
-## Candidate 0.20.0 progress
+## Installed 0.20.0 progress
 
-Implemented, not installed: task desk UI/UX redesign and R4 exact-tree checks with legacy check invalidation. R11 has a non-skipping Linux CI job; protected-branch enforcement remains. Final candidate Linux validation: 99/99, no skips. See [handover](handovers/2026-09-28-snapshot-checks.md). Next engineering work: release-baseline decision, tracked reproducible deployment/task-schema migration and remaining backend reviewability. Actual-phone acceptance and other open UX/engineering findings remain.
+Implemented and installed (read-only health/service confirmation, 2026-09-28): task desk UI/UX redesign and R4 exact-tree checks with legacy check invalidation. R11 has a non-skipping Linux CI job; protected-branch enforcement remains. Final candidate Linux validation: 99/99, no skips. See [handover](handovers/2026-09-28-snapshot-checks.md). Next engineering work: release-baseline decision, tracked reproducible deployment/task-schema migration and remaining backend reviewability. Actual-phone acceptance and other open UX/engineering findings remain.
+
+## Candidate 0.21.0 — release and schema foundations
+
+Implemented, validation in progress, not installed: R9 versioned transactional task migrations and refusal of future task schemas; R3 exact-commit deterministic source packages, manifest verification, tracked parameterized application update, effective configuration fingerprints and ordinary-failure rollback. See [managed updates](managed-updates.md) and [handover](handovers/2026-09-28-managed-deployment.md). Fresh provisioning, automatic power-loss recovery, signed release provenance, managed configuration reconciliation and GUI administration remain open. No project branches are advanced by the updater. Next: reviewed release baseline/protected CI, then boundary and resource work; R2 backend decomposition remains.
 
 ## Stabilization gate after independent review — 2026-09-28
 

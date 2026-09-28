@@ -11,3 +11,6 @@ mobile-access.txt
 .runtime/
 coverage/
 .DS_Store
+
+__pycache__/
+*.pyc

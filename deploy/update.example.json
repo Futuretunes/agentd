@@ -1,0 +1,15 @@
+{
+  "app": "/opt/agentd",
+  "state": "/srv/agentd/state",
+  "deployment": "/var/lib/agentd-deployment",
+  "user": "agentd",
+  "runnerUnit": "agentd.service",
+  "mobileUnit": "agentd-mobile.service",
+  "node": "/usr/local/bin/node",
+  "npm": "/usr/local/bin/npm",
+  "healthUrl": "http://127.0.0.1:8787/healthz",
+  "configFiles": [
+    "/etc/agentd/mobile.json"
+  ],
+  "controlSocket": "/run/agentd/control.sock"
+}

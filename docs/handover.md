@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-snapshot-checks.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-managed-deployment.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.21.0 — managed deployment and task schema
+
+Current work: [handover](handovers/2026-09-28-managed-deployment.md). Installed 0.20.0 was independently confirmed through loopback health and both services active on 2026-09-28; earlier installation statements below are historical. Candidate 0.21.0 adds transactional task-schema migration, exact-commit release packaging and a tracked administrator-only updater with configuration drift checks and rollback. No production deployment occurred. Validation is in progress. Release-baseline merge strategy and protected-branch enforcement remain unresolved; no main merge is authorized by this note.
 
 ## Candidate 0.20.0 — implementation ready
 

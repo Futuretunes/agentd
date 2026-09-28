@@ -110,13 +110,7 @@ try {
   } finally {
     await app.close();
   }
-  const db = new DatabaseSync(join(f.state, "tasks.sqlite"));
-  db.exec("PRAGMA user_version=999");
-  db.close();
-  app = runner(config);
-  await once(app.server, "listening");
-  await app.close();
-  out("R9", { acceptedFutureUserVersion: 999 });
+  // R9 is fixed; desired behavior is covered by test/task-database.test.mjs.
   const text = setup("text");
   writeFileSync(
     join(text.repo, "README.md"),

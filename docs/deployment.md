@@ -12,7 +12,8 @@ sudo chmod 700 /var/lib/agentd
 sudo install -d -o agentd -g agentd -m 700 /srv/agentd/state/attachments /srv/agentd/worktrees/tasks /srv/agentd/logs/tasks /srv/agentd/repos
 sudo install -d -o root -g agentd -m 750 /etc/agentd /etc/agentd/tls
 sudo install -d -o root -g root -m 755 /opt/agentd
-sudo cp -R src public /opt/agentd/
+sudo cp -R src public scripts test docs deploy /opt/agentd/
+sudo cp package.json package-lock.json tsconfig.json README.md LICENSE /opt/agentd/
 sudo chown -R root:root /opt/agentd
 sudo cp .env.example /etc/agentd/agentd.env
 sudo chmod 640 /etc/agentd/agentd.env
@@ -65,7 +66,11 @@ The gateway configuration location can be overridden with `AGENTD_MOBILE_CONFIG`
 - Logs: `journalctl -u agentd -u agentd-mobile`; per-task logs live in the configured log directory.
 - Metrics: `http://127.0.0.1:8787/metrics`. Configure a local scraper; no Grafana dashboard is bundled yet.
 - Backup: stop the services before copying the entire state directory and retained worktrees/logs, or use SQLite-aware backups. Include attachment metadata and images. Protect backups as sensitive data.
-- Rollback: retain a copy of the previous application and matching database backup. No automated downgrade mechanism is supplied.
+- Rollback: retain a copy of the previous application and matching database backup. The tracked updater restores the matching application/state on ordinary update failure. Manual downgrade still requires a matching backup; see [managed updates](managed-updates.md).
 - Cleanup: automatic retention is not implemented. Never remove a worktree used by an active task.
 
 The example systemd units assume `/usr/local/bin/node` and the directory layout above. They are templates, not a universal installer. Do not expose the POC publicly without additional authentication, worker isolation and deployment review.
+
+## Repeatable releases and updates
+
+Use the [tracked release and update workflow](managed-updates.md) for existing instances. It records an exact source revision, verifies the archive, detects configuration drift and preserves installed units/configuration. Fresh provisioning above remains an explicit administrator task. No GUI or worker receives deployment privileges.
