@@ -1,3 +1,4 @@
+import {checkManifest,prepareDependencies,writeManifests,type DependencyPreparation} from './check-setup.ts';
 import {adapterIds,invocation,discover,probeAccount,type AccountStatus,type Mode} from './adapters.ts';
 import {renewals,renewalFailure} from './renewal.ts';
 import {githubURL,branchName,repositoryGit,inspectRepository,updateRepository,type RepositoryGit} from './repositories.ts';
@@ -14,7 +15,7 @@ import { mkdirSync, openSync, closeSync, realpathSync, readFileSync, copyFileSyn
 import { join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 
-type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
+type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
 export function runner(c: Config) {
   if(c.credentialRenewal&&!c.strictWorkers)throw Error('Credential renewal requires hardened isolation');
   if(c.codexChat&&!c.strictWorkers)throw Error("Chat only requires hardened worker isolation");
@@ -39,13 +40,16 @@ export function runner(c: Config) {
   }
   db.exec("UPDATE tasks SET review='pending' WHERE mode='edit' AND worktree IS NOT NULL AND review IS NULL AND status IN ('interrupted','failed','cancelled','timed_out','succeeded')");
   const projectColumns=db.prepare('PRAGMA table_info(projects)').all().map(x=>x.name);
-  for(const name of ['check_dependencies','check_lock','github_url','github_branch'])if(!projectColumns.includes(name))db.exec(`ALTER TABLE projects ADD COLUMN ${name} TEXT`);
+  for(const name of ['check_dependencies','check_lock','github_url','github_branch','check_manifest'])if(!projectColumns.includes(name))db.exec(`ALTER TABLE projects ADD COLUMN ${name} TEXT`);
   db.prepare("UPDATE tasks SET checks=? WHERE json_extract(checks,'$.status')='running'").run(JSON.stringify({status:'interrupted'}));
   db.exec("CREATE TABLE IF NOT EXISTS repository_jobs(id TEXT PRIMARY KEY,kind TEXT,state TEXT,project TEXT,source TEXT,branch TEXT,result TEXT,error TEXT,updated TEXT)");
   db.prepare("UPDATE repository_jobs SET state='interrupted',error='Service stopped. Start this operation again.' WHERE state='running'").run();
   for(const job of db.prepare("SELECT project FROM repository_jobs WHERE kind='import' AND state IN ('interrupted','failed','cancelled')").all()){
     const id=String(job.project);if(/^[a-f0-9-]{36}$/.test(id)&&!db.prepare('SELECT id FROM projects WHERE id=?').get(id))rmSync(join(c.projectsDir??join(c.stateDir,'projects'),id),{recursive:true,force:true});
   }
+  db.exec("CREATE TABLE IF NOT EXISTS dependency_jobs(id TEXT PRIMARY KEY,project TEXT,task TEXT,fingerprint TEXT,state TEXT,error TEXT,updated TEXT)");
+  db.exec("UPDATE dependency_jobs SET state='interrupted',error='Service restarted. Prepare dependencies again.' WHERE state='running'");
+  for(const job of db.prepare("SELECT id FROM dependency_jobs WHERE state!='succeeded'").all())if(/^[a-f0-9-]{36}$/.test(String(job.id)))rmSync(join(c.stateDir,'dependencies',String(job.id)),{recursive:true,force:true});
   const enabledAdapters=c.enabledAdapters??['codex','claude'];
   const editAdapters=c.editing?(c.editAdapters??[]):[];
   if([...enabledAdapters,...editAdapters].some(value=>!adapterIds.includes(value)))throw Error('Invalid adapter configuration');
@@ -94,7 +98,7 @@ export function runner(c: Config) {
   const projectBusy=(id:string)=>repositoryWork?.project===id;
   function startRepository(input:any){
     if(closing)throw Error('Service is stopping. Try again after it restarts.');
-    if(repositoryWork||github.busy())throw Error('Wait for the current repository or GitHub connection operation.');
+    if(repositoryWork||dependencyWork||github.busy())throw Error('Wait for the current repository or GitHub connection operation.');
     const kind=input.kind;if(!['inspect','import','update'].includes(kind))throw Error('Unsupported repository operation');
     const existing=kind==='update'?project(input.project):null;
     if(existing){if(existing.archived)throw Error('Restore this project before updating it.');if(!existing.github_url||!existing.github_branch)throw Error('Only projects imported from GitHub can be updated here.');
@@ -119,6 +123,20 @@ export function runner(c: Config) {
       finally{repositoryWork=undefined;}
     });repositoryWork={id,project:existing?String(existing.id):null,abort,done};return repositoryView().find(job=>job.id===id);
   }
+  let dependencyWork:{id:string;abort:AbortController;done:Promise<void>}|undefined;
+  const checkTarget=(input:any)=>{const p=project(input.project);if(p.archived)throw Error('Restore this project first.');const row=input.task?get(input.task):null;if(input.task&&(!row||row.project!==p.id||row.review!=='pending'||!row.worktree||['running','queued','cancelling','waiting_for_approval'].includes(String(row.status))))throw Error('Select a finished edit awaiting review in this project.');return {p,row,path:String(row?.worktree??p.repo)};};
+  const setupView=(input:any)=>{const target=checkTarget(input);let plan:any=null,error=null;try{const value=checkManifest(target.path);plan={legacy:!target.p.check_manifest&&target.p.check_lock===value.lockHash&&!!target.p.check_dependencies&&existsSync(String(target.p.check_dependencies)),fingerprint:value.fingerprint,packages:value.count,scripts:value.scripts,ready:target.p.check_manifest===value.fingerprint&&!!target.p.check_dependencies&&existsSync(String(target.p.check_dependencies))};}catch(e){error=(e as NodeJS.ErrnoException).code==='ENOENT'?'Add package.json, package-lock.json and a test script to configure npm checks.':(e as Error).message;}
+    return {project:target.p.id,task:target.row?.id??null,plan,error,busy:!!dependencyWork,jobs:db.prepare('SELECT * FROM dependency_jobs WHERE project=? ORDER BY rowid DESC LIMIT 10').all(String(target.p.id))};};
+  const startSetup=(input:any)=>{
+    if(dependencyWork||repositoryWork||active||accountBusy()||preparing||db.prepare("SELECT id FROM tasks WHERE status='queued'").get())throw Error('Wait for current work before preparing dependencies.');
+    const target=checkTarget(input),value=checkManifest(target.path);if(input.fingerprint!==value.fingerprint)throw Error('Dependency files changed. Review setup again.');
+    const id=randomUUID(),abort=new AbortController(),stage=join(c.stateDir,'dependencies',id);writeManifests(stage,value);
+    db.prepare('INSERT INTO dependency_jobs VALUES(?,?,?,?,?,?,?)').run(id,target.p.id,target.row?.id??null,value.fingerprint,'running',null,new Date().toISOString());audit('approve-dependencies',target.row?String(target.row.id):null,{project:target.p.id,fingerprint:value.fingerprint,packages:value.count});
+    const done=Promise.resolve().then(async()=>{try{await (c.prepareDependencies??prepareDependencies)(stage,c.stateDir,abort.signal);if(abort.signal.aborted)throw Error('Dependency preparation cancelled.');if(checkManifest(checkTarget(input).path).fingerprint!==value.fingerprint)throw Error('Dependency files changed. Previous setup was kept; review and prepare again.');
+      db.prepare('UPDATE projects SET check_dependencies=?,check_lock=?,check_manifest=? WHERE id=?').run(join(stage,'node_modules'),value.lockHash,value.fingerprint,target.p.id);db.prepare("UPDATE dependency_jobs SET state='succeeded',updated=? WHERE id=?").run(new Date().toISOString(),id);
+    }catch(e){try{rmSync(stage,{recursive:true,force:true});}catch{}db.prepare('UPDATE dependency_jobs SET state=?,error=?,updated=? WHERE id=?').run(abort.signal.aborted?'cancelled':'failed',(e as Error).message,new Date().toISOString(),id);}finally{dependencyWork=undefined;if(!closing)setImmediate(pump);}});
+    dependencyWork={id,abort,done};return {id,state:'running'};
+  };
   const capabilities=()=>discover(enabledAdapters,editAdapters,!!c.command,!!c.codexChat);
   const accountCache=new Map<string,AccountStatus>(adapterIds.map(id=>[id,{state:'checking',method:null,checkedAt:null,message:'Checking account status'}]));
   let preparing:string|undefined,preparation:Promise<void>|undefined;
@@ -150,7 +168,7 @@ export function runner(c: Config) {
     if(!value.modes.includes(mode))throw Error('This work mode is not enabled for this adapter');
   };
   function pump(){
-    if(closing||active||accountBusy()||(renewalManager&&checkingAccounts))return;
+    if(closing||active||dependencyWork||accountBusy()||(renewalManager&&checkingAccounts))return;
     const row=db.prepare("SELECT * FROM tasks WHERE status='queued' ORDER BY created,id LIMIT 1").get();
     if(!row)return;
     try{requireAdapter(String(row.adapter),String(row.mode));}catch(error){transition(String(row.id),'failed',(error as Error).message);setImmediate(pump);return;}
@@ -209,15 +227,16 @@ export function runner(c: Config) {
     if(active||db.prepare("SELECT id FROM tasks WHERE status='queued'").get())throw Error('Wait for the active worker before reviewing changes');
     if(row.mode!=='edit'||!row.worktree||['waiting_for_approval','queued','running','cancelling'].includes(row.status))throw Error('This run has no finished editable worktree');
   }
-  const review=(row:any)=>{available(row);return {...snapshot(String(row.worktree),String(row.revision),c.stateDir),checks:row.checks?((value:any)=>({...value,output:value.log?logTail(value.log):''}))(JSON.parse(String(row.checks))):null,commit:row.commit_sha,branch:row.branch,decision:row.review};};
+  const review=(row:any)=>{available(row);return {project:row.project,...snapshot(String(row.worktree),String(row.revision),c.stateDir),checks:row.checks?((value:any)=>({...value,output:value.log?logTail(value.log):''}))(JSON.parse(String(row.checks))):null,commit:row.commit_sha,branch:row.branch,decision:row.review};};
   function validate(row:any,expected:string){
-    if(accountBusy())throw Error('Finish the account change before running checks');
+    if(accountBusy()||dependencyWork)throw Error('Finish account or dependency preparation before running checks');
     if(projectBusy(String(row.project)))throw Error('Wait for the repository update.');
     available(row);if(row.review!=='pending')throw Error('This review is already resolved');
     const value=snapshot(String(row.worktree),String(row.revision),c.stateDir);if(value.tree!==expected)throw Error('Changes have changed. Review again.');
-    const p=project(String(row.project));if(!p.check_dependencies)throw Error('An administrator must configure project check dependencies first');
+    const p=project(String(row.project));if(!p.check_dependencies)throw Error('Open Set up checks to prepare this project’s dependencies.');
+    if(p.check_manifest&&checkManifest(String(row.worktree)).fingerprint!==p.check_manifest)throw Error('Dependency files changed. Open Set up checks for this review.');
     const hash=createHash('sha256').update(readFileSync(join(String(row.worktree),'package-lock.json'))).digest('hex');
-    if(hash!==p.check_lock)throw Error('Dependencies changed. An administrator must prepare the new dependency set.');
+    if(hash!==p.check_lock)throw Error('Dependencies changed. Open Set up checks for this review.');
     const log=join(c.logs,String(row.id)+'.checks.log');
     const sandbox=(c.isolate??isolated)(String(row.worktree),c.stateDir,process.execPath,[fileURLToPath(new URL('./check-worker.ts',import.meta.url))],undefined,String(p.check_dependencies));
     const fd=openSync(log,'w',0o600);let child:ChildProcess;
@@ -235,6 +254,9 @@ export function runner(c: Config) {
   }
   function request(input:any){
     if(closing)throw new Error('Service is stopping');
+    if(input.op==='check-setup')return setupView(input);
+    if(input.op==='check-prepare')return startSetup(input);
+    if(input.op==='check-cancel'){if(!dependencyWork||dependencyWork.id!==input.id)throw Error('Preparation not found.');dependencyWork.abort.abort();return {ok:true};}
     if(input.op==='github-status')return github.view(input.owner);
     if(input.op==='github-start'){if(repositoryWork)throw Error('Wait for the repository operation.');return github.start(input.owner);}
     if(input.op==='github-cancel')return github.cancel(input.owner,input.session);
@@ -245,7 +267,7 @@ export function runner(c: Config) {
     if(input.op==='account-session')return {session:accountManager.view(input.owner),busy:accountManager.busy()};
     if(input.op==='account-start'){
       if(!['login','logout'].includes(input.action))throw Error('Unsupported account action');
-      if(active||preparing||renewalManager?.busy()||checkingAccounts||db.prepare("SELECT id FROM tasks WHERE status='queued'").get())throw Error('Wait for current work or account checks to finish before changing accounts.');
+      if(active||dependencyWork||preparing||renewalManager?.busy()||checkingAccounts||db.prepare("SELECT id FROM tasks WHERE status='queued'").get())throw Error('Wait for current work or account checks to finish before changing accounts.');
       const result=accountManager.start(input.owner,input.adapter,input.action);audit('account-'+input.action,null,{adapter:input.adapter});return result;
     }
     if(input.op==='account-code')return accountManager.submit(input.owner,input.session,input.code);
@@ -264,13 +286,14 @@ export function runner(c: Config) {
           return {id:row.id,adapter:row.adapter,mode:row.mode,status:row.status,created:row.created,updated:row.updated,error:operationError(row.error),review:row.review,project:row.project,projectName:row.project_name,conversation:row.conversation,conversationTitle:row.conversation_title,checkStatus};
         });
       const adapters=capabilities().map(value=>({...value,account:accountCache.get(value.id),...(renewalManager?{renewal:renewalManager.view(value.id)}:{}),usage:{state:'unavailable',message:'Usage limits are not reported by this native CLI'}}));
-      return {generatedAt:new Date().toISOString(),service:{state:'healthy',scheduler:'serial',activeTask:active?.id??null,queueDepth:counts.queued??0,security:c.strictWorkers?'hardened':'standard',accountChange:accountManager.busy(),renewing:!!preparing},counts,tasks,adapters};
+      return {generatedAt:new Date().toISOString(),service:{state:'healthy',dependencySetup:!!dependencyWork,scheduler:'serial',activeTask:active?.id??null,queueDepth:counts.queued??0,security:c.strictWorkers?'hardened':'standard',accountChange:accountManager.busy(),renewing:!!preparing},counts,tasks,adapters};
     }
     if(input.op==='audit')return db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 100').all();
     if(input.op==='project-checks'){
+      if(dependencyWork||active)throw Error('Wait for checks or dependency preparation.');
       const p=project(input.id);if(typeof input.dependencies!=='string'||!isAbsolute(input.dependencies))throw Error('Absolute dependency directory required');
       const dependencies=realpathSync(input.dependencies);const hash=createHash('sha256').update(readFileSync(join(String(p.repo),'package-lock.json'))).digest('hex');
-      db.prepare('UPDATE projects SET check_dependencies=?,check_lock=? WHERE id=?').run(dependencies,hash,input.id);return project(input.id);
+      db.prepare('UPDATE projects SET check_dependencies=?,check_lock=?,check_manifest=NULL WHERE id=?').run(dependencies,hash,input.id);return project(input.id);
     }
     if(input.op==='projects')return db.prepare(`SELECT p.*, (SELECT count(*) FROM conversations c WHERE c.project=p.id AND c.archived=0) AS conversations FROM projects p WHERE p.archived=0 ORDER BY p.created,p.id`).all();
     if(input.op==='project-create'||input.op==='project-register'){
@@ -288,7 +311,7 @@ export function runner(c: Config) {
       db.prepare('INSERT INTO projects(id,name,repo,created) VALUES(?,?,?,?)').run(id,name,repo,new Date().toISOString());return project(id);
     }
     if(input.op==='project-archive'||input.op==='project-restore'){
-      if(projectBusy(input.id))throw Error('Wait for the repository update.');
+      if(dependencyWork||projectBusy(input.id))throw Error('Wait for the repository update.');
       const p=project(input.id),archive=input.op==='project-archive';
       if(archive&&db.prepare("SELECT id FROM tasks WHERE project=? AND (status IN ('waiting_for_approval','queued','running','cancelling') OR review='pending') LIMIT 1").get(input.id))throw Error('Finish or cancel pending runs and resolve reviews before archiving this project.');
       if(archive&&active&&get(active.id)?.project===p.id)throw Error('Stop the current checks before archiving this project.');
@@ -418,7 +441,7 @@ export function runner(c: Config) {
     if(input.op==='show')return {task:row,output:row.log?logTail(String(row.log)):'',images:JSON.parse(String(row.attachments)).map((id:string)=>attachment(id)),events:db.prepare('SELECT status,at FROM events WHERE task=? ORDER BY id').all(input.id)};
     if(input.op==='approve'){
       if(projectBusy(String(row.project)))throw Error('Wait for the repository update.');
-      if(accountBusy())throw Error('Finish the account change before approving work');
+      if(accountBusy()||dependencyWork)throw Error('Finish the account change or dependency preparation before approving work');
       if(row.status!=='waiting_for_approval')throw new Error('Task is not waiting for approval');
       requireAdapter(String(row.adapter),String(row.mode));
       audit('approve-run',input.id,{adapter:row.adapter,mode:row.mode,revision:row.revision});
@@ -450,5 +473,5 @@ export function runner(c: Config) {
   const controlPath=process.env.AGENTD_CONTROL_SOCKET??socket;
   server.listen(controlPath);
   server.on('listening',()=>pump());
-  return {request,server,async close(){closing=true;repositoryWork?.abort.abort();await repositoryWork?.done;await github.close();clearInterval(accountTimer);await accountManager.close();await renewalManager?.close();await preparation;const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
+  return {request,server,async close(){closing=true;dependencyWork?.abort.abort();await dependencyWork?.done;repositoryWork?.abort.abort();await repositoryWork?.done;await github.close();clearInterval(accountTimer);await accountManager.close();await renewalManager?.close();await preparation;const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
 }

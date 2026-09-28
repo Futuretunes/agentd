@@ -25,7 +25,9 @@ Acceptance: a nontechnical operator can complete the supported setup, sign-in, p
 
 Implemented and installed in v0.12.0: [workspace history and recovery](workspace-history.md) adds searchable conversation history with older-turn pagination, reversible project/conversation archiving, run timelines and authenticated output downloads, and browser-tab draft recovery. Desktop and phone-width flows were checked with fixtures; no model work was submitted.
 
-Implemented in v0.13.0, pending installation: [GitHub import and safe updates](repositories.md), including branch discovery, guided native GitHub device sign-in for private repositories, background progress/cancellation, and clean fast-forward updates. Public clone and native login startup verified on the VM; private-repository consent requires operator acceptance.
+Implemented and installed in v0.13.0: [GitHub import and safe updates](repositories.md), including branch discovery, guided native GitHub device sign-in for private repositories, background progress/cancellation, and clean fast-forward updates. Public clone and native login startup verified on the VM; the operator confirmed the import GUI works; private-repository consent remains operator-controlled.
+
+Implemented in v0.14.0, pending installation: GUI npm dependency/check setup from Project details and edit reviews. Explicit manifest-bound preparation approval, registry-only credential-free downloads with install scripts disabled, cancellation/recovery, and offline exact-content checks. See [reviewable editing](editing.md).
 
 High-priority follow-up:
 
@@ -36,8 +38,9 @@ High-priority follow-up:
 Planned, with no release-date commitment:
 
 - Cursor integration through the adapter contract, including installation and native/subscription authentication validation.
-- GUI setup for project check profiles and dependencies, so imported repositories can run meaningful checks and complete approved commits without terminal setup. Recommended next item.
-- Approved GitHub branch publishing / pull requests and revision requests before committing.
+- Extend check profiles beyond single-package public npm: monorepos, other languages, private registries and narrowly reviewed build steps.
+- Approved GitHub branch publishing / pull requests, with exact commit previews and protected credentials. Recommended next item.
+- Revision requests before committing.
 - Further worker credential separation, resource limits and stronger isolation beyond the single-operator profile.
 - Structured results, task-specific validation and richer event streams.
 - Mobile notifications and approvals through ntfy; durable interrupts and resumable sessions.

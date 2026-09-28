@@ -55,6 +55,8 @@ export function mobile(c:Config){
     try{const value=await call({op:'account-session',owner:accountOwner});if(value?.session&&value.busy)await call({op:'account-cancel',owner:accountOwner,session:value.session.id});}catch{}
     sessions.delete(id);res.setHeader('Set-Cookie','agentd_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');send(200,{ok:true});return;
    }
+   if(path==='/api/check-setup'&&req.method==='GET'){const url=new URL(req.url??'/',c.origin);send(200,await call({op:'check-setup',project:url.searchParams.get('project'),task:url.searchParams.get('task')||undefined}));return;}
+   if(path==='/api/check-setup'&&req.method==='POST'){const input=await body(req);if(!['prepare','cancel'].includes(input.action))throw Error('Unsupported setup action');send(200,await call({op:input.action==='prepare'?'check-prepare':'check-cancel',project:input.project,task:input.task,fingerprint:input.fingerprint,id:input.id}));return;}
    if(path==='/api/github'&&req.method==='GET'){send(200,await call({op:'github-status',owner:accountOwner}));return;}
    if(path==='/api/github'&&req.method==='POST'){
     const input=await body(req);if(!['start','cancel','logout'].includes(input.action))throw Error('Unsupported GitHub action');send(200,await call({op:'github-'+input.action,owner:accountOwner,session:input.session}));return;

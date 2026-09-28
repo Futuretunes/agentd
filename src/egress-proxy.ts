@@ -4,6 +4,7 @@ import {chmodSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 
 export const providerHosts:Record<string,readonly string[]>={
+  npm:['registry.npmjs.org'],
   claude:['api.anthropic.com','claude.ai','platform.claude.com'],
   codex:['chatgpt.com','auth.openai.com','api.openai.com'],
 };

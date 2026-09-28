@@ -14,7 +14,7 @@ Operations run in the background, one at a time, with progress, cancel and store
 - One branch, up to 100 commits at import, no tags; 120 seconds per Git command, 512 MB / 100,000 files per repository checked during and after transfer. These are application limits rather than OS disk quotas; brief transfer overshoot is possible. Long-history updates that cannot establish ancestry are refused.
 - Empty repositories and unusual branch names outside the supported safe subset cannot be imported.
 - Submodules, LFS downloads, dependency installs, hooks and repository setup scripts are not run. LFS pointer files may remain.
-- Imported projects can be inspected and edited through supported agents. Configuring check dependencies is still administrative; GUI check-profile setup is the next backlog item. Importing does not silently approve dependency installation or test execution.
+- Imported projects can be inspected and edited through supported agents. Use Set up checks in Project details or an edit review for supported public npm projects. Other dependency/check profiles still need administrative setup. Importing does not silently approve dependency installation or test execution.
 - Connecting uses the service account's GitHub identity. Multi-user authorization, selecting among multiple GitHub accounts, push and pull requests remain future work.
 - Native login startup has been verified without consent. End-to-end private import still needs the operator to connect their GitHub account and select a repository.
 

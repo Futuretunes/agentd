@@ -14,15 +14,19 @@ Codex uses `workspace-write`; Claude uses an explicit Read/Glob/Grep/Edit/Write 
 
 ## Configure checks
 
-The first check profile supports npm projects. An administrator prepares the repository's dependencies with `npm ci --ignore-scripts`, then registers that `node_modules` directory through the private control socket:
+Use **Project details → Set up checks**, or **Set up checks** inside an edit review. The latter uses that review's package files, including approved changes to dependencies. Inspect the displayed `typecheck` / `test` scripts, then choose **Approve dependency preparation**. Preparation is separate from running checks and approving a commit.
 
-```sh
-sudo -H -u agentd /usr/local/bin/agentctl project-checks PROJECT_ID /absolute/path/to/node_modules
-```
+The first GUI profile supports single-package npm projects with `package.json`, a version 2/3 `package-lock.json`, and an explicit test script. It downloads locked public-registry packages with SHA-512 integrity, includes development dependencies, enforces package engine compatibility, and disables all installation lifecycle scripts. Private registries, workspaces, Git/file/URL dependencies, alternate package managers and custom install flags are unsupported. A package needing generated files from install scripts may prepare successfully but fail its checks; no blanket script bypass is provided.
 
-The directory must remain readable by the service. Registration records the current repository's `package-lock.json` hash. Check runs reject changed lockfiles until an administrator prepares and registers matching dependencies. This release does not install packages from agent-controlled instructions.
+A dedicated bubblewrap sandbox sees only copies of the two manifests, temporary HOME/cache, selected read-only system runtime and agentd code. It has no repository, Git metadata, service state or account credentials. Its network namespace reaches only `registry.npmjs.org:443` through the existing public-address-checking broker. Provider workers do not gain registry access. The production path has no unsandboxed fallback.
 
-Checks run `npm run typecheck --if-present`, followed by `npm test`, in a separate bubblewrap sandbox with no network or provider credentials. Dependencies are mounted read-only. The UI displays actual output and status. Missing scripts, unavailable dependencies, and unsupported check profiles fail rather than being represented as success. Do not configure packages that need lifecycle scripts without separately reviewing and preparing them.
+Preparation requires approval bound to the exact manifest and lockfile hashes. It is serialized with repository changes, task starts, checks and account changes. Downloads have a four-minute limit and a monitored 512 MB/100,000-file staging limit (not a hard disk quota). Cancel or failure removes the incomplete set and preserves the old setup; restart marks pending jobs interrupted. Finished sets remain immutable to workers and retained on disk; retention is a future item.
+
+After preparation, close setup and choose **Run checks** in the review. Checks run `npm --ignore-scripts run typecheck --if-present` and `npm --ignore-scripts test`, with no network or provider credentials and read-only dependencies. Explicitly selected scripts execute; automatic pre/post hooks do not. Results and commit approval remain bound to the complete reviewed tree. Missing tests or changed manifest/lockfile require setup again; there is no skip-checks commit path. A project's setup can be reused by reviews with the same package files.
+
+Existing administrator-registered dependency sets remain supported through the private `project-checks` command; GUI setup replaces them only after successful preparation. They are not silently reinstalled during application upgrades.
+
+See [npm ci](https://docs.npmjs.com/cli/v11/commands/npm-ci/) for lockfile and ignore-scripts behavior. Project checks can execute arbitrary repository code inside the offline worktree sandbox; a passing command does not establish test quality. Read the scripts and diff before approval.
 
 ## Review binding
 
