@@ -29,7 +29,7 @@ Implemented and installed in v0.13.0: [GitHub import and safe updates](repositor
 
 Implemented and installed in v0.14.0: GUI npm dependency/check setup from Project details and edit reviews. Explicit manifest-bound preparation approval, registry-only credential-free downloads with install scripts disabled, cancellation/recovery, and offline exact-content checks. See [reviewable editing](editing.md).
 
-Implemented in v0.15.0, pending installation: exact-commit GitHub publication previews, separate upload approval, dedicated branches, draft PR creation and recovery after uncertain GitHub responses. See [publishing](publishing.md). Live publication remains operator-approved.
+Implemented and installed in v0.15.0 (66 deployment tests passed): exact-commit GitHub publication previews, separate upload approval, dedicated branches, draft PR creation and recovery after uncertain GitHub responses. See [publishing](publishing.md). Live publication remains operator-approved.
 
 High-priority follow-up:
 
@@ -37,18 +37,31 @@ High-priority follow-up:
 - Implemented and installed in v0.10.0: **Codex Chat only**, text Q&A through the native ChatGPT login, with no advertised tools and no repository mounted. The pinned CLI rejects injected execution calls; its read-only policy rejects patches. See [Chat only](codex-chat.md). Native Ask and Edit remain disabled for Codex.
 - Restore Codex availability only through a validated solution compatible with the host's namespace restrictions. No inner-sandbox bypass.
 
-Planned, with no release-date commitment:
+## Prioritized backlog
 
-- Cursor integration through the adapter contract, including installation and native/subscription authentication validation.
-- Extend check profiles beyond single-package public npm: monorepos, other languages, private registries and narrowly reviewed build steps.
-- Revision requests before committing. Recommended next item: ask for changes from the review screen while preserving the current edits and requiring fresh checks and commit approval.
-- Further worker credential separation, resource limits and stronger isolation beyond the single-operator profile.
-- Structured results, task-specific validation and richer event streams.
-- Mobile notifications and approvals through ntfy; durable interrupts and resumable sessions.
-- Optional audio capture/transcription with an explicit privacy and cost model.
-- Prometheus/Grafana dashboards and Loki/Alloy log integration.
-- Alertmanager, Vault, n8n and MCP integration.
-- VPN/reverse-proxy deployment, multi-user authentication and authorization.
-- Retention, cleanup, migrations, backup/restore and release automation.
+Order agreed with the operator on 2026-09-28: finish the GitHub workflow, integrate Cursor CLI, then deliver configurable environment permissions. Permission-policy design may begin during adapter work to avoid incompatible implementations. These are planned milestones, not installed capabilities or release-date commitments.
+
+1. **Finish the GitHub review/publishing workflow.** Verify the first live approved draft PR; add revision requests before committing, updates to existing PRs, review-comment synchronization, and GUI handling of advanced bases/conflicts. Design separately approved merge operations and fork workflows. Preserve exact-content checks and explicit publication approval.
+2. **Cursor CLI integration.** Use the official native CLI and Cursor account/subscription login. Evaluate ACP for prompts, streamed results, cancellation and permission requests. Validate login/renewal, subscription-limit handling, model selection, and sandbox/network compatibility before enabling Ask/Edit. Expose setup and status through the GUI; no separate provider API key requirement or automatic activation of paid overages.
+3. **Configurable environment permissions.** GUI project defaults, conversation overrides and per-agent CLI settings, changeable at any time. Isolated worktrees remain the default. Show effective filesystem, execution, network and tool permissions and their inheritance before approval. Broader access requires explicit scoped consent; running jobs need a clear stop/restart transition rather than an unnoticed permission change. See [environment permission design requirements](environment-permissions.md).
+4. **Codex repository access.** Validate Ask/Edit compatibility with host namespace restrictions without bypassing the inner sandbox. User-selectable policies do not turn unsupported sandbox combinations into supported ones.
+5. **Mobile notifications.** ntfy approval requests, completion/failure alerts and authenticated links to the relevant work.
+6. **GUI administration.** Guided agentd/native CLI updates, service controls, diagnostics and rollback through a narrowly scoped management interface.
+7. **GUI backup and restore.** Recovery verification, migrations and credential-safe restoration.
+8. **Credits and limits.** Provider-supported usage, reset times, freshness, warnings and actionable limit failures; honest unavailable states where no reliable interface exists.
+9. **Task progress and validation.** Structured results, richer event streams and task-specific completion evidence.
+10. **Interrupt and resume.** Durable interrupts and supported native-session resume, distinct from starting a fresh retry.
+11. **Broader check profiles.** Monorepos, other languages/package managers, private registries and narrowly reviewed build steps.
+12. **Project-level orchestration.** Plans, dependent tasks, agent handoffs and controlled parallel scheduling with resource and approval policies. The current scheduler is serial.
+13. **Storage lifecycle.** Retention/cleanup for worktrees, logs, images, prepared dependencies and backups, with active-work protection and storage visibility.
+14. **Accounts and adapters.** Supported account selection, multiple GitHub identities and additional future agent adapters.
+15. **Additional isolation.** Further worker credential separation, CPU/memory/disk limits and stronger boundaries beyond the single-operator profile.
+16. **Monitoring.** Prometheus/Grafana dashboards, Loki/Alloy log integration and Alertmanager alerts.
+17. **Infrastructure integrations.** Vault, n8n and MCP with explicit permission boundaries.
+18. **Remote access.** VPN/reverse proxy, then multi-user authentication and authorization where needed.
+19. **Recorded voice.** Optional audio capture/transcription with an explicit privacy and cost model; keyboard dictation already works.
+20. **Open-source release operations.** Repeatable releases, upgrade compatibility, migration and deployment automation.
+
+Every milestone includes desktop/phone acceptance, actionable failures, cancellation/recovery where relevant, and preservation of the approval model. Full Codex GUI consent, private GitHub sign-in/import, task retry acceptance and the first live publication still need recorded operator verification.
 
 A feature listed here is not a promise that the current release supports it.
