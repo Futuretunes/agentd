@@ -39,3 +39,17 @@ export function treeSnapshot(worktree:string,revision:string,tree:string){
     const truncated=Buffer.byteLength(patch)>180000;
     return {tree,files:names,summary,patch:patch.slice(0,180000),truncated,blocked};
 }
+
+// Materialize only the approved Git tree, never the agent's mutable working directory.
+// A detached worktree supplies the Git metadata expected by the isolation boundary.
+export function checkSnapshot(repo:string,revision:string,tree:string,stateDir:string) {
+  if(!/^[a-f0-9]{40}$/.test(tree))throw Error('Invalid check snapshot');
+  const root=mkdtempSync(join(stateDir,'check-tree-')),worktree=join(root,'worktree');
+  let registered=false;
+  const cleanup=()=>{try{if(registered){git(repo,['worktree','remove','--force',worktree]);registered=false;}}finally{rmSync(root,{recursive:true,force:true});}};
+  try {
+    git(repo,['worktree','add','--detach','--no-checkout',worktree,revision]);registered=true;
+    restoreSnapshot(worktree,tree);
+    return {worktree,cleanup};
+  } catch(error) {cleanup();throw error;}
+}

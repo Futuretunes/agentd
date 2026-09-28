@@ -1590,6 +1590,29 @@ async function openReview(id) {
       ),
     );
   } else if (value.commit) {
+    if (
+      value.checks?.input !== "git-tree-v1" ||
+      value.checks?.status !== "passed"
+    ) {
+      content.append(
+        node(
+          "p",
+          "These committed files need fresh snapshot checks before publication. Earlier checks are no longer accepted.",
+          "attention",
+        ),
+      );
+      actions.append(
+        button(
+          "Recheck committed files",
+          async () => {
+            await api("/api/action", { op: "validate", id, tree: value.tree });
+            checking = id;
+          },
+          "primary",
+        ),
+      );
+    }
+
     content.append(
       node("p", `Committed on ${value.branch}`, "muted"),
       node("p", value.commit, "path"),

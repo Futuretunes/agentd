@@ -92,43 +92,7 @@ try {
   let app = runner(config);
   await once(app.server, "listening");
   try {
-    const t = app.request({
-      op: "create",
-      adapter: "claude",
-      mode: "edit",
-      prompt: "fixture",
-    });
-    app.request({ op: "approve", id: t.id });
-    await wait(
-      () => app.request({ op: "show", id: t.id }).task.status === "succeeded",
-    );
-    const row = app.request({ op: "show", id: t.id }).task,
-      v = app.request({ op: "review", id: t.id });
-    assert.deepEqual(v.files, ["README.md"]);
-    app.request({ op: "project-checks", id: "default", dependencies: deps });
-    app.request({ op: "validate", id: t.id, tree: v.tree });
-    const checks = await wait(() => {
-      const c = JSON.parse(
-        app.request({ op: "show", id: t.id }).task.checks ?? "{}",
-      );
-      return c.status && c.status !== "running" ? c : null;
-    });
-    assert.equal(checks.status, "passed");
-    const clean = join(root, "clean");
-    git(f.repo, ["worktree", "add", "--detach", clean, f.revision]);
-    git(clean, ["read-tree", "--reset", "-u", v.tree]);
-    const result = spawnSync(process.execPath, ["test.cjs"], {
-      cwd: clean,
-      encoding: "utf8",
-    });
-    assert.notEqual(result.status, 0);
-    assert.equal(existsSync(join(clean, "dist/impl.cjs")), false);
-    out("R4", {
-      checks: checks.status,
-      reviewedFiles: v.files,
-      cleanSnapshotTestExit: result.status,
-      realLinuxCheckIsolation: process.platform === "linux",
-    });
+    // R4 is fixed; desired behavior is covered by test/check-snapshot.test.mjs.
     const first = app.request({
         op: "create",
         adapter: "claude",

@@ -39,3 +39,8 @@ Commit creation uses Git plumbing with hooks disabled, and creates a new branch 
 ## Validation
 
 `npm test` exercises review behavior using deterministic workers. On a Linux machine with bubblewrap, `AGENTD_TEST_ISOLATION=1 npm test` also verifies real filesystem write restrictions. Native subscription login/edit smoke tests are separate operator-run checks; automated CI does not spend model tokens.
+
+
+## Exact-tree checks (candidate 0.20.0)
+
+Checks execute in a fresh temporary worktree populated from the reviewed Git tree, with approved dependencies mounted separately. Ignored workspace files and attachments cannot supply hidden test inputs. A changed reviewed tree invalidates the result. Previous-version passing results are marked stale; run checks again. For already committed turns, use **Recheck committed files** before publication. The current files must match that commit exactly; rechecking does not rewrite it or approve publication.

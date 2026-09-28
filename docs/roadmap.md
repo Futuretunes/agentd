@@ -41,9 +41,13 @@ High-priority follow-up:
 - Implemented and installed in v0.10.0: **Codex Chat only**, text Q&A through the native ChatGPT login, with no advertised tools and no repository mounted. The pinned CLI rejects injected execution calls; its read-only policy rejects patches. See [Chat only](codex-chat.md). Native Ask and Edit remain disabled for Codex.
 - Restore Codex availability only through a validated solution compatible with the host's namespace restrictions. No inner-sandbox bypass.
 
+## Candidate 0.20.0 progress
+
+Implemented, not installed: task desk UI/UX redesign and R4 exact-tree checks with legacy check invalidation. R11 has a non-skipping Linux CI job; protected-branch enforcement remains. Final candidate Linux validation: 99/99, no skips. See [handover](handovers/2026-09-28-snapshot-checks.md). Next engineering work: release-baseline decision, tracked reproducible deployment/task-schema migration and remaining backend reviewability. Actual-phone acceptance and other open UX/engineering findings remain.
+
 ## Stabilization gate after independent review — 2026-09-28
 
-Claude's [review](reviews/2026-09-28-claude-review.md) and Codex's [verified response](reviews/2026-09-28-claude-review-response.md) supersede the next-feature recommendation below. Findings remain open; neither review nor response fixes the application. Do not treat a green test suite as evidence covering the demonstrated omitted cases.
+Claude's [review](reviews/2026-09-28-claude-review.md) and Codex's [verified response](reviews/2026-09-28-claude-review-response.md) supersede the next-feature recommendation below. The review and response themselves did not fix the application; candidate implementation progress is recorded above. Remaining findings stay open. Do not treat a green test suite as evidence covering the demonstrated omitted cases.
 
 1. **R1 — Reviewed release baseline:** pause feature-stack growth; operator chooses merge/consolidation, then tag a reviewed and validated baseline. No automatic merges.
 2. **R4/R11 — Exact-snapshot checks and mandatory Linux isolation CI:** highest-priority corrective implementation. Ignored files must not make an otherwise failing reviewed snapshot pass; required CI must execute real boundaries without skips.

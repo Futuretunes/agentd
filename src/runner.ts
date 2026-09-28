@@ -8,7 +8,7 @@ import {renewals,renewalFailure} from './renewal.ts';
 import {githubURL,branchName,repositoryGit,inspectRepository,updateRepository,type RepositoryGit} from './repositories.ts';
 import {githubAccount} from './github-account.ts';
 import {accounts} from './accounts.ts';
-import {snapshot,commitSnapshot,restoreSnapshot} from './changes.ts';
+import {snapshot,commitSnapshot,restoreSnapshot,checkSnapshot} from './changes.ts';
 import {isolated} from './isolation.ts';
 import {fileURLToPath} from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
@@ -51,6 +51,8 @@ export function runner(c: Config) {
   db.exec('CREATE TABLE IF NOT EXISTS execution_settings(scope TEXT,scope_id TEXT,agent TEXT,settings TEXT,updated TEXT,PRIMARY KEY(scope,scope_id,agent))');
   const projectColumns=db.prepare('PRAGMA table_info(projects)').all().map(x=>x.name);
   for(const name of ['check_dependencies','check_lock','github_url','github_branch','check_manifest'])if(!projectColumns.includes(name))db.exec(`ALTER TABLE projects ADD COLUMN ${name} TEXT`);
+  // Old check results may have consumed ignored files. Never reuse them as exact-tree evidence.
+  db.exec("UPDATE tasks SET checks=json_set(checks,'$.status','stale') WHERE json_valid(checks) AND json_extract(checks,'$.status')='passed' AND coalesce(json_extract(checks,'$.input'),'')!='git-tree-v1'");
   db.prepare("UPDATE tasks SET checks=? WHERE json_extract(checks,'$.status')='running'").run(JSON.stringify({status:'interrupted'}));
   db.exec("CREATE TABLE IF NOT EXISTS repository_jobs(id TEXT PRIMARY KEY,kind TEXT,state TEXT,project TEXT,source TEXT,branch TEXT,result TEXT,error TEXT,updated TEXT)");
   db.prepare("UPDATE repository_jobs SET state='interrupted',error='Service stopped. Start this operation again.' WHERE state='running'").run();
@@ -154,7 +156,7 @@ export function runner(c: Config) {
   let publicationWork:{done:Promise<void>;abort:AbortController}|undefined;
   const publicationView=(task:string)=>db.prepare('SELECT id,task,state,plan,error,url,updated,expires FROM publications WHERE task=? ORDER BY rowid DESC LIMIT 5').all(task).map((row:any)=>({...row,plan:row.plan?JSON.parse(row.plan):null}));
   const publishTarget=(id:string)=>{const row=get(id);if(!row||row.review!=='committed'||!row.commit_sha)throw Error('Approve a local commit with passing checks before publishing.');const p=project(String(row.project));if(p.archived)throw Error('Restore this project before publishing.');return {row,p};};
-  const approvedCommit=(projectId:string,sha:string,tree:string)=>{const row=db.prepare("SELECT checks FROM tasks WHERE project=? AND commit_sha=? AND review='committed'").get(projectId,sha);if(!row)return false;const checks=JSON.parse(String(row.checks??'{}'));return checks.status==='passed'&&checks.tree===tree;};
+  const approvedCommit=(projectId:string,sha:string,tree:string)=>{const row=db.prepare("SELECT checks FROM tasks WHERE project=? AND commit_sha=? AND review='committed'").get(projectId,sha);if(!row)return false;const checks=JSON.parse(String(row.checks??'{}'));return checks.status==='passed'&&checks.input==='git-tree-v1'&&checks.tree===tree;};
   const publicationTargets=(task:string,includeCurrent=false)=>{const {row}=publishTarget(task);return db.prepare("SELECT p.id,p.url,p.plan FROM publications p JOIN tasks t ON t.id=p.task WHERE p.state='published' AND t.conversation=? AND t.project=? AND t.id!=? ORDER BY p.rowid DESC").all(row.conversation,row.project,includeCurrent?'':task).map((p:any)=>({id:p.id,url:p.url,plan:JSON.parse(p.plan)})).filter((p:any,i:number,list:any[])=>list.findIndex(q=>q.plan.branch===p.plan.branch)===i).map((p:any)=>({id:p.id,url:p.url,branch:p.plan.branch,base:p.plan.base,head:p.plan.head}));};
   function startPublication(input:any,approve=false){
     if(!/^[a-f0-9]{64}$/.test(input.owner??''))throw Error('Authenticated browser session required.');
@@ -341,25 +343,31 @@ export function runner(c: Config) {
   function validate(row:any,expected:string){
     if(accountBusy()||dependencyWork)throw Error('Finish account or dependency preparation before running checks');
     if(projectBusy(String(row.project)))throw Error('Wait for the repository update.');
-    available(row);if(row.review!=='pending')throw Error('This review is already resolved');
+    available(row);if(!['pending','committed'].includes(row.review))throw Error('This review is already resolved');
     const value=snapshot(String(row.worktree),String(row.revision),c.stateDir);if(value.tree!==expected)throw Error('Changes have changed. Review again.');
+    if(row.review==='committed'&&git(['rev-parse',String(row.commit_sha)+'^{tree}'],String(row.worktree))!==expected)throw Error('Committed files changed. Restore the committed content before rechecking.');
     if(review(row).conflicts.length)throw Error('Resolve conflict markers before running checks.');
     const p=project(String(row.project));if(!p.check_dependencies)throw Error('Open Set up checks to prepare this project’s dependencies.');
-    if(p.check_manifest&&checkManifest(String(row.worktree)).fingerprint!==p.check_manifest)throw Error('Dependency files changed. Open Set up checks for this review.');
-    const hash=createHash('sha256').update(readFileSync(join(String(row.worktree),'package-lock.json'))).digest('hex');
-    if(hash!==p.check_lock)throw Error('Dependencies changed. Open Set up checks for this review.');
+    const prepared=checkSnapshot(String(row.worktree),String(row.revision),expected,c.stateDir);
+    let sandbox:ReturnType<typeof isolated>|undefined;
     const log=join(c.logs,String(row.id)+'.checks.log');
-    const sandbox=(c.isolate??isolated)(String(row.worktree),c.stateDir,process.execPath,[fileURLToPath(new URL('./check-worker.ts',import.meta.url))],undefined,String(p.check_dependencies));
-    const fd=openSync(log,'w',0o600);let child:ChildProcess;
-    try{child=spawn(sandbox.command,sandbox.args,{cwd:String(row.worktree),env:{PATH:process.env.PATH,HOME:homedir(),LANG:'C.UTF-8',TERM:'dumb'},detached:true,stdio:['ignore',fd,fd]});}finally{closeSync(fd);}
-    db.prepare('UPDATE tasks SET checks=? WHERE id=?').run(JSON.stringify({status:'running',tree:expected,log}),row.id);
+    let child:ChildProcess;
+    try {
+      if(p.check_manifest&&checkManifest(prepared.worktree).fingerprint!==p.check_manifest)throw Error('Dependency files changed. Open Set up checks for this review.');
+      const hash=createHash('sha256').update(readFileSync(join(prepared.worktree,'package-lock.json'))).digest('hex');
+      if(hash!==p.check_lock)throw Error('Dependencies changed. Open Set up checks for this review.');
+      sandbox=(c.isolate??isolated)(prepared.worktree,c.stateDir,process.execPath,[fileURLToPath(new URL('./check-worker.ts',import.meta.url))],undefined,String(p.check_dependencies));
+      const fd=openSync(log,'w',0o600);
+      try{child=spawn(sandbox.command,sandbox.args,{cwd:prepared.worktree,env:{PATH:process.env.PATH,HOME:homedir(),LANG:'C.UTF-8',TERM:'dumb'},detached:true,stdio:['ignore',fd,fd]});}finally{closeSync(fd);}
+    } catch(error) {try{sandbox?.cleanup();}finally{prepared.cleanup();}throw error;}
+    db.prepare('UPDATE tasks SET checks=? WHERE id=?').run(JSON.stringify({status:'running',tree:expected,log,input:'git-tree-v1'}),row.id);
     let stopped:string|null=null,spawnError='';let resolveDone!:()=>void;const done=new Promise<void>(resolve=>resolveDone=resolve);
     const kill=()=>{if(child.pid)try{process.kill(-child.pid,'SIGKILL');}catch{}};
     const stop=(reason='cancelled')=>{stopped=reason;kill();};const timer=setTimeout(()=>stop('timed_out'),240000);
     active={id:String(row.id),child,done,stop};child.on('error',error=>spawnError=error.message);
-    child.on('close',code=>{clearTimeout(timer);kill();sandbox.cleanup();let status=stopped??(code===0&&!spawnError?'passed':'failed');
+    child.on('close',code=>{clearTimeout(timer);kill();let cleanupError=false;try{sandbox!.cleanup();}catch{cleanupError=true;}try{prepared.cleanup();}catch{cleanupError=true;}let status=stopped??(code===0&&!spawnError&&!cleanupError?'passed':'failed');
       try{if(snapshot(String(row.worktree),String(row.revision),c.stateDir).tree!==expected)status='stale';}catch{status='stale';}
-      db.prepare('UPDATE tasks SET checks=? WHERE id=?').run(JSON.stringify({status,tree:expected,log,exitCode:code,error:spawnError||null,at:new Date().toISOString()}),row.id);
+      db.prepare('UPDATE tasks SET checks=? WHERE id=?').run(JSON.stringify({status,tree:expected,log,input:'git-tree-v1',exitCode:code,error:spawnError||null,at:new Date().toISOString()}),row.id);
       active=undefined;resolveDone();if(!closing)setImmediate(pump);
     });return {status:'running'};
   }
@@ -603,7 +611,7 @@ export function runner(c: Config) {
       if(value.conflicts.length)throw Error('Resolve conflict markers before committing.');
       if(value.tree!==input.tree)throw Error('Changes have changed. Review again.');
       if(value.truncated||value.blocked.length)throw Error('Review contains oversized changes or sensitive filenames; resolve them before committing');
-      if(value.checks?.status!=='passed'||value.checks.tree!==value.tree)throw Error('Checks must pass for the exact reviewed changes');
+      if(value.checks?.status!=='passed'||value.checks.input!=='git-tree-v1'||value.checks.tree!==value.tree)throw Error('Checks must pass for the exact reviewed changes');
       const message=title(input.message),branch='agentd/'+row.id;
       audit('approve-commit',input.id,{tree:value.tree,branch});
       const sha=commitSnapshot(String(project(String(row.project)).repo),String(row.revision),value.tree,branch,message,row.merge_parent?String(row.merge_parent):undefined);
