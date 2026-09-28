@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  rmSync,
+  existsSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
@@ -275,7 +282,9 @@ test("running attempts retain settings; restart preserves partial edits and requ
     });
     f.app.request({ op: "approve", id: task.id });
     const running = await wait(f, task.id, "running");
-    await sleep(100);
+    for (let i = 0; i < 400 && !existsSync(join(running.worktree, "partial.txt")); i++)
+      await sleep(10);
+    assert.equal(existsSync(join(running.worktree, "partial.txt")), true);
     save(f, { model: "sonnet", effort: "high" }, "conversation", task.conversation);
     assert.equal(
       f.app.request({ op: "show", id: task.id }).task.execution,
@@ -294,6 +303,12 @@ test("running attempts retain settings; restart preserves partial edits and requ
     assert.equal(f.app.request({ op: "show", id: task.id }).task.review, "superseded");
     f.app.request({ op: "approve", id: next.id });
     const nextRunning = await wait(f, next.id, "running");
+    for (
+      let i = 0;
+      i < 400 && !existsSync(join(nextRunning.worktree, "partial.txt"));
+      i++
+    )
+      await sleep(10);
     assert.equal(
       readFileSync(join(nextRunning.worktree, "partial.txt"), "utf8"),
       "keep me",

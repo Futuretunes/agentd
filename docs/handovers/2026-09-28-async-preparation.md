@@ -14,7 +14,7 @@ The reviewed fixed-error extractor accepts formatter-inserted trailing commas; c
 
 ## Validation
 
-16 focused runner/preparation tests passed, including event-loop progress, real shared Git-policy rejection and size admission, cancellation with partial files retained, no model dispatch on cancellation, and shutdown. Typecheck passed. Exact Linux archive and CI pending. No live model, account, deployment or deletion operations.
+16 focused runner/preparation tests passed, including event-loop progress, real shared Git-policy rejection and size admission, cancellation with partial files retained, no model dispatch on cancellation, and shutdown. Typecheck passed. The first exact Linux run passed 138/139; a pre-existing settings test assumed running meant checkout had completed. It now waits for the fixture file, preserving its original partial-edit and policy assertions. Corrected exact Linux archive and CI pending. No live model, account, deployment or deletion operations.
 
 ## Remaining and deployment
 
