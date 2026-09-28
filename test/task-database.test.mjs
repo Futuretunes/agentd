@@ -66,7 +66,7 @@ test("ancestry errors roll back schema, data and version; correction can retry",
     assert.deepEqual(dump(db), before);
     db.exec("UPDATE tasks SET parent=NULL WHERE id='a'");
     initializeTaskDatabase(db, "/fixture/repo");
-    assert.equal(taskSchemaVersion(db), 1);
+    assert.equal(taskSchemaVersion(db), TASK_SCHEMA_VERSION);
   } finally {
     db.close();
   }
@@ -136,5 +136,47 @@ test("future schema refuses runner startup before status changes or worker clean
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("version-one receipt migration is atomic with recovery and current receipts are never silently repaired", () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    legacy(db);
+    initializeTaskDatabase(db, "/fixture/repo");
+    db.exec(
+      "DROP TABLE creation_requests; PRAGMA user_version=1; UPDATE tasks SET status='running',checks='broken-json' WHERE id='a'",
+    );
+    const before = dump(db);
+    assert.throws(() => initializeTaskDatabase(db, "/fixture/repo"));
+    assert.deepEqual(dump(db), before);
+    assert.equal(
+      db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE name='creation_requests'",
+        )
+        .get(),
+      undefined,
+    );
+    db.exec("UPDATE tasks SET checks=NULL WHERE id='a'");
+    initializeTaskDatabase(db, "/fixture/repo");
+    assert.equal(taskSchemaVersion(db), 2);
+    assert.equal(
+      db.prepare("SELECT status FROM tasks WHERE id='a'").get().status,
+      "interrupted",
+    );
+    assert.equal(
+      db.prepare("SELECT prompt FROM tasks WHERE id='a'").get().prompt,
+      "first",
+    );
+    db.exec("DROP TABLE creation_requests");
+    const broken = dump(db);
+    assert.throws(
+      () => initializeTaskDatabase(db, "/fixture/repo"),
+      /receipt schema/,
+    );
+    assert.deepEqual(dump(db), broken);
+  } finally {
+    db.close();
   }
 });

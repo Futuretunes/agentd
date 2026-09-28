@@ -41,7 +41,7 @@ The updater verifies files again, excludes concurrent updates, refuses active ta
 
 ## Database compatibility
 
-`tasks.sqlite` now uses `PRAGMA user_version=1`. Historical unversioned layouts (version 0) migrate in one transaction, including legacy project/conversation ancestry and startup recovery. Invalid ancestry, schema validation or recovery failure rolls back schema/data/version together. Versioned schemas are validated and never silently repaired. A future version is refused before task recovery or worker-directory cleanup. Health retains metadata `schemaVersion: 1` and separately reports `taskSchemaVersion` (null with no runner).
+`tasks.sqlite` uses `PRAGMA user_version=2` from release 0.32. Historical unversioned layouts (version 0) and the verified version-1 baseline migrate in one transaction, including legacy project/conversation ancestry, durable creation receipts and startup recovery. Invalid ancestry, schema validation or recovery failure rolls back schema/data/version together. Versioned schemas are validated and never silently repaired. A future version is refused before task recovery or worker-directory cleanup. Releases supporting only schema 1 refuse a schema-2 database; rollback requires the matching pre-update application and task-state backup, never merely replacing the code. Health retains metadata `schemaVersion: 1` and separately reports `taskSchemaVersion` (null with no runner).
 
 This is forward migration only. Older releases predating version checks cannot be trusted to reject a newer task database. Always restore **the prior application and its matching state backup together** when downgrading. Never revert native credential profiles or renewal journals: the provider may already have rotated those credentials.
 

@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-followup-context.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-creation-requests.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.32.0 — durable creation requests (task schema 2)
+
+[Handover](handovers/2026-09-28-creation-requests.md): task/project creation retries reuse a durable result bound to session and request content. Browser pending IDs survive same-tab refresh; different work after an uncertain send requires an explicit choice. Task schema 1→2 migration is transactional. Focused tests passed; exact Linux/CI pending. Production remains 0.22.0/schema 1. R10 asynchronous Git work and broader mutation recovery remain open.
 
 ## Candidate 0.31.0 — explicit follow-up context
 

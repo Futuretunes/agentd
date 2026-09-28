@@ -79,6 +79,7 @@ export function mobile(c: Config) {
             "/",
             "/app.js",
             "/ui.js",
+            "/request-id.js",
             "/style.css",
             "/fonts/geist-400.ttf",
             "/fonts/geist-500.ttf",

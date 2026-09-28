@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { createConnection } from "node:net";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { runner } from "../src/runner.ts";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 test("browser approvals and missing mutation audits bind to a session pseudonym without names, prompts or owner tokens", async () => {
@@ -64,7 +64,13 @@ test("browser approvals and missing mutation audits bind to a session pseudonym 
       socket.on("end", () => resolve(JSON.parse(output)));
     });
   const browser = async (input, actor = owner) => {
-    const v = await call({ ...input, owner: actor });
+    const v = await call({
+      ...input,
+      ...(["create", "project-create"].includes(input.op)
+        ? { requestId: input.requestId ?? randomUUID() }
+        : {}),
+      owner: actor,
+    });
     assert.equal(v.ok, true, v.error);
     return v.result;
   };
@@ -83,13 +89,16 @@ test("browser approvals and missing mutation audits bind to a session pseudonym 
         .ok,
       false,
     );
-    const row = await browser({
+    const createRequest = {
+      requestId: randomUUID(),
       op: "create",
       project: project.id,
       adapter: "claude",
       mode: "edit",
       prompt: "private task instruction",
-    });
+    };
+    const row = await browser(createRequest);
+    assert.equal((await browser(createRequest)).id, row.id);
     await browser(
       {
         op: "conversation-rename",

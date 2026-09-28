@@ -20,7 +20,7 @@ const fields: Record<string, string> = {
   review: "id",
   "task-output": "id",
   create:
-    "adapter prompt mode attachments parent conversation project overrides",
+    "adapter prompt mode attachments parent conversation project overrides requestId",
   retry: "id",
   "restart-settings": "id",
   revise: "id prompt tree overrides",
@@ -29,7 +29,7 @@ const fields: Record<string, string> = {
   validate: "id tree",
   commit: "id tree message",
   discard: "id",
-  "project-create": "name",
+  "project-create": "name requestId",
   "project-rename": "id name",
   "project-archive": "id",
   "project-restore": "id",
@@ -125,6 +125,16 @@ export function gatewayRequest(value: unknown): Record<string, any> {
       !/^[a-f0-9]{64}$/.test(input.fingerprint))
   )
     throw Error("Refresh the run preview before approving.");
+  if (
+    ["create", "project-create"].includes(input.op) &&
+    (typeof input.requestId !== "string" ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
+        input.requestId,
+      ))
+  )
+    throw Error(
+      "Refresh the page before creating new work. A durable request identifier is required.",
+    );
   return input;
 }
 

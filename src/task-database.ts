@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 
 // Version 0 is the historical, unversioned schema. Never infer compatibility
 // from CREATE IF NOT EXISTS: a newer deployment must not be opened by this code.
-export const TASK_SCHEMA_VERSION = 1;
+export const TASK_SCHEMA_VERSION = 2;
 
 export function taskSchemaVersion(db: DatabaseSync): number {
   return Number(db.prepare("PRAGMA user_version").get()?.user_version);
@@ -134,13 +134,32 @@ function baseline(db: DatabaseSync, repo: string) {
     migrate(row);
 }
 
+function creationSchema(db: DatabaseSync) {
+  db.exec(
+    `CREATE TABLE creation_requests(scope TEXT NOT NULL,request_id TEXT NOT NULL,operation TEXT NOT NULL,payload_hash TEXT NOT NULL,result_id TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(scope,request_id))`,
+  );
+}
+
 // Check table/column/index definitions against the canonical migrated baseline.
 // Legacy nullable columns are retained by baseline() for compatibility; required
 // column presence, types and primary keys must still agree.
-function validate(db: DatabaseSync) {
+function validate(db: DatabaseSync, version = TASK_SCHEMA_VERSION) {
   const expected = new DatabaseSync(":memory:");
   try {
     baseline(expected, "/schema-fixture");
+    if (version >= 2) creationSchema(expected);
+    if (
+      version >= 2 &&
+      db
+        .prepare("SELECT sql FROM sqlite_master WHERE name='creation_requests'")
+        .get()?.sql !==
+        expected
+          .prepare(
+            "SELECT sql FROM sqlite_master WHERE name='creation_requests'",
+          )
+          .get()?.sql
+    )
+      throw Error("Invalid creation receipt schema");
     const tables = expected
       .prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
@@ -207,6 +226,10 @@ export function initializeTaskDatabase(db: DatabaseSync, repo: string) {
     if (taskSchemaVersion(db) !== version)
       throw Error("Task schema changed during startup");
     if (version === 0) baseline(db, repo);
+    if (version < 2) {
+      validate(db, 1);
+      creationSchema(db);
+    }
     validate(db);
     recover(db);
     db.exec(`PRAGMA user_version=${TASK_SCHEMA_VERSION}`);

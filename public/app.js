@@ -1,3 +1,4 @@
+import { stageCreation, completeCreation } from "./request-id.js";
 import { renderMarkdown, renderDiff, diffStats, setupShell } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -169,6 +170,13 @@ function restoreDraft() {
   } catch {
     $("draft-hint").textContent = "";
   }
+}
+function stagedCreation(key, payload) {
+  return stageCreation(sessionStorage, key, payload, () =>
+    confirm(
+      "The previous send may already have completed. Check History to avoid repeating it. Start this different request as separate work?",
+    ),
+  );
 }
 function forgetDraft(key) {
   try {
@@ -1472,10 +1480,17 @@ $("project-form").onsubmit = async (e) => {
   const b = e.submitter;
   b.disabled = true;
   try {
-    const p = await api("/api/action", {
-      op: "project-create",
-      name: $("project-input").value,
-    });
+    const key = draftPrefix + "project-request",
+      request = stagedCreation(key, {
+        op: "project-create",
+        name: $("project-input").value,
+      });
+    const p = await api("/api/action", request);
+    if (typeof p?.id !== "string")
+      throw Error(
+        "Creation status is uncertain. Retry the same request to recover its result.",
+      );
+    completeCreation(sessionStorage, key, request.requestId);
     saveDraft();
     projectId = p.id;
     reset();
@@ -1607,7 +1622,9 @@ $("compose").onsubmit = async (e) => {
   const epoch = generation;
   const submittedDraft = draftLocation;
   try {
-    const t = await api("/api/action", {
+    const requestKey =
+      (submittedDraft ?? draftKey() ?? draftPrefix + "pending") + ":request";
+    const request = stagedCreation(requestKey, {
       op: "create",
       project: projectId,
       conversation: selected,
@@ -1617,6 +1634,12 @@ $("compose").onsubmit = async (e) => {
       attachments: uploads.map((x) => x.id),
       overrides: nextRun[$("adapter").value] ?? {},
     });
+    const t = await api("/api/action", request);
+    if (typeof t?.id !== "string")
+      throw Error(
+        "Creation status is uncertain. Retry the same request to recover its result.",
+      );
+    completeCreation(sessionStorage, requestKey, request.requestId);
     forgetDraft(submittedDraft);
     if (epoch === generation) {
       draftLocation = null;

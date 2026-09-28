@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { runner } from "../src/runner.ts";
 import { execFileSync } from "node:child_process";
 import { test } from "node:test";
@@ -212,6 +213,9 @@ test("separate runner socket preserves image flow and approvals while admin sock
         path,
         JSON.stringify({
           ...input,
+          ...(["create", "project-create"].includes(input.op)
+            ? { requestId: randomUUID() }
+            : {}),
           ...(gatewayMutations.has(input.op) ? { owner } : {}),
         }) + "\n",
       );

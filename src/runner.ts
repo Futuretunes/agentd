@@ -1,3 +1,4 @@
+import {creationRequests} from './creation-requests.ts';
 import {followupContext,contextPrompt} from './followup-context.ts';
 import {testedVersions} from './native-policy.ts';
 import {AsyncLocalStorage} from 'node:async_hooks';
@@ -45,6 +46,7 @@ export function runner(c: Config) {
   const editAdapters=c.editing?(c.editAdapters??[]):[];
   if([...enabledAdapters,...editAdapters].some(value=>!adapterIds.includes(value)))throw Error('Invalid adapter configuration');
   const limits=c.resources??resourceLimits;
+  const receipts=creationRequests(db);
   const auditContext=new AsyncLocalStorage<{kind:'browser'|'local'|'system';session?:string}>();
   const audit=(action:string,task:string|null,detail:unknown={})=>db.prepare('INSERT INTO audit(at,action,task,detail) VALUES(?,?,?,?)').run(new Date().toISOString(),action,task,JSON.stringify({...detail as object,actor:auditContext.getStore()??{kind:'system'}}));
   const auditedWrite=(action:string,task:string|null,detail:unknown,write:()=>unknown)=>{db.exec('BEGIN');try{write();audit(action,task,detail);db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}};
@@ -352,6 +354,8 @@ export function runner(c: Config) {
   }
   function handleRequest(input:any){
     if(closing)throw new Error('Service is stopping');
+    const actor=auditContext.getStore(),receipt=receipts.inspect(input,actor?.kind==='browser'?'browser:'+actor.session:'local');
+    if(receipt?.resultId){const result=receipt.operation==='create'?get(receipt.resultId):project(receipt.resultId);if(!result)throw Error('The original creation result is unavailable. Review History before creating new work.');return result;}
     if(input.op==='attachment-upload'){requireSpace([c.stateDir],limits.reserveBytes);return images.upload(input);}
     if(input.op==='storage-preview'||input.op==='storage-cleanup'){
       if(active||preparing||accountBusy()||dependencyWork||repositoryWork||publicationWork||catalog.busy()||db.prepare("SELECT id FROM tasks WHERE status IN ('queued','running','cancelling')").get()||db.prepare("SELECT id FROM review_jobs WHERE state='preparing'").get())throw Error('Wait for current work before reviewing storage cleanup');
@@ -376,6 +380,7 @@ export function runner(c: Config) {
     }
 
     if(closing)throw new Error('Service is stopping');
+
     if(typeof input.op==='string'&&input.op.startsWith('feedback-'))return feedback(input);
     if(input.op==='publication-targets')return publicationTargets(input.task);
     if(input.op==='publication-status'){publishTarget(input.task);return publicationView(input.task);}
@@ -436,7 +441,7 @@ export function runner(c: Config) {
         git(['init','-b','main'],repo);
         git(['-c','user.name=agentd','-c','user.email=agentd@localhost','commit','--allow-empty','-m','Initialize project'],repo);
       }
-      auditedWrite(input.op,null,{project:id},()=>db.prepare('INSERT INTO projects(id,name,repo,created) VALUES(?,?,?,?)').run(id,name,repo,new Date().toISOString()));return project(id);
+      auditedWrite(input.op,null,{project:id},()=>{db.prepare('INSERT INTO projects(id,name,repo,created) VALUES(?,?,?,?)').run(id,name,repo,new Date().toISOString());receipts.save(receipt,id);});return project(id);
     }
     if(input.op==='project-archive'||input.op==='project-restore'){
       if(dependencyWork||publicationWork||projectBusy(input.id))throw Error('Wait for the repository or publishing operation.');
@@ -521,6 +526,7 @@ export function runner(c: Config) {
 
         db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);
         audit('create-run',id,{project:projectId,conversation:conversationId,adapter:input.adapter,mode});
+        receipts.save(receipt,id);
         db.exec('COMMIT');
       }catch(error){db.exec('ROLLBACK');throw error;}
       return get(id);
