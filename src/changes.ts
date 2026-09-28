@@ -16,6 +16,7 @@ export function snapshot(worktree:string,revision:string,stateDir:string) {
   } finally {rmSync(temp,{recursive:true,force:true});}
 }
 export function commitSnapshot(repo:string,revision:string,tree:string,branch:string,message:string,mergeParent?:string) {
+  if(sensitiveContent(message).length)throw Error("Commit message may contain credential content. Remove it before committing.");
   const existing=git(repo,['for-each-ref','--format=%(objectname)','refs/heads/'+branch]);
   if(existing){if(git(repo,['rev-parse',existing+'^{tree}'])!==tree||git(repo,['show','-s','--format=%P',existing])!==[revision,...(mergeParent?[mergeParent]:[])].join(' '))throw Error('Review branch already exists with different changes');return existing;}
   const sha=git(repo,['-c','user.name=agentd','-c','user.email=agentd@localhost','commit-tree',tree,'-p',revision,...(mergeParent?['-p',mergeParent]:[]),'-m',message]);

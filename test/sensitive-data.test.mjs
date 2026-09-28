@@ -11,7 +11,7 @@ import {
   contentScan,
   acceptBlob,
 } from "../src/sensitive-data.ts";
-import { snapshot } from "../src/changes.ts";
+import { snapshot, commitSnapshot } from "../src/changes.ts";
 const credential = () =>
   ["gh", "p_", "aB3dE6gH9jK2mN5pQ8sT1vW4xY7zA0bC3dE6"].join("");
 test("shared sensitive-data rules cover credential paths and known signatures without returning values", () => {
@@ -53,6 +53,7 @@ test("shared sensitive-data rules cover credential paths and known signatures wi
   assert.throws(() => acceptBlob(contentScan(), "a", "1048577"), /size limit/);
 });
 test("review scans both exact blobs, withholds suspect patches, and classifies actual binary metadata", () => {
+  assert.throws(()=>commitSnapshot("/nonexistent","a","b","c",credential()),/credential content/);
   const repo = mkdtempSync(join(tmpdir(), "sensitive-review-"));
   const state = mkdtempSync(join(tmpdir(), "sensitive-state-"));
   const git = (args) =>
