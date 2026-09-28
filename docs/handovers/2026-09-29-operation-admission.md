@@ -15,7 +15,7 @@ Independent original Boolean expressions verify all 32,768 combinations of fifte
 
 ## Deployment and rollback
 
-Production remains the prior 0.22.0; the previous cumulative 0.33.0 installer is staged but unexecuted. After exact validation, update that single private launcher/archive to this cumulative release. Schema remains 2, so rollback to installed schema 1 requires matching saved application/task state, with native profiles preserved independently.
+Production remains the prior 0.22.0; the single private cumulative installer now targets the validated 0.34.0 archive and remains unexecuted. Its syntax and hashes were verified after staging. Schema remains 2, so rollback to installed schema 1 requires matching saved application/task state, with native profiles preserved independently.
 
 ## Limitations and next steps
 
