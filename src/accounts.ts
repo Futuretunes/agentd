@@ -72,7 +72,7 @@ export function accounts(c:Config){
   for(const name of readdirSync(c.root))if(name.startsWith('login-'))rmSync(join(c.root,name),{recursive:true,force:true});
   const home=c.home??homedir();let current:Session|undefined,closed=false;
   const busy=()=>!!current&&!current.settled;
-  const view=(owner:string)=>current?.owner===owner?{...current.view}:null;
+  const view=(owner:string)=>current&&current.owner===owner?{...current.view}:null;
   const lookup=(owner:string,id:string)=>{if(!current||current.owner!==owner||current.view.id!==id)throw Error('Sign-in session not found. Start again.');return current;};
   const signal=(s:Session)=>{if(s.child?.pid)try{process.kill(-s.child.pid,'SIGKILL');}catch{}};
   const finish=(s:Session,state:State,message:string)=>{

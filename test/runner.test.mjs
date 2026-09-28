@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {execFileSync} from 'node:child_process';
+import {execFile,execFileSync} from 'node:child_process';
 import {once} from 'node:events';
 import {runner} from '../src/runner.ts';
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -23,6 +23,9 @@ test('account changes exclude task approvals and running workers; audit excludes
  const f=await fixture(2000,id=>new Promise(resolve=>probes.set(id,resolve)));const owner='a'.repeat(64);
  try{
   const task=f.app.request({op:'create',adapter:'claude',prompt:'hang'});
+  assert.deepEqual(f.app.request({op:'account-session'}),{session:null,busy:false});
+  const cliOutput=await new Promise((resolve,reject)=>execFile(process.execPath,[new URL('../src/control.ts',import.meta.url).pathname,'account-session'],{env:{...process.env,AGENTD_CONTROL_SOCKET:join(f.config.stateDir,'control.sock')}},(error,stdout)=>error?reject(error):resolve(stdout)));
+  assert.deepEqual(JSON.parse(cliOutput),{session:null,busy:false});
   for(let i=0;i<100&&probes.size!==2;i++)await sleep(10);
   assert.equal(probes.size,2);
   const signedOut={state:'signed_out',method:null,checkedAt:null,message:'Sign-in required'};
@@ -31,6 +34,7 @@ test('account changes exclude task approvals and running workers; audit excludes
   probes.get('codex')(signedOut);await sleep(0);
   const session=f.app.request({op:'account-start',owner,adapter:'claude',action:'login'});
   assert.equal(f.app.request({op:'operations'}).service.accountChange,true);
+  assert.deepEqual(f.app.request({op:'account-session'}),{session:null,busy:true});
   assert.throws(()=>f.app.request({op:'approve',id:task.id}),/account change/);
   assert.equal(f.app.request({op:'account-session',owner:'b'.repeat(64)}).session,null);
   assert.ok(!JSON.stringify(f.app.request({op:'audit'})).includes(owner));
