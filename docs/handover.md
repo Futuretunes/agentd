@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.28.0 — session audit coverage
 
-[Handover](handovers/2026-09-28-session-audit.md): browser mutations carry a cookie-derived session owner; the runner records a separate audit pseudonym. Added transactional project creation/rename, conversation rename and discard records, plus task creation. Focused regressions passed; exact Linux/CI pending. Cumulative safeguards remain uninstalled; production 0.22.0 is unchanged.
+[Handover](handovers/2026-09-28-session-audit.md): browser mutations carry a cookie-derived session owner; the runner records a separate audit pseudonym. Added transactional project creation/rename, conversation rename and discard records, plus task creation. Exact archive `ed949de` passed 127/127 Linux tests with zero skips; CI passed, draft #31 open. Cumulative safeguards remain uninstalled; production 0.22.0 is unchanged.
 
 ## Candidate 0.27.0 — bounded large reviews
 

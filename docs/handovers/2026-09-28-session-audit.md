@@ -3,7 +3,7 @@
 - Author: Codex; authorized overnight backlog R19.
 - Branch: `feat/session-audit` from `fix/bounded-review-output` at `bd4e39d`.
 - Release: cumulative 0.28.0, task schema 1. Includes R6/R7/R12/R13, binary classification and R15.
-- Status: implemented; focused regressions passed, exact Linux/CI pending. Not installed.
+- Status: implemented; exact Linux/CI verified. Not installed.
 
 ## Changes
 
@@ -13,10 +13,10 @@ Project creation/registration, project rename, conversation rename and discard n
 
 ## Validation
 
-Focused gateway/mobile/runner and new session tests verify owner-spoof rejection, distinct session pseudonyms, private-local attribution, approval/discard/rename/create entries, failed rename rollback and absence of prompts/names/token/path details. Exact Linux/CI pending. No production/model/account/publication changes.
+Focused gateway/mobile/runner and new session tests verify owner-spoof rejection, distinct session pseudonyms, private-local attribution, approval/discard/rename/create entries, failed rename rollback and absence of prompts/names/token/path details. Exact archive `ed949de` passed typecheck and 127/127 Linux tests with zero skips/failures; CI `36479798951` passed. SHA256 `8622d64ac97183027bddec7dba2569a7ca589f8ed339fbb45be873cf3b51d588`. [Draft #31](https://github.com/Futuretunes/agentd/pull/31) targets bounded-review work. No production/model/account/publication changes.
 
 ## Limitations and next
 
 A session pseudonym identifies a browser session, not a named person. The shared access key still authorizes all its holders. A compromised gateway remains able to claim an arbitrary pseudonym; this is traceability, not stronger authentication. Historical audits are not rewritten, and existing event names may represent requested or completed stages rather than universal success receipts. External tamper-evident storage and a GUI audit viewer are not implemented.
 
-Finalize exact checks, then stage one cumulative administrator launcher and keep independently actionable backlog work moving. Installed 0.22.0 remains unchanged. Managed update and explicit resource profile transition are the only installation steps; no audit/schema migration or new consent is needed.
+Next expose native version compatibility and fixed limits (R17), then stage one cumulative administrator launcher and keep independently actionable backlog work moving. Installed 0.22.0 remains unchanged. Managed update and explicit resource profile transition are the only installation steps; no audit/schema migration or new consent is needed.
