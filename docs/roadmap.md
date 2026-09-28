@@ -53,6 +53,19 @@ Claude's [review](reviews/2026-09-28-claude-review.md) and Codex's [verified res
 
 Private operator observations O1–O7 are addressed in public-safe terms in the response. Protected-file contents and other accounts' privileges were not independently inspected; do not promote those observations to verified facts. Resolve the gates above before resuming ntfy and other feature work.
 
+## UX review incorporated — 2026-09-28
+
+Claude's [UX review](reviews/2026-09-28-claude-ux-review.md) is assessed in the [U1–U19 response](reviews/2026-09-28-claude-ux-review-response.md). The [task desk UX backlog](design/ux-backlog.md) defines dependencies and acceptance criteria. All implementation remains queued.
+
+After the immediate R4/R11 correction and reviewable release baseline, prioritize:
+
+1. **UX-1 + UX-4 foundations:** readable safe answers, accurate states, visible errors, simple approvals and accessible shared controls.
+2. **UX-2:** conversation-first navigation, unified composer choices and predictable project/account/settings homes.
+3. **UX-3:** progress and guided file review/check/commit/publication, preserving all approval and snapshot guarantees.
+4. **UX-4 completion + UX-5:** real-phone keyboard/drawer/sheet acceptance, light/dark consistency and remaining polish. Accessibility is tested throughout.
+
+**UX-0:** clarify unsupported check workflows now; design broader check profiles. Allowing commits without checks is a separate operator policy decision and remains unapproved. The prototype is a visual proposal, not production code. Complete this usability work before adding more panels/features such as ntfy, while respecting the engineering stabilization gate. Contextual status and approval evidence remain visible even when editing controls are consolidated.
+
 ## Prioritized backlog
 
 Order agreed with the operator on 2026-09-28: finish the GitHub workflow, integrate Cursor CLI, then deliver configurable environment permissions and economical model/effort selection. Permission-policy design may begin during adapter work to avoid incompatible implementations. The stabilization gate above now takes precedence. The list retains completed milestones and remaining feature scope; it is not a release-date commitment.
