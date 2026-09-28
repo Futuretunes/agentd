@@ -12,10 +12,10 @@ Both the runner's separate gateway socket and HTTPS response boundary apply norm
 
 ## Validation
 
-Seven focused tests passed, including raw gateway and HTTPS exception injection with fake private paths/secret text, unknown stored errors, known-message preservation, nested check metadata and malformed-check handling. Typecheck passed. Exact Linux/CI pending. No model/account/production or remote publication actions.
+Seven focused tests passed, including raw gateway and HTTPS exception injection with fake private paths/secret text, unknown stored errors, known-message preservation, nested check metadata and malformed-check handling. Typecheck passed. Exact archive `b003248` passed typecheck and 130/130 Linux tests with zero skips/failures; CI `36481241898` passed. Archive SHA256 `4861cfbe383dd13c6f48951f2c5caf78d377ce8c70c66959dab7078aba9344c6`. Draft review targets the native-limit branch. No model/account/production or remote publication actions.
 
 ## Limitations and next
 
 Unknown dynamic messages now give generic guidance; improve them by introducing reviewed fixed messages, never by allowing arbitrary prefixes. Internal administrative diagnostics remain privileged; no new raw-error logging was added. Logs and user content can still contain sensitive data and are outside this exception boundary. Keep authorization and secret handling independent of message normalization.
 
-Complete exact Linux/CI and draft review, then R16 explicit follow-up context. Stage one cumulative managed update plus resource profile transition; no R18-specific migration. Do not replace the private control socket with the browser socket for administrator tools.
+Continue R16 explicit follow-up context. Stage one cumulative managed update plus resource profile transition; no R18-specific migration. Do not replace the private control socket with the browser socket for administrator tools.

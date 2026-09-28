@@ -147,4 +147,4 @@ Operations exposes normalized installed CLI version, expected tested version, fr
 
 ## R18 candidate — browser-safe errors
 
-Runner gateway and HTTPS boundaries now preserve reviewed fixed error guidance and normalize unknown exceptions plus stored task/job/check error metadata. No raw subprocess buffers or dynamic exception text are promoted to public error messages. Private administrator responses and authorized user content/logs remain separate. Focused tests passed; exact Linux/CI pending. Not installed. See [handover](handovers/2026-09-28-public-errors.md).
+Runner gateway and HTTPS boundaries now preserve reviewed fixed error guidance and normalize unknown exceptions plus stored task/job/check error metadata. No raw subprocess buffers or dynamic exception text are promoted to public error messages. Private administrator responses and authorized user content/logs remain separate. Exact archive `b003248` passed 130/130 Linux tests with zero skips; CI passed. Not installed. See [handover](handovers/2026-09-28-public-errors.md).
