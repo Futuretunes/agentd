@@ -2,13 +2,23 @@
 
 Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-combined-0.21.1.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
+## Release 0.21.1 — combined, deployed by Claude via the managed updater
+
+0.21.0 plus the D1–D9 UI fixes plus two updater hardenings, on `release/0.21.1` ([handover](handovers/2026-09-28-combined-0.21.1.md)).
+
+- Linux: 107/107, 0 skipped.
+- Deployment tests: 11 OK.
+- Startup rehearsal on a copy of the live database: unchanged data, `taskSchemaVersion 1`.
+
+The separate 0.20.1 candidate was never installed and is superseded. Codex: review `release/0.21.1` and base further work on it.
+
 ## Installed 0.21.0 — managed deployment and task schema
 
 [Handover](handovers/2026-09-28-managed-deployment.md), [draft PR #23](https://github.com/Futuretunes/agentd/pull/23). The operator successfully installed release `8b7c4a2`; independent read-only health confirms version 0.21.0, metadata schema 1, task schema 1, serial dispatch enabled, starts 31, and both services active. Pre-install validation passed 105/105 Linux tests with zero skips and all CI jobs. Two updater compatibility mistakes were corrected before deployment: gateway personality policy and omitted mobile JSON defaults. Units/configuration/native profiles and project checkouts were preserved according to installer output; no model acceptance test was submitted. Earlier deployment statements below are historical.
 
 Next recommended implementation: R5, separate web-gateway identity and socket authority from the task runner. R1 release-baseline strategy and protected-branch enforcement remain unresolved; no main merge is authorized by this note. GUI deployment management and automatic power-loss recovery remain backlog items.
 
-## 0.20.1 candidate: redesign review fixes — 2026-09-28
+## 0.20.1 candidate (superseded by 0.21.1, never installed): redesign review fixes — 2026-09-28
 
 At the operator's request, Claude fixed D1–D9 on `fix/redesign-review-2026-09-28` ([handover](handovers/2026-09-28-claude-redesign-fixes.md)).
 
@@ -98,6 +108,7 @@ This review-response update records findings and bounded diagnostic evidence; it
 
 ## History and maintenance
 
+- [2026-09-28 — Combined release 0.21.1](handovers/2026-09-28-combined-0.21.1.md)
 - [2026-09-28 — Fixes for redesign review D1–D9](handovers/2026-09-28-claude-redesign-fixes.md)
 - [2026-09-28 — Claude review of the 0.20.0 redesign](handovers/2026-09-28-claude-redesign-review.md)
 - [2026-09-28 — Exact-tree checks and isolation CI](handovers/2026-09-28-snapshot-checks.md)
