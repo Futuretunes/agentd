@@ -15,7 +15,7 @@ The approval applies to the stored preview, not later edits to the form. Prepare
 - The current remote base must be an ancestor of the approved local commit. A changed or diverged base requires updating and reviewing the work again; this release does not automatically rebase it.
 - Every outgoing commit must have an agentd local commit approval and passing checks bound to its exact tree, in the same project. This includes earlier commits carried forward in the conversation.
 - At most 20 outgoing commits and 180 KB of displayed patches are supported. Merge commits, binary changes and common sensitive filenames anywhere in the outgoing history are refused. Removing a secret file in a later commit does not make its earlier history publishable. The filename guard is not a content secret scanner: inspect the patches yourself.
-- An existing remote publishing branch is accepted only when it already points to the exact approved commit. New branches use an explicit empty-expected-value Git lease, so a concurrently created branch is not overwritten. No force update of existing branches, tag publishing, deletion, fork creation or automatic merge is offered.
+- An existing remote publishing branch is accepted only when it already points to the exact approved commit. New branches use an explicit empty-expected-value Git lease, so a concurrently created branch is not overwritten. Existing branches can advance only through the explicit draft-PR update flow below. No history rewrite, tag publishing, deletion, fork creation or automatic merge is offered.
 
 Publishing may trigger repository GitHub Actions and subscriber notifications, even though the pull request is a draft. A passing local check does not establish test quality or that the proposed change is correct.
 
@@ -29,8 +29,14 @@ Repository import/update, dependency preparation, GitHub account changes and pub
 
 GitHub branch creation and pull request creation are separate operations. If the connection fails, **Check publication outcome** means the branch or PR may already exist; it is not a rollback claim. Prepare a fresh preview and approve again. The daemon rechecks the remote branch and looks for an existing matching PR before writing. A matching PR is reused, including a closed PR; its current title, description and state are kept. Conflicting work is never overwritten.
 
-The remote base is rechecked before push and before PR creation. GitHub PRs reference mutable branches, so this cannot prevent a repository collaborator changing them during or after the operation. Unexpected response fields leave the operation requiring attention. Inspect the link on GitHub before merging. Updating an existing PR, rebasing onto an advanced base, fork workflows and PR review synchronization remain backlog items.
+The remote base is rechecked before push and before PR creation. GitHub PRs reference mutable branches, so this cannot prevent a repository collaborator changing them during or after the operation. Unexpected response fields leave the operation requiring attention. Inspect the link on GitHub before merging. Rebasing onto an advanced base, fork workflows and PR review synchronization remain backlog items.
 
 ## Validation
 
 Tests use temporary bare Git remotes and a simulated GitHub API to cover no writes before approval, exact commit and browser ownership binding, changed bases, branch races, history guards, uncertain outcomes and duplicate prevention. Native CLI transport tests verify fixed endpoints, literal JSON and clean credentials environment. The HTTPS gateway tests cover authentication and CSRF. No real repository is published by automated tests; the first live GUI publication requires the operator's explicit approval.
+
+## Update an existing draft PR
+
+After publishing, continue the same conversation, approve the next edit, run checks and approve its local commit. In **Publish to GitHub**, choose the existing PR from **Publication**, then prepare and review a new preview. The existing PR's base, title and description are read from its recorded destination/GitHub response; this flow updates commits only. The preview shows the previously approved head, the new head and all outgoing commit patches.
+
+A fresh, browser-bound approval is required. Only a previously published PR in this conversation can be selected. It must still be open and a draft, and the new commit must extend the previously approved head. An explicit Git lease binds the update to that old head, so another person's intervening branch update is refused rather than overwritten. The daemon checks the PR again afterward and reports uncertain outcomes honestly. Retrying a completed upload verifies and reuses it without another push or creating a duplicate PR. PR state and base branches remain mutable on GitHub; changed state may require manual inspection after an upload.

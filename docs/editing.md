@@ -2,7 +2,7 @@
 
 Choose **Ask** for read-only questions, or **Edit files** to request changes. Every turn requires run approval. After an edit, choose **Review changes**, inspect the diff, run checks, and explicitly approve a commit. Commits create an `agentd/<task-id>` branch. The project's checked-out branch is not changed. Nothing is pushed during commit approval. Use the separate [GitHub publication approval](publishing.md) to upload the reviewed commits and create a draft pull request.
 
-The next conversation turn starts from the preceding approved commit. Resolve the previous review before continuing. Discarding a review retains its worktree for inspection but does not carry those edits forward. Asking the agent to revise an uncommitted change set is not yet supported.
+The next conversation turn starts from the preceding approved commit. Resolve the previous review before continuing. Discarding a review retains its worktree for inspection but does not carry those edits forward. Choose **Request revisions** in the review to describe adjustments before committing. The latest unresolved edit is saved as an exact snapshot and copied into a new isolated worktree only after fresh run approval. The original worktree remains available; later changes to it do not change the saved snapshot. The new review includes the complete accumulated edits against the original base and requires new checks and commit approval. No intermediate commit is created. Duplicate submissions reuse the same request, including after restart. A cancelled request that never started can be retried with its saved edits. Oversized or sensitive changes must be resolved before they can be carried forward.
 
 ## Enable on Linux
 

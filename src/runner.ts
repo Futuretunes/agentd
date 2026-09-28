@@ -5,7 +5,7 @@ import {renewals,renewalFailure} from './renewal.ts';
 import {githubURL,branchName,repositoryGit,inspectRepository,updateRepository,type RepositoryGit} from './repositories.ts';
 import {githubAccount} from './github-account.ts';
 import {accounts} from './accounts.ts';
-import {snapshot,commitSnapshot} from './changes.ts';
+import {snapshot,commitSnapshot,restoreSnapshot} from './changes.ts';
 import {isolated} from './isolation.ts';
 import {fileURLToPath} from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
@@ -30,6 +30,8 @@ export function runner(c: Config) {
   const columns=db.prepare('PRAGMA table_info(tasks)').all().map(x=>x.name);
   if(!columns.includes('attachments'))db.exec("ALTER TABLE tasks ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'");
   if(!columns.includes('parent'))db.exec("ALTER TABLE tasks ADD COLUMN parent TEXT");
+  for(const name of ['revision_of','seed_tree'])if(!columns.includes(name))db.exec(`ALTER TABLE tasks ADD COLUMN ${name} TEXT`);
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS tasks_revision_of ON tasks(revision_of) WHERE revision_of IS NOT NULL');
   if(!columns.includes('retry_of'))db.exec("ALTER TABLE tasks ADD COLUMN retry_of TEXT");
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS tasks_retry_of ON tasks(retry_of) WHERE retry_of IS NOT NULL');
   if(!columns.includes('project'))db.exec("ALTER TABLE tasks ADD COLUMN project TEXT");
@@ -145,6 +147,7 @@ export function runner(c: Config) {
   const publicationView=(task:string)=>db.prepare('SELECT id,task,state,plan,error,url,updated,expires FROM publications WHERE task=? ORDER BY rowid DESC LIMIT 5').all(task).map((row:any)=>({...row,plan:row.plan?JSON.parse(row.plan):null}));
   const publishTarget=(id:string)=>{const row=get(id);if(!row||row.review!=='committed'||!row.commit_sha)throw Error('Approve a local commit with passing checks before publishing.');const p=project(String(row.project));if(p.archived)throw Error('Restore this project before publishing.');return {row,p};};
   const approvedCommit=(projectId:string,sha:string,tree:string)=>{const row=db.prepare("SELECT checks FROM tasks WHERE project=? AND commit_sha=? AND review='committed'").get(projectId,sha);if(!row)return false;const checks=JSON.parse(String(row.checks??'{}'));return checks.status==='passed'&&checks.tree===tree;};
+  const publicationTargets=(task:string)=>{const {row}=publishTarget(task);return db.prepare("SELECT p.id,p.url,p.plan FROM publications p JOIN tasks t ON t.id=p.task WHERE p.state='published' AND t.conversation=? AND t.project=? AND t.id!=? ORDER BY p.rowid DESC").all(row.conversation,row.project,task).map((p:any)=>({id:p.id,url:p.url,plan:JSON.parse(p.plan)})).filter((p:any,i:number,list:any[])=>list.findIndex(q=>q.plan.branch===p.plan.branch)===i).map((p:any)=>({id:p.id,url:p.url,branch:p.plan.branch,base:p.plan.base,head:p.plan.head}));};
   function startPublication(input:any,approve=false){
     if(!/^[a-f0-9]{64}$/.test(input.owner??''))throw Error('Authenticated browser session required.');
     if(publicationWork||repositoryWork||dependencyWork||github.busy())throw Error('Wait for current publishing, repository, dependency or GitHub sign-in work.');
@@ -154,11 +157,13 @@ export function runner(c: Config) {
     const task=String(stored?.task??input.task),{row,p}=publishTarget(task),published=publicationView(task).find(job=>job.state==='published');if(published)return published;
     const plan:PublishPlan|null=approve?JSON.parse(String(stored!.plan)):null;if(approve&&input.fingerprint!==plan!.fingerprint)throw Error('Preview changed. Review it again.');
     if(plan&&plan.head!==row.commit_sha)throw Error('Approved local commit changed. Preview again.');
+    let update: {destination:string;branch:string;head:string;base:string;number:number}|undefined;
+    if(!approve&&input.updateOf){const target=publicationTargets(task).find(p=>p.id===input.updateOf);if(!target)throw Error('Select a published PR from this conversation.');const previous:any=db.prepare('SELECT plan FROM publications WHERE id=?').get(target.id),value=JSON.parse(previous.plan);update={destination:value.destination,branch:value.branch,head:value.head,base:value.base,number:Number(target.url.match(/\/pull\/(\d+)$/)?.[1])};}
     const fields=approve?plan!:publicationText(input.title,input.body),base=approve?plan!.base:branchName(input.base),id=approve?String(stored!.id):randomUUID(),abort=new AbortController(),gitCommand=c.repositoryCommand??repositoryGit({stateDir:c.stateDir,githubProfile:profile});
     if(approve){db.prepare("UPDATE publications SET state='publishing',error=NULL,updated=? WHERE id=?").run(new Date().toISOString(),id);audit('approve-publication',task,{publication:id,fingerprint:plan!.fingerprint,destination:plan!.destination,head:plan!.head,base:plan!.base,baseSha:plan!.baseSha});}
     else db.prepare('INSERT INTO publications VALUES(?,?,?,?,?,?,?,?,?)').run(id,task,input.owner,'preparing',null,null,null,new Date().toISOString(),Date.now()+900000);
     const done=Promise.resolve().then(async()=>{try{
-      if(!approve){const preview=await previewPublication({git:gitCommand,repo:String(p.repo),task,head:String(row.commit_sha),base,title:fields.title,body:fields.body,approved:(sha,tree)=>approvedCommit(String(p.id),sha,tree),signal:abort.signal});db.prepare("UPDATE publications SET state='ready',plan=?,updated=?,expires=? WHERE id=?").run(JSON.stringify(preview),new Date().toISOString(),Date.now()+900000,id);}
+      if(!approve){const preview=await previewPublication({git:gitCommand,repo:String(p.repo),task,head:String(row.commit_sha),base,title:fields.title,body:fields.body,update,api:c.pullAPI??githubPullAPI(c.stateDir,profile!),approved:(sha,tree)=>approvedCommit(String(p.id),sha,tree),signal:abort.signal});db.prepare("UPDATE publications SET state='ready',plan=?,updated=?,expires=? WHERE id=?").run(JSON.stringify(preview),new Date().toISOString(),Date.now()+900000,id);}
       else {for(const commit of plan!.commits){const tree=await gitCommand(String(p.repo),['rev-parse',commit.sha+'^{tree}'],abort.signal);if(!approvedCommit(String(p.id),commit.sha,tree))throw Error('Commit approval or check results changed. Preview again.');}
         const result=await executePublication(gitCommand,c.pullAPI??githubPullAPI(c.stateDir,profile!),String(p.repo),plan!,abort.signal,stage=>db.prepare('UPDATE publications SET state=?,updated=? WHERE id=?').run(stage,new Date().toISOString(),id));
         db.prepare("UPDATE publications SET state='published',url=?,error=?,updated=? WHERE id=?").run(result.url,result.reused?'Existing pull request reused; its current title, description and state were kept.':null,new Date().toISOString(),id);audit('published',task,{publication:id,url:result.url,head:plan!.head,reused:result.reused});}
@@ -216,6 +221,7 @@ export function runner(c: Config) {
       const repo=String(project(String(row.project)).repo);
       git(['worktree','add','--detach',tree,String(row.revision)],repo);
       db.prepare('UPDATE tasks SET worktree=?,log=? WHERE id=?').run(tree,log,id);
+      if(row.seed_tree)restoreSnapshot(tree,String(row.seed_tree));
       let prompt=String(row.prompt);
       const pictures:string[]=[];
       const attachments=JSON.parse(String(row.attachments));
@@ -282,6 +288,7 @@ export function runner(c: Config) {
   }
   function request(input:any){
     if(closing)throw new Error('Service is stopping');
+    if(input.op==='publication-targets')return publicationTargets(input.task);
     if(input.op==='publication-status'){publishTarget(input.task);return publicationView(input.task);}
     if(input.op==='publication-preview')return startPublication(input);
     if(input.op==='publication-approve')return startPublication(input,true);
@@ -409,6 +416,7 @@ export function runner(c: Config) {
       if(prior&&(prior.project!==projectId||prior.conversation!==threadId))throw new Error('Parent belongs to another conversation');
       if(thread&&db.prepare("SELECT id FROM tasks WHERE conversation=? AND status IN ('waiting_for_approval','queued','running','cancelling')").get(String(thread.id)))throw new Error('Finish or cancel the current turn before sending another');
       const parent=prior??(thread?db.prepare('SELECT * FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 1').get(String(thread.id)):undefined);
+      if(parent?.seed_tree&&!parent.worktree)throw Error('Retry the stopped revision request to preserve its saved edits before continuing');
       if(parent?.mode==='edit'&&parent.review==='pending')throw Error('Commit or discard the preceding changes before continuing');
       const repo=String(selectedProject.repo);
       if(realpathSync(git(['rev-parse','--show-toplevel'],repo))!==realpathSync(repo))throw new Error('Repository root mismatch');
@@ -418,6 +426,7 @@ export function runner(c: Config) {
       try{
         if(!thread)db.prepare('INSERT INTO conversations(id,project,title,created) VALUES(?,?,?,?)').run(conversationId,projectId,input.prompt.trim().slice(0,100),at);
         db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(id,input.adapter,input.prompt,revision,'waiting_for_approval',at,at,projectId,conversationId,JSON.stringify(attachments),parent?.id??null,mode);
+
         db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);
         db.exec('COMMIT');
       }catch(error){db.exec('ROLLBACK');throw error;}
@@ -425,6 +434,25 @@ export function runner(c: Config) {
     }
     if(typeof input.id!=='string')throw new Error('Task id required');
     const row=get(input.id);if(!row)throw new Error('Task not found');
+    if(input.op==='revise'){
+      const existing=db.prepare('SELECT * FROM tasks WHERE revision_of=?').get(row.id);if(existing){if(existing.prompt!==input.prompt||existing.seed_tree!==input.tree)throw Error('A different revision request already exists. Open the latest turn.');return existing;}
+      available(row);if(row.review!=='pending')throw Error('Only unresolved changes can be revised');
+      if(dependencyWork||projectBusy(String(row.project)))throw Error('Wait for dependency or repository work.');
+      if(conversation(String(row.conversation)).archived||project(String(row.project)).archived)throw Error('Workspace is archived');
+      if(db.prepare('SELECT id FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 1').get(row.conversation)?.id!==row.id)throw Error('Only the latest changes can be revised');
+      requireAdapter(String(row.adapter),'edit');
+      if(typeof input.prompt!=='string'||!input.prompt.trim()||input.prompt.length>16000)throw Error('Describe the revision in 1 to 16000 characters');
+      const value=review(row);if(value.tree!==input.tree)throw Error('Changes have changed. Review again.');
+      if(value.truncated||value.blocked.length)throw Error('Resolve oversized changes or sensitive filenames before requesting revisions');
+      const id=randomUUID(),at=new Date().toISOString();
+      // Retain the snapshot against Git garbage collection without creating a commit.
+      git(['update-ref','refs/agentd/revisions/'+id,value.tree],String(project(String(row.project)).repo));
+      db.exec('BEGIN');try{
+        db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,revision_of,seed_tree) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,row.adapter,input.prompt,row.revision,'waiting_for_approval',at,at,row.project,row.conversation,row.attachments,row.id,'edit',row.id,value.tree);
+        db.prepare("UPDATE tasks SET review='superseded' WHERE id=?").run(row.id);
+        db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);audit('request-revision',id,{revisionOf:row.id,tree:value.tree});db.exec('COMMIT');
+      }catch(error){db.exec('ROLLBACK');throw error;}return get(id);
+    }
     if(input.op==='retry'){
       if(projectBusy(String(row.project)))throw Error('Wait for the repository update.');
       // A repeated HTTP request returns the same attempt, even after a restart.
@@ -445,6 +473,7 @@ export function runner(c: Config) {
       try{
         // Keep the original context, not the failed attempt's output or partial edits.
         db.prepare('INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,retry_of) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,row.adapter,row.prompt,row.revision,'waiting_for_approval',at,at,row.project,row.conversation,row.attachments,row.parent,row.mode,row.id);
+        if(row.seed_tree)db.prepare('UPDATE tasks SET seed_tree=? WHERE id=?').run(row.seed_tree,id);
         db.prepare('INSERT INTO events(task,status,at) VALUES(?,?,?)').run(id,'waiting_for_approval',at);
         audit('retry-run',id,{retryOf:row.id});
         db.exec('COMMIT');

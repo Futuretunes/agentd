@@ -55,8 +55,8 @@ export function mobile(c:Config){
     try{const value=await call({op:'account-session',owner:accountOwner});if(value?.session&&value.busy)await call({op:'account-cancel',owner:accountOwner,session:value.session.id});}catch{}
     sessions.delete(id);res.setHeader('Set-Cookie','agentd_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');send(200,{ok:true});return;
    }
-   if(path==='/api/publishing'&&req.method==='GET'){const params=new URL(req.url??'/',c.origin).searchParams;send(200,await call({op:'publication-status',task:params.get('task')}));return;}
-   if(path==='/api/publishing'&&req.method==='POST'){const input=await body(req);if(!['preview','approve'].includes(input.action))throw Error('Unsupported publishing action');send(200,await call({op:'publication-'+input.action,owner:accountOwner,task:input.task,id:input.id,fingerprint:input.fingerprint,base:input.base,title:input.title,body:input.body}));return;}
+   if(path==='/api/publishing'&&req.method==='GET'){const params=new URL(req.url??'/',c.origin).searchParams;send(200,await call({op:params.get('targets')==='1'?'publication-targets':'publication-status',task:params.get('task')}));return;}
+   if(path==='/api/publishing'&&req.method==='POST'){const input=await body(req);if(!['preview','approve'].includes(input.action))throw Error('Unsupported publishing action');send(200,await call({op:'publication-'+input.action,owner:accountOwner,task:input.task,id:input.id,fingerprint:input.fingerprint,updateOf:input.updateOf,base:input.base,title:input.title,body:input.body}));return;}
    if(path==='/api/check-setup'&&req.method==='GET'){const url=new URL(req.url??'/',c.origin);send(200,await call({op:'check-setup',project:url.searchParams.get('project'),task:url.searchParams.get('task')||undefined}));return;}
    if(path==='/api/check-setup'&&req.method==='POST'){const input=await body(req);if(!['prepare','cancel'].includes(input.action))throw Error('Unsupported setup action');send(200,await call({op:input.action==='prepare'?'check-prepare':'check-cancel',project:input.project,task:input.task,fingerprint:input.fingerprint,id:input.id}));return;}
    if(path==='/api/github'&&req.method==='GET'){send(200,await call({op:'github-status',owner:accountOwner}));return;}
@@ -86,7 +86,7 @@ export function mobile(c:Config){
    const match=path.match(/^\/api\/tasks\/([0-9a-f-]{36})$/);
    if(match&&req.method==='GET'){send(200,await call({op:'show',id:match[1]}));return;}
    if(path==='/api/action'&&req.method==='POST'){
-    const input=await body(req);if(!['create','retry','approve','cancel','validate','commit','discard','project-create','project-rename','conversation-rename','conversation-archive','conversation-restore','project-archive','project-restore'].includes(input.op))throw new Error('Unsupported action');
+    const input=await body(req);if(!['create','retry','revise','approve','cancel','validate','commit','discard','project-create','project-rename','conversation-rename','conversation-archive','conversation-restore','project-archive','project-restore'].includes(input.op))throw new Error('Unsupported action');
     send(200,await call(input));return;
    }
    if(path==='/api/upload'&&req.method==='POST'){

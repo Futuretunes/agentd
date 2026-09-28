@@ -9,13 +9,13 @@ export function githubPullAPI(state:string,profile:string,executable='/usr/local
   child.on('close',code=>{clearTimeout(timer);signal.removeEventListener('abort',stop);if(child.pid)try{process.kill(-child.pid,'SIGKILL');}catch{};try{if(code!==0||stopped)throw Error();resolve(JSON.parse(output));}catch{reject(Error('GitHub could not confirm the pull-request operation. Check your GitHub connection and repository permissions, then preview again to reconcile any completed work.'));}});
  });}finally{rmSync(home,{recursive:true,force:true});}
 };}
-export type PublishPlan={destination:string;base:string;baseSha:string;head:string;branch:string;title:string;body:string;draft:true;commits:{sha:string;subject:string;patch:string}[];stat:string;fingerprint:string};
+export type PublishPlan={destination:string;base:string;baseSha:string;head:string;branch:string;localBranch?:string;previousHead?:string;pullNumber?:number;title:string;body:string;draft:true;commits:{sha:string;subject:string;patch:string}[];stat:string;fingerprint:string};
 export function publicationText(title:unknown,body:unknown){if(typeof title!=='string'||!title.trim()||title.length>200||typeof body!=='string'||body.length>12000)throw Error('Enter a PR title (up to 200 characters) and description (up to 12,000).');return {title:title.trim(),body};}
 async function remoteRef(git:RepositoryGit,repo:string,url:string,branch:string,signal:AbortSignal){const out=await git(repo,['ls-remote','--heads',url,'refs/heads/'+branch],signal,true);if(!out)return null;const lines=out.split('\n');if(lines.length!==1||!new RegExp('^[a-f0-9]{40}\\t').test(out))throw Error('Could not verify remote branch.');return out.split('\t')[0];}
-export async function previewPublication(options:{git:RepositoryGit;repo:string;task:string;head:string;base:string;title:string;body:string;approved:(sha:string,tree:string)=>boolean;signal:AbortSignal}){
- const {git,repo,signal,head}=options;if(!/^[a-f0-9]{40}$/.test(head)||!/^[a-f0-9-]{36}$/.test(options.task))throw Error('Invalid approved commit.');const base=branchName(options.base),branch='agentd/'+options.task;
- const destination=githubURL(await git(repo,['config','--get','remote.origin.url'],signal));if(base===branch)throw Error('Choose a different base branch.');
- if(await git(repo,['rev-parse','refs/heads/'+branch],signal)!==head)throw Error('The approved local branch changed. Review it before publishing.');
+export async function previewPublication(options:{git:RepositoryGit;repo:string;task:string;head:string;base:string;title:string;body:string;approved:(sha:string,tree:string)=>boolean;signal:AbortSignal;api?:PullAPI;update?:{destination:string;branch:string;head:string;base:string;number:number}}){
+ const {git,repo,signal,head}=options;if(!/^[a-f0-9]{40}$/.test(head)||!/^[a-f0-9-]{36}$/.test(options.task))throw Error('Invalid approved commit.');const localBranch='agentd/'+options.task,base=branchName(options.update?.base??options.base),branch=options.update?.branch??localBranch;
+ const destination=githubURL(await git(repo,['config','--get','remote.origin.url'],signal));if(options.update&&(options.update.destination!==destination||!/^agentd\/[a-f0-9-]{36}$/.test(branch)||!Number.isSafeInteger(options.update.number)))throw Error('Invalid previous publication');if(base===branch)throw Error('Choose a different base branch.');
+ if(await git(repo,['rev-parse','refs/heads/'+localBranch],signal)!==head)throw Error('The approved local branch changed. Review it before publishing.');
  await git(repo,['fetch','--no-tags','--no-recurse-submodules',destination,'refs/heads/'+base],signal,true,repo);const baseSha=await git(repo,['rev-parse','FETCH_HEAD^{commit}'],signal);
  if(await git(repo,['merge-base','--is-ancestor',baseSha,head],signal,false,undefined,true)==='NOT_ANCESTOR')throw Error('The GitHub base advanced or diverged. Update and review the changes against the current base before publishing.');
  const revisions=(await git(repo,['rev-list','--reverse',baseSha+'..'+head],signal)).split('\n').filter(Boolean);if(!revisions.length||revisions.length>20)throw Error('Publish between 1 and 20 reviewed commits at a time.');const commits=[];let size=0;
@@ -25,15 +25,33 @@ export async function previewPublication(options:{git:RepositoryGit;repo:string;
   const patch=await git(repo,['diff','--no-ext-diff','--no-textconv','--no-color','--no-renames',sha+'^',sha],signal);size+=Buffer.byteLength(patch);if(size>180000||patch.includes('Binary files '))throw Error('Outgoing history is too large or contains binary changes. This GUI cannot approve it.');
   commits.push({sha,subject:await git(repo,['show','-s','--format=%s',sha],signal),patch});
  }
- const existing=await remoteRef(git,repo,destination,branch,signal);if(existing&&existing!==head)throw Error('The remote publishing branch contains different work. It will not be overwritten.');
- const stat=await git(repo,['diff','--stat',baseSha,head],signal),fields={destination,base,baseSha,head,branch,...publicationText(options.title,options.body),draft:true as const,commits,stat};return {...fields,fingerprint:createHash('sha256').update(JSON.stringify(fields)).digest('hex')};
+ const existing=await remoteRef(git,repo,destination,branch,signal);if(existing&&existing!==head&&existing!==options.update?.head)throw Error('The remote publishing branch contains different work. It will not be overwritten.');
+ let metadata=publicationText(options.title,options.body);let updateFields={};
+ if(options.update){
+  if(!existing)throw Error('The previously published branch is missing. Inspect GitHub.');
+  if(await git(repo,['merge-base','--is-ancestor',options.update.head,head],signal,false,undefined,true)==='NOT_ANCESTOR')throw Error('PR updates must extend the previously approved commit.');
+  const pulls=await options.api!(destination,branch,base,null,signal),pull=Array.isArray(pulls)&&pulls.length===1?pulls[0]:null;
+  verifiedPull(pull,{destination,head:existing,branch,base} as PublishPlan);
+  if(pull.number!==options.update.number||pull.state!=='open'||pull.draft!==true)throw Error('Only the existing open draft PR can be updated.');
+  metadata=publicationText(pull.title,pull.body??'');updateFields={previousHead:options.update.head,pullNumber:pull.number};
+ }
+ const stat=await git(repo,['diff','--stat',baseSha,head],signal),fields={destination,base,baseSha,head,branch,localBranch,...updateFields,...metadata,draft:true as const,commits,stat};return {...fields,fingerprint:createHash('sha256').update(JSON.stringify(fields)).digest('hex')};
 }
 function verifiedPull(p:any,plan:PublishPlan){const slug=plan.destination.slice('https://github.com/'.length,-4);if(!Number.isSafeInteger(p?.number)||p.number<1||p.head?.sha!==plan.head||p.head?.ref!==plan.branch||p.base?.ref!==plan.base||p.head?.repo?.full_name?.toLowerCase()!==slug||p.base?.repo?.full_name?.toLowerCase()!==slug)throw Error('GitHub returned a different pull request. Inspect the repository before retrying.');return 'https://github.com/'+slug+'/pull/'+p.number;}
 export async function executePublication(git:RepositoryGit,api:PullAPI,repo:string,plan:PublishPlan,signal:AbortSignal,checkpoint:(stage:string)=>void){
- if(githubURL(await git(repo,['config','--get','remote.origin.url'],signal))!==plan.destination||await git(repo,['rev-parse','refs/heads/'+plan.branch],signal)!==plan.head)throw Error('Publishing destination or local branch changed. Preview again.');
+ if(githubURL(await git(repo,['config','--get','remote.origin.url'],signal))!==plan.destination||await git(repo,['rev-parse','refs/heads/'+(plan.localBranch??plan.branch)],signal)!==plan.head)throw Error('Publishing destination or local branch changed. Preview again.');
  if(await remoteRef(git,repo,plan.destination,plan.base,signal)!==plan.baseSha)throw Error('The GitHub base changed. Preview again before publishing.');
- const head=await remoteRef(git,repo,plan.destination,plan.branch,signal);if(head&&head!==plan.head)throw Error('Remote branch changed; it will not be overwritten.');
- const existing=await api(plan.destination,plan.branch,plan.base,null,signal);if(!Array.isArray(existing)||existing.length>1)throw Error('Ambiguous existing pull requests. Inspect GitHub before continuing.');if(existing.length)return {url:verifiedPull(existing[0],plan),reused:true};
+ const head=await remoteRef(git,repo,plan.destination,plan.branch,signal);if(head&&head!==plan.head&&head!==plan.previousHead)throw Error('Remote branch changed; it will not be overwritten.');
+ const existing=await api(plan.destination,plan.branch,plan.base,null,signal);if(!Array.isArray(existing)||existing.length>1)throw Error('Ambiguous existing pull requests. Inspect GitHub before continuing.');if(plan.previousHead){
+  const pull=existing[0];if(!head||existing.length!==1||pull.number!==plan.pullNumber||pull.state!=='open'||pull.draft!==true)throw Error('The draft PR or its branch changed. Inspect GitHub before updating.');
+  const url=verifiedPull(pull,{...plan,head});if(head===plan.head)return {url,reused:true};
+  if(await git(repo,['merge-base','--is-ancestor',plan.previousHead,plan.head],signal,false,undefined,true)==='NOT_ANCESTOR')throw Error('Only forward PR updates are allowed.');
+  checkpoint('pushing');await git(repo,['push','--porcelain','--no-follow-tags','--recurse-submodules=no','--force-with-lease=refs/heads/'+plan.branch+':'+plan.previousHead,plan.destination,plan.head+':refs/heads/'+plan.branch],signal,true);
+  checkpoint('branch_published');const updated=await api(plan.destination,plan.branch,plan.base,null,signal);
+  if(!Array.isArray(updated)||updated.length!==1||updated[0].number!==plan.pullNumber||updated[0].state!=='open'||updated[0].draft!==true||updated[0].base?.sha!==plan.baseSha)throw Error('Branch uploaded but PR state changed. Inspect GitHub before continuing.');
+  return {url:verifiedPull(updated[0],plan),reused:true};
+ }
+ if(existing.length)return {url:verifiedPull(existing[0],plan),reused:true};
  if(!head){checkpoint('pushing');await git(repo,['push','--porcelain','--no-follow-tags','--recurse-submodules=no','--force-with-lease=refs/heads/'+plan.branch+':',plan.destination,plan.head+':refs/heads/'+plan.branch],signal,true);}
  checkpoint('branch_published');if(await remoteRef(git,repo,plan.destination,plan.branch,signal)!==plan.head)throw Error('Could not confirm the published branch. Preview again to reconcile.');
  if(await remoteRef(git,repo,plan.destination,plan.base,signal)!==plan.baseSha)throw Error('Base changed after the branch was published. Preview again before creating a PR.');

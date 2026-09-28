@@ -30,3 +30,8 @@ export function commitSnapshot(repo:string,revision:string,tree:string,branch:st
   git(repo,['update-ref','refs/heads/'+branch,sha,'0'.repeat(40)]);
   return sha;
 }
+
+export function restoreSnapshot(worktree:string,tree:string){
+  if(!/^[a-f0-9]{40}$/.test(tree))throw Error('Invalid revision snapshot');
+  git(worktree,['read-tree','--reset','-u',tree]);
+}
