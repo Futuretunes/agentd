@@ -15,6 +15,24 @@ async function fixture(timeoutMs=2000){
  const app=runner(config);await once(app.server,'listening');return{root,repo,config,app};
 }
 async function status(app,id,wanted){for(let i=0;i<150;i++){const row=app.request({op:'show',id}).task;if(wanted.includes(row.status))return row;await sleep(20);}throw Error('Timed out waiting for '+wanted);}
+test('account changes exclude task approvals and running workers; audit excludes secrets',async()=>{
+ const prior=process.env.AGENTD_CLAUDE_BIN,binRoot=mkdtempSync(join(tmpdir(),'account-cli-')),bin=join(binRoot,'claude');
+ writeFileSync(bin,`#!${process.execPath}\nif(process.argv.includes('status')){console.log('Not logged in');process.exit(1)}setInterval(()=>{},1000);`,{mode:0o700});process.env.AGENTD_CLAUDE_BIN=bin;
+ const f=await fixture();const owner='a'.repeat(64);
+ try{
+  const task=f.app.request({op:'create',adapter:'claude',prompt:'hang'});
+  for(let i=0;i<100&&f.app.request({op:'operations'}).adapters.find(x=>x.id==='claude').account.state==='checking';i++)await sleep(20);
+  const session=f.app.request({op:'account-start',owner,adapter:'claude',action:'login'});
+  assert.equal(f.app.request({op:'operations'}).service.accountChange,true);
+  assert.throws(()=>f.app.request({op:'approve',id:task.id}),/account change/);
+  assert.equal(f.app.request({op:'account-session',owner:'b'.repeat(64)}).session,null);
+  assert.ok(!JSON.stringify(f.app.request({op:'audit'})).includes(owner));
+  f.app.request({op:'account-cancel',owner,session:session.id});
+  for(let i=0;i<100&&f.app.request({op:'account-session',owner}).busy;i++)await sleep(20);
+  f.app.request({op:'approve',id:task.id});await status(f.app,task.id,['running']);
+  assert.throws(()=>f.app.request({op:'account-start',owner,adapter:'claude',action:'logout'}),/current work/);
+ }finally{await f.app.close();rmSync(f.root,{recursive:true,force:true});if(prior===undefined)delete process.env.AGENTD_CLAUDE_BIN;else process.env.AGENTD_CLAUDE_BIN=prior;rmSync(binRoot,{recursive:true,force:true});}
+});
 test('approval is required; revisions and worktrees are pinned; state survives restart',async()=>{
  const f=await fixture();let app=f.app;
  try{

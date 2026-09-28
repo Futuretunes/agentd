@@ -41,7 +41,20 @@ export function mobile(c:Config){
    }
    const id=req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith('agentd_session='))?.slice(15);
    if(!id||(sessions.get(id)??0)<Date.now()){send(401,{error:'Sign in to continue'});return;}
-   if(path==='/api/logout'&&req.method==='POST'){sessions.delete(id);res.setHeader('Set-Cookie','agentd_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');send(200,{ok:true});return;}
+   const accountOwner=createHash('sha256').update(id).digest('hex');
+   if(path==='/api/account'&&req.method==='GET'){send(200,await call({op:'account-session',owner:accountOwner}));return;}
+   if(path==='/api/account'&&req.method==='POST'){
+    const input=await body(req);
+    if(!['start','code','cancel','refresh'].includes(input.action)){send(400,{error:'Unsupported account action'});return;}
+    if(input.action==='start'&&(!['claude','codex'].includes(input.adapter)||!['login','logout'].includes(input.operation))){send(400,{error:'Unsupported account action'});return;}
+    try{send(200,await call({op:'account-'+input.action,owner:accountOwner,adapter:input.adapter,action:input.operation,session:input.session,code:input.code}));}
+    catch{send(400,{error:input.action==='start'?'Account change could not start. Wait for current work or another sign-in to finish, then try again.':'Account step failed. Check the code or start a new sign-in.'});}
+    return;
+   }
+   if(path==='/api/logout'&&req.method==='POST'){
+    try{const value=await call({op:'account-session',owner:accountOwner});if(value?.session&&value.busy)await call({op:'account-cancel',owner:accountOwner,session:value.session.id});}catch{}
+    sessions.delete(id);res.setHeader('Set-Cookie','agentd_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');send(200,{ok:true});return;
+   }
    if(path==='/api/capabilities'&&req.method==='GET'){send(200,await call({op:'capabilities'}));return;}
    if(path==='/api/operations'&&req.method==='GET'){send(200,await call({op:'operations'}));return;}
    const review=path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/review$/);

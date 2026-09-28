@@ -8,6 +8,8 @@ Implemented in v0.7.0: a read-only Operations Center for desktop and phone. It s
 
 ## Core product requirement: terminal-free operation
 
+Implemented in v0.8.0: guided native Claude and Codex account login, reconnect, sign-out and immediate status refresh in Operations. Login uses a temporary profile, preserves previous credentials on failure/cancellation, and excludes concurrent worker execution. User consent and final live credential handoff require operator validation after deployment. See [account setup](accounts.md).
+
 The eventual product must let the operator manage everything through the desktop/mobile GUI, without SSH, shell commands, manual file edits, or copying installer output into chat. This is a product acceptance requirement, not just a visual redesign. Current terminal-based administration is temporary.
 
 - **Credits and limits:** show each provider's available usage/credits, reset times, account status and approaching-limit warnings where supported. Distinguish subscription limits from metered balances. Show unavailable or stale information honestly; never invent a balance. Explain when limits block a task and provide a clear next action.
@@ -21,7 +23,7 @@ Acceptance: a nontechnical operator can complete the supported setup, sign-in, p
 
 High-priority follow-up:
 
-- Durable Claude session renewal. Refreshes inside disposable workers are currently discarded. Design a trusted credential lifecycle outside repository-controlled workers, handle token rotation and concurrent refresh safely, and test expired sessions without exposing credentials or weakening isolation. Manual service-account sign-in remains the recovery path.
+- Durable Claude session renewal. Refreshes inside disposable workers are currently discarded. Design a trusted credential lifecycle outside repository-controlled workers, handle token rotation and concurrent refresh safely, and test expired sessions without exposing credentials or weakening isolation. GUI reconnect now provides the manual recovery path.
 - Restore Codex availability only through a validated solution compatible with the host's namespace restrictions. No inner-sandbox bypass.
 
 Planned, with no release-date commitment:

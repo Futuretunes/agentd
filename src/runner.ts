@@ -1,4 +1,5 @@
 import {adapterIds,invocation,discover,probeAccount,type AccountStatus,type Mode} from './adapters.ts';
+import {accounts} from './accounts.ts';
 import {snapshot,commitSnapshot} from './changes.ts';
 import {isolated} from './isolation.ts';
 import {fileURLToPath} from 'node:url';
@@ -80,12 +81,13 @@ export function runner(c: Config) {
   let checkingAccounts=false;
   let accountsCheckedAt=0;
   const refreshAccounts=(force=false)=>{
-    if(checkingAccounts||closing||(!force&&Date.now()-accountsCheckedAt<300000))return;checkingAccounts=true;
+    if(checkingAccounts||closing||accountManager.busy()||(!force&&Date.now()-accountsCheckedAt<300000))return;checkingAccounts=true;
     void Promise.all(adapterIds.map(async id=>{
       try{accountCache.set(id,await (c.accountStatus??probeAccount)(id));}
       catch{accountCache.set(id,{state:'error',method:null,checkedAt:new Date().toISOString(),message:'Could not verify sign-in'});}
     })).finally(()=>{accountsCheckedAt=Date.now();checkingAccounts=false;});
   };
+  const accountManager=accounts({root:join(c.stateDir,'account-sessions'),changed:()=>{accountsCheckedAt=0;refreshAccounts();if(!closing)setImmediate(pump);}});
   setImmediate(()=>refreshAccounts(true));
   const accountTimer=setInterval(()=>refreshAccounts(true),300000);accountTimer.unref();
   const operationError=(value:unknown)=>{
@@ -101,7 +103,7 @@ export function runner(c: Config) {
     if(!value.modes.includes(mode))throw Error('Editing is not enabled for this adapter');
   };
   function pump(){
-    if(closing||active)return;
+    if(closing||active||accountManager.busy())return;
     const row=db.prepare("SELECT * FROM tasks WHERE status='queued' ORDER BY created,id LIMIT 1").get();
     if(!row)return;
     const id=String(row.id),tree=join(c.worktrees,id),log=join(c.logs,`${id}.log`);
@@ -153,6 +155,7 @@ export function runner(c: Config) {
   }
   const review=(row:any)=>{available(row);return {...snapshot(String(row.worktree),String(row.revision),c.stateDir),checks:row.checks?((value:any)=>({...value,output:value.log?logTail(value.log):''}))(JSON.parse(String(row.checks))):null,commit:row.commit_sha,branch:row.branch,decision:row.review};};
   function validate(row:any,expected:string){
+    if(accountManager.busy())throw Error('Finish the account change before running checks');
     available(row);if(row.review!=='pending')throw Error('This review is already resolved');
     const value=snapshot(String(row.worktree),String(row.revision),c.stateDir);if(value.tree!==expected)throw Error('Changes have changed. Review again.');
     const p=project(String(row.project));if(!p.check_dependencies)throw Error('An administrator must configure project check dependencies first');
@@ -175,6 +178,15 @@ export function runner(c: Config) {
   }
   function request(input:any){
     if(closing)throw new Error('Service is stopping');
+    if(input.op==='account-session')return {session:accountManager.view(input.owner),busy:accountManager.busy()};
+    if(input.op==='account-start'){
+      if(!['login','logout'].includes(input.action))throw Error('Unsupported account action');
+      if(active||checkingAccounts||db.prepare("SELECT id FROM tasks WHERE status='queued'").get())throw Error('Wait for current work or account checks to finish before changing accounts.');
+      const result=accountManager.start(input.owner,input.adapter,input.action);audit('account-'+input.action,null,{adapter:input.adapter});return result;
+    }
+    if(input.op==='account-code')return accountManager.submit(input.owner,input.session,input.code);
+    if(input.op==='account-cancel')return accountManager.cancel(input.owner,input.session);
+    if(input.op==='account-refresh'){refreshAccounts(true);return {ok:true};}
     if(input.op==='capabilities'){const adapters=capabilities();return {adapterSchemaVersion:1,adapters,editing:adapters.some(value=>value.modes.includes('edit')),editAdapters:adapters.filter(value=>value.modes.includes('edit')).map(value=>value.id),enabledAdapters:adapters.filter(value=>value.available).map(value=>value.id),strictWorkers:!!c.strictWorkers,publishing:false};}
     if(input.op==='operations'){
       refreshAccounts();
@@ -188,7 +200,7 @@ export function runner(c: Config) {
           return {id:row.id,adapter:row.adapter,mode:row.mode,status:row.status,created:row.created,updated:row.updated,error:operationError(row.error),review:row.review,project:row.project,projectName:row.project_name,conversation:row.conversation,conversationTitle:row.conversation_title,checkStatus};
         });
       const adapters=capabilities().map(value=>({...value,account:accountCache.get(value.id),usage:{state:'unavailable',message:'Usage limits are not reported by this native CLI'}}));
-      return {generatedAt:new Date().toISOString(),service:{state:'healthy',scheduler:'serial',activeTask:active?.id??null,queueDepth:counts.queued??0,security:c.strictWorkers?'hardened':'standard'},counts,tasks,adapters};
+      return {generatedAt:new Date().toISOString(),service:{state:'healthy',scheduler:'serial',activeTask:active?.id??null,queueDepth:counts.queued??0,security:c.strictWorkers?'hardened':'standard',accountChange:accountManager.busy()},counts,tasks,adapters};
     }
     if(input.op==='audit')return db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 100').all();
     if(input.op==='project-checks'){
@@ -281,6 +293,7 @@ export function runner(c: Config) {
     }
     if(input.op==='show')return {task:row,output:row.log?logTail(String(row.log)):'',images:JSON.parse(String(row.attachments)).map((id:string)=>attachment(id)),events:db.prepare('SELECT status,at FROM events WHERE task=? ORDER BY id').all(input.id)};
     if(input.op==='approve'){
+      if(accountManager.busy())throw Error('Finish the account change before approving work');
       if(row.status!=='waiting_for_approval')throw new Error('Task is not waiting for approval');
       requireAdapter(String(row.adapter),String(row.mode));
       audit('approve-run',input.id,{adapter:row.adapter,mode:row.mode,revision:row.revision});
@@ -312,5 +325,5 @@ export function runner(c: Config) {
   const controlPath=process.env.AGENTD_CONTROL_SOCKET??socket;
   server.listen(controlPath);
   server.on('listening',()=>pump());
-  return {request,server,async close(){closing=true;clearInterval(accountTimer);const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
+  return {request,server,async close(){closing=true;clearInterval(accountTimer);await accountManager.close();const pending=active?.done;active?.stop('interrupted');if(pending)await pending;await new Promise<void>(resolve=>server.close(()=>resolve()));db.close();}};
 }

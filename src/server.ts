@@ -36,7 +36,7 @@ export function start(options: Options) {
       try {
         db.prepare('SELECT 1').get();
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ok', service: 'agentd', version: '0.7.0', schemaVersion: 1,
+        res.end(JSON.stringify({ status: 'ok', service: 'agentd', version: '0.8.0', schemaVersion: 1,
           scheduler: tasks ? 'serial' : 'disabled', workerDispatch: !!tasks, starts: boots }));
       } catch {
         res.writeHead(503, { 'Content-Type': 'application/json' });
@@ -64,7 +64,7 @@ export function start(options: Options) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.umask(0o077);
   const app = start({ stateDir: process.env.AGENTD_STATE_DIR ?? '/srv/agentd/state', port: Number(process.env.AGENTD_PORT ?? 8787), taskRunner: process.env.AGENTD_RUNNER === "1" });
-  app.server.on('listening', () => console.log(JSON.stringify({ event: 'listening', address: app.server.address(), version: '0.7.0' })));
+  app.server.on('listening', () => console.log(JSON.stringify({ event: 'listening', address: app.server.address(), version: '0.8.0' })));
   app.server.on('error', (error) => { console.error(JSON.stringify({ event: 'server_error', message: error.message })); process.exit(1); });
   let stopping = false;
   for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => {

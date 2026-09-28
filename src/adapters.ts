@@ -39,13 +39,13 @@ export function discover(enabled:readonly string[],editing:readonly string[],cus
   });
 }
 
-export function probeAccount(id:string):Promise<AccountStatus>{
+export function probeAccount(id:string,home=homedir()):Promise<AccountStatus>{
   const value=adapter(id),executable=value.executable(),args=id==='codex'?['login','status']:['auth','status','--text'];
   if(!installed(executable))return Promise.resolve({state:'unavailable',method:null,checkedAt:new Date().toISOString(),message:'CLI is missing or not executable'});
-  return new Promise(resolve=>execFile(executable,args,{timeout:10000,maxBuffer:4096,env:{HOME:homedir(),PATH:process.env.PATH??'/usr/local/bin:/usr/bin:/bin',LANG:'C.UTF-8',TERM:'dumb',DISABLE_AUTOUPDATER:'1',DISABLE_TELEMETRY:'1',DISABLE_ERROR_REPORTING:'1'}},(error,stdout,stderr)=>{
+  return new Promise(resolve=>execFile(executable,args,{cwd:home,timeout:10000,killSignal:'SIGKILL',maxBuffer:4096,env:{HOME:home,CODEX_HOME:join(home,'.codex'),PATH:process.env.PATH??'/usr/local/bin:/usr/bin:/bin',LANG:'C.UTF-8',TERM:'dumb',DISABLE_AUTOUPDATER:'1',DISABLE_TELEMETRY:'1',DISABLE_ERROR_REPORTING:'1'}},(error,stdout,stderr)=>{
     const output=String(stdout)+String(stderr),checkedAt=new Date().toISOString();
     if(/not logged in|not authenticated|login required/i.test(output))resolve({state:'signed_out',method:null,checkedAt,message:'Sign-in required'});
-    else if(!error&&(/logged in/i.test(output)||/login method:/i.test(output)))resolve({state:'signed_in',method:id==='codex'&&/chatgpt/i.test(output)?'ChatGPT subscription':id==='claude'?'Claude subscription':'Native account',checkedAt,message:'Account is signed in'});
+    else if(!error&&(/logged in/i.test(output)||/login method:/i.test(output)))resolve({state:'signed_in',method:id==='codex'&&/chatgpt/i.test(output)?'ChatGPT subscription':id==='claude'&&/login method:\s*Claude (?:Pro|Max|Team|Enterprise|subscription|account)/i.test(output)?'Claude subscription':'Native account',checkedAt,message:'Account is signed in'});
     else resolve({state:'error',method:null,checkedAt,message:error?.killed?'Status check timed out':'Could not verify sign-in'});
   }));
 }

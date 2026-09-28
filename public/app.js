@@ -28,7 +28,7 @@ function node(tag,text,cls) { const e = document.createElement(tag); if(text !==
 async function api(path,data) {
   const res = await fetch(path,{method:data?'POST':'GET',headers:data?{'Content-Type':'application/json'}:undefined,body:data?JSON.stringify(data):undefined});
   const value=await res.json();
-  if(res.status===401){signedIn=false;$('workspace').hidden=true;$('login').hidden=false;}
+  if(res.status===401){signedIn=false;for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();if($('account-content'))$('account-content').replaceChildren();$('workspace').hidden=true;$('login').hidden=false;}
   if(!res.ok)throw Error(value.error??'Request failed'); return value;
 }
 function button(text,callback,cls='') {
@@ -48,7 +48,16 @@ function renderOperations(data){
   const summary=node('section',undefined,'operation-summary');for(const [value,label] of [[active,'Active or waiting'],[data.counts.succeeded??0,'Completed'],[problems,'Need attention'],[data.service.queueDepth,'Queued']]){const card=node('div',undefined,'metric-card');card.append(node('strong',String(value)),node('span',label));summary.append(card);}content.append(summary);
   const service=node('section',undefined,'operation-section');service.append(node('h3','Service'),node('p',`Healthy · ${data.service.scheduler} scheduler · ${data.service.security} workers`,'good'),node('p',data.service.activeTask?'An agent is currently working.':'No agent is currently running.','muted'));content.append(service);
   const agents=node('section',undefined,'operation-section');agents.append(node('h3','Agents and usage'));
-  for(const value of data.adapters){const card=node('div',undefined,'operation-agent'),account=value.account??{state:'checking',message:'Checking account status'};card.append(node('strong',value.name),node('p',account.state==='signed_in'?`Signed in${account.method?' · '+account.method:''}`:account.message,account.state==='signed_in'?'good':account.state==='signed_out'?'attention':'muted'),node('p',value.available?'Available · '+value.modes.map(mode=>mode==='edit'?'Edit files':'Ask').join(' and '):value.reason,'muted'),node('p',value.usage.message,'muted'));agents.append(card);}content.append(agents);
+  for(const value of data.adapters){const card=node('div',undefined,'operation-agent'),account=value.account??{state:'checking',message:'Checking account status'};card.append(node('strong',value.name),node('p',account.state==='signed_in'?`Signed in${account.method?' · '+account.method:''}`:account.message,account.state==='signed_in'?'good':account.state==='signed_out'?'attention':'muted'),node('p',value.available?'Available · '+value.modes.map(mode=>mode==='edit'?'Edit files':'Ask').join(' and '):value.reason,'muted'),node('p',value.usage.message,'muted'));
+    const actions=node('div',undefined,'actions');
+    const login=button(account.state==='signed_in'?'Reconnect account':'Sign in',()=>startAccount(value.id,'login'));login.disabled=!value.installed||!!data.service.activeTask||data.service.queueDepth>0||data.service.accountChange;actions.append(login);
+    if(account.state==='signed_in'){const logout=button('Sign out',async()=>{if(confirm('Sign out of '+value.name+' on this server? Future runs will need a new login.'))await startAccount(value.id,'logout');},'danger');logout.disabled=login.disabled;actions.append(logout);}
+    card.append(actions);agents.append(card);
+  }
+  agents.append(button('Refresh account status',()=>api('/api/account',{action:'refresh'})));
+  if(data.service.accountChange)agents.append(node('p','An account change is in progress. Work resumes when it finishes.','attention'),button('View sign-in',()=>showAccount()));
+  else if(data.service.activeTask||data.service.queueDepth>0)agents.append(node('p','Finish or stop current work before changing accounts.','muted'));
+  content.append(agents);
   const current=data.tasks.filter(item=>pending(item.status)||item.review==='pending'),attention=data.tasks.filter(item=>['failed','timed_out','interrupted'].includes(item.status)),recent=data.tasks.filter(item=>!pending(item.status)&&item.review!=='pending'&&!['failed','timed_out','interrupted'].includes(item.status)).slice(0,10);
   for(const [title,items,emptyText] of [['Current work',current,'Nothing is waiting or running.'],['Needs attention',attention,'No recent failures need attention.'],['Recent work',recent,'No completed work yet.']]){const section=node('section',undefined,'operation-section');section.append(node('h3',title));if(items.length)section.append(...items.map(operationTask));else section.append(node('p',emptyText,'muted'));content.append(section);}
   content.append(node('p','Updated '+new Date(data.generatedAt).toLocaleTimeString()+'. Account status is cached; usage appears only when a native provider exposes it reliably.','hint'));
@@ -56,6 +65,33 @@ function renderOperations(data){
 async function loadOperations(show=true){if(operationsBusy)return;operationsBusy=true;try{if(show&&!$('operations-dialog').open)$('operations-dialog').showModal();if(show)$('operations-content').replaceChildren(node('p','Loading workspace status…','muted'));renderOperations(await api('/api/operations'));}catch(e){notice(e.message);if(show)$('operations-dialog').close();}finally{operationsBusy=false;}}
 $('operations-menu').onclick=()=>loadOperations();
 $('operations-close').onclick=()=>$('operations-dialog').close();
+const accountDialog=node('dialog');accountDialog.id='account-dialog';accountDialog.setAttribute('aria-labelledby','account-heading');
+const accountHead=node('div',undefined,'review-head'),accountHeading=node('h2','Connect your account');accountHeading.id='account-heading';
+const accountClose=node('button','×');accountClose.type='button';accountClose.setAttribute('aria-label','Close account dialog');accountClose.onclick=()=>{accountDialog.close();$('account-content').replaceChildren();};accountHead.append(accountHeading,accountClose);
+const accountContent=node('div');accountContent.id='account-content';accountDialog.append(accountHead,accountContent);document.body.append(accountDialog);
+let accountFingerprint='',accountPolling=false;
+accountDialog.addEventListener('close',()=>{accountContent.replaceChildren();accountFingerprint='';});
+async function startAccount(adapter,operation){await api('/api/account',{action:'start',adapter,operation});await showAccount();}
+async function showAccount(){accountFingerprint='';if(!accountDialog.open)accountDialog.showModal();await updateAccount();}
+async function updateAccount(){
+  if(accountPolling||!accountDialog.open)return;accountPolling=true;
+  try{
+    const value=await api('/api/account'),s=value.session,signature=JSON.stringify(value);if(signature===accountFingerprint)return;accountFingerprint=signature;accountContent.replaceChildren();
+    if(!s){accountContent.append(node('p',value.busy?'Account setup is open in another browser. Return there or wait for it to expire.':'No sign-in is in progress. Open Operations to start.','muted'));return;}
+    accountHeading.textContent=(s.adapter==='claude'?'Claude':'Codex')+' account';
+    accountContent.append(node('p',s.message,s.state==='succeeded'?'good':s.state==='failed'||s.state==='expired'?'error':'muted'));
+    if(s.url){const link=node('a','Open '+(s.adapter==='claude'?'Claude':'OpenAI')+' sign-in','provider-login');link.href=s.url;link.target='_blank';link.rel='noopener noreferrer';accountContent.append(link);}
+    if(s.code){accountContent.append(node('p','Enter this one-time code on the provider page:','muted'),node('code',s.code,'device-code'));}
+    if(s.needsCode){
+      const form=node('form'),label=node('label','Code returned by Claude'),input=node('input');label.htmlFor='account-code';input.id='account-code';input.type='password';input.autocomplete='off';input.maxLength=4096;input.required=true;input.spellcheck=false;
+      const submit=node('button','Complete sign-in','primary');submit.type='submit';form.append(label,input,submit);
+      form.onsubmit=async event=>{event.preventDefault();submit.disabled=true;const code=input.value.trim();input.value='';try{await api('/api/account',{action:'code',session:s.id,code});accountFingerprint='';await updateAccount();}catch(e){notice(e.message);}finally{submit.disabled=false;}};accountContent.append(form);
+    }
+    if(!['succeeded','failed','cancelled','expired'].includes(s.state)){accountContent.append(node('p','Finish before '+new Date(s.expiresAt).toLocaleTimeString()+'. Passwords belong only on the provider website.','hint'),button('Cancel sign-in',async()=>{await api('/api/account',{action:'cancel',session:s.id});await updateAccount();}));}
+    else accountContent.append(button('Back to Operations',async()=>{accountDialog.close();accountContent.replaceChildren();await loadOperations();}));
+  }catch(e){accountContent.replaceChildren(node('p',e.message,'error'));}finally{accountPolling=false;}
+}
+setInterval(()=>{if(signedIn&&!document.hidden&&accountDialog.open)void updateAccount();},1500);
 function reset(thread=null) { selected=thread;generation++;fingerprint='';latest=null;uploads=[];renderUploads();$('prompt').value='';$('project-info').hidden=true; }
 function renderUploads(){ $('attachments').replaceChildren(...uploads.map(item=>button(item.name+' ×',()=>{uploads=uploads.filter(x=>x.id!==item.id);renderUploads();}))); }
 function images(items){const box=node('div',undefined,'images');for(const item of items){const a=node('a');a.href='/api/images/'+item.id;a.target='_blank';a.rel='noopener';const img=node('img');img.src=a.href;img.alt=item.name;a.append(img);box.append(a);}return box;}
