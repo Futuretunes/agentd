@@ -8,7 +8,7 @@ export function githubAccount(root:string,executable='/usr/local/bin/gh'){
  if(existsSync(profile))rmSync(join(root,'previous'),{recursive:true,force:true});
  const connected=()=>{try{return lstatSync(profile).isDirectory()&&!lstatSync(profile).isSymbolicLink()&&lstatSync(join(profile,'hosts.yml')).isFile()&&!lstatSync(join(profile,'hosts.yml')).isSymbolicLink();}catch{return false;}};
  const busy=()=>!!current&&!current.done;
- const view=(owner:string)=>({installed:existsSync(executable),connected:connected(),busy:busy(),session:current?.owner===owner?{id:current.id,state:current.state,code:current.code,url:current.code?'https://github.com/login/device':null,message:current.message}:null});
+ const view=(owner?:string)=>({installed:existsSync(executable),connected:connected(),busy:busy(),session:current&&typeof owner==='string'&&current.owner===owner?{id:current.id,state:current.state,code:current.code,url:current.code?'https://github.com/login/device':null,message:current.message}:null});
  function start(owner:string){
   if(closed||busy())throw Error('A GitHub connection is already in progress.');if(!/^[a-f0-9]{64}$/.test(owner))throw Error('Authenticated browser session required');if(!existsSync(executable))throw Error('GitHub CLI is not installed.');
   mkdirSync(root,{recursive:true,mode:0o700});
