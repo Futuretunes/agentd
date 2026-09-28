@@ -1,3 +1,4 @@
+import {testedVersions} from './native-policy.ts';
 import {spawn,execFile} from 'node:child_process';
 import {promisify,stripVTControlCharacters} from 'node:util';
 import {mkdirSync,readFileSync} from 'node:fs';
@@ -22,14 +23,14 @@ export async function discoverModels(id:string,signal:AbortSignal,home=homedir()
  const bin=adapter(id).executable(),env={HOME:home,CODEX_HOME:join(home,'.codex'),PATH:process.env.PATH,LANG:'C.UTF-8',TERM:'dumb',NO_COLOR:'1',NO_OPEN_BROWSER:'1',DIRENV_DISABLE:'1',AGENT_CLI_CREDENTIAL_STORE:'file',DISABLE_AUTOUPDATER:'1',DISABLE_TELEMETRY:'1'};
  const version=(await exec(bin,['--version'],{env,cwd:home,signal,timeout:10000,maxBuffer:4096})).stdout.trim();
  if(id==='claude'){
-  if(version!=='2.1.283 (Claude Code)')throw Error('Refresh requires the tested Claude CLI version');const help=(await exec(bin,['--help'],{env,cwd:home,signal,timeout:15000,maxBuffer:65536})).stdout;
+  if(version!==testedVersions.claude)throw Error('Refresh requires the tested Claude CLI version');const help=(await exec(bin,['--help'],{env,cwd:home,signal,timeout:15000,maxBuffer:65536})).stdout;
   if(!help.includes('--model')||!help.includes('--effort'))throw Error('Native selection controls unavailable');
   return [{id:'haiku',name:'Haiku (native alias)',efforts:[],tier:'light'},{id:'sonnet',name:'Sonnet (native alias)',efforts:['low','medium','high'],tier:'balanced'},{id:'opus',name:'Opus (native alias)',efforts:['low','medium','high'],tier:'deep'}];
  }
  if(id==='cursor'){
-  if(version!=='2026.09.26-dd393fe')throw Error('Refresh requires the tested Cursor CLI version');const value=await exec(bin,['models'],{env,cwd:home,signal,timeout:20000,maxBuffer:65536});return parseCursorModels(value.stdout);
+  if(version!==testedVersions.cursor)throw Error('Refresh requires the tested Cursor CLI version');const value=await exec(bin,['models'],{env,cwd:home,signal,timeout:20000,maxBuffer:65536});return parseCursorModels(value.stdout);
  }
- if(id!=='codex'||version!=='codex-cli 0.157.1')throw Error('Refresh requires the tested Codex CLI version');
+ if(id!=='codex'||version!==testedVersions.codex)throw Error('Refresh requires the tested Codex CLI version');
  return new Promise((resolve,reject)=>{
   const child=spawn(bin,['-c','forced_login_method="chatgpt"','-c','model_provider="openai"','app-server'],{env,cwd:home,stdio:['pipe','pipe','ignore'],detached:true});let buffer='',bytes=0,finished=false;
   const kill=()=>{if(child.pid)try{process.kill(-child.pid,'SIGKILL');}catch{}};const end=(error?:Error,models?:Model[])=>{if(finished)return;finished=true;clearTimeout(timer);signal.removeEventListener('abort',cancel);kill();error?reject(error):resolve(models!);};

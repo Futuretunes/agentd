@@ -1,3 +1,4 @@
+import {testedVersions,claudeMaxTurns,nativeLimits} from './native-policy.ts';
 import {readCredentials} from './credentials.ts';
 import {accessSync,constants,statSync} from 'node:fs';
 import {homedir} from 'node:os';
@@ -28,13 +29,12 @@ const registry:readonly Adapter[]=[
     arguments:({prompt,mode,images})=>['-c','forced_login_method="chatgpt"','exec','--sandbox',mode==='edit'?'workspace-write':'read-only','--ephemeral',...images.flatMap(path=>['--image',path]),prompt]},
   {id:'claude',name:'Claude',images:true,
     executable:()=>process.env.AGENTD_CLAUDE_BIN??join(homedir(),'.local/bin/claude'),
-    arguments:({prompt,mode})=>{const tools=mode==='edit'?'Read,Glob,Grep,Edit,Write':'Read,Glob,Grep';return ['-p','--permission-mode','dontAsk','--tools',tools,'--allowedTools',tools,'--max-turns','16',prompt];}},
+    arguments:({prompt,mode})=>{const tools=mode==='edit'?'Read,Glob,Grep,Edit,Write':'Read,Glob,Grep';return ['-p','--permission-mode','dontAsk','--tools',tools,'--allowedTools',tools,'--max-turns',String(claudeMaxTurns),prompt];}},
 ];
 export const adapterIds=registry.map(adapter=>adapter.id);
 export function adapter(id:string){const value=registry.find(value=>value.id===id);if(!value)throw Error('Unsupported adapter');return value;}
 export function verifySelectionVersion(id:string){
- const versions:Record<string,string>={claude:'2.1.283 (Claude Code)',codex:'codex-cli 0.157.1',cursor:'2026.09.26-dd393fe'};
- try{const found=execFileSync(adapter(id).executable(),['--version'],{encoding:'utf8',timeout:5000,maxBuffer:4096,stdio:['ignore','pipe','ignore'],env:{HOME:homedir(),PATH:process.env.PATH,AGENT_CLI_CREDENTIAL_STORE:'file',NO_OPEN_BROWSER:'1',DIRENV_DISABLE:'1'}}).trim();if(found!==versions[id])throw Error();}catch{throw Error('Model selection requires the tested native CLI version. Check Operations before retrying.');}
+ try{const found=execFileSync(adapter(id).executable(),['--version'],{encoding:'utf8',timeout:5000,maxBuffer:4096,stdio:['ignore','pipe','ignore'],env:{HOME:homedir(),PATH:process.env.PATH,AGENT_CLI_CREDENTIAL_STORE:'file',NO_OPEN_BROWSER:'1',DIRENV_DISABLE:'1'}}).trim();if(found!==testedVersions[id])throw Error();}catch{throw Error('Model selection requires the tested native CLI version. Check Operations before retrying.');}
 }
 export function invocation(id:string,input:Invocation):[string,string[]]{
   if(input.mode==='chat'){
@@ -54,7 +54,7 @@ export function discover(enabled:readonly string[],editing:readonly string[],cus
     return {id:value.id,name:value.name,installed:present,enabled:permitted,available,
       reason:!permitted?'Adapter disabled by security policy':!present?'CLI is missing or not executable':null,
       modes:available?(chat?['chat']:editing.includes(value.id)?['ask','edit']:['ask']):[],
-      features:{images:!chat&&value.images},authentication:'not_checked'};
+      features:{images:!chat&&value.images},nativeLimits:nativeLimits(value.id),authentication:'not_checked'};
   });
 }
 
@@ -68,4 +68,16 @@ export function probeAccount(id:string,home=homedir()):Promise<AccountStatus>{
     else if(!error&&(/logged in/i.test(output)||/login method:/i.test(output)))resolve({state:'signed_in',method:id==='codex'&&/chatgpt/i.test(output)?'ChatGPT subscription':id==='claude'&&/login method:\s*Claude (?:Pro|Max|Team|Enterprise|subscription|account)/i.test(output)?'Claude subscription':'Native account',checkedAt,message:'Account is signed in'});
     else resolve({state:'error',method:null,checkedAt,message:error?.killed?'Status check timed out':'Could not verify sign-in'});
   }));
+}
+
+export type NativeVersion={state:'checking'|'verified'|'mismatch'|'unavailable';version:string|null;testedVersion:string;checkedAt:string|null};
+export function probeNativeVersion(id:string):Promise<NativeVersion>{
+ const executable=adapter(id).executable(),testedVersion=testedVersions[id];
+ const result=(state:NativeVersion['state'],version:string|null):NativeVersion=>({state,version,testedVersion,checkedAt:new Date().toISOString()});
+ if(!installed(executable))return Promise.resolve(result('unavailable',null));
+ return new Promise(resolve=>execFile(executable,['--version'],{cwd:homedir(),encoding:'utf8',timeout:5000,killSignal:'SIGKILL',maxBuffer:4096,env:{HOME:homedir(),PATH:'/usr/local/bin:/usr/bin:/bin',LANG:'C.UTF-8',NO_OPEN_BROWSER:'1',AGENT_CLI_CREDENTIAL_STORE:'file',DIRENV_DISABLE:'1',DISABLE_AUTOUPDATER:'1',DISABLE_TELEMETRY:'1'}},(error,stdout)=>{
+   const value=String(stdout).trim(),valid=id==='claude'?/^\d+\.\d+\.\d+ \(Claude Code\)$/.test(value):id==='codex'?/^codex-cli \d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(value):/^\d{4}\.\d{2}\.\d{2}-[a-f0-9]{7,40}$/.test(value);
+   if(error||!valid){resolve(result('unavailable',null));return;}
+   resolve(result(value===testedVersion?'verified':'mismatch',value));
+ }));
 }

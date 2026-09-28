@@ -37,3 +37,16 @@ test('chat-only policy exposes no repository modes and rejects image or other-pr
  const [command,args]=invocation('codex',{prompt:'--unsafe $(touch file)',mode:'chat',images:[]});assert.equal(command,process.execPath);assert.match(args[0],/codex-chat\.ts$/);assert.equal(args.at(-2),'--unsafe $(touch file)');
  assert.throws(()=>invocation('claude',{prompt:'test',mode:'chat',images:[]}));assert.throws(()=>invocation('codex',{prompt:'test',mode:'chat',images:['image']}));
 });
+
+test('native versions are normalized and fixed limits match actual invocation arguments',async()=>{
+ const {probeNativeVersion}=await import('../src/adapters.ts');const {testedVersions,claudeMaxTurns}=await import('../src/native-policy.ts');
+ const root=mkdtempSync(join(tmpdir(),'native-version-')),bin=join(root,'claude'),prior=process.env.AGENTD_CLAUDE_BIN;
+ try{
+  process.env.AGENTD_CLAUDE_BIN=bin;
+  const script=value=>writeFileSync(bin,'#!/bin/sh\nprintf "%s\\n" '+JSON.stringify(value)+'\n',{mode:0o700});
+  script(testedVersions.claude);assert.equal((await probeNativeVersion('claude')).state,'verified');
+  script('9.9.9 (Claude Code)');const mismatch=await probeNativeVersion('claude');assert.equal(mismatch.state,'mismatch');assert.equal(mismatch.version,'9.9.9 (Claude Code)');
+  script('private@example.invalid /private/profile');const unknown=await probeNativeVersion('claude');assert.equal(unknown.state,'unavailable');assert.equal(unknown.version,null);assert.ok(!JSON.stringify(unknown).includes('private@'));
+  const value=discover(['claude'],['claude']).find(v=>v.id==='claude'),[,args]=invocation('claude',{prompt:'fixture',mode:'edit',images:[]});assert.equal(value.nativeLimits.maxTurns,claudeMaxTurns);assert.equal(args[args.indexOf('--max-turns')+1],String(value.nativeLimits.maxTurns));
+ }finally{if(prior===undefined)delete process.env.AGENTD_CLAUDE_BIN;else process.env.AGENTD_CLAUDE_BIN=prior;rmSync(root,{recursive:true,force:true});}
+});

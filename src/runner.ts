@@ -1,3 +1,4 @@
+import {testedVersions} from './native-policy.ts';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {localGit} from './git-policy.ts';
 import {resourceLimits,checkoutBudget,requireSpace,freeBytes,captureOutput,monitorWorktree,serviceBudget,type Limits} from './resources.ts';
@@ -10,7 +11,7 @@ import {modelCatalog,discoverModels} from './model-catalog.ts';
 import {integrationGit,integrationConfig,githubReviewAPI,loadFeedback,selectedFeedback,prepareIntegration,unresolvedConflicts,type ReviewAPI} from './github-review.ts';
 import {previewPublication,executePublication,githubPullAPI,publicationText,type PullAPI,type PublishPlan} from './publishing.ts';
 import {checkManifest,prepareDependencies,writeManifests,type DependencyPreparation} from './check-setup.ts';
-import {adapterIds,invocation,discover,probeAccount,verifySelectionVersion,type AccountStatus,type Mode} from './adapters.ts';
+import {adapterIds,invocation,discover,probeAccount,probeNativeVersion,verifySelectionVersion,type NativeVersion,type AccountStatus,type Mode} from './adapters.ts';
 import {renewals,renewalFailure} from './renewal.ts';
 import {githubURL,branchName,repositoryGit,inspectRepository,updateRepository,type RepositoryGit} from './repositories.ts';
 import {githubAccount} from './github-account.ts';
@@ -26,7 +27,7 @@ import { mkdirSync, openSync, writeSync, closeSync, realpathSync, readFileSync, 
 import { join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 
-type Config = { resources?:Limits; gateway?: {path:string;gid:number}; modelDiscovery?:typeof discoverModels; stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; reviewAPI?:ReviewAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
+type Config = { nativeVersion?:typeof probeNativeVersion; resources?:Limits; gateway?: {path:string;gid:number}; modelDiscovery?:typeof discoverModels; stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; reviewAPI?:ReviewAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
 export function runner(c: Config) {
   if(c.enabledAdapters?.includes('cursor')&&!c.command&&(!c.strictWorkers||!c.credentialRenewal))throw Error('Cursor requires hardened isolation and access-only credential handling');
   if(c.credentialRenewal&&!c.strictWorkers)throw Error('Credential renewal requires hardened isolation');
@@ -203,13 +204,17 @@ export function runner(c: Config) {
   let preparing:string|undefined,preparation:Promise<void>|undefined;
   const renewalManager=c.credentialRenewal?(c.renewal??renewals({stateDir:c.stateDir})):undefined;
   const accountBusy=()=>accountManager.busy()||!!renewalManager?.busy()||!!preparing;
+  const versionCache=new Map<string,NativeVersion>();
   let checkingAccounts=false;
   let accountsCheckedAt=0;
   const refreshAccounts=(force=false)=>{
     if(checkingAccounts||closing||active||catalog.busy()||accountBusy()||(!force&&Date.now()-accountsCheckedAt<300000))return;checkingAccounts=true;
     void Promise.all(adapterIds.map(async id=>{
+      const version=(c.nativeVersion??(c.command?undefined:probeNativeVersion));
+      const versionCheck=version?version(id).then(value=>versionCache.set(id,value)).catch(()=>versionCache.set(id,{state:'unavailable',version:null,testedVersion:testedVersions[id],checkedAt:new Date().toISOString()})):Promise.resolve();
       try{accountCache.set(id,await (c.accountStatus??probeAccount)(id));}
       catch{accountCache.set(id,{state:'error',method:null,checkedAt:new Date().toISOString(),message:'Could not verify sign-in'});}
+      await versionCheck;
     })).finally(()=>{accountsCheckedAt=Date.now();checkingAccounts=false;if(!closing)setImmediate(pump);});
   };
   const accountManager=accounts({root:join(c.stateDir,'account-sessions'),changed:()=>{catalog.invalidate();renewalManager?.reconcile?.();accountsCheckedAt=0;refreshAccounts();if(!closing)setImmediate(pump);}});
@@ -400,7 +405,7 @@ export function runner(c: Config) {
           let checkStatus:string|null=null;try{checkStatus=row.checks?String(JSON.parse(String(row.checks)).status??'unknown'):null;}catch{checkStatus='unknown';}
           return {id:row.id,adapter:row.adapter,mode:row.mode,status:row.status,created:row.created,updated:row.updated,error:operationError(row.error),review:row.review,project:row.project,projectName:row.project_name,conversation:row.conversation,conversationTitle:row.conversation_title,checkStatus};
         });
-      const adapters=capabilities().map(value=>({...value,account:accountCache.get(value.id),...(renewalManager?{renewal:renewalManager.view(value.id)}:{}),usage:{state:'unavailable',message:'Usage limits are not reported by this native CLI'}}));
+      const adapters=capabilities().map(value=>({...value,account:accountCache.get(value.id),nativeVersion:versionCache.get(value.id)??{state:c.command?'unavailable':'checking',version:null,testedVersion:value.nativeLimits.testedVersion,checkedAt:null},...(renewalManager?{renewal:renewalManager.view(value.id)}:{}),usage:{state:'unavailable',message:'Usage limits are not reported by this native CLI'}}));
       return {resources:{limits,freeBytes:Math.min(...[c.stateDir,c.worktrees,c.logs].map(freeBytes)),service:serviceBudget()},generatedAt:new Date().toISOString(),service:{state:'healthy',dependencySetup:!!dependencyWork,scheduler:'serial',activeTask:active?.id??null,queueDepth:counts.queued??0,security:c.strictWorkers?'hardened':'standard',accountChange:accountManager.busy(),renewing:!!preparing},counts,tasks,adapters};
     }
     if(input.op==='audit')return db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 100').all();

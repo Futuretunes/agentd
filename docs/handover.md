@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-session-audit.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-28-native-limits.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.29.0 — native compatibility and limits
+
+[Handover](handovers/2026-09-28-native-limits.md): Operations shows tested/observed CLI versions, compatibility status and native fixed limits. Approval snapshots include native limits; model/renewal/protocol version pins share one source. 33 focused tests passed; exact Linux/CI pending. Cumulative overnight release remains uninstalled, production 0.22.0 unchanged.
 
 ## Candidate 0.28.0 — session audit coverage
 

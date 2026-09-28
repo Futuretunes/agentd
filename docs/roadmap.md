@@ -140,3 +140,7 @@ Git output overflow now becomes a fixed error without raw output; review convert
 ## R19 candidate — missing mutation audits and session attribution
 
 Browser mutations now require a gateway-supplied owner; audit records use a domain-separated session pseudonym and distinguish browser/local/system contexts. Missing project creation/rename, conversation rename, discard and task creation records are added without names or prompts. Exact archive `ed949de` passed 127/127 Linux tests with zero skips; CI passed, draft #31 open. Not installed. See [handover](handovers/2026-09-28-session-audit.md). User accounts, tamper-evident external audit storage and a GUI audit viewer remain separate work.
+
+## R17 candidate — visible native compatibility and limits
+
+Operations exposes normalized installed CLI version, expected tested version, freshness/mismatch/unavailable state and fixed native turn/protocol limits. Approval snapshots include native limits; version constants are shared across selection, catalog, renewal and wrappers. Reviewed native-update procedure documented. Exact Linux/CI pending; not installed. Structured provider stop-reason reporting and provider quota/credit discovery remain unavailable/deferred. See [handover](handovers/2026-09-28-native-limits.md).

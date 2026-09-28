@@ -362,6 +362,64 @@ function accountsSection(data) {
         "muted",
       ),
     );
+    if (value.nativeLimits) {
+      const version = value.nativeVersion;
+      card.append(
+        node("p", "Tested CLI: " + value.nativeLimits.testedVersion, "muted"),
+      );
+      card.append(
+        node(
+          "p",
+          version?.version
+            ? "Installed CLI: " +
+                version.version +
+                (version.state === "verified"
+                  ? " · matches tested release"
+                  : " · compatibility review needed")
+            : version?.state === "checking"
+              ? "Checking installed CLI version…"
+              : "Installed CLI version is unavailable.",
+          version?.state === "mismatch" ? "attention" : "muted",
+        ),
+      );
+      if (version?.state === "mismatch")
+        card.append(
+          node(
+            "p",
+            "Pinned work modes or model selection may be unavailable. Use the reviewed CLI update procedure before changing versions.",
+            "attention",
+          ),
+        );
+      if (value.nativeLimits.maxTurns)
+        card.append(
+          node(
+            "p",
+            "Native limit: " +
+              value.nativeLimits.maxTurns +
+              " Claude turns per run. Split longer work into reviewed follow-ups.",
+            "muted",
+          ),
+        );
+      if (value.nativeLimits.protocolOutputBytes)
+        card.append(
+          node(
+            "p",
+            (value.id === "codex" ? "Chat protocol" : "Agent protocol") +
+              " output limit: " +
+              value.nativeLimits.protocolOutputBytes / 1_000_000 +
+              " MB. Run time and saved-output limits also apply.",
+            "muted",
+          ),
+        );
+      if (version?.checkedAt)
+        card.append(
+          node(
+            "p",
+            "Version checked " + new Date(version.checkedAt).toLocaleString(),
+            "muted",
+          ),
+        );
+    }
     const actions = node("div", undefined, "actions");
     if (value.id === "cursor" && value.installed)
       card.append(
@@ -1607,8 +1665,7 @@ async function openReview(id) {
     content.append(
       node(
         "p",
-        "These changes require separate review: " +
-          value.blocked.join(", "),
+        "These changes require separate review: " + value.blocked.join(", "),
         "error",
       ),
     );
@@ -2923,6 +2980,10 @@ function executionDetails(value) {
   row("Network", plainPlace(value.permissions.network));
   row("Model", plainModel(value.selection) + " (requested)");
   row("Time limit", plainDuration(value.timeoutMs));
+  if (value.nativeLimits?.maxTurns)
+    row("Native turn limit", String(value.nativeLimits.maxTurns) + " turns");
+  if (value.nativeLimits?.testedVersion)
+    row("Tested CLI", value.nativeLimits.testedVersion);
   if (value.settings?.access)
     row(
       "Most access allowed",

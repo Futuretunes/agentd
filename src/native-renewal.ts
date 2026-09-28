@@ -1,3 +1,4 @@
+import {testedVersions} from './native-policy.ts';
 // Fixed authentication commands only. No threads, prompts, tools or repository settings.
 import {spawn,execFileSync} from 'node:child_process';
 import {homedir} from 'node:os';
@@ -8,12 +9,12 @@ export async function nativeRenewal(id:string,executable:string,home=homedir()){
   const env:NodeJS.ProcessEnv={...process.env,HOME:home,CODEX_HOME:home+'/.codex',BROWSER:'/usr/bin/false'};
   let args:string[];
   if(id==='claude'){
-    if(execFileSync(executable,['--version'],{encoding:'utf8',timeout:10000,env}).trim()!=='2.1.283 (Claude Code)')throw Error('Unsupported Claude version');
+    if(execFileSync(executable,['--version'],{encoding:'utf8',timeout:10000,env}).trim()!==testedVersions.claude)throw Error('Unsupported Claude version');
     const o=value.claudeAiOauth;if(typeof o.refreshToken!=='string'||!o.refreshToken||!Array.isArray(o.scopes)||!o.scopes.length||o.scopes.some((s:unknown)=>typeof s!=='string'||!/^[-a-zA-Z0-9_:]+$/.test(s)))throw Error('Reconnect required');
     env.CLAUDE_CODE_OAUTH_REFRESH_TOKEN=o.refreshToken;env.CLAUDE_CODE_OAUTH_SCOPES=o.scopes.join(' ');
     args=['auth','login','--claudeai'];
   }else if(id==='codex'){
-    if(execFileSync(executable,['--version'],{encoding:'utf8',timeout:10000,env}).trim()!=='codex-cli 0.157.1')throw Error('Unsupported Codex version');
+    if(execFileSync(executable,['--version'],{encoding:'utf8',timeout:10000,env}).trim()!==testedVersions.codex)throw Error('Unsupported Codex version');
     args=['-c','forced_login_method="chatgpt"','-c','cli_auth_credentials_store="file"','app-server'];
   }else throw Error('Unsupported account');
   await new Promise<void>((resolve,reject)=>{

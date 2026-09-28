@@ -1,3 +1,4 @@
+import {nativeLimits} from './native-policy.ts';
 import {createHash} from 'node:crypto';
 export type Settings={access?:'blocked'|'chat'|'read'|'edit';model?:string;effort?:string;timeoutSeconds?:number};
 export type Model={id:string;name:string;efforts:string[];tier?:'light'|'balanced'|'deep'};
@@ -34,7 +35,7 @@ export function resolveSettings(layers:Array<{source:string;values:Settings}>,ag
  if(effort==='auto'){const wanted=complex?'high':light?'low':'medium';effort=selected?.efforts.includes(wanted)?wanted:selected?.efforts.includes('medium')?'medium':'provider';}
  if(effort!=='provider'&&!selected?.efforts.includes(effort))throw Error('The selected model does not advertise that effort. Choose a supported effort or Provider default.');
  const timeoutMs=Math.min(values.timeoutSeconds!*1000,maxMs);
- const payload={version:1,adapter:agent,mode,settings:values,sources,permissions:{filesystem:mode==='chat'?'No project files':mode==='edit'?'Writable isolated worktree':'Read-only isolated worktree',tools:mode==='chat'?'None':mode==='edit'?'Read and edit files':'Read files',network:'Selected provider only',shell:false,mcp:false,hostPaths:false},selection:{model,effort,reason,actualModel:'Unknown / provider-managed',actualEffort:'Unknown / provider-managed',catalogSource:catalog.source},timeoutMs};
+ const payload={version:1,adapter:agent,mode,nativeLimits:nativeLimits(agent),settings:values,sources,permissions:{filesystem:mode==='chat'?'No project files':mode==='edit'?'Writable isolated worktree':'Read-only isolated worktree',tools:mode==='chat'?'None':mode==='edit'?'Read and edit files':'Read files',network:'Selected provider only',shell:false,mcp:false,hostPaths:false},selection:{model,effort,reason,actualModel:'Unknown / provider-managed',actualEffort:'Unknown / provider-managed',catalogSource:catalog.source},timeoutMs};
  return {...payload,fingerprint:createHash('sha256').update(JSON.stringify(payload)).digest('hex')};
 }
 export type Execution=ReturnType<typeof resolveSettings>;

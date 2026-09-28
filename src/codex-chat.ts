@@ -3,7 +3,8 @@ import {execFileSync,spawn} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 
 // This policy is validated against an exact native CLI version. Updates fail closed.
-export const CHAT_CODEX_VERSION='codex-cli 0.157.1';
+import {testedVersions} from './native-policy.ts';
+export const CHAT_CODEX_VERSION=testedVersions.codex;
 export function chatArguments(executable:string,prompt:string,env:NodeJS.ProcessEnv=process.env,selection?:Selection){
   if(execFileSync(executable,['--version'],{env,encoding:'utf8',timeout:5000,stdio:['ignore','pipe','pipe']}).trim()!==CHAT_CODEX_VERSION)throw Error('Chat only requires the validated Codex CLI version 0.157.1');
   const listing=execFileSync(executable,['features','list'],{env,encoding:'utf8',timeout:5000,maxBuffer:32768,stdio:['ignore','pipe','pipe']});

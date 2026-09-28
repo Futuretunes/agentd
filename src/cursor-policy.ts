@@ -1,6 +1,7 @@
 import {join,resolve,relative,isAbsolute} from 'node:path';
 import {readFileSync,lstatSync} from 'node:fs';
-export const cursorVersion='2026.09.26-dd393fe';
+import {testedVersions} from './native-policy.ts';
+export const cursorVersion=testedVersions.cursor;
 export const cursorCredentialPath=process.platform==='darwin'?'.cursor/auth.json':'.config/cursor/auth.json';
 export function cursorCredentials(value:any,refresh=true){
  if(!value||typeof value.accessToken!=='string'||!value.accessToken||value.accessToken.length>20000||value.apiKey||value.bedrockCredentials||(refresh&&(typeof value.refreshToken!=='string'||!value.refreshToken||value.refreshToken.length>20000)))throw Error('Cursor browser credentials required');
