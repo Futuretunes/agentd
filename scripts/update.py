@@ -86,7 +86,10 @@ def inventory(c):
             mobile_config=environment.get('AGENTD_MOBILE_CONFIG','/etc/agentd/mobile.json')
             if mobile_config not in c['configFiles']: raise ValueError('Include the mobile configuration in configFiles')
             mobile=json.loads(Path(mobile_config).read_text())
-            if mobile.get('socket')!=c['controlSocket'] or mobile.get('publicDir')!=str(Path(c['app'])/'public'): raise ValueError('Mobile configuration differs from update target')
+            # Match src/mobile.ts: absent keys use fixed application defaults;
+            # explicit null/empty/different values must still fail closed.
+            if mobile.get('socket','/run/agentd/control.sock')!=c['controlSocket']: raise ValueError('Mobile control socket differs from update target')
+            if mobile.get('publicDir','/opt/agentd/public')!=str(Path(c['app'])/'public'): raise ValueError('Mobile public directory differs from update target')
         hashes = {}
         for name in files:
             if not name: raise ValueError('Missing unit file')

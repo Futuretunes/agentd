@@ -45,11 +45,11 @@ High-priority follow-up:
 
 Implemented and installed (read-only health/service confirmation, 2026-09-28): task desk UI/UX redesign and R4 exact-tree checks with legacy check invalidation. R11 has a non-skipping Linux CI job; protected-branch enforcement remains. Final candidate Linux validation: 99/99, no skips. See [handover](handovers/2026-09-28-snapshot-checks.md). Next engineering work: release-baseline decision, tracked reproducible deployment/task-schema migration and remaining backend reviewability. Actual-phone acceptance and other open UX/engineering findings remain.
 
-## Candidate 0.21.0 — release and schema foundations
+## Installed 0.21.0 — release and schema foundations
 
-Administrator acceptance found a gateway/runner compatibility-check mismatch (`LockPersonality`); corrected without changing either unit. Deployment remains pending; 0.20.0 is healthy.
+Administrator acceptance found a gateway/runner compatibility-check mismatch (`LockPersonality`); corrected without changing either unit. A second compatibility correction aligns omitted mobile JSON keys with runtime defaults. The operator completed deployment; independent health confirms 0.21.0, task schema 1 and both services active.
 
-Implemented and tested (105/105 Linux tests, zero skips), not installed: R9 versioned transactional task migrations and refusal of future task schemas; R3 exact-commit deterministic source packages, manifest verification, tracked parameterized application update, effective configuration fingerprints and ordinary-failure rollback. See [managed updates](managed-updates.md) and [handover](handovers/2026-09-28-managed-deployment.md). Fresh provisioning, automatic power-loss recovery, signed release provenance, managed configuration reconciliation and GUI administration remain open. No project branches are advanced by the updater. Next: reviewed release baseline/protected CI, then boundary and resource work; R2 backend decomposition remains.
+Implemented, tested (105/105 Linux tests, zero skips) and installed: R9 versioned transactional task migrations and refusal of future task schemas; R3 exact-commit deterministic source packages, manifest verification, tracked parameterized application update, effective configuration fingerprints and ordinary-failure rollback. See [managed updates](managed-updates.md) and [handover](handovers/2026-09-28-managed-deployment.md). Fresh provisioning, automatic power-loss recovery, signed release provenance, managed configuration reconciliation and GUI administration remain open. No project branches are advanced by the updater. Next: reviewed release baseline/protected CI, then boundary and resource work; R2 backend decomposition remains.
 
 ## Stabilization gate after independent review — 2026-09-28
 

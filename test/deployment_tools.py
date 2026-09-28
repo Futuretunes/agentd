@@ -68,6 +68,16 @@ class DeploymentTests(unittest.TestCase):
         with patch.object(update,'capture',side_effect=running): before=update.inventory(c)
         with patch.object(update,'capture',side_effect=restarted): self.assertEqual(update.inventory(c),before)
         # The shipped gateway omits LockPersonality while the runner enables it.
+        original_mobile=mobile.read_text()
+        for minimal in ({}, {'socket':c['controlSocket']}, {'publicDir':c['app']+'/public'}):
+            mobile.write_text(json.dumps(minimal))
+            with patch.object(update,'capture',side_effect=capture): update.inventory(c)
+        for field, message in (('socket','control socket'),('publicDir','public directory')):
+            for bad in (None,'','/different/location'):
+                mobile.write_text(json.dumps({field:bad}))
+                with patch.object(update,'capture',side_effect=capture):
+                    with self.assertRaisesRegex(ValueError,message): update.inventory(c)
+        mobile.write_text(original_mobile)
         def locked_gateway(args): return capture(args).replace('LockPersonality=no','LockPersonality=yes')
         with patch.object(update,'capture',side_effect=locked_gateway): self.assertNotEqual(update.inventory(c),value)
         def unlocked_runner(args): return capture(args).replace('LockPersonality=yes','LockPersonality=no')
