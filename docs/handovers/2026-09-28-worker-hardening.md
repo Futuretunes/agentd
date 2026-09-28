@@ -2,7 +2,7 @@
 
 - Author: Codex.
 - Request: continue prioritized backlog overnight after resource/retention work; R7 next.
-- Status: implemented; full development Linux suite passed; exact-archive/CI staging pending. Not installed.
+- Status: implemented and exact-archive/CI verified. Not installed.
 - Release: 0.24.0 cumulative candidate, includes 0.23 resources/retention; task schema 1.
 - Branch/base: `feat/worker-hardening` from `feat/resource-retention` at `65eee22`.
 
@@ -14,7 +14,7 @@ The resource profile installer now validates the installed release manifest/capa
 
 ## Validation
 
-Development Linux copy: 120/120 tests passed, zero skips/failures; 12 focused sandbox/dependency checks also passed. New probe checks zero capabilities, NoNewPrivs/seccomp state, hostname isolation, denied sensitive calls and successful normal threading/forking. Typecheck passed. Exact archive and CI pending. No live model requests, native account changes, root deployment or host protection changes. Installed remains 0.22.0.
+Development Linux copy: 120/120 tests passed, zero skips/failures; 12 focused sandbox/dependency checks also passed. New probe checks zero capabilities, NoNewPrivs/seccomp state, hostname isolation, denied sensitive calls and successful normal threading/forking. Typecheck passed. Exact archive `de1db8a` passed 120/120 Linux tests with zero skips/failures; CI run `36476607174` passed. Archive SHA256: `f07f1faf5d6f0f57670cb00f8721843f4d97592d4359b46991c4d43cd62d858a`. [Draft PR #27](https://github.com/Futuretunes/agentd/pull/27) targets the resource branch. No live model requests, native account changes, root deployment or host protection changes. Installed remains 0.22.0.
 
 ## Deployment and rollback
 
@@ -22,4 +22,4 @@ Use a cumulative reviewed archive after the remaining overnight work, then the e
 
 ## Next
 
-Complete exact Linux/CI validation and draft PR. Then R12: consolidate Git subprocess policy to prevent hooks/config/environment divergence. R13 shared sensitive-file policy and bounded content detection follows. Leave R8 GitHub App/consent decisions and R1 baseline decisions to explicit operator review; do not substitute broad credentials or merge main overnight.
+Continue R12: consolidate Git subprocess policy to prevent hooks/config/environment divergence. R13 shared sensitive-file policy and bounded content detection follows. Leave R8 GitHub App/consent decisions and R1 baseline decisions to explicit operator review; do not substitute broad credentials or merge main overnight.

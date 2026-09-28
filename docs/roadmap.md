@@ -123,4 +123,4 @@ Implemented on `feat/resource-retention`: bounded task/check output, disk reserv
 
 ## R7 candidate — explicit worker hardening
 
-Implemented shared explicit namespace/capability policy and fail-closed libseccomp launch for workers/checks/renewal/dependency preparation. Development Linux suite passed 120/120 with zero skips; staging/CI pending, not installed. See [handover](handovers/2026-09-28-worker-hardening.md). No host relaxation or Codex tool-policy expansion. Next overnight items: R12 shared Git policy, then R13 sensitive-data policy. R8 authentication redesign still needs a reviewed consent design.
+Implemented shared explicit namespace/capability policy and fail-closed libseccomp launch for workers/checks/renewal/dependency preparation. Exact archive `de1db8a` passed 120/120 Linux tests with zero skips; CI passed, draft #27 open. Not installed. See [handover](handovers/2026-09-28-worker-hardening.md). No host relaxation or Codex tool-policy expansion. Next overnight items: R12 shared Git policy, then R13 sensitive-data policy. R8 authentication redesign still needs a reviewed consent design.

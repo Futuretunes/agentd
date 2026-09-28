@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.24.0 — worker hardening
 
-[Worker hardening handover](handovers/2026-09-28-worker-hardening.md): explicit namespaces/capability policy and a fail-closed syscall filter now cover workers, renewal, checks and dependency preparation. Development Linux suite passed 120/120, zero skips; exact staging/CI pending. Includes the preceding resource/retention work. Installed 0.22.0 is unchanged. Continue R12 Git policy and R13 shared sensitive-data checks, then prepare a cumulative operator update.
+[Worker hardening handover](handovers/2026-09-28-worker-hardening.md): explicit namespaces/capability policy and a fail-closed syscall filter now cover workers, renewal, checks and dependency preparation. Exact archive `de1db8a` passed 120/120 Linux tests, zero skips; CI passed. [Draft #27](https://github.com/Futuretunes/agentd/pull/27) is ready for review. Includes the preceding resource/retention work. Installed 0.22.0 is unchanged. Continue R12 Git policy and R13 shared sensitive-data checks, then prepare a cumulative operator update.
 
 ## Candidate 0.23.0 — resources and retention
 
