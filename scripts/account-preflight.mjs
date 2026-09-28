@@ -6,11 +6,11 @@ import {tmpdir} from 'node:os';
 const owner='a'.repeat(64),root=mkdtempSync(join(tmpdir(),'agentd-login-preflight-'));
 const manager=accounts({root:join(root,'sessions'),home:root,timeoutMs:30000,changed:()=>{}});
 try{
-  for(const id of ['claude','codex']){
+  for(const id of (process.argv.includes('--cursor-only')?['cursor']:['claude','codex'])){
     const session=manager.start(owner,id,'login');let ready=false;
     for(let i=0;i<150;i++){
       await new Promise(resolve=>setTimeout(resolve,200));const state=manager.view(owner);
-      if(state.url&&(id==='claude'?state.needsCode:!!state.code)){ready=true;break;}
+      if(state.url&&(id==='cursor'?true:id==='claude'?state.needsCode:!!state.code)){ready=true;break;}
       if(['failed','expired'].includes(state.state))break;
     }
     manager.cancel(owner,session.id);

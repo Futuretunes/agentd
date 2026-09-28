@@ -8,4 +8,4 @@ The runner owns approval, worktree setup, credential isolation, cancellation, lo
 
 Discovery checks for an absolute executable file accessible to the service account. It does not run `--help`, perform a login check, spend model usage, or guarantee the installed CLI's version is compatible. Native smoke tests remain part of installation validation. Availability is rechecked at creation, approval and dispatch; removal of a CLI therefore fails closed, including for queued work.
 
-Cursor is not registered until its native invocation, authentication and security behavior are implemented and tested. Adding an adapter also requires updating the isolation credential mounts and provider egress policy; adding a command builder alone does not grant access.
+Cursor is registered with a pinned native CLI and an ACP wrapper. Its Ask/Edit modes require hardened workers and access-only credentials; shell, web, MCP and client tools are refused. Images are not supported in this first integration. See [Cursor](cursor.md). Adding an adapter also requires updating the isolation credential mounts and provider egress policy; adding a command builder alone does not grant access.

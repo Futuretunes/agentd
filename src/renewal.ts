@@ -34,6 +34,7 @@ export function renewals(c:Config){
   }
   for(const id of ['claude','codex'])try{recover(id);}catch{views.set(id,{state:'reconnect_required',message:renewalFailure,expiresAt:null});}
   function view(id:string):View{
+    if(id==='cursor'){try{const v=readCredentials(home,id),expiry=expiresAt(id,v),ready=expiry!==null&&expiry>Date.now()+margin;return {state:ready?'ready':'reconnect_required',message:ready?'Cursor session ready. Reconnect in Operations when it expires.':'Reconnect Cursor in Operations. Automatic subscription renewal is not exposed by the tested CLI.',expiresAt:expiry===null?null:new Date(expiry).toISOString()};}catch{return {state:'unavailable',message:'Sign in to Cursor through Operations.',expiresAt:null};}}
     if(views.get(id)?.state==='renewing')return {...views.get(id)!};
     try{
       const p=paths(id);if(existsSync(p.journal))return {state:'reconnect_required',message:renewalFailure,expiresAt:null};
@@ -54,6 +55,7 @@ export function renewals(c:Config){
   }
   async function ensure(id:string,force=false){
     if(closed||running)throw Error('Account renewal is busy');
+    if(id==='cursor'){if(view(id).state!=='ready')throw Error('Reconnect Cursor in Operations before approving work.');return;}
     credentialFile(id);abort=new AbortController();const signal=abort.signal;
     running=Promise.resolve().then(async()=>{
       try{

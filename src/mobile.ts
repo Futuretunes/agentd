@@ -46,7 +46,7 @@ export function mobile(c:Config){
    if(path==='/api/account'&&req.method==='POST'){
     const input=await body(req);
     if(!['start','code','cancel','refresh'].includes(input.action)){send(400,{error:'Unsupported account action'});return;}
-    if(input.action==='start'&&(!['claude','codex'].includes(input.adapter)||!['login','logout'].includes(input.operation))){send(400,{error:'Unsupported account action'});return;}
+    if(input.action==='start'&&(!['claude','codex','cursor'].includes(input.adapter)||!['login','logout'].includes(input.operation))){send(400,{error:'Unsupported account action'});return;}
     try{send(200,await call({op:'account-'+input.action,owner:accountOwner,adapter:input.adapter,action:input.operation,session:input.session,code:input.code}));}
     catch{send(400,{error:input.action==='start'?'Account change could not start. Wait for current work or another sign-in to finish, then try again.':'Account step failed. Check the code or start a new sign-in.'});}
     return;

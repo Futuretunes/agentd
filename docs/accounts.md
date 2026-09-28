@@ -30,3 +30,7 @@ References: [OpenAI headless authentication](https://learn.chatgpt.com/docs/auth
 ## Durable renewal
 
 With v0.11.0 renewal enabled, approved work first renews expiring native credentials in a trusted profile. Task workers receive no refresh grants. Operations explains when a human reconnect is needed. See [credential renewal](credential-renewal.md) for the durability and recovery boundary.
+
+## Cursor
+
+Cursor v0.18 adds native browser sign-in, reconnect and sign-out in Operations. The tested CLI does not expose reliable browser-subscription renewal; expiring sessions require reconnect, while workers receive access tokens only. See [Cursor account behavior and limits](cursor.md).

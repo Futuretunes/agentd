@@ -11,7 +11,7 @@ test('native adapter invocations preserve sandbox, tools and literal user argume
  const [,ask]=invocation('codex',{prompt,mode:'ask',images:[]});assert.equal(ask[ask.indexOf('--sandbox')+1],'read-only');
  const [,claude]=invocation('claude',{prompt,mode:'ask',images:[]});assert.equal(claude[claude.indexOf('--tools')+1],'Read,Glob,Grep');assert.equal(claude[claude.indexOf('--permission-mode')+1],'dontAsk');assert.equal(claude.at(-1),prompt);
  const [,edit]=invocation('claude',{prompt,mode:'edit',images:[]});assert.equal(edit[edit.indexOf('--allowedTools')+1],'Read,Glob,Grep,Edit,Write');
- assert.throws(()=>invocation('cursor',{prompt,mode:'ask',images:[]}),/Unsupported/);assert.throws(()=>invocation('claude',{prompt,mode:'unsafe',images:[]}),/Unsupported/);
+ assert.throws(()=>invocation('unknown',{prompt,mode:'ask',images:[]}),/Unsupported/);assert.throws(()=>invocation('claude',{prompt,mode:'unsafe',images:[]}),/Unsupported/);
 });
 test('account probes return only normalized status and never raw identity output',async()=>{
  const root=mkdtempSync(join(tmpdir(),'account-')),bin=join(root,'claude'),prior=process.env.AGENTD_CLAUDE_BIN;

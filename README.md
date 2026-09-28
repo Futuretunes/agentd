@@ -2,13 +2,13 @@
 
 Self-hosted orchestration for native coding agents, with a human in control.
 
-agentd queues tasks, waits for approval, and runs Codex or Claude Code in a dedicated Git worktree. A mobile-friendly task desk lets you submit text and images, approve work, cancel runs, and inspect results.
+agentd queues tasks, waits for approval, and runs Codex, Claude Code or Cursor in a dedicated Git worktree. A mobile-friendly task desk lets you submit text and images, approve work, cancel runs, and inspect results.
 
 **Status: early proof of concept.** Linux is the deployment target. This is a single-user, trusted-network service, not a hardened multi-tenant platform. Ask mode is read-only. Optional Edit files mode requires Linux bubblewrap and separate run, check and commit approvals. A successful process exit does not prove that an agent fulfilled its task.
 
 ## Available today
 
-- Codex and Claude Code adapters using their installed CLIs and existing account logins; agentd does not require provider API keys.
+- Codex, Claude Code and Cursor adapters using their installed CLIs and existing account logins; agentd does not require provider API keys.
 - Approval-gated GitHub publishing with exact commit previews, dedicated branches, draft pull requests and approved forward updates to existing draft PRs.
 - GUI npm dependency setup with explicit approval, isolated public-registry downloads and install scripts disabled.
 - Revision requests that preserve uncommitted edits, with fresh run and check approvals.
@@ -22,7 +22,7 @@ agentd queues tasks, waits for approval, and runs Codex or Claude Code in a dedi
 - Local health and Prometheus metrics endpoints; structured daemon logs.
 - Read-only Operations Center for global task, service, adapter and account status.
 
-Use each provider's supported authentication and respect its subscription terms and limits. agentd does not bypass billing, permissions or rate limits. Cursor and other adapters are planned, not implemented.
+Use each provider's supported authentication and respect its subscription terms and limits. agentd does not bypass billing, permissions or rate limits. Cursor uses the official CLI browser login and ACP for text-based Ask/Edit with file-only permissions. See [Cursor setup and limits](docs/cursor.md).
 
 ## Development
 

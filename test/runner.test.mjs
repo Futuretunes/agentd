@@ -26,12 +26,14 @@ test('account changes exclude task approvals and running workers; audit excludes
   assert.deepEqual(f.app.request({op:'account-session'}),{session:null,busy:false});
   const cliOutput=await new Promise((resolve,reject)=>execFile(process.execPath,[new URL('../src/control.ts',import.meta.url).pathname,'account-session'],{env:{...process.env,AGENTD_CONTROL_SOCKET:join(f.config.stateDir,'control.sock')}},(error,stdout)=>error?reject(error):resolve(stdout)));
   assert.deepEqual(JSON.parse(cliOutput),{session:null,busy:false});
-  for(let i=0;i<100&&probes.size!==2;i++)await sleep(10);
-  assert.equal(probes.size,2);
+  for(let i=0;i<100&&probes.size!==3;i++)await sleep(10);
+  assert.equal(probes.size,3);
   const signedOut={state:'signed_out',method:null,checkedAt:null,message:'Sign-in required'};
   probes.get('claude')(signedOut);await sleep(0);
   assert.throws(()=>f.app.request({op:'account-start',owner,adapter:'claude',action:'login'}),/account checks/);
   probes.get('codex')(signedOut);await sleep(0);
+  assert.throws(()=>f.app.request({op:'account-start',owner,adapter:'claude',action:'login'}),/account checks/);
+  probes.get('cursor')(signedOut);await sleep(0);
   const session=f.app.request({op:'account-start',owner,adapter:'claude',action:'login'});
   assert.equal(f.app.request({op:'operations'}).service.accountChange,true);
   assert.deepEqual(f.app.request({op:'account-session'}),{session:null,busy:true});

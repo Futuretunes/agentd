@@ -4,7 +4,7 @@ let policy={editAdapters:[],enabledAdapters:['codex','claude']};
 function renderAgents(){
   const box=$('adapter-info');box.replaceChildren(node('h2','Your agents'));
   for(const value of policy.adapters??[]){const item=node('div',undefined,'agent-availability');item.append(node('strong',value.name),node('p',value.available?'Available · '+value.modes.map(mode=>mode==='edit'?'Edit files':mode==='chat'?'Chat only':'Ask').join(' and '):value.reason,'muted'));if(value.available)item.append(node('p','Sign-in is checked when a run starts.','muted'));box.append(item);}
-  box.append(node('p','Cursor integration is planned.','muted'));
+  box.append(node('p','Cursor supports text and file changes. Terminal tools, plugins and image input are unavailable.','muted'));
 }
 function applyPolicy(){
   if(policy.adapters){
@@ -16,7 +16,7 @@ function applyPolicy(){
   const modes=policy.adapters?.find(a=>a.id===$('adapter').value)?.modes??['ask'];
   for(const option of $('mode').options)option.disabled=!modes.includes(option.value);
   if(!modes.includes($('mode').value))$('mode').value=modes[0]??'ask';
-  const chat=$('mode').value==='chat';$('files').disabled=chat||submitting;$('files').closest('label').hidden=chat;
+  const chat=$('mode').value==='chat',textOnly=chat||policy.adapters?.find(a=>a.id===$('adapter').value)?.features?.images===false;$('files').disabled=textOnly||submitting;$('files').closest('label').hidden=textOnly;
   $('mode').title=chat?'Text conversation only. No project files, terminal, editing, web browsing or plugins.':'';
   $('policy-hint').textContent=!policy.enabledAdapters.length?'No agents are available. Open Agents for details.':chat?'Chat only · text you send and prior conversation context · no project access or execution tools.':policy.strictWorkers?'Isolated workers · provider-only network access · approval required.':'Each message waits for approval before an agent starts.';
   if(!$('adapter-info').hidden)renderAgents();
@@ -57,7 +57,7 @@ function button(text,callback,cls='') {
 }
 const relativeTime=value=>{const seconds=Math.max(0,Math.floor((Date.now()-new Date(value).getTime())/1000));if(seconds<60)return 'just now';if(seconds<3600)return Math.floor(seconds/60)+'m ago';if(seconds<86400)return Math.floor(seconds/3600)+'h ago';return Math.floor(seconds/86400)+'d ago';};
 function operationTask(item){
-  const card=node('article',undefined,'operation-task'),head=node('div',undefined,'message-head');head.append(node('strong',item.conversationTitle),node('span',labels[item.status]??item.status,'status '+item.status));card.append(head,node('p',`${item.projectName} · ${item.adapter==='codex'?'Codex':'Claude'} · ${item.mode==='edit'?'Edit files':item.mode==='chat'?'Chat only':'Ask'} · ${relativeTime(item.updated)}`,'muted'));
+  const card=node('article',undefined,'operation-task'),head=node('div',undefined,'message-head');head.append(node('strong',item.conversationTitle),node('span',labels[item.status]??item.status,'status '+item.status));card.append(head,node('p',`${item.projectName} · ${item.adapter==='cursor'?'Cursor':item.adapter==='codex'?'Codex':'Claude'} · ${item.mode==='edit'?'Edit files':item.mode==='chat'?'Chat only':'Ask'} · ${relativeTime(item.updated)}`,'muted'));
   if(item.error)card.append(node('p',item.error==='Exit 1'?'The agent stopped with an error. Open the conversation for details.':item.error,'error'));
   if(item.review==='pending')card.append(node('p','Changes are waiting for review.','attention'));
   if(item.checkStatus)card.append(node('p','Checks: '+item.checkStatus,'muted'));
@@ -71,6 +71,7 @@ function renderOperations(data){
   const agents=node('section',undefined,'operation-section');agents.append(node('h3','Agents and usage'));
   for(const value of data.adapters){const card=node('div',undefined,'operation-agent'),account=value.account??{state:'checking',message:'Checking account status'};card.append(node('strong',value.name),node('p',account.state==='signed_in'?`Signed in${account.method?' · '+account.method:''}`:account.message,account.state==='signed_in'?'good':account.state==='signed_out'?'attention':'muted'),node('p',value.available?'Available · '+value.modes.map(mode=>mode==='edit'?'Edit files':mode==='chat'?'Chat only':'Ask').join(' and '):value.reason,'muted'),node('p',value.usage.message,'muted'));
     const actions=node('div',undefined,'actions');
+    if(value.id==='cursor')card.append(node('p','Uses your Cursor account. Your plan and on-demand billing settings apply; agentd cannot verify remaining allowance.','muted'));
     if(value.renewal)card.append(node('p',value.renewal.message,value.renewal.state==='reconnect_required'?'attention':'muted'));
     const login=button(account.state==='signed_in'?'Reconnect account':'Sign in',()=>startAccount(value.id,'login'));login.disabled=!value.installed||!!data.service.activeTask||data.service.queueDepth>0||data.service.accountChange||data.service.renewing;actions.append(login);
     if(account.state==='signed_in'){const logout=button('Sign out',async()=>{if(confirm('Sign out of '+value.name+' on this server? Future runs will need a new login.'))await startAccount(value.id,'logout');},'danger');logout.disabled=login.disabled;actions.append(logout);}
@@ -101,9 +102,9 @@ async function updateAccount(){
   try{
     const value=await api('/api/account'),s=value.session,signature=JSON.stringify(value);if(signature===accountFingerprint)return;accountFingerprint=signature;accountContent.replaceChildren();
     if(!s){accountContent.append(node('p',value.busy?'Account setup is open in another browser. Return there or wait for it to expire.':'No sign-in is in progress. Open Operations to start.','muted'));return;}
-    accountHeading.textContent=(s.adapter==='claude'?'Claude':'Codex')+' account';
+    accountHeading.textContent=(s.adapter==='cursor'?'Cursor':s.adapter==='claude'?'Claude':'Codex')+' account';
     accountContent.append(node('p',s.message,s.state==='succeeded'?'good':s.state==='failed'||s.state==='expired'?'error':'muted'));
-    if(s.url){const link=node('a','Open '+(s.adapter==='claude'?'Claude':'OpenAI')+' sign-in','provider-login');link.href=s.url;link.target='_blank';link.rel='noopener noreferrer';accountContent.append(link);}
+    if(s.url){const link=node('a','Open '+(s.adapter==='cursor'?'Cursor':s.adapter==='claude'?'Claude':'OpenAI')+' sign-in','provider-login');link.href=s.url;link.target='_blank';link.rel='noopener noreferrer';accountContent.append(link);}
     if(s.code){accountContent.append(node('p','Enter this one-time code on the provider page:','muted'),node('code',s.code,'device-code'));}
     if(s.needsCode){
       const form=node('form'),label=node('label','Code returned by Claude'),input=node('input');label.htmlFor='account-code';input.id='account-code';input.type='password';input.autocomplete='off';input.maxLength=4096;input.required=true;input.spellcheck=false;
@@ -127,7 +128,7 @@ function renderThread(data){
   const d=$('detail'),nearBottom=d.scrollHeight-d.scrollTop-d.clientHeight<120;d.replaceChildren();
   for(const t of data.messages){
     const turn=node('article',undefined,'turn');const user=node('div',undefined,'user-message');user.append(node('div',t.prompt,'message-text'),images(t.images??[]));turn.append(user);
-    const response=node('div',undefined,'agent-message');const head=node('div',undefined,'message-head');head.append(node('strong',t.merge_parent&&!t.log&&!t.revision_of&&!t.retry_of?'◈ Base integration':t.adapter==='codex'?'◈ Codex':'✳ Claude'),node('span',labels[t.status]??t.status,'status '+t.status));response.append(head);
+    const response=node('div',undefined,'agent-message');const head=node('div',undefined,'message-head');head.append(node('strong',t.merge_parent&&!t.log&&!t.revision_of&&!t.retry_of?'◈ Base integration':t.adapter==='cursor'?'◉ Cursor':t.adapter==='codex'?'◈ Codex':'✳ Claude'),node('span',labels[t.status]??t.status,'status '+t.status));response.append(head);
     if(t.outputTruncated)response.append(node('p','Showing the latest output. Open Run activity to download a larger excerpt.','muted'));
     if(t.output)response.append(node('pre',t.output.replace(/\x1b\[[0-9;]*[a-zA-Z]/g,''),'result'));else response.append(node('p',t.merge_parent&&!t.log&&t.status==='succeeded'?'Integration review prepared locally. No agent was run.':t.status==='waiting_for_approval'?t.mode==='edit'?'This run may edit files in its worktree. Review your message, then approve.':'Review your message, then approve this run.':pending(t.status)?'Your agent’s output will appear here.':'No output was recorded.','muted'));
     if(t.error)response.append(node('p',t.error,'error'));
@@ -174,7 +175,7 @@ async function refresh(){
     else{archivedView=false;$('thread-title').textContent='New conversation';latest=null;if(!fingerprint){empty();fingerprint='empty';}}
     $('rename').hidden=!selected;$('archive').hidden=!selected;
     const locked=latest&&(pending(latest.status)||latest.review==='pending');$('send').disabled=submitting||!!pageBefore||archivedView||!!locked||uploading||!projectId||!policy.enabledAdapters.length;
-    $('hint').textContent=archivedView?'This conversation is archived. Restore it through History to continue.':pageBefore?'Viewing earlier turns. Return to the latest turns to continue.':locked?latest?.review==='pending'?'Review, request revisions, commit or discard these changes before continuing.':'Approve or stop the current run before sending the next message.':$('mode').value==='chat'?'Text only · paste any context you want to discuss. Each message waits for approval.':'Each message waits for approval. Images and keyboard dictation are supported.';
+    $('hint').textContent=archivedView?'This conversation is archived. Restore it through History to continue.':pageBefore?'Viewing earlier turns. Return to the latest turns to continue.':locked?latest?.review==='pending'?'Review, request revisions, commit or discard these changes before continuing.':'Approve or stop the current run before sending the next message.':$('mode').value==='chat'?'Text only · paste any context you want to discuss. Each message waits for approval.':$('adapter').value==='cursor'?'Each message waits for approval. Text and keyboard dictation are supported; Cursor image input is unavailable.':'Each message waits for approval. Images and keyboard dictation are supported.';
     if($('operations-dialog').open)void loadOperations(false);
   }catch(e){if(signedIn)notice(e.message);}finally{busy=false;if(epoch!==generation)refresh();}
 }

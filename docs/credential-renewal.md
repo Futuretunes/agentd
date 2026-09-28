@@ -23,3 +23,7 @@ Run the release installer as the administrator after pending work finishes. It t
 After installation, approve a short Claude task and a Codex Chat only task from the GUI. This is the remaining end-to-end acceptance check for the new access-only worker snapshots. Existing Codex project inspection/editing restrictions remain unchanged.
 
 Independent tests cover rotation after native errors, restart recovery, uncertain exchange rejection, reconnect/logout supersession, malformed/symlink credentials, private snapshots, account/task exclusion, cancellation and the Linux profile boundary. The actual provider exchanges require the explicit live preflight; synthetic tests cannot prove a provider's current grant validity.
+
+## Cursor
+
+Cursor v0.18 adds native browser sign-in, reconnect and sign-out in Operations. The tested CLI does not expose reliable browser-subscription renewal; expiring sessions require reconnect, while workers receive access tokens only. See [Cursor account behavior and limits](cursor.md).

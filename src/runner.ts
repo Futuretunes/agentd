@@ -19,6 +19,7 @@ import { createServer } from 'node:net';
 
 type Config = { stateDir: string; repo: string; worktrees: string; logs: string; editing?: boolean; editAdapters?: string[]; enabledAdapters?: string[]; strictWorkers?: boolean; codexChat?: boolean; credentialRenewal?:boolean; pullAPI?:PullAPI; reviewAPI?:ReviewAPI; prepareDependencies?:DependencyPreparation; repositoryCommand?:RepositoryGit; githubRoot?:string; renewal?:{reconcile?:()=>void;ensure:(id:string)=>Promise<void>;view:(id:string)=>unknown;busy:()=>boolean;close:()=>Promise<void>}; isolate?: typeof isolated; projectsDir?: string; attachments?: string; timeoutMs?: number; command?: (adapter: string, prompt: string, mode?:string) => [string, string[]]; accountStatus?: (adapter:string)=>Promise<AccountStatus>|AccountStatus };
 export function runner(c: Config) {
+  if(c.enabledAdapters?.includes('cursor')&&!c.command&&(!c.strictWorkers||!c.credentialRenewal))throw Error('Cursor requires hardened isolation and access-only credential handling');
   if(c.credentialRenewal&&!c.strictWorkers)throw Error('Credential renewal requires hardened isolation');
   if(c.codexChat&&!c.strictWorkers)throw Error("Chat only requires hardened worker isolation");
   for (const dir of [c.stateDir,c.worktrees,c.logs]) mkdirSync(dir,{recursive:true,mode:0o700});
@@ -441,6 +442,7 @@ export function runner(c: Config) {
       const mode=input.mode??'ask';if(!['ask','edit','chat'].includes(mode))throw Error('Invalid task mode');requireAdapter(input.adapter,mode);
       const attachments=input.attachments??[];
       if(!Array.isArray(attachments)||attachments.length>4||attachments.some(id=>typeof id!=='string'))throw new Error('Up to four images allowed');
+      if(input.adapter==='cursor'&&attachments.length)throw Error('Cursor currently accepts text only. Remove images before sending.');
       if(mode==='chat'&&attachments.length)throw Error('Chat only accepts text. Remove images or choose another agent.');
       attachments.forEach(id=>attachment(id));
       if(input.parent && (typeof input.parent!=='string'||!get(input.parent)))throw new Error('Parent task not found');

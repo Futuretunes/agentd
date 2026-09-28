@@ -1,3 +1,4 @@
+import {cursorCredentialPath,cursorCredentials,cursorSettings,cursorTeam} from './cursor-policy.ts';
 import {spawn,type ChildProcess} from 'node:child_process';
 import {mkdirSync,mkdtempSync,readFileSync,writeFileSync,renameSync,rmSync,existsSync,lstatSync,readdirSync,openSync,closeSync,fsyncSync} from 'node:fs';
 import {join} from 'node:path';
@@ -19,6 +20,7 @@ export function loginDetails(id:string,raw:string){
     try{
       const u=new URL(candidate);
       if(u.username||u.password||u.port||u.hash)continue;
+      if(id==='cursor'&&u.origin==='https://cursor.com'&&u.pathname==='/loginDeepControl'&&u.searchParams.get('mode')==='login'&&u.searchParams.get('redirectTarget')==='cli'&&/^[A-Za-z0-9_-]{43}$/.test(u.searchParams.get('challenge')??'')&&/^[a-f0-9-]{36}$/.test(u.searchParams.get('uuid')??'')&&[...u.searchParams.keys()].every(k=>['challenge','uuid','mode','redirectTarget','supportsSelectedTeamLogin'].includes(k)))url=u.href;
       if(id==='codex'&&u.origin==='https://auth.openai.com'&&u.pathname==='/codex/device'&&!u.search)url=u.href;
       if(id==='claude'&&((['https://claude.ai','https://claude.com'].includes(u.origin)&&u.pathname==='/oauth/authorize')||(u.origin==='https://claude.com'&&u.pathname==='/cai/oauth/authorize'))){
         const redirect=u.searchParams.get('redirect_uri');
@@ -37,13 +39,16 @@ function jsonFile(path:string){
 }
 function directory(path:string){mkdirSync(path,{recursive:true,mode:0o700});if(lstatSync(path).isSymbolicLink()||!lstatSync(path).isDirectory())throw Error('Invalid profile directory');}
 export function saveLogin(id:string,source:string,target:string){
-  const file=id==='claude'?'.claude/.credentials.json':'.codex/auth.json';
-  const credentials=jsonFile(join(source,file));
+  const file=id==='cursor'?cursorCredentialPath:id==='claude'?'.claude/.credentials.json':'.codex/auth.json';
+  for(const home of [source,target]){let path=home;for(const part of ['',...file.split('/').slice(0,-1)]){path=join(path,part);if(home===target)directory(path);else if(lstatSync(path).isSymbolicLink()||!lstatSync(path).isDirectory())throw Error('Invalid credential directory');}}
+  let credentials=jsonFile(join(source,file));
+  if(id==='cursor')credentials=cursorCredentials(credentials);
   if(id==='claude'&&(!credentials.claudeAiOauth?.accessToken||!credentials.claudeAiOauth?.refreshToken))throw Error('Subscription credentials missing');
   if(id==='codex'&&(!credentials.tokens?.access_token||credentials.OPENAI_API_KEY))throw Error('Subscription credentials missing');
-  directory(target);directory(join(target,id==='claude'?'.claude':'.codex'));
+  directory(target);directory(join(target,...file.split('/').slice(0,-1)));
   // Keep existing settings, but never retain a previous Claude account identity.
   const updates:Array<{path:string;value:unknown}>=[];
+  if(id==='cursor'){directory(join(target,'.cursor'));updates.push({path:join(target,'.cursor/cli-config.json'),value:cursorSettings(cursorTeam(source))});}
   if(id==='claude'){
     const meta=join(target,'.claude.json'),previous=existsSync(meta)?jsonFile(meta):{};
     const fresh=existsSync(join(source,'.claude.json'))?jsonFile(join(source,'.claude.json')):{};
@@ -83,12 +88,12 @@ export function accounts(c:Config){
     adapter(id);if(closed||busy())throw Error('Another account change is in progress.');
     if(!/^[a-f0-9]{64}$/.test(owner))throw Error('Authenticated browser session required');
     const sessionHome=action==='login'?mkdtempSync(join(c.root,'login-')):home;
-    if(action==='login')directory(join(sessionHome,id==='codex'?'.codex':'.claude'));
+    if(action==='login')directory(join(sessionHome,id==='cursor'?'.cursor':id==='codex'?'.codex':'.claude'));
     let resolve!:()=>void;const done=new Promise<void>(r=>resolve=r);
     const s:Session={owner,home:sessionHome,buffer:'',done,resolve,stopped:false,settled:false,view:{id:randomUUID(),adapter:id,action,state:'starting',message:action==='login'?'Preparing secure sign-in…':'Signing out…',url:null,code:null,needsCode:false,expiresAt:new Date(Date.now()+(c.timeoutMs??600000)).toISOString()}};current=s;
-    const args=id==='codex'?['-c','forced_login_method="chatgpt"','-c','cli_auth_credentials_store="file"',...(action==='login'?['login','--device-auth']:['logout'])]:['auth',action,...(action==='login'?['--claudeai']:[])];
+    const args=id==='cursor'?[action]:id==='codex'?['-c','forced_login_method="chatgpt"','-c','cli_auth_credentials_store="file"',...(action==='login'?['login','--device-auth']:['logout'])]:['auth',action,...(action==='login'?['--claudeai']:[])];
     const [command,commandArgs]=c.command?.(id,action)??[adapter(id).executable(),args];
-    const env={HOME:sessionHome,CODEX_HOME:join(sessionHome,'.codex'),PATH:process.env.PATH??'/usr/local/bin:/usr/bin:/bin',LANG:'C.UTF-8',TERM:'dumb',BROWSER:'/usr/bin/true',DISABLE_AUTOUPDATER:'1',DISABLE_TELEMETRY:'1',DISABLE_ERROR_REPORTING:'1'};
+    const env={HOME:sessionHome,CODEX_HOME:join(sessionHome,'.codex'),PATH:process.env.PATH??'/usr/local/bin:/usr/bin:/bin',LANG:'C.UTF-8',TERM:'dumb',BROWSER:'/usr/bin/true',AGENT_CLI_CREDENTIAL_STORE:'file',NO_OPEN_BROWSER:'1',DIRENV_DISABLE:'1',DISABLE_AUTOUPDATER:'1',DISABLE_TELEMETRY:'1',DISABLE_ERROR_REPORTING:'1'};
     try{
       s.child=spawn(command,commandArgs,{cwd:sessionHome,env,detached:true,stdio:['pipe','pipe','pipe']});
       s.child.stdin?.on('error',()=>{});
@@ -99,7 +104,7 @@ export function accounts(c:Config){
         if(s.buffer.length>32768){stop('failed','The sign-in tool returned unexpected output. Try again.');return;}
         if(action==='login'){
           const details=loginDetails(id,s.buffer);
-          if(details.url){s.view={...s.view,...details,state:'waiting',message:id==='codex'?'Open OpenAI, enter the one-time code, and approve sign-in.':'Open Claude and approve sign-in. Paste the returned code below if requested.'};}
+          if(details.url){s.view={...s.view,...details,state:'waiting',message:id==='cursor'?'Open Cursor and approve the browser sign-in. Return here when finished.':id==='codex'?'Open OpenAI, enter the one-time code, and approve sign-in.':'Open Claude and approve sign-in. Paste the returned code below if requested.'};}
         }
       };
       s.child.stdout?.on('data',output);s.child.stderr?.on('data',output);
@@ -113,11 +118,11 @@ export function accounts(c:Config){
           const status=await (c.probe??probeAccount)(id,s.home);
           if(s.stopped){finish(s,'cancelled','Account change cancelled.');return;}
           if(action==='login'){
-            if(status.state!=='signed_in'||!status.method?.includes('subscription'))throw Error('Sign-in not verified');
+            if(status.state!=='signed_in'||!(status.method?.includes('subscription')||(id==='cursor'&&status.method==='Cursor account')))throw Error('Sign-in not verified');
             saveLogin(id,s.home,home);
           }else if(status.state!=='signed_out')throw Error('Sign-out not verified');
           finish(s,'succeeded',action==='login'?'Signed in successfully. You can return to your project.':'Signed out on this server.');
-        }catch{finish(s,'failed',action==='login'?'Sign-in could not be verified. Your previous login was kept. Retry; for Codex, device-code login must be enabled in your ChatGPT settings.':'Sign-out could not be verified. Refresh account status before trying again.');}
+        }catch{finish(s,'failed',action==='login'?'Sign-in could not be verified. Your previous login was kept. '+(id==='codex'?'Enable device-code login in your ChatGPT settings, then retry.':'Please retry the browser sign-in.'):'Sign-out could not be verified. Refresh account status before trying again.');}
       });
     }catch{finish(s,'failed','The sign-in tool could not start.');}
     return view(owner);

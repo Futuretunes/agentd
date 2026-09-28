@@ -5,6 +5,7 @@ import {pathToFileURL} from 'node:url';
 
 export const providerHosts:Record<string,readonly string[]>={
   npm:['registry.npmjs.org'],
+  cursor:['api2.cursor.sh','api.cursor.sh','cursor.com'],
   claude:['api.anthropic.com','claude.ai','platform.claude.com'],
   codex:['chatgpt.com','auth.openai.com','api.openai.com'],
 };

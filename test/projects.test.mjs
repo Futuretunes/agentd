@@ -48,7 +48,7 @@ test('operations summarizes global work and sanitized account health without pro
   const failed=app.request({op:'create',adapter:'codex',prompt:'fail'});app.request({op:'approve',id:failed.id});for(let i=0;i<100&&app.request({op:'show',id:failed.id}).task.status!=='failed';i++)await sleep(10);
   await sleep(10);const value=app.request({op:'operations'}),serialized=JSON.stringify(value);app.request({op:'operations'});
   assert.equal(value.service.state,'healthy');assert.equal(value.counts.succeeded,1);assert.equal(value.counts.waiting_for_approval,1);assert.equal(value.counts.failed,1);assert.equal(value.tasks.length,3);assert.equal(value.tasks.find(x=>x.id===waiting.id).conversationTitle,'private waiting prompt');
-  assert.equal(value.adapters.find(x=>x.id==='claude').account.state,'signed_in');assert.equal(value.adapters[0].usage.state,'unavailable');assert.equal(accountChecks,2);assert.ok(!serialized.includes('private model output'));assert.ok(!value.tasks.some(x=>'prompt' in x||'log' in x||'worktree' in x));
+  assert.equal(value.adapters.find(x=>x.id==='claude').account.state,'signed_in');assert.equal(value.adapters[0].usage.state,'unavailable');assert.equal(accountChecks,3);assert.ok(!serialized.includes('private model output'));assert.ok(!value.tasks.some(x=>'prompt' in x||'log' in x||'worktree' in x));
  }finally{await app.close();rmSync(root,{recursive:true,force:true});}
 });
 test('archive and restore preserve files and history, prevent hidden pending work, and survive restart',async()=>{
