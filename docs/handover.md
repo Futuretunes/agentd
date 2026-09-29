@@ -1,6 +1,17 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-large-review-commit-gate.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-claude-review-fixes.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.59.1 — Claude review of 0.22–0.59 with two fixes
+
+[Review](reviews/2026-09-29-claude-review-0.22-0.59.md), [handover](handovers/2026-09-29-claude-review-fixes.md), branch `fix/codex-review-2026-09-29`.
+
+- **F1 (high):** change listings detected renames, so a renamed file's deleted old path was missing from 0.59's required large-review coverage. Reproduced. Fixed with `--no-renames` and a regression test.
+- **F2 (medium):** the worker seccomp filter now also denies io_uring (ENOSYS), `open_tree` and `process_vm_*`, and this is proven inside the real sandbox.
+- Linux: 201/201, 0 skipped.
+- Gateway separation, limits, sandbox flags and storage cleanup were verified live or in code.
+
+**Do not install 0.59.0 without F1.** Production remains 0.55.0.
 
 ## Candidate 0.59.0 — exact-coverage large-review commit gate
 
@@ -290,6 +301,7 @@ This review-response update records findings and bounded diagnostic evidence; it
 
 ## History and maintenance
 
+- [2026-09-29 — Claude review of 0.22–0.59 and fixes](handovers/2026-09-29-claude-review-fixes.md)
 - [2026-09-28 — Combined release 0.21.1](handovers/2026-09-28-combined-0.21.1.md)
 - [2026-09-28 — Fixes for redesign review D1–D9](handovers/2026-09-28-claude-redesign-fixes.md)
 - [2026-09-28 — Claude review of the 0.20.0 redesign](handovers/2026-09-28-claude-redesign-review.md)

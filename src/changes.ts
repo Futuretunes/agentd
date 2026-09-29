@@ -95,7 +95,14 @@ export function treeSnapshot(worktree: string, revision: string, tree: string) {
   }
 }
 function readTreeSnapshot(worktree: string, revision: string, tree: string) {
-  const names = git(worktree, ["diff", "--name-only", "-z", revision, tree])
+  const names = git(worktree, [
+    "diff",
+    "--name-only",
+    "-z",
+    "--no-renames",
+    revision,
+    tree,
+  ])
     .split("\0")
     .filter(Boolean);
   const blocked = names.filter(sensitiveFilename);
@@ -172,7 +179,7 @@ function reviewableFile(repo: string, revision: string, tree: string, file: stri
     file.includes("\0")
   )
     throw Error("Invalid file review request");
-  const names = git(repo, ["diff", "--name-only", "-z", revision, tree])
+  const names = git(repo, ["diff", "--name-only", "-z", "--no-renames", revision, tree])
     .split("\0")
     .filter(Boolean);
   if (!names.includes(file)) throw Error("File is not part of this review");
