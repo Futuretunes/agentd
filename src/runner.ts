@@ -1,4 +1,5 @@
 import { reviewJobs } from "./review-jobs.ts";
+import { requestRouter, reviewPreparationOperations } from "./request-routing.ts";
 import { type prepareReview } from "./review-preview.ts";
 import { usageCache } from "./provider-usage.ts";
 import { probeUsage } from "./usage-probe.ts";
@@ -1037,6 +1038,9 @@ export function runner(c: Config) {
   }
   function handleRequest(input: any) {
     if (closing) throw new Error("Service is stopping");
+    return dispatchRequest(input);
+  }
+  function handleReviewPreparationRequest(input: any) {
     if (input.op === "review-job")
       return previewManager.view(input.owner ?? "local", input.job);
     if (input.op === "review-cancel")
@@ -1309,6 +1313,9 @@ export function runner(c: Config) {
         },
       );
     }
+    throw Error("Unknown review preparation operation");
+  }
+  function handleCoreRequest(input: any) {
     if (
       (previewManager.busy() ||
         validationManager.busy() ||
@@ -2092,6 +2099,16 @@ export function runner(c: Config) {
     }
     throw new Error("Unknown operation");
   }
+  const dispatchRequest = requestRouter(
+    [
+      {
+        name: "review-preparation",
+        operations: reviewPreparationOperations,
+        handle: handleReviewPreparationRequest,
+      },
+    ],
+    handleCoreRequest,
+  );
   refreshPending();
   const socket = join(c.stateDir, "control.sock");
   // systemd RuntimeDirectory supplies a fresh socket directory at every start.
