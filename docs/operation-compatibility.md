@@ -50,3 +50,7 @@ This is the first extracted domain, not a global lease manager. Dependency cance
 ## Publication and check owners
 
 Publication and feedback share `publication-jobs.ts` and one operation slot; shutdown waits for transport settlement and leaves interrupted approved publication marked as needing attention. `check-execution.ts` owns the isolated check process through cleanup and state persistence. It returns a completion handle to the runner's existing shared task/check worker slot. The runner clears only that same handle on completion. Approval/admission and synchronous snapshot preparation remain runner responsibilities. A running-state write must succeed before a check process starts. No additional parallel worker capacity is introduced.
+
+## Task execution owner
+
+`task-execution.ts` returns one handle before scheduling checkout. Its identity stays constant as preparation gives way to the child process; cancellation/shutdown sees the same completion promise. The runner retains queue admission, renewal, approval refresh and one task/check slot, clearing only the completing owner. Immediate cancellation is checked before path persistence, checkout or command construction. Checkout cancellation retains partial edits; terminal persistence and sandbox cleanup remain prerequisites for releasing ownership. Unexpected cleanup/persistence exceptions preserve fail-fast behavior; this extraction does not claim complete crash recovery.

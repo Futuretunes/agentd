@@ -194,3 +194,155 @@ test("shutdown waits for preparation cancellation without starting a model", asy
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+import { executeTask } from "../src/task-execution.ts";
+import { followupContext } from "../src/followup-context.ts";
+import { DatabaseSync } from "node:sqlite";
+function executionFixture(f) {
+  const stateDir = join(f.root, "state"),
+    logs = join(f.root, "logs");
+  mkdirSync(stateDir);
+  mkdirSync(logs);
+  const db = new DatabaseSync(":memory:");
+  db.exec(
+    "CREATE TABLE tasks(id TEXT PRIMARY KEY,worktree TEXT,log TEXT,review TEXT); INSERT INTO tasks VALUES('task',NULL,NULL,NULL)",
+  );
+  const transitions = [],
+    owners = [];
+  const row = {
+    id: "task",
+    project: "p",
+    adapter: "claude",
+    mode: "ask",
+    attachments: "[]",
+    revision: f.revision,
+    prompt: "fixture",
+    execution: JSON.stringify({
+      selection: { model: "provider", effort: "provider" },
+      settings: { context: "none" },
+      context: followupContext(null, "none").summary,
+      timeoutMs: 5000,
+    }),
+  };
+  const config = {
+    db,
+    stateDir,
+    logs,
+    worktrees: f.trees,
+    limits: resourceLimits,
+    project: () => ({ repo: f.repo }),
+    get: () => null,
+    attachment: () => {
+      throw Error("Unexpected attachment");
+    },
+    attachmentRoot: f.root,
+    requireAdapter() {},
+    transition: (_id, status) => transitions.push(status),
+    closing: () => false,
+    settled: (owner) => owners.push(owner),
+    command: () => [process.execPath, ["-e", "setInterval(()=>{},1000)"]],
+  };
+  return { db, row, config, transitions, owners };
+}
+test("immediate task-owner cancellation skips checkout and command construction", async () => {
+  const f = fixture(),
+    x = executionFixture(f);
+  let preparation = 0,
+    commands = 0;
+  x.config.prepareWorktree = async () => {
+    preparation++;
+  };
+  x.config.command = () => {
+    commands++;
+    return [process.execPath, []];
+  };
+  try {
+    const owner = executeTask(x.config, x.row);
+    owner.stop("cancelled");
+    await owner.done;
+    assert.deepEqual(x.transitions, ["running", "cancelling", "cancelled"]);
+    assert.equal(preparation, 0);
+    assert.equal(commands, 0);
+    assert.deepEqual(x.owners, [owner]);
+    assert.equal(x.db.prepare("SELECT worktree FROM tasks").get().worktree, null);
+  } finally {
+    x.db.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test("the same task owner spans preparation and process shutdown through cleanup", async () => {
+  const f = fixture(),
+    x = executionFixture(f);
+  let release,
+    entered,
+    cleaned = false;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const started = new Promise((resolve) => {
+    entered = resolve;
+  });
+  x.config.prepareWorktree = async (input, signal) => {
+    entered();
+    await gate;
+    await prepareWorktree(input, signal);
+  };
+  x.config.strictWorkers = true;
+  x.config.isolate = (_tree, _state, command, args) => ({
+    command,
+    args,
+    cleanup() {
+      cleaned = true;
+    },
+  });
+  let owner;
+  try {
+    owner = executeTask(x.config, x.row);
+    await started;
+    assert.equal(owner.child, undefined);
+    assert.equal(x.owners.length, 0);
+    release();
+    await waitFor(() => !!owner.child);
+    owner.stop("interrupted");
+    await owner.done;
+    assert.equal(cleaned, true);
+    assert.deepEqual(x.owners, [owner]);
+    assert.equal(x.transitions.at(-1), "interrupted");
+    assert.equal(existsSync(join(f.trees, "task", "README.md")), true);
+  } finally {
+    release();
+    if (owner && !x.owners.length) {
+      owner.stop("cancelled");
+      await owner.done;
+    }
+    x.db.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test("task path persistence failure cannot start checkout or a command", async () => {
+  const f = fixture(),
+    x = executionFixture(f);
+  let preparation = 0,
+    commands = 0;
+  x.db.exec(
+    "CREATE TRIGGER fail_path BEFORE UPDATE ON tasks BEGIN SELECT RAISE(ABORT,'fixture persistence failure'); END",
+  );
+  x.config.prepareWorktree = async () => {
+    preparation++;
+  };
+  x.config.command = () => {
+    commands++;
+    return [process.execPath, []];
+  };
+  try {
+    const owner = executeTask(x.config, x.row);
+    await owner.done;
+    assert.equal(preparation, 0);
+    assert.equal(commands, 0);
+    assert.deepEqual(x.transitions, ["running", "failed"]);
+    assert.deepEqual(x.owners, [owner]);
+  } finally {
+    x.db.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
