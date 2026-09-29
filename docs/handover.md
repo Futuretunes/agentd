@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.57.0 — durable exact-tree large-review acknowledgements
 
-[Latest handover](handovers/2026-09-29-durable-large-review-acknowledgements.md): individually bounded files require an explicit audited acknowledgement tied to the task, exact tree, filename and patch fingerprint. Progress survives restart but never transfers to changed content. Complete acknowledgement remains evidence only; commit/revision/restart stay blocked for truncated reviews. Exact source `8117de5` passed 197/197 required Linux tests with zero skips, typecheck and formatting. The cumulative archive and launcher are staged but unexecuted. Production remains 0.55.0; PR and CI are pending.
+[Latest handover](handovers/2026-09-29-durable-large-review-acknowledgements.md): individually bounded files require an explicit audited acknowledgement tied to the task, exact tree, filename and patch fingerprint. Progress survives restart but never transfers to changed content. Complete acknowledgement remains evidence only; commit/revision/restart stay blocked for truncated reviews. Exact source `8117de5` passed 197/197 required Linux tests with zero skips, typecheck and formatting; Node 24/26 and required Linux CI passed. PR #62 is ready for review against PR #61's branch. The cumulative archive and launcher are staged but unexecuted. Production remains 0.55.0.
 
 ## Candidate 0.56.0 — bounded per-file large-review inspection
 

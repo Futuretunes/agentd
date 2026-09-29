@@ -6,7 +6,7 @@
 - Release: 0.57.0, task schema 2.
 - Branch and base: `feat/durable-large-review-acknowledgements` from `feat/bounded-large-review`.
 - Implementation commit: `8117de5352e73b7d94dc23c599302940531ac69c`.
-- PR: pending against PR #61's branch.
+- PR: https://github.com/Futuretunes/agentd/pull/62, ready for review against PR #61's branch.
 
 ## Changes and relevant files
 
@@ -23,7 +23,7 @@ This slice records review evidence only. Even when every file is acknowledged, o
 - macOS full suite: 188 passed, 0 failed; nine Linux-only tests skipped as expected.
 - Required Ubuntu suite from the exact archive: 197/197 passed with zero failures and zero skips.
 - Exact archive: version 0.57.0, task schema 2, SHA-256 `d14e948211a751341ee77629313f11eeb5f8b5de8cbba398c1e0452f86b81952`.
-- GitHub Actions is pending for the documentation-complete branch.
+- GitHub Actions runs `36560153073` and `36560158334` passed Node 24, Node 26 and required Linux isolation.
 
 No live model request, account consent, publication, cleanup, deployment, merge or tag occurred.
 
@@ -37,4 +37,4 @@ An explicit acknowledgement records the operator's action and exact content fing
 
 ## Next steps
 
-After CI and review, mark the PR ready. The next R14 slice should add bounded pagination for one oversized text file, with stable page identities and complete coverage evidence. Only after both per-file and paginated coverage are durable should a separate design consider authorizing checks/commit for a fully reviewed large snapshot. R8 GitHub consent narrowing, GUI administration, retention quotas and notifications remain queued.
+The next R14 slice should add bounded pagination for one oversized text file, with stable page identities and complete coverage evidence. Only after both per-file and paginated coverage are durable should a separate design consider authorizing checks/commit for a fully reviewed large snapshot. R8 GitHub consent narrowing, GUI administration, retention quotas and notifications remain queued.
