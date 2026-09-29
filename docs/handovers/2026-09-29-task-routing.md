@@ -6,7 +6,7 @@
 - Release: 0.54.0, task schema 2.
 - Branch and base: `refactor/task-routing` from `refactor/workspace-mutation-routing`.
 - Implementation commit: `5c48c821009df00c029771384d74c83288e0332e`.
-- PR: https://github.com/Futuretunes/agentd/pull/58, draft against PR #57's branch pending final CI and review.
+- PR: https://github.com/Futuretunes/agentd/pull/58, ready for review against PR #57's branch.
 
 ## Changes and relevant files
 
@@ -19,7 +19,7 @@ Task creation, revision/restart compatibility calls, retry, task output/detail, 
 - macOS full suite: 184 passed, 0 failed; nine Linux-only tests skipped as expected.
 - Required Ubuntu suite from the exact archive: 193/193 passed with zero failures and zero skips.
 - Exact archive: version 0.54.0, task schema 2, SHA-256 `07a839df9618f82d3f4b727804b0de113a8933544ac498268ab3a91384636c2a`.
-- GitHub Actions is pending for the documentation-complete branch and must pass before the PR is marked ready.
+- GitHub Actions runs `36554979003` and `36554984280`: Node 24, Node 26 and Required Linux isolation passed.
 
 No live model request, account consent, publication, cleanup, deployment, merge or tag occurred.
 
@@ -33,4 +33,4 @@ This is internal request ownership only and grants no new browser authority. PR 
 
 ## Next steps
 
-After CI and review, mark #58 ready. The final core-routing slice is attachment/settings/storage operations. After that, reassess whether the smaller core is ready to become an explicit route instead of a fallback. Larger product backlog remains R8 narrower GitHub consent, R14 binary/large-file review, GUI administration, retention quotas and notifications.
+The final core-routing slice is attachment/settings/storage operations. After that, reassess whether the smaller core is ready to become an explicit route instead of a fallback. Larger product backlog remains R8 narrower GitHub consent, R14 binary/large-file review, GUI administration, retention quotas and notifications.
