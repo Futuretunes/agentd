@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-paginated-large-review.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-large-review-commit-gate.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.59.0 — exact-coverage large-review commit gate
+
+[Latest handover](handovers/2026-09-29-large-review-commit-gate.md): truncated aggregate reviews can run checks and commit only after every changed file has durable coverage for the same task and exact Git tree. Passing exact-tree checks, no conflicts and no blocked sensitive/binary/unscannable files remain mandatory. Revision and restart stay blocked. Exact source `39c30b4` passed 200/200 required Linux tests with zero skips, typecheck and formatting. The cumulative archive and launcher are staged but unexecuted. Production remains 0.55.0.
 
 ## Candidate 0.58.0 — bounded paginated large-file review
 
