@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-publication-owner.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-check-owner.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.39.0 — check execution ownership
+
+[Handover](handovers/2026-09-29-check-owner.md): isolated validation execution has a separate lifecycle module while retaining the shared worker slot. Running-state persistence precedes process launch; failures cannot leave an untracked check child. Exact validation pending; not installed.
 
 ## Candidate 0.38.0 — publication and feedback ownership
 

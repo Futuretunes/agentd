@@ -184,3 +184,7 @@ Dependency selection and job success now share one checked SQLite transaction. F
 ## R2 publication domain — candidate 0.38.0
 
 Publication and GitHub feedback share an extracted manager and owned operation slot. Shutdown waits for transport settlement; immediate shutdown prevents transport startup. Approval cancellation remains needs-attention. Existing commit/owner/fingerprint/conflict safeguards remain. Exact archive passed 154/154 Linux tests, zero skips, formatting, typecheck and CI; draft #42; not installed. Task/check decomposition and synchronous review/integration Git work remain open.
+
+## R2 check execution — candidate 0.39.0
+
+Check process, output/resource limits, cleanup and terminal-state handling move to `check-execution.ts`, retaining runner approval/admission and the single task/check worker slot. A running-state database write failure now prevents process startup. Cancellation, stale content, spawn and cleanup failure fixtures added. Exact validation pending; not installed. Task dispatch extraction, asynchronous snapshot/review Git and retention reconciliation remain open.

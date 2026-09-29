@@ -307,3 +307,138 @@ test("legacy passing checks are invalidated on restart and committed files can b
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+// Domain fixtures launch only local Node processes, never native model agents.
+import { executeChecks } from "../src/check-execution.ts";
+import { DatabaseSync } from "node:sqlite";
+import { createHash } from "node:crypto";
+import { resourceLimits } from "../src/resources.ts";
+function executionFixture(f, script, cleanup = () => {}) {
+  const db = new DatabaseSync(":memory:");
+  db.exec(
+    "CREATE TABLE tasks(id TEXT PRIMARY KEY, checks TEXT); INSERT INTO tasks VALUES('check',NULL)",
+  );
+  const logs = join(f.root, "logs");
+  mkdirSync(logs);
+  const row = { id: "check", worktree: f.repo, revision: f.revision };
+  const project = {
+    check_dependencies: f.repo,
+    check_lock: createHash("sha256").update("{}").digest("hex"),
+  };
+  let materialized, settled;
+  const options = {
+    db,
+    stateDir: f.state,
+    worktrees: f.repo,
+    logs,
+    limits: resourceLimits,
+    isolate: (tree) => {
+      materialized = tree;
+      return { command: process.execPath, args: ["-e", script], cleanup };
+    },
+    settled: (owner) => {
+      settled = owner;
+    },
+  };
+  return {
+    db,
+    row,
+    project,
+    options,
+    tree: snapshot(f.repo, f.revision, f.state).tree,
+    path: () => materialized,
+    settled: () => settled,
+    status: () => JSON.parse(db.prepare("SELECT checks FROM tasks").get().checks),
+  };
+}
+test("check owner settles after cancellation cleanup and stale checks never pass", async () => {
+  for (const stale of [false, true]) {
+    const f = fixture();
+    let cleaned = false;
+    const x = executionFixture(f, "setInterval(()=>{},1000)", () => {
+      cleaned = true;
+    });
+    try {
+      const owner = executeChecks(x.options, x.row, x.project, x.tree);
+      assert.equal(x.status().status, "running");
+      assert.equal(x.settled(), undefined);
+      if (stale) writeFileSync(join(f.repo, "README.md"), "changed during checks");
+      owner.stop("interrupted");
+      await owner.done;
+      assert.equal(cleaned, true);
+      assert.equal(existsSync(x.path()), false);
+      assert.equal(x.settled(), owner);
+      assert.equal(x.status().status, stale ? "stale" : "interrupted");
+    } finally {
+      x.db.close();
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  }
+});
+test("check cleanup failure and spawn failure cannot report passing checks", async () => {
+  for (const failure of ["cleanup", "spawn"]) {
+    const f = fixture();
+    const x = executionFixture(f, "", () => {
+      if (failure === "cleanup") throw Error("fixture cleanup failure");
+    });
+    if (failure === "spawn") {
+      const original = x.options.isolate;
+      x.options.isolate = (tree) => ({
+        ...original(tree),
+        command: join(f.root, "missing-program"),
+      });
+    }
+    try {
+      const owner = executeChecks(x.options, x.row, x.project, x.tree);
+      await owner.done;
+      assert.equal(x.status().status, "failed");
+      assert.equal(existsSync(x.path()), false);
+      assert.equal(x.settled(), owner);
+    } finally {
+      x.db.close();
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  }
+});
+test("failed running-state persistence never starts a check process and releases prepared files", async () => {
+  const f = fixture(),
+    marker = join(f.root, "launched");
+  let cleaned = false;
+  const x = executionFixture(
+    f,
+    `require('fs').writeFileSync(${JSON.stringify(marker)},'started')`,
+    () => {
+      cleaned = true;
+    },
+  );
+  let launchAccesses = 0;
+  const original = x.options.isolate;
+  x.options.isolate = (tree) => {
+    const value = original(tree);
+    return {
+      ...value,
+      get command() {
+        launchAccesses++;
+        return value.command;
+      },
+    };
+  };
+  x.db.exec(
+    "CREATE TRIGGER reject_running BEFORE UPDATE ON tasks BEGIN SELECT RAISE(ABORT,'fixture write failure'); END",
+  );
+  try {
+    assert.throws(
+      () => executeChecks(x.options, x.row, x.project, x.tree),
+      /fixture write failure/,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(launchAccesses, 0);
+    assert.equal(existsSync(marker), false);
+    assert.equal(cleaned, true);
+    assert.equal(existsSync(x.path()), false);
+    assert.equal(x.db.prepare("SELECT checks FROM tasks").get().checks, null);
+  } finally {
+    x.db.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});

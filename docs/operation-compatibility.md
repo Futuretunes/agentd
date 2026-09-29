@@ -46,3 +46,7 @@ This is the first extracted domain, not a global lease manager. Dependency cance
 ## Repository operation owner
 
 `repository-jobs.ts` now owns discovery/import/update job execution, persistence, cancellation and cleanup through `operation-slot.ts`. Update ownership still identifies the affected project; unrelated project admission is unchanged. Global repository/GitHub/publication/dependency exclusions use the same directional table. Immediate cancellation is recorded before invoking transport; shutdown waits for transport and partial-import cleanup to settle. Existing registered projects are retained. This extraction does not add automatic retries or make remote Git/filesystem/SQLite changes atomic.
+
+## Publication and check owners
+
+Publication and feedback share `publication-jobs.ts` and one operation slot; shutdown waits for transport settlement and leaves interrupted approved publication marked as needing attention. `check-execution.ts` owns the isolated check process through cleanup and state persistence. It returns a completion handle to the runner's existing shared task/check worker slot. The runner clears only that same handle on completion. Approval/admission and synchronous snapshot preparation remain runner responsibilities. A running-state write must succeed before a check process starts. No additional parallel worker capacity is introduced.

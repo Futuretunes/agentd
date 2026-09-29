@@ -1,3 +1,4 @@
+import { executeChecks } from "./check-execution.ts";
 import { removeDependencyStage } from "./dependency-recovery.ts";
 import { repositoryJobs } from "./repository-jobs.ts";
 import { dependencyJobs } from "./dependency-jobs.ts";
@@ -26,7 +27,7 @@ import { modelCatalog, discoverModels } from "./model-catalog.ts";
 import { unresolvedConflicts, type ReviewAPI } from "./github-review.ts";
 import { type PullAPI } from "./publishing.ts";
 import { publicationJobs } from "./publication-jobs.ts";
-import { checkManifest, type DependencyPreparation } from "./check-setup.ts";
+import { type DependencyPreparation } from "./check-setup.ts";
 import {
   adapterIds,
   invocation,
@@ -42,12 +43,10 @@ import { renewals, renewalFailure } from "./renewal.ts";
 import { type RepositoryGit } from "./repositories.ts";
 import { githubAccount } from "./github-account.ts";
 import { accounts } from "./accounts.ts";
-import { snapshot, commitSnapshot, checkSnapshot } from "./changes.ts";
+import { snapshot, commitSnapshot } from "./changes.ts";
 import { isolated } from "./isolation.ts";
-import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { spawn, type ChildProcess } from "node:child_process";
-import { homedir } from "node:os";
 import { randomUUID, createHash } from "node:crypto";
 import {
   mkdirSync,
@@ -880,127 +879,24 @@ export function runner(c: Config) {
     const p = project(String(row.project));
     if (!p.check_dependencies)
       throw Error("Open Set up checks to prepare this project’s dependencies.");
-    const prepared = checkSnapshot(
-      String(row.worktree),
-      String(row.revision),
-      expected,
-      c.stateDir,
-    );
-    let sandbox: ReturnType<typeof isolated> | undefined;
-    const log = join(c.logs, String(row.id) + ".checks.log");
-    let child: ChildProcess;
-    try {
-      if (
-        p.check_manifest &&
-        checkManifest(prepared.worktree).fingerprint !== p.check_manifest
-      )
-        throw Error("Dependency files changed. Open Set up checks for this review.");
-      const hash = createHash("sha256")
-        .update(readFileSync(join(prepared.worktree, "package-lock.json")))
-        .digest("hex");
-      if (hash !== p.check_lock)
-        throw Error("Dependencies changed. Open Set up checks for this review.");
-      sandbox = (c.isolate ?? isolated)(
-        prepared.worktree,
-        c.stateDir,
-        process.execPath,
-        [fileURLToPath(new URL("./check-worker.ts", import.meta.url))],
-        undefined,
-        String(p.check_dependencies),
-      );
-      child = spawn(sandbox.command, sandbox.args, {
-        cwd: prepared.worktree,
-        env: { PATH: process.env.PATH, HOME: homedir(), LANG: "C.UTF-8", TERM: "dumb" },
-        detached: true,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-    } catch (error) {
-      try {
-        sandbox?.cleanup();
-      } finally {
-        prepared.cleanup();
-      }
-      throw error;
-    }
-    db.prepare("UPDATE tasks SET checks=? WHERE id=?").run(
-      JSON.stringify({ status: "running", tree: expected, log, input: "git-tree-v1" }),
-      row.id,
-    );
-    let stopped: string | null = null,
-      spawnError = "";
-    let unmonitor = () => {};
-    let resolveDone!: () => void;
-    const done = new Promise<void>((resolve) => (resolveDone = resolve));
-    const kill = () => {
-      if (child.pid)
-        try {
-          process.kill(-child.pid, "SIGKILL");
-        } catch {}
-    };
-    const stop = (reason = "cancelled") => {
-      stopped = reason;
-      kill();
-    };
-    const timer = setTimeout(() => stop("timed_out"), 240000);
-    active = { id: String(row.id), child, done, stop };
-    child.on("error", (error) => (spawnError = error.message));
-    child.on("close", (code) => {
-      unmonitor();
-      clearTimeout(timer);
-      kill();
-      let cleanupError = false;
-      try {
-        sandbox!.cleanup();
-      } catch {
-        cleanupError = true;
-      }
-      try {
-        prepared.cleanup();
-      } catch {
-        cleanupError = true;
-      }
-      let status =
-        stopped ?? (code === 0 && !spawnError && !cleanupError ? "passed" : "failed");
-      try {
-        if (
-          snapshot(String(row.worktree), String(row.revision), c.stateDir).tree !==
-          expected
-        )
-          status = "stale";
-      } catch {
-        status = "stale";
-      }
-      db.prepare("UPDATE tasks SET checks=? WHERE id=?").run(
-        JSON.stringify({
-          status,
-          tree: expected,
-          log,
-          input: "git-tree-v1",
-          exitCode: code,
-          error: spawnError || null,
-          at: new Date().toISOString(),
-        }),
-        row.id,
-      );
-      active = undefined;
-      resolveDone();
-      if (!closing) setImmediate(pump);
-    });
-    const fail = (message: string) => {
-      spawnError = message;
-      stop("failed");
-    };
-    try {
-      captureOutput(child, log, fail, limits.logBytes);
-      unmonitor = monitorWorktree(
-        prepared.worktree,
-        [c.stateDir, c.worktrees, c.logs],
-        fail,
+    const owner = executeChecks(
+      {
+        db,
+        stateDir: c.stateDir,
+        worktrees: c.worktrees,
+        logs: c.logs,
         limits,
-      );
-    } catch {
-      fail("Could not safely write task output");
-    }
+        isolate: c.isolate,
+        settled: (finished) => {
+          if (active === finished) active = undefined;
+          if (!closing) setImmediate(pump);
+        },
+      },
+      row,
+      p,
+      expected,
+    );
+    active = owner;
     return { status: "running" };
   }
   function request(input: any) {
