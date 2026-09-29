@@ -180,3 +180,7 @@ Repository discovery/import/update is extracted with owned completion, cancellat
 ## R10/R6 dependency publication recovery — candidate 0.37.0
 
 Dependency selection and job success now share one checked SQLite transaction. Failure/startup cleanup protects referenced and aliased stages and preserves uncertain references. Regression coverage includes publication-write failure and legacy interrupted startup. Physical durability, corrupt-package repair and whole-cache retention remain separate work. Exact archive passed 151/151 Linux tests, zero skips, formatting, typecheck and CI; draft #41; not installed.
+
+## R2 publication domain — candidate 0.38.0
+
+Publication and GitHub feedback share an extracted manager and owned operation slot. Shutdown waits for transport settlement; immediate shutdown prevents transport startup. Approval cancellation remains needs-attention. Existing commit/owner/fingerprint/conflict safeguards remain. Exact validation and staging pending; not installed. Task/check decomposition and synchronous review/integration Git work remain open.

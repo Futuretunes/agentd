@@ -23,24 +23,9 @@ import { gatewaySocket } from "./gateway-protocol.ts";
 import { initializeTaskDatabase } from "./task-database.ts";
 import { settings, resolveSettings, type Settings } from "./execution-settings.ts";
 import { modelCatalog, discoverModels } from "./model-catalog.ts";
-import {
-  integrationGit,
-  integrationConfig,
-  githubReviewAPI,
-  loadFeedback,
-  selectedFeedback,
-  prepareIntegration,
-  unresolvedConflicts,
-  type ReviewAPI,
-} from "./github-review.ts";
-import {
-  previewPublication,
-  executePublication,
-  githubPullAPI,
-  publicationText,
-  type PullAPI,
-  type PublishPlan,
-} from "./publishing.ts";
+import { unresolvedConflicts, type ReviewAPI } from "./github-review.ts";
+import { type PullAPI } from "./publishing.ts";
+import { publicationJobs } from "./publication-jobs.ts";
 import { checkManifest, type DependencyPreparation } from "./check-setup.ts";
 import {
   adapterIds,
@@ -54,7 +39,7 @@ import {
   type Mode,
 } from "./adapters.ts";
 import { renewals, renewalFailure } from "./renewal.ts";
-import { branchName, repositoryGit, type RepositoryGit } from "./repositories.ts";
+import { type RepositoryGit } from "./repositories.ts";
 import { githubAccount } from "./github-account.ts";
 import { accounts } from "./accounts.ts";
 import { snapshot, commitSnapshot, checkSnapshot } from "./changes.ts";
@@ -254,7 +239,7 @@ export function runner(c: Config) {
         case "repository":
           return repositoryManager.busy();
         case "publication":
-          return !!publicationWork;
+          return publicationManager.busy();
         case "dependency":
           return dependencyManager.busy();
         case "github":
@@ -318,438 +303,22 @@ export function runner(c: Config) {
     audit,
     prepare: c.prepareDependencies,
   });
-  let publicationWork: { done: Promise<void>; abort: AbortController } | undefined;
-  const publicationView = (task: string) =>
-    db
-      .prepare(
-        "SELECT id,task,state,plan,error,url,updated,expires FROM publications WHERE task=? ORDER BY rowid DESC LIMIT 5",
-      )
-      .all(task)
-      .map((row: any) => ({ ...row, plan: row.plan ? JSON.parse(row.plan) : null }));
-  const publishTarget = (id: string) => {
-    const row = get(id);
-    if (!row || row.review !== "committed" || !row.commit_sha)
-      throw Error("Approve a local commit with passing checks before publishing.");
-    const p = project(String(row.project));
-    if (p.archived) throw Error("Restore this project before publishing.");
-    return { row, p };
-  };
-  const approvedCommit = (projectId: string, sha: string, tree: string) => {
-    const row = db
-      .prepare(
-        "SELECT checks FROM tasks WHERE project=? AND commit_sha=? AND review='committed'",
-      )
-      .get(projectId, sha);
-    if (!row) return false;
-    const checks = JSON.parse(String(row.checks ?? "{}"));
-    return (
-      checks.status === "passed" && checks.input === "git-tree-v1" && checks.tree === tree
-    );
-  };
-  const publicationTargets = (task: string, includeCurrent = false) => {
-    const { row } = publishTarget(task);
-    return db
-      .prepare(
-        "SELECT p.id,p.url,p.plan FROM publications p JOIN tasks t ON t.id=p.task WHERE p.state='published' AND t.conversation=? AND t.project=? AND t.id!=? ORDER BY p.rowid DESC",
-      )
-      .all(row.conversation, row.project, includeCurrent ? "" : task)
-      .map((p: any) => ({ id: p.id, url: p.url, plan: JSON.parse(p.plan) }))
-      .filter(
-        (p: any, i: number, list: any[]) =>
-          list.findIndex((q) => q.plan.branch === p.plan.branch) === i,
-      )
-      .map((p: any) => ({
-        id: p.id,
-        url: p.url,
-        branch: p.plan.branch,
-        base: p.plan.base,
-        head: p.plan.head,
-      }));
-  };
-  function startPublication(input: any, approve = false) {
-    if (!/^[a-f0-9]{64}$/.test(input.owner ?? ""))
-      throw Error("Authenticated browser session required.");
-    if (blocked("publication"))
-      throw Error(
-        "Wait for current publishing, repository, dependency or GitHub sign-in work.",
-      );
-    const profile = github.profile();
-    if (!profile && !c.pullAPI)
-      throw Error("Connect GitHub before preparing publication.");
-    const stored = approve
-      ? db.prepare("SELECT * FROM publications WHERE id=?").get(input.id)
-      : null;
-    if (
-      approve &&
-      (!stored ||
-        stored.owner !== input.owner ||
-        stored.state !== "ready" ||
-        Number(stored.expires) < Date.now())
-    )
-      throw Error(
-        "This approval expired or belongs to another browser. Create a fresh preview.",
-      );
-    const task = String(stored?.task ?? input.task),
-      { row, p } = publishTarget(task),
-      published = publicationView(task).find((job) => job.state === "published");
-    if (published) return published;
-    const plan: PublishPlan | null = approve ? JSON.parse(String(stored!.plan)) : null;
-    if (approve && input.fingerprint !== plan!.fingerprint)
-      throw Error("Preview changed. Review it again.");
-    if (plan && plan.head !== row.commit_sha)
-      throw Error("Approved local commit changed. Preview again.");
-    let update:
-      | {
-          destination: string;
-          branch: string;
-          head: string;
-          base: string;
-          number: number;
-        }
-      | undefined;
-    if (!approve && input.updateOf) {
-      const target = publicationTargets(task).find((p) => p.id === input.updateOf);
-      if (!target) throw Error("Select a published PR from this conversation.");
-      const previous: any = db
-          .prepare("SELECT plan FROM publications WHERE id=?")
-          .get(target.id),
-        value = JSON.parse(previous.plan);
-      update = {
-        destination: value.destination,
-        branch: value.branch,
-        head: value.head,
-        base: value.base,
-        number: Number(target.url.match(/\/pull\/(\d+)$/)?.[1]),
-      };
-    }
-    const fields = approve ? plan! : publicationText(input.title, input.body),
-      base = approve ? plan!.base : branchName(input.base),
-      id = approve ? String(stored!.id) : randomUUID(),
-      abort = new AbortController(),
-      gitCommand =
-        c.repositoryCommand ??
-        repositoryGit({ stateDir: c.stateDir, githubProfile: profile });
-    if (approve) {
-      db.prepare(
-        "UPDATE publications SET state='publishing',error=NULL,updated=? WHERE id=?",
-      ).run(new Date().toISOString(), id);
-      audit("approve-publication", task, {
-        publication: id,
-        fingerprint: plan!.fingerprint,
-        destination: plan!.destination,
-        head: plan!.head,
-        base: plan!.base,
-        baseSha: plan!.baseSha,
-      });
-    } else
-      db.prepare("INSERT INTO publications VALUES(?,?,?,?,?,?,?,?,?)").run(
-        id,
-        task,
-        input.owner,
-        "preparing",
-        null,
-        null,
-        null,
-        new Date().toISOString(),
-        Date.now() + 900000,
-      );
-    const done = Promise.resolve().then(async () => {
-      try {
-        if (!approve) {
-          const preview = await previewPublication({
-            git: gitCommand,
-            repo: String(p.repo),
-            task,
-            head: String(row.commit_sha),
-            base,
-            title: fields.title,
-            body: fields.body,
-            update,
-            api: c.pullAPI ?? githubPullAPI(c.stateDir, profile!),
-            approved: (sha, tree) => approvedCommit(String(p.id), sha, tree),
-            approvedMerge: (sha, parents) => {
-              const t = db
-                .prepare(
-                  "SELECT revision,merge_parent FROM tasks WHERE project=? AND commit_sha=? AND review='committed'",
-                )
-                .get(p.id, sha);
-              return !!t && parents.join(" ") === [t.revision, t.merge_parent].join(" ");
-            },
-            signal: abort.signal,
-          });
-          db.prepare(
-            "UPDATE publications SET state='ready',plan=?,updated=?,expires=? WHERE id=?",
-          ).run(
-            JSON.stringify(preview),
-            new Date().toISOString(),
-            Date.now() + 900000,
-            id,
-          );
-        } else {
-          for (const commit of plan!.commits) {
-            const tree = await gitCommand(
-              String(p.repo),
-              ["rev-parse", commit.sha + "^{tree}"],
-              abort.signal,
-            );
-            if (!approvedCommit(String(p.id), commit.sha, tree))
-              throw Error("Commit approval or check results changed. Preview again.");
-          }
-          const result = await executePublication(
-            gitCommand,
-            c.pullAPI ?? githubPullAPI(c.stateDir, profile!),
-            String(p.repo),
-            plan!,
-            abort.signal,
-            (stage) =>
-              db
-                .prepare("UPDATE publications SET state=?,updated=? WHERE id=?")
-                .run(stage, new Date().toISOString(), id),
-          );
-          db.prepare(
-            "UPDATE publications SET state='published',url=?,error=?,updated=? WHERE id=?",
-          ).run(
-            result.url,
-            result.reused
-              ? "Existing pull request reused; its current title, description and state were kept."
-              : null,
-            new Date().toISOString(),
-            id,
-          );
-          audit("published", task, {
-            publication: id,
-            url: result.url,
-            head: plan!.head,
-            reused: result.reused,
-          });
-        }
-      } catch (error) {
-        db.prepare("UPDATE publications SET state=?,error=?,updated=? WHERE id=?").run(
-          approve ? "needs_attention" : "failed",
-          (error as Error).message,
-          new Date().toISOString(),
-          id,
-        );
-      } finally {
-        publicationWork = undefined;
-      }
-    });
-    publicationWork = { done, abort };
-    return publicationView(task).find((job) => job.id === id);
-  }
-  const feedbackView = (task: string, owner: string) =>
-    db
-      .prepare(
-        "SELECT id,kind,state,plan,error,result,expires FROM review_jobs WHERE task=? AND owner=? ORDER BY rowid DESC LIMIT 10",
-      )
-      .all(task, owner)
-      .map((r: any) => ({ ...r, plan: r.plan ? JSON.parse(r.plan) : null }));
-  function latestCommitted(task: string) {
-    const target = publishTarget(task);
-    if (conversation(String(target.row.conversation)).archived)
-      throw Error("Restore this conversation first.");
-    if (
-      db
-        .prepare(
-          "SELECT id FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 1",
-        )
-        .get(target.row.conversation)?.id !== task
-    )
-      throw Error("Open the latest committed turn before continuing.");
-    return target;
-  }
-  function feedback(input: any) {
-    if (!/^[a-f0-9]{64}$/.test(input.owner ?? ""))
-      throw Error("Authenticated browser session required.");
-    if (input.op === "feedback-targets") return publicationTargets(input.task, true);
-    if (input.op === "feedback-status") {
-      publishTarget(input.task);
-      return feedbackView(input.task, input.owner);
-    }
-    const applying = input.op === "feedback-apply",
-      stored = applying
-        ? db.prepare("SELECT * FROM review_jobs WHERE id=?").get(input.id)
-        : null;
-    if (applying && (!stored || stored.owner !== input.owner))
-      throw Error("This preview belongs to another browser.");
-    const plan = stored?.plan ? JSON.parse(String(stored.plan)) : null;
-    if (applying && (!plan || input.fingerprint !== plan.fingerprint))
-      throw Error("Preview changed. Review again.");
-    const chosen =
-      applying && stored!.kind === "comments"
-        ? selectedFeedback(plan, input.keys, input.instruction)
-        : null;
-    if (stored?.state === "applied") {
-      if (chosen && chosen.selection !== stored.selection)
-        throw Error("A different selection was already imported.");
-      return get(String(stored.result));
-    }
-    if (applying && (stored!.state !== "ready" || Number(stored!.expires) < Date.now()))
-      throw Error("Preview expired. Prepare it again.");
-    const task = String(stored?.task ?? input.task),
-      { row, p } = latestCommitted(task);
-    if (blocked("feedback"))
-      throw Error(
-        "Wait for current work before preparing GitHub feedback or integration.",
-      );
-    requireAdapter(String(row.adapter), "edit");
-    if (applying) {
-      if (plan.sourceHead !== row.commit_sha)
-        throw Error("The local commit changed. Prepare again.");
-      const id = randomUUID(),
-        at = new Date().toISOString(),
-        integration = stored!.kind === "integration",
-        repo = String(p.repo),
-        worktree = integration ? join(c.worktrees, id) : null;
-      if (integration) {
-        integrationConfig(repo);
-        integrationGit(repo, ["worktree", "add", "--detach", worktree!, plan.baseSha]);
-        try {
-          integrationGit(worktree!, ["read-tree", "--reset", "-u", plan.tree]);
-        } catch (error) {
-          git(["worktree", "remove", "--force", worktree!], repo);
-          throw error;
-        }
-      }
-      db.exec("BEGIN");
-      try {
-        db.prepare(
-          "INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,seed_tree,merge_parent,conflict_paths,worktree,review) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        ).run(
-          id,
-          row.adapter,
-          integration
-            ? "Integrate " +
-                plan.base +
-                " at " +
-                plan.baseSha +
-                ". Review the combined changes and resolve any conflicts before checks and commit."
-            : chosen!.prompt,
-          integration ? plan.baseSha : row.commit_sha,
-          integration ? "succeeded" : "waiting_for_approval",
-          at,
-          at,
-          row.project,
-          row.conversation,
-          "[]",
-          row.id,
-          "edit",
-          integration ? plan.tree : null,
-          integration ? plan.head : null,
-          integration ? JSON.stringify(plan.conflicts) : null,
-          worktree,
-          integration ? "pending" : null,
-        );
-        if (!integration) bindExecution(id);
-        db.prepare("INSERT INTO events(task,status,at) VALUES(?,?,?)").run(
-          id,
-          integration ? "succeeded" : "waiting_for_approval",
-          at,
-        );
-        db.prepare(
-          "UPDATE review_jobs SET state='applied',result=?,selection=?,updated=? WHERE id=?",
-        ).run(id, chosen?.selection ?? null, at, stored!.id);
-        audit(integration ? "approve-integration" : "import-feedback", id, {
-          source: task,
-          preview: stored!.id,
-          fingerprint: plan.fingerprint,
-          selection: chosen?.selection ?? null,
-        });
-        db.exec("COMMIT");
-      } catch (error) {
-        db.exec("ROLLBACK");
-        if (worktree) git(["worktree", "remove", "--force", worktree], repo);
-        throw error;
-      }
-      return get(id);
-    }
-    const kind = input.kind;
-    if (!["comments", "integration"].includes(kind))
-      throw Error("Unsupported review operation");
-    const profile = github.profile();
-    if (!profile && !c.reviewAPI && !c.repositoryCommand)
-      throw Error("Connect GitHub first.");
-    let publication: any = null;
-    if (kind === "comments") {
-      const target = publicationTargets(task, true).find(
-        (t) => t.id === input.publication,
-      );
-      if (!target) throw Error("Choose a published PR from this conversation.");
-      publication = {
-        plan: JSON.parse(
-          String(
-            db.prepare("SELECT plan FROM publications WHERE id=?").get(target.id)!.plan,
-          ),
-        ),
-        number: Number(target.url.match(/\/pull\/(\d+)$/)?.[1]),
-      };
-    }
-    const id = randomUUID(),
-      abort = new AbortController();
-    db.prepare("INSERT INTO review_jobs VALUES(?,?,?,?,?,?,?,?,?,?,?)").run(
-      id,
-      kind,
-      task,
-      input.owner,
-      "preparing",
-      null,
-      null,
-      null,
-      null,
-      new Date().toISOString(),
-      Date.now() + 1800000,
-    );
-    const done = Promise.resolve().then(async () => {
-      try {
-        const value =
-          kind === "comments"
-            ? await loadFeedback(
-                c.reviewAPI ?? githubReviewAPI(c.stateDir, profile!),
-                publication.plan,
-                publication.number,
-                abort.signal,
-              )
-            : await prepareIntegration(
-                c.repositoryCommand ??
-                  repositoryGit({ stateDir: c.stateDir, githubProfile: profile }),
-                String(p.repo),
-                String(row.commit_sha),
-                input.base,
-                abort.signal,
-              );
-        if (abort.signal.aborted) throw Error("Preparation cancelled.");
-        latestCommitted(task);
-        if (kind === "integration") {
-          integrationGit(String(p.repo), [
-            "update-ref",
-            "refs/agentd/integrations/" + id,
-            (value as any).tree,
-          ]);
-          integrationGit(String(p.repo), [
-            "update-ref",
-            "refs/agentd/integration-bases/" + id,
-            (value as any).baseSha,
-          ]);
-        }
-        db.prepare(
-          "UPDATE review_jobs SET state='ready',plan=?,updated=? WHERE id=?",
-        ).run(
-          JSON.stringify({ ...value, sourceHead: row.commit_sha }),
-          new Date().toISOString(),
-          id,
-        );
-      } catch (error) {
-        db.prepare("UPDATE review_jobs SET state='failed',error=? WHERE id=?").run(
-          (error as Error).message,
-          id,
-        );
-      } finally {
-        publicationWork = undefined;
-      }
-    });
-    publicationWork = { done, abort };
-    return { id, state: "preparing" };
-  }
+  const publicationManager = publicationJobs({
+    db,
+    stateDir: c.stateDir,
+    worktrees: c.worktrees,
+    task: get,
+    project,
+    conversation,
+    blocked,
+    profile: () => github.profile(),
+    requireAdapter: (id, mode) => requireAdapter(id, mode),
+    bindExecution,
+    audit,
+    repositoryCommand: c.repositoryCommand,
+    pullAPI: c.pullAPI,
+    reviewAPI: c.reviewAPI,
+  });
   const capabilities = () =>
     discover(enabledAdapters, editAdapters, !!c.command, !!c.codexChat);
 
@@ -1584,14 +1153,13 @@ export function runner(c: Config) {
     if (closing) throw new Error("Service is stopping");
 
     if (typeof input.op === "string" && input.op.startsWith("feedback-"))
-      return feedback(input);
-    if (input.op === "publication-targets") return publicationTargets(input.task);
+      return publicationManager.feedback(input);
+    if (input.op === "publication-targets") return publicationManager.targets(input.task);
     if (input.op === "publication-status") {
-      publishTarget(input.task);
-      return publicationView(input.task);
+      return publicationManager.status(input.task);
     }
-    if (input.op === "publication-preview") return startPublication(input);
-    if (input.op === "publication-approve") return startPublication(input, true);
+    if (input.op === "publication-preview") return publicationManager.start(input);
+    if (input.op === "publication-approve") return publicationManager.start(input, true);
     if (input.op === "check-setup") return dependencyManager.view(input);
     if (input.op === "check-prepare") return dependencyManager.start(input);
     if (input.op === "check-cancel") return dependencyManager.cancel(input.id);
@@ -1801,7 +1369,7 @@ export function runner(c: Config) {
       return project(id);
     }
     if (input.op === "project-archive" || input.op === "project-restore") {
-      if (dependencyManager.busy() || publicationWork || projectBusy(input.id))
+      if (dependencyManager.busy() || publicationManager.busy() || projectBusy(input.id))
         throw Error("Wait for the repository or publishing operation.");
       const p = project(input.id),
         archive = input.op === "project-archive";
@@ -2454,8 +2022,7 @@ export function runner(c: Config) {
     gateway,
     async close() {
       closing = true;
-      publicationWork?.abort.abort();
-      await publicationWork?.done;
+      await publicationManager.close();
       await dependencyManager.close();
       await repositoryManager.close();
       await github.close();

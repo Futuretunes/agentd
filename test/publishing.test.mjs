@@ -827,3 +827,151 @@ test("publication scans every outgoing commit for credential content even when a
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+test("publication and integration shutdown before startup makes no transport calls", async () => {
+  for (const kind of ["publication", "integration"]) {
+    const f = fixture(),
+      r = await reviewed(f);
+    await r.app.close();
+    let calls = 0;
+    r.config.repositoryCommand = async () => {
+      calls++;
+      throw Error("Unexpected transport");
+    };
+    const app = runner(r.config);
+    await once(app.server, "listening");
+    const input =
+      kind === "publication"
+        ? {
+            op: "publication-preview",
+            owner,
+            task: r.row.id,
+            base: "main",
+            title: "Change",
+            body: "Review",
+          }
+        : {
+            op: "feedback-preview",
+            kind: "integration",
+            owner,
+            task: r.row.id,
+            base: "main",
+          };
+    try {
+      const job = app.request(input);
+      await app.close();
+      assert.equal(calls, 0);
+      const db = new DatabaseSync(join(r.config.stateDir, "tasks.sqlite"));
+      const stored = db
+        .prepare(
+          `SELECT state,error FROM ${kind === "publication" ? "publications" : "review_jobs"} WHERE id=?`,
+        )
+        .get(job.id);
+      assert.equal(stored.state, "failed");
+      assert.match(stored.error, /cancelled/);
+      db.close();
+    } finally {
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test("publication and feedback share ownership until aborted transport settles", async () => {
+  for (const kind of ["publication", "integration"]) {
+    const f = fixture(),
+      r = await reviewed(f);
+    await r.app.close();
+    let entered, release, signal;
+    const started = new Promise((resolve) => {
+      entered = resolve;
+    });
+    const gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    r.config.repositoryCommand = async (_repo, _args, abort) => {
+      signal = abort;
+      entered();
+      await gate;
+      throw Error("Preparation cancelled.");
+    };
+    const app = runner(r.config);
+    await once(app.server, "listening");
+    const publication = {
+      op: "publication-preview",
+      owner,
+      task: r.row.id,
+      base: "main",
+      title: "Change",
+      body: "Review",
+    };
+    const feedback = {
+      op: "feedback-preview",
+      kind: "integration",
+      owner,
+      task: r.row.id,
+      base: "main",
+    };
+    let closing;
+    try {
+      app.request(kind === "publication" ? publication : feedback);
+      await started;
+      assert.throws(
+        () => app.request(kind === "publication" ? feedback : publication),
+        /Wait for current/,
+      );
+      let closed = false;
+      closing = app.close().then(() => {
+        closed = true;
+      });
+      await pause(10);
+      assert.equal(signal.aborted, true);
+      assert.equal(closed, false);
+      release();
+      await closing;
+    } finally {
+      release();
+      await closing;
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test("shutdown of an approved publication retains needs-attention without starting transport", async () => {
+  const f = fixture(),
+    r = await reviewed(f);
+  let closed = false;
+  try {
+    const job = r.app.request({
+      op: "publication-preview",
+      owner,
+      task: r.row.id,
+      base: "main",
+      title: "Change",
+      body: "Review",
+    });
+    const ready = await until(
+      () => r.app.request({ op: "publication-status", task: r.row.id })[0],
+      (j) => j.state !== "preparing",
+    );
+    assert.equal(ready.state, "ready");
+    const before = f.calls.length;
+    r.app.request({
+      op: "publication-approve",
+      owner,
+      id: job.id,
+      fingerprint: ready.plan.fingerprint,
+    });
+    await r.app.close();
+    closed = true;
+    assert.equal(f.calls.length, before);
+    const db = new DatabaseSync(join(r.config.stateDir, "tasks.sqlite"));
+    assert.equal(
+      db.prepare("SELECT state FROM publications WHERE id=?").get(job.id).state,
+      "needs_attention",
+    );
+    db.close();
+  } finally {
+    if (!closed) await r.app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
