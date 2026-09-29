@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-claude-0.62.2.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-claude-in-app-updates.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.63.0 — in-app updates (Claude)
+
+Settings > Updates installs **approved** releases through the runner, the administration helper and a fixed `agentd-update@<version>.service` job, with step-up key checks, a preview fingerprint and idle admission. See [handover](handovers/2026-09-29-claude-in-app-updates.md) and [managed updates](managed-updates.md). The host needs `apply_updates.py` once after installing.
 
 ## Candidate 0.62.0 — safe GUI diagnostics
 
@@ -327,6 +331,7 @@ This review-response update records findings and bounded diagnostic evidence; it
 
 ## History and maintenance
 
+- [2026-09-29 — In-app updates (Claude)](handovers/2026-09-29-claude-in-app-updates.md)
 - [2026-09-29 — 0.62.2 fixes (Claude)](handovers/2026-09-29-claude-0.62.2.md)
 - [2026-09-29 — Claude review of 0.22–0.59 and fixes](handovers/2026-09-29-claude-review-fixes.md)
 - [2026-09-28 — Combined release 0.21.1](handovers/2026-09-28-combined-0.21.1.md)

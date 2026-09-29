@@ -9,6 +9,8 @@ const fields: Record<string, string> = {
   "storage-cleanup": "owner fingerprint",
   "admin-access-rotate": "owner currentKey newHash",
   "admin-diagnostics": "",
+  "admin-updates": "",
+  "admin-update-start": "owner version",
   capabilities: "",
   operations: "",
   projects: "",
@@ -90,6 +92,7 @@ const fields: Record<string, string> = {
 };
 export const gatewayMutations = new Set([
   "admin-access-rotate",
+  "admin-update-start",
   "review-start",
   "review-file-acknowledge",
   "review-file-page-acknowledge",
