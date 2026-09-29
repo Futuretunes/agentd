@@ -62,7 +62,7 @@ const fields: Record<string, string> = {
   "account-cancel": "owner session",
   "account-refresh": "owner",
   "github-status": "owner",
-  "github-start": "owner",
+  "github-start": "owner access",
   "github-cancel": "owner session",
   "github-logout": "owner",
   "repository-start": "kind url branch name project",

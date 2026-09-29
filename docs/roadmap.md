@@ -1,5 +1,9 @@
 # Roadmap
 
+## R8 candidate — GitHub access ceilings and consent disclosure
+
+Candidate 0.60.0 separates GitHub CLI's standard classic OAuth grant (`repo`, `read:org`, `gist`) from a persistent AgentD access ceiling selected before browser consent. Repository access, feedback reads and approved draft publishing now require progressively stronger ceilings at the trusted transport boundary. Invalid policy metadata fails closed; pre-0.60 connections become repository-only until explicit reconnection. The GUI explains that the local ceiling does not narrow GitHub's provider-side token. Local suite: 201 tests, 192 passed and nine expected Linux-only skips; exact Linux and CI validation remain pending. A selected-repository GitHub App remains future provider-side least privilege.
+
 Implemented: project selection and creation, persistent conversations, serial task queue, approval gate, Codex and Claude CLI execution, detached worktrees, mobile text/images, cancellation, SQLite persistence, basic metrics, and the hardened worker profile with per-adapter policy and restricted provider networking.
 
 Also implemented in v0.6.0: a shared native adapter contract, executable availability discovery, and an Agents panel with explicit unavailable reasons. Discovery does not authenticate or start model work.

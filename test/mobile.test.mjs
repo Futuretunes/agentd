@@ -413,11 +413,17 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
     });
     await req(
       "/api/github",
-      { action: "start", owner: "spoof", profile: "/tmp" },
+      {
+        action: "start",
+        access: "feedback",
+        owner: "spoof",
+        profile: "/tmp",
+      },
       cookie,
     );
     assert.equal(calls.at(-1).op, "github-start");
     assert.match(calls.at(-1).owner, /^[a-f0-9]{64}$/);
+    assert.equal(calls.at(-1).access, "feedback");
     assert.equal(calls.at(-1).profile, undefined);
     await req(
       "/api/repositories",

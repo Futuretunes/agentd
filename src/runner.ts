@@ -326,7 +326,7 @@ export function runner(c: Config) {
     activeProject: () => (active ? get(active.id)?.project : null),
     closing: () => closing,
     blocked: () => blocked("repository"),
-    profile: () => github.profile(),
+    profile: (required) => github.profile(required),
     audit,
     command: c.repositoryCommand,
   });
@@ -352,7 +352,7 @@ export function runner(c: Config) {
     project,
     conversation,
     blocked,
-    profile: () => github.profile(),
+    profile: (required) => github.profile(required),
     requireAdapter: (id, mode) => requireAdapter(id, mode),
     bindExecution,
     audit,
@@ -1493,7 +1493,7 @@ export function runner(c: Config) {
     if (input.op === "github-start") {
       if (blocked("githubChange"))
         throw Error("Wait for the repository or publishing operation.");
-      return github.start(input.owner);
+      return github.start(input.owner, input.access);
     }
     if (input.op === "github-cancel") return github.cancel(input.owner, input.session);
     if (input.op === "github-logout") {

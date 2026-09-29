@@ -2460,8 +2460,8 @@ $("github-close").onclick = () => {
   $("github-content").replaceChildren();
   githubRendered = "";
 };
-async function githubAction(action, session) {
-  await api("/api/github", { action, session });
+async function githubAction(action, session, access) {
+  await api("/api/github", { action, session, access });
   githubRendered = "";
   await updateGithub();
 }
@@ -2475,12 +2475,27 @@ async function updateGithub() {
     if (signature === githubRendered) return;
     githubRendered = signature;
     const box = $("github-content");
+    const currentAccess = data.access?.level;
     box.replaceChildren(
       node(
         "p",
         data.connected
-          ? "A GitHub connection is saved. Importing verifies repository access."
+          ? "A GitHub connection is saved. AgentD access: " +
+              (!data.access?.valid
+                ? "invalid policy; reconnect before using this connection"
+                : data.access?.configured
+                  ? data.authorization.choices.find((v) => v.level === currentAccess)
+                      ?.description
+                  : "repository-only compatibility for an older connection; reconnect to choose an explicit ceiling") +
+              "."
           : "No GitHub connection saved.",
+      ),
+      node("p", data.authorization.note),
+      node(
+        "p",
+        "Provider grant shown by GitHub CLI: " +
+          data.authorization.providerGrant.join(", ") +
+          ". Choose the smallest AgentD ceiling that covers this server's work.",
       ),
     );
     const session = data.session;
@@ -2505,9 +2520,20 @@ async function updateGithub() {
         ),
       );
     else if (!data.busy) {
+      const access = document.createElement("select");
+      access.setAttribute("aria-label", "GitHub access ceiling");
+      for (const choice of data.authorization.choices) {
+        const option = document.createElement("option");
+        option.value = choice.level;
+        option.textContent = choice.description;
+        option.selected = choice.level === (currentAccess ?? "repositories");
+        access.append(option);
+      }
       box.append(
+        node("label", "AgentD access ceiling", "field-label"),
+        access,
         button(data.connected ? "Reconnect GitHub" : "Connect GitHub", () =>
-          githubAction("start"),
+          githubAction("start", null, access.value),
         ),
       );
       if (data.connected)

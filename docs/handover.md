@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-large-review-commit-gate.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-github-access-ceilings.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.60.0 — GitHub access ceilings
+
+[Latest handover](handovers/2026-09-29-github-access-ceilings.md): GitHub connections now persist an AgentD ceiling for repository operations, feedback reads or approved draft publishing. The runner enforces the ceiling before credential-bearing transports start, invalid metadata fails closed, and older connections become repository-only until explicit reconnection. The GUI separately discloses GitHub CLI's broader standard classic OAuth grant. Local typecheck, formatting and 201-test suite passed with nine expected macOS skips; exact Linux and CI validation remain pending. Production remains 0.55.0 and no account consent, model request, deployment, merge or publication occurred.
 
 ## Candidate 0.59.0 — exact-coverage large-review commit gate
 

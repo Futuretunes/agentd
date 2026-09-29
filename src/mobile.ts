@@ -346,6 +346,7 @@ export function mobile(c: Config) {
               op: "github-" + input.action,
               owner: accountOwner,
               session: input.session,
+              access: input.access,
             }),
           );
           return;
