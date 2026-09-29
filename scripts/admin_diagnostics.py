@@ -22,10 +22,15 @@ def service(unit):
 
 def gateway_config_readable(c):
     # The gateway reads this at start; if its user cannot, the next restart fails.
-    paths=[p for p in c.get('configFiles',[]) if p.endswith('mobile.json')]
-    if not paths:return None
+    # Use the file the gateway unit actually loads, not the first tracked mobile.json:
+    # a pre-separation copy can remain tracked after the gateway moved to its own.
+    if not any(p.endswith('mobile.json') for p in c.get('configFiles',[])):return None
+    try:result=subprocess.run(['/usr/bin/systemctl','show',c['mobileUnit'],'--property=Environment','--value'],check=True,text=True,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,timeout=5)
+    except (OSError,subprocess.SubprocessError):return None
+    path=next((item.split('=',1)[1] for item in result.stdout.split() if item.startswith('AGENTD_MOBILE_CONFIG=')),'/etc/agentd/mobile.json')
+    if path not in c.get('configFiles',[]):return None
     try:
-        info=os.stat(paths[0]);account=pwd.getpwnam(c.get('gatewayUser') or c['user'])
+        info=os.stat(path);account=pwd.getpwnam(c.get('gatewayUser') or c['user'])
     except (OSError,KeyError):return False
     return bool(info.st_uid==account.pw_uid and info.st_mode&0o400 or info.st_gid==account.pw_gid and info.st_mode&0o040 or info.st_mode&0o004)
 
