@@ -3713,6 +3713,31 @@ $("diagnostics-settings").onclick = async () => {
           service.state === "active" ? "good" : "attention",
         ),
       );
+    if (
+      report.configuration.administrationHelper &&
+      configuration === "ok" &&
+      report.services.runner &&
+      report.services.gateway
+    ) {
+      const restartSection = node("section", undefined, "operation-section");
+      restartSection.append(node("h3", "Restart services"));
+      restartSection.append(
+        node(
+          "p",
+          "Restarts require your access key again. Active work must be stopped first.",
+          "muted",
+        ),
+      );
+      for (const target of ["runner", "gateway"]) {
+        const label = target === "runner" ? "Task runner" : "Phone gateway";
+        restartSection.append(
+          button(`Restart ${label.toLowerCase()}`, () =>
+            openServiceRestartForm(target, label),
+          ),
+        );
+      }
+      services.append(restartSection);
+    }
     const failures = node("section", undefined, "operation-section");
     failures.append(node("h3", "Recent failed runs"));
     if (!report.runner.recentFailures.length)
@@ -3829,6 +3854,101 @@ function renderAccessKeyForm() {
     }
   };
   accessKeyContent.replaceChildren(form);
+}
+function openServiceRestartForm(target, label) {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    current = node("input"),
+    submit = node("button", "Review restart", "primary");
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  submit.type = "submit";
+  form.append(
+    node("p", `Restart the ${label.toLowerCase()}.`, "muted"),
+    currentLabel,
+    submit,
+    button("Cancel", () => $("diagnostics-settings").click()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/service-restart", {
+        action: "preview",
+        target,
+        currentKey: current.value,
+      });
+      current.value = "";
+      renderServiceRestartApproval(plan, target, label);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  diagnosticsContent.replaceChildren(form);
+}
+function renderServiceRestartApproval(plan, target, label) {
+  const form = node("form"),
+    currentLabel = node("label", "Enter the current access key again"),
+    current = node("input"),
+    idleLabel = node("label"),
+    idle = node("input"),
+    approve = node("button", `Restart ${label.toLowerCase()}`, "danger");
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  if (plan.requiresIdle) {
+    idle.type = "checkbox";
+    idle.required = true;
+    idleLabel.append(
+      idle,
+      document.createTextNode(" Current work is stopped or finished"),
+    );
+  }
+  approve.type = "submit";
+  form.append(
+    node("p", "Review expires in five minutes.", "attention"),
+    node(
+      "p",
+      plan.requiresIdle
+        ? "A task, queue item or preparation is still active. Confirm it is stopped before continuing."
+        : "No active work is blocking a restart.",
+      plan.requiresIdle ? "attention" : "muted",
+    ),
+    currentLabel,
+    ...(plan.requiresIdle ? [idleLabel] : []),
+    approve,
+    button("Start over", () => openServiceRestartForm(target, label)),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    approve.disabled = true;
+    try {
+      await api("/api/service-restart", {
+        action: "restart",
+        target,
+        fingerprint: plan.fingerprint,
+        currentKey: current.value,
+        confirmedIdle: plan.requiresIdle ? idle.checked : true,
+      });
+      diagnosticsContent.replaceChildren(
+        node("h3", "Restart requested"),
+        node(
+          "p",
+          `The ${label.toLowerCase()} is restarting. Refresh diagnostics in a moment if this page disconnects.`,
+          "good",
+        ),
+        button("Close", () => diagnosticsDialog.close(), "primary"),
+      );
+    } catch (error) {
+      notice(error.message);
+      approve.disabled = false;
+    }
+  };
+  diagnosticsContent.replaceChildren(form);
 }
 function renderAccessKeyApproval(plan, newKey) {
   const form = node("form"),

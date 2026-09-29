@@ -87,6 +87,9 @@ type Config = {
   adminUpdates?: () => Promise<any>;
   startUpdate?: (version: string) => Promise<{ started: true; version: string }>;
   startRollback?: (version: string) => Promise<{ started: true; version: string }>;
+  restartService?: (
+    target: "runner" | "gateway",
+  ) => Promise<{ restarted: true; target: "runner" | "gateway" }>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -1532,6 +1535,19 @@ export function runner(c: Config) {
         return result;
       });
     }
+    if (input.op === "admin-service-restart") {
+      if (!c.restartService) throw Error("Service restart is not installed.");
+      if (input.target !== "runner" && input.target !== "gateway")
+        throw Error("Service restart request is invalid.");
+      if (blocked("update"))
+        throw Error(
+          "Finish or stop current work, account changes and preparations before restarting services.",
+        );
+      return c.restartService(input.target).then((result) => {
+        audit("service-restart", null, { target: input.target });
+        return result;
+      });
+    }
     requireNoReviewPreparationMutation(input);
     if (typeof input.op === "string" && input.op.startsWith("feedback-"))
       return publicationManager.feedback(input);
@@ -1587,6 +1603,15 @@ export function runner(c: Config) {
     if (input.op === "admin-updates") {
       if (!c.adminUpdates) throw Error("In-app updates are not installed.");
       return c.adminUpdates();
+    }
+    if (input.op === "admin-service-restart-plan") {
+      if (input.target !== "runner" && input.target !== "gateway")
+        throw Error("Service restart request is invalid.");
+      return {
+        target: input.target,
+        idle: !blocked("update"),
+        label: input.target === "runner" ? "Task runner" : "Phone gateway",
+      };
     }
     if (input.op === "admin-diagnostics") {
       if (!c.adminDiagnostics) throw Error("Diagnostics are not installed.");
