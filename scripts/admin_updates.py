@@ -25,10 +25,7 @@ def last_status(deployment):
 
 def snapshot(releases=job.RELEASES,deployment=DEPLOYMENT,config=CONFIG,is_running=running,owner=0,find_rollback=None):
     c=update.config(config);record=json.loads((deployment/'installed.json').read_text());installed=record['release']
-    if list(deployment.glob('*pending.json')):configuration='recovery_required'
-    else:
-        try:configuration='ok' if update.inventory(c)==record.get('configuration') else 'drift'
-        except Exception:configuration='drift'
+    configuration=update.configuration_state(c,record.get('configuration'),deployment)
     candidates=[]
     for path in sorted(releases.glob('*.json')) if releases.is_dir() else []:
         version=path.stem

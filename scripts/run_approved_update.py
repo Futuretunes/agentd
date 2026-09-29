@@ -75,6 +75,10 @@ def run(version,config_path,releases=RELEASES,runner=subprocess.run,owner=0):
                 current=update.config(update.canonical(config_path))
                 for flag,script in (('resourceProfile','apply_resources.py'),('gatewayHardening','apply_gateway_hardening.py'),('adminUnit','apply_diagnostics.py')):
                     if current.get(flag):step(str(Path(current['app'])/'scripts'/script),'--config',config_path)
+                # Install job units a release introduces (for example rollback); a no-op
+                # verification when they already exist.
+                if current.get('adminUnit') and (Path(current['app'])/'scripts/apply_updates.py').exists():
+                    step(str(Path(current['app'])/'scripts/apply_updates.py'),'--config',config_path)
         finally:shutil.rmtree(stage,ignore_errors=True)
         status('succeeded','succeeded',revision=manifest['revision'][:12])
     except Exception:

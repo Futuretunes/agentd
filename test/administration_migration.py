@@ -35,4 +35,17 @@ class MigrationProbeTest(unittest.TestCase):
             diagnostics.probe(1)
         self.assertEqual(FakeSocket.attempts,2)
 
+    def test_diagnostics_skips_rewrite_and_restart_when_unit_is_current(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);(root/'app/deploy').mkdir(parents=True);unit=root/'agentd-admin.service'
+            (root/'app/deploy/agentd-admin.service').write_text('[Unit]\n');unit.write_text('[Unit]\n')
+            c={'app':str(root/'app')};runs=[]
+            with patch.object(diagnostics,'unit_path',return_value=unit),patch.object(diagnostics,'probe'),\
+                 patch.object(diagnostics.update,'capture',return_value='no\n'),patch.object(diagnostics.update,'run',side_effect=runs.append):
+                self.assertTrue(diagnostics.unchanged(c))
+                self.assertTrue(all('restart' not in r and 'stop' not in r for r in runs))
+                with patch.object(diagnostics.update,'capture',return_value='yes\n'):self.assertFalse(diagnostics.unchanged(c))
+                unit.write_text('[Unit]\nDescription=edited\n');self.assertFalse(diagnostics.unchanged(c))
+
 if __name__=='__main__':unittest.main()

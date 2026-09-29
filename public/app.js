@@ -3692,7 +3692,9 @@ $("diagnostics-settings").onclick = async () => {
         ? "Configuration matches the installed release."
         : configuration === "recovery_required"
           ? "An interrupted update needs administrator recovery."
-          : "Configuration changed outside the managed installer and needs review.";
+          : configuration === "reload_required"
+            ? "Service files on the server changed but the service manager has not reloaded them yet. On the server, run: sudo systemctl daemon-reload"
+            : "Configuration changed outside the managed installer and needs review.";
     const gatewayConfig =
       report.configuration.gatewayConfigReadable === false
         ? node(
@@ -3984,7 +3986,9 @@ async function renderUpdates() {
           "p",
           value.configuration === "recovery_required"
             ? "Updates are paused: an interrupted update needs administrator recovery."
-            : "Updates are paused: the server configuration changed outside the installer and needs review.",
+            : value.configuration === "reload_required"
+              ? "Updates are paused: another program changed service files on the server without reloading them. On the server, run: sudo systemctl daemon-reload — then refresh this page."
+              : "Updates are paused: the server configuration changed outside the installer and needs review.",
           "attention",
         ),
       );
