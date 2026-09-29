@@ -34,14 +34,16 @@ uses an invalid key and must be refused; installation never rotates the live key
 
 - Typecheck and formatting pass.
 - Portable suite: 207 tests, 198 passed, 9 Linux-only skipped, 0 failed.
+- Exact Ubuntu validation: 207/207 tests passed with zero skips, plus typecheck
+  and formatting.
 - Focused HTTPS coverage proves preview, rotation, old-key refusal, new-key
   acceptance, current-session preservation and other-session invalidation.
 - Helper coverage proves wrong-key refusal, atomic digest-only update, mode
   preservation and symlink refusal.
 - Runner coverage proves secrets and the replacement digest never enter audit.
 
-Exact zero-skip Linux validation and cumulative archive/installer staging remain
-before operator installation. No live key was rotated and no model task ran.
+Cumulative archive/installer staging remains before operator installation. No
+live key was rotated and no model task ran.
 
 ## Next item
 
