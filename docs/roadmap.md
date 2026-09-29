@@ -84,6 +84,10 @@ After the immediate R4/R11 correction and reviewable release baseline, prioritiz
 
 **UX-0:** clarify unsupported check workflows now; design broader check profiles. Allowing commits without checks is a separate operator policy decision and remains unapproved. The prototype is a visual proposal, not production code. Complete this usability work before adding more panels/features such as ntfy, while respecting the engineering stabilization gate. Contextual status and approval evidence remain visible even when editing controls are consolidated.
 
+## Operator request — Administration section (2026-09-29)
+
+The operator wants to update agentd, change the access key and manage app configuration from the interface, without SSH. Recorded as [administration requirements](administration.md) and expanded roadmap item 6. It is queued, not started. Suggested first slice: access-key rotation, then read-only diagnostics, then the privileged update helper.
+
 ## Prioritized backlog
 
 Order agreed with the operator on 2026-09-28: finish the GitHub workflow, integrate Cursor CLI, then deliver configurable environment permissions and economical model/effort selection. Permission-policy design may begin during adapter work to avoid incompatible implementations. The stabilization gate above now takes precedence. The list retains completed milestones and remaining feature scope; it is not a release-date commitment.
@@ -93,7 +97,7 @@ Order agreed with the operator on 2026-09-28: finish the GitHub workflow, integr
 3. **Agent settings: environment permissions and model/effort selection.** Implemented and installed in v0.19.0 (91 deployment tests passed): inherited Blocked/Chat/Read/Edit profiles within installation limits, model/effort selection, runtime limits, next-run overrides, approval snapshots and preservation of partial edits on restart. Broader shell/network/host-path policies remain future work. Original scope: GUI project defaults, conversation overrides and per-agent CLI settings, changeable at any time. Isolated worktrees remain the default. Show effective filesystem, execution, network and tool permissions and their inheritance before approval. Broader access requires explicit scoped consent; running jobs need a clear stop/restart transition rather than an unnoticed permission change. See [environment permission design requirements](environment-permissions.md). Add automatic task-appropriate model/effort selection, visible reasons and manual overrides per project, conversation and CLI; prefer the least costly capable choice, with bounded escalation and no invented usage estimates. See [model selection requirements](model-selection.md).
 4. **Codex repository access.** Validate Ask/Edit compatibility with host namespace restrictions without bypassing the inner sandbox. User-selectable policies do not turn unsupported sandbox combinations into supported ones.
 5. **Mobile notifications.** ntfy approval requests, completion/failure alerts and authenticated links to the relevant work.
-6. **GUI administration.** Guided agentd/native CLI updates, service controls, diagnostics and rollback through a narrowly scoped management interface.
+6. **GUI administration** (operator-requested 2026-09-29; see [administration requirements](administration.md)). An Administration area in Settings: in-app updates to reviewed releases (plan preview, install, rollback), access-key rotation, diagnostics, CLI updates, backups and configuration, all through a narrowly scoped privileged helper with step-up authentication.
 7. **GUI backup and restore.** Recovery verification, migrations and credential-safe restoration.
 8. **Credits and limits.** Provider-supported usage, reset times, freshness, warnings and actionable limit failures; honest unavailable states where no reliable interface exists.
 9. **Task progress and validation.** Structured results, richer event streams and task-specific completion evidence.
