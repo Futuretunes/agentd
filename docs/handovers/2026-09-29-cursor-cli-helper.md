@@ -2,8 +2,8 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: next administration slice after TLS replacement
-- Status: implemented; not installed
-- Release: 0.72.0
+- Status: implemented; live-installed as 0.72.1 on 192.168.1.20
+- Release: 0.72.0 / follow-up 0.72.1
 - Branch and base: `feat/gui-cli-binary-helper` on `main` (0.71.0)
 - PR: #82
 
