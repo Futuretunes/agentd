@@ -187,4 +187,4 @@ Publication and GitHub feedback share an extracted manager and owned operation s
 
 ## R2 check execution — candidate 0.39.0
 
-Check process, output/resource limits, cleanup and terminal-state handling move to `check-execution.ts`, retaining runner approval/admission and the single task/check worker slot. A running-state database write failure now prevents process startup. Cancellation, stale content, spawn and cleanup failure fixtures added. Exact validation pending; not installed. Task dispatch extraction, asynchronous snapshot/review Git and retention reconciliation remain open.
+Check process, output/resource limits, cleanup and terminal-state handling move to `check-execution.ts`, retaining runner approval/admission and the single task/check worker slot. A running-state database write failure now prevents process startup. Cancellation, stale content, spawn and cleanup failure fixtures added. Exact archive passed 157/157 Linux tests, zero skips, formatting, typecheck and CI; draft #43; not installed. Task dispatch extraction, asynchronous snapshot/review Git and retention reconciliation remain open.

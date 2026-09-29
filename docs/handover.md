@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.39.0 — check execution ownership
 
-[Handover](handovers/2026-09-29-check-owner.md): isolated validation execution has a separate lifecycle module while retaining the shared worker slot. Running-state persistence precedes process launch; failures cannot leave an untracked check child. Exact validation pending; not installed.
+[Handover](handovers/2026-09-29-check-owner.md): isolated validation execution has a separate lifecycle module while retaining the shared worker slot. Running-state persistence precedes process launch; failures cannot leave an untracked check child. Exact archive `5a4c4e2` passed 157/157 Linux tests, zero skips, formatting, typecheck and CI; draft #43 is open. Cumulative 0.39.0 is staged but not installed.
 
 ## Candidate 0.38.0 — publication and feedback ownership
 
