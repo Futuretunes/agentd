@@ -93,6 +93,8 @@ type Config = {
   ) => Promise<{ restarted: true; target: "runner" | "gateway" }>;
   adminBackups?: () => Promise<any>;
   pruneManagedBackups?: (fingerprint: string) => Promise<{ removed: number }>;
+  adminCliApprovals?: () => Promise<any>;
+  startCliInstall?: (id: string) => Promise<{ started: true; id: string }>;
   adminAdapters?: () => Promise<any>;
   applyAdapterPolicy?: (
     enabled: string[],
@@ -1578,6 +1580,22 @@ export function runner(c: Config) {
         return result;
       });
     }
+    if (input.op === "admin-cli-install") {
+      if (!c.startCliInstall) throw Error("CLI install is not installed.");
+      if (
+        typeof input.id !== "string" ||
+        !/^cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}$/.test(input.id)
+      )
+        throw Error("CLI install request is invalid.");
+      if (blocked("update"))
+        throw Error(
+          "Finish or stop current work, account changes and preparations before installing a CLI.",
+        );
+      return c.startCliInstall(input.id).then((result) => {
+        audit("cli-install", null, { id: input.id });
+        return result;
+      });
+    }
     if (input.op === "admin-adapters-apply") {
       if (!c.applyAdapterPolicy) throw Error("Adapter policy changes are not installed.");
       if (
@@ -1693,6 +1711,10 @@ export function runner(c: Config) {
     if (input.op === "admin-backups") {
       if (!c.adminBackups) throw Error("Backup management is not installed.");
       return c.adminBackups();
+    }
+    if (input.op === "admin-cli") {
+      if (!c.adminCliApprovals) throw Error("CLI approvals are not installed.");
+      return c.adminCliApprovals();
     }
     if (input.op === "admin-adapters") {
       if (!c.adminAdapters) throw Error("Adapter policy is not installed.");

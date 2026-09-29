@@ -12,6 +12,8 @@ import {
   readUpdates,
   readBackups,
   pruneBackups,
+  readCliApprovals,
+  startCliInstall,
   readAdapters,
   applyAdapters,
   readRuntimeFlags,
@@ -108,6 +110,12 @@ export function start(options: Options) {
             : undefined,
           pruneManagedBackups: process.env.AGENTD_ADMIN_SOCKET
             ? (fingerprint) => pruneBackups(process.env.AGENTD_ADMIN_SOCKET!, fingerprint)
+            : undefined,
+          adminCliApprovals: process.env.AGENTD_ADMIN_SOCKET
+            ? () => readCliApprovals(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          startCliInstall: process.env.AGENTD_ADMIN_SOCKET
+            ? (id) => startCliInstall(process.env.AGENTD_ADMIN_SOCKET!, id)
             : undefined,
           adminAdapters: process.env.AGENTD_ADMIN_SOCKET
             ? () => readAdapters(process.env.AGENTD_ADMIN_SOCKET!)

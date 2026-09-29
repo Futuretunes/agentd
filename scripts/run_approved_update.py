@@ -79,6 +79,8 @@ def run(version,config_path,releases=RELEASES,runner=subprocess.run,owner=0):
                 # verification when they already exist.
                 if current.get('adminUnit') and (Path(current['app'])/'scripts/apply_updates.py').exists():
                     step(str(Path(current['app'])/'scripts/apply_updates.py'),'--config',config_path)
+                if current.get('adminUnit') and (Path(current['app'])/'scripts/apply_cli.py').exists():
+                    step(str(Path(current['app'])/'scripts/apply_cli.py'),'--config',config_path)
         finally:shutil.rmtree(stage,ignore_errors=True)
         status('succeeded','succeeded',revision=manifest['revision'][:12])
     except Exception:

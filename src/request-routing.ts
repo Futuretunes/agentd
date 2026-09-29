@@ -34,6 +34,7 @@ export const managedOperationOperations = [
   "admin-rollback-start",
   "admin-service-restart",
   "admin-backups-prune",
+  "admin-cli-install",
   "admin-adapters-apply",
   "admin-runtime-flags-apply",
   "admin-tls-replace",
@@ -74,6 +75,7 @@ export const serviceReadOperations = [
   "admin-updates",
   "admin-service-restart-plan",
   "admin-backups",
+  "admin-cli",
   "admin-adapters",
   "admin-runtime-flags",
 ] as const;

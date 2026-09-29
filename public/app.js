@@ -4575,7 +4575,10 @@ async function openCliSettings() {
   }
 }
 async function renderCliSettings() {
-  const report = await api("/api/operations"),
+  const [report, approved] = await Promise.all([
+      api("/api/operations"),
+      api("/api/cli").catch(() => null),
+    ]),
     names = { claude: "Claude", codex: "Codex", cursor: "Cursor" },
     adapters = report.adapters ?? [],
     mismatch = adapters.some((value) => value.nativeVersion?.state === "mismatch"),
@@ -4622,23 +4625,50 @@ async function renderCliSettings() {
       );
     list.append(card);
   }
+  const approvedSection = node("section", undefined, "operation-section");
+  approvedSection.append(node("h3", "Approved Cursor packages"));
+  if (!approved) {
+    approvedSection.append(
+      node("p", "Approved CLI installs are not available on this install yet.", "muted"),
+    );
+  } else if (approved.running) {
+    approvedSection.append(
+      node("p", "A CLI install is running. Refresh in a moment.", "attention"),
+    );
+  } else if (!(approved.items ?? []).length) {
+    approvedSection.append(
+      node(
+        "p",
+        "No approved Cursor packages are staged. An administrator places a reviewed archive with approve_cli.py first.",
+        "muted",
+      ),
+    );
+  } else {
+    for (const item of approved.items) {
+      const row = node("div", undefined, "operation-card");
+      row.append(node("h4", "Cursor " + item.version));
+      if (item.notes) row.append(node("p", item.notes, "muted"));
+      row.append(button("Review install", () => renderCliInstallForm(item)));
+      approvedSection.append(row);
+    }
+  }
   const guide = node("section", undefined, "operation-section");
   guide.append(node("h3", "Guided CLI update"));
   guide.append(
     node(
       "p",
       mismatch || unavailable
-        ? "A different or missing CLI can break model discovery, renewals and pinned work modes. Follow these steps on the server; AgentD does not download or replace native CLIs from the phone yet."
-        : "Versions match the tested pins. If you update a CLI later, follow these steps before using it for work.",
+        ? "A different or missing CLI can break model discovery, renewals and pinned work modes. Stage a reviewed Cursor archive on the server, then install it here. Claude and Codex remain host-managed npm installs."
+        : "Versions match the tested pins. Cursor can still be replaced from an approved package below when a newer reviewed binary is staged.",
       mismatch || unavailable ? "attention" : "muted",
     ),
   );
   for (const step of [
     "1. Finish or stop active runs, preparations and account changes.",
     "2. Keep the current tested binary for rollback. Do not copy account profiles into a release.",
-    "3. Stage the official native binary in a disposable profile and review release notes, flags, auth/renewal format and tools.",
-    "4. Update AgentD's shared version pin and related adapters together, then run the Linux isolation suite.",
-    "5. Install the reviewed binary while idle, refresh this page, then use separately approved smoke work if needed.",
+    "3. Stage the official Cursor archive with approve_cli.py (root-only approved directory).",
+    "4. Install from this page, refresh versions, then use separately approved smoke work if needed.",
+    "5. Update AgentD's shared version pin in the same release train when the tested pin changes.",
   ])
     guide.append(node("p", step));
   const refresh = button("Refresh versions", async () => {
@@ -4654,14 +4684,104 @@ async function renderCliSettings() {
   });
   cliContent.replaceChildren(
     list,
+    approvedSection,
     guide,
     refresh,
     node(
       "p",
-      "Binary installs stay administrator-managed until a narrowly scoped in-app CLI updater exists. See the native CLI updates document in the repository.",
+      "Only Cursor uses the approved-package helper in this release. See the native CLI updates document in the repository.",
       "muted",
     ),
   );
+}
+function renderCliInstallForm(item) {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    currentKey = node("input"),
+    submit = node("button", "Review Cursor install", "primary");
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  form.append(
+    node("p", `Install approved Cursor ${item.version}.`, "attention"),
+    ...(item.notes ? [node("p", item.notes, "muted")] : []),
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderCliSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/cli", {
+        action: "preview",
+        id: item.id,
+        currentKey: currentKey.value,
+      });
+      currentKey.value = "";
+      renderCliInstallApproval(plan);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  cliContent.replaceChildren(form);
+}
+function renderCliInstallApproval(plan) {
+  const form = node("form"),
+    confirm = node("input"),
+    idle = node("input"),
+    currentLabel = node("label", "Enter the current access key again"),
+    currentKey = node("input"),
+    submit = node("button", "Install Cursor package", "primary"),
+    confirmLabel = node("label", "I understand this replaces the managed Cursor binary"),
+    idleLabel = node(
+      "label",
+      "Current work, account changes and preparations are stopped",
+    );
+  confirm.type = "checkbox";
+  confirm.required = true;
+  confirmLabel.prepend(confirm);
+  idle.type = "checkbox";
+  if (plan.requiresIdle) {
+    idle.required = true;
+    idleLabel.prepend(idle);
+  }
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  form.append(
+    node("p", `Install Cursor ${plan.version}.`, "attention"),
+    confirmLabel,
+    ...(plan.requiresIdle ? [idleLabel] : []),
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderCliSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      await api("/api/cli", {
+        action: "install",
+        id: plan.id,
+        fingerprint: plan.fingerprint,
+        currentKey: currentKey.value,
+        confirmed: true,
+        ...(plan.requiresIdle ? { confirmedIdle: true } : {}),
+      });
+      notice("Cursor install started. Refresh versions after it finishes.");
+      await renderCliSettings();
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  cliContent.replaceChildren(form);
 }
 const diagnosticsDialog = $("diagnostics-dialog"),
   diagnosticsContent = $("diagnostics-content");
