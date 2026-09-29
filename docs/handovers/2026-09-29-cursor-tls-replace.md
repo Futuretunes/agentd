@@ -2,9 +2,10 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: next configuration mutation after runtime flags
-- Status: implemented; not installed
+- Status: implemented and live-installed on 192.168.1.20
 - Release: 0.71.0
 - Branch and base: `feat/gui-tls-replace` on `main` (0.70.0)
+- Implementation commit(s): `cefc2ed` / merge `ba7fea5`
 - PR: #81
 
 ## Changes and relevant files
@@ -17,10 +18,11 @@
 
 ## Validation evidence
 
-- Local typecheck and Python/unit tests pending with commit.
-- CI pending on push.
+- Local: typecheck, format, `python3 -B test/admin_tls.py`, `test/admin_configuration.py`, request-routing/gateway tests.
+- CI: Node 24/26 and Required Linux isolation passed on #81.
+- Live: 220/220 install tests; services active; configuration TLS metadata returns fingerprint and expiry.
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
-2. Next: profile/hardening mutations or approved native CLI binary helper.
+1. Next: approved native CLI binary helper (profile/hardening remain one-way migrations, already applied).
+2. Full restore workflows remain after CLI helper.

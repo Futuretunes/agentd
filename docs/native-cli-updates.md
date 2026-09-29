@@ -16,3 +16,7 @@ Changing a CLI independently can break model discovery, requested model/effort s
 6. Schedule the binary/application update while idle with a reviewed rollback plan. The managed application updater deliberately does not install native CLIs. Refresh Operations afterward, then use separately approved smoke work if required.
 
 The update is administrator-managed until a narrowly scoped GUI management service exists. No auto-update or global permission bypass is implied by this procedure.
+
+## In-app Cursor installs (since 0.72.0)
+
+Settings > Agents & CLIs can install **operator-approved** Cursor packages only. An administrator stages a reviewed archive with `scripts/approve_cli.py` into the root-only `/var/lib/agentd-cli` directory. The phone never downloads binaries. Install starts the fixed `agentd-cli-install@cursor_<version>.service` job, which extracts under `/opt/cursor-agent/<version>` and updates the service-user symlink. Claude and Codex remain host-managed npm installs until matching helpers exist.

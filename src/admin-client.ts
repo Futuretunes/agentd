@@ -144,6 +144,27 @@ export async function pruneBackups(
   return { removed: value.removed };
 }
 
+export async function readCliApprovals(socket: string): Promise<any> {
+  const value: any = await request(socket, { op: "cli" }, 15000);
+  if (value?.format !== 1 || !Array.isArray(value.items))
+    throw Error("CLI approvals response is invalid.");
+  return value;
+}
+
+export async function startCliInstall(
+  socket: string,
+  id: string,
+): Promise<{ started: true; id: string }> {
+  if (
+    typeof id !== "string" ||
+    !/^cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}$/.test(id)
+  )
+    throw Error("CLI install request is invalid.");
+  const value: any = await request(socket, { op: "cli-install", id }, 15000);
+  if (value?.started !== true || value.id !== id) throw Error("CLI install was refused.");
+  return { started: true, id };
+}
+
 export async function readAdapters(socket: string): Promise<any> {
   const value: any = await request(socket, { op: "adapters" });
   if (

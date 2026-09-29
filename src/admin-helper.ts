@@ -208,6 +208,44 @@ export function pruneBackups(
   return { removed: value.removed as number };
 }
 
+export function listCliApprovals(command = "/opt/agentd/scripts/admin_cli.py") {
+  const output = execFileSync("/usr/bin/python3", ["-B", command], {
+    cwd: "/opt/agentd",
+    encoding: "utf8",
+    timeout: 10000,
+    maxBuffer: 32768,
+    env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const value = JSON.parse(output);
+  if (value?.format !== 1 || !Array.isArray(value.items) || value.error)
+    throw Error("CLI approvals unavailable");
+  return value;
+}
+
+const cliApprovalId = /^cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}$/;
+
+export function startCliInstall(
+  id: unknown,
+  list: () => any = listCliApprovals,
+  start: (unit: string) => void = (unit) => {
+    execFileSync("/usr/bin/systemctl", ["start", "--no-block", unit], {
+      timeout: 10000,
+      stdio: "ignore",
+      env: { PATH: "/usr/bin:/bin", LANG: "C" },
+    });
+  },
+) {
+  if (typeof id !== "string" || !cliApprovalId.test(id))
+    throw Error("Invalid CLI install request");
+  const value = list();
+  if (value.running) throw Error("A CLI install is already running");
+  if (!value.items?.some((item: any) => item.id === id))
+    throw Error("CLI approval is not available");
+  start(`agentd-cli-install@${id}.service`);
+  return { started: true as const, id };
+}
+
 const adapterId = /^(claude|codex|cursor)$/;
 
 function normalizeAdapters(value: unknown) {
@@ -406,6 +444,8 @@ export function handleAdminRequest(
     restart?: (target: unknown) => { restarted: true; target: "runner" | "gateway" };
     backups?: () => unknown;
     pruneBackups?: (fingerprint: unknown) => { removed: number };
+    cliApprovals?: () => unknown;
+    startCliInstall?: (id: unknown) => { started: true; id: string };
     adapters?: () => unknown;
     applyAdapters?: (
       enabled: unknown,
@@ -450,6 +490,13 @@ export function handleAdminRequest(
     if (Object.keys(input).sort().join(" ") !== "fingerprint op")
       throw Error("Unsupported admin operation");
     return (config.pruneBackups ?? pruneBackups)(input.fingerprint);
+  }
+  if (input?.op === "cli" && Object.keys(input).join(" ") === "op")
+    return (config.cliApprovals ?? listCliApprovals)();
+  if (input?.op === "cli-install") {
+    if (Object.keys(input).sort().join(" ") !== "id op")
+      throw Error("Unsupported admin operation");
+    return (config.startCliInstall ?? startCliInstall)(input.id);
   }
   if (input?.op === "adapters" && Object.keys(input).join(" ") === "op")
     return (config.adapters ?? adapterPolicy)();

@@ -83,6 +83,16 @@ export function mobile(c: Config) {
         key: string;
         requiresIdle: boolean;
       }
+    >(),
+    cliPreviews = new Map<
+      string,
+      {
+        fingerprint: string;
+        inventory: string;
+        expires: number;
+        id: string;
+        requiresIdle: boolean;
+      }
     >();
   let accessHash = c.accessHash;
   const bridge = (input: unknown) =>
@@ -555,6 +565,97 @@ export function mobile(c: Config) {
             return;
           }
           throw Error("Unsupported backups action.");
+        }
+        if (path === "/api/cli" && req.method === "GET") {
+          send(200, await call({ op: "admin-cli" }));
+          return;
+        }
+        if (path === "/api/cli" && req.method === "POST") {
+          const limitKey = "cli:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now();
+          for (const [owner, preview] of cliPreviews)
+            if (preview.expires < now) cliPreviews.delete(owner);
+          if (!accessKeyMatches(input.currentKey, accessHash))
+            throw Error("Current access key did not match.");
+          if (
+            typeof input.id !== "string" ||
+            !/^cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}$/.test(input.id)
+          )
+            throw Error("Choose an approved Cursor CLI package.");
+          if (input.action === "preview") {
+            const current = await call({ op: "admin-cli" }),
+              item = (current.items ?? []).find((entry: any) => entry.id === input.id),
+              plan = await call({
+                op: "admin-service-restart-plan",
+                target: "runner",
+              });
+            if (!item) throw Error("That CLI approval is not available.");
+            if (current.running) throw Error("A CLI install is already running.");
+            const inventory = createHash("sha256")
+                .update(JSON.stringify(current.items ?? []))
+                .digest("hex"),
+              expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-cli-install-preview:${accountOwner}:${inventory}:${input.id}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            cliPreviews.set(accountOwner, {
+              fingerprint,
+              inventory,
+              expires,
+              id: input.id,
+              requiresIdle: !plan.idle,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              id: input.id,
+              version: item.version,
+              notes: item.notes ?? "",
+              requiresIdle: !plan.idle,
+            });
+            return;
+          }
+          if (input.action === "install") {
+            const preview = cliPreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint ||
+              input.id !== preview.id
+            )
+              throw Error("CLI install preview expired. Review it again.");
+            if (preview.requiresIdle && input.confirmedIdle !== true)
+              throw Error(
+                "Confirm that current work is stopped before installing a CLI.",
+              );
+            if (input.confirmed !== true) throw Error("Confirm the CLI install.");
+            const current = await call({ op: "admin-cli" }),
+              inventory = createHash("sha256")
+                .update(JSON.stringify(current.items ?? []))
+                .digest("hex");
+            if (inventory !== preview.inventory)
+              throw Error("Approved CLI list changed. Review it again.");
+            if (current.running) throw Error("A CLI install is already running.");
+            cliPreviews.delete(accountOwner);
+            const result = await call({ op: "admin-cli-install", id: preview.id });
+            send(200, result);
+            return;
+          }
+          throw Error("Unsupported CLI action.");
         }
         if (path === "/api/adapters" && req.method === "GET") {
           send(200, await call({ op: "admin-adapters" }));
