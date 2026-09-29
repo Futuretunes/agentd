@@ -622,7 +622,11 @@ function renderOperations(data) {
               "p",
               item.id.slice(0, 8) +
                 " · " +
-                (item.worktree ? "worktree and " : "") +
+                (item.reconcileWorktree
+                  ? "reconcile previously removed project copy and "
+                  : item.worktree
+                    ? "worktree and "
+                    : "") +
                 item.logs +
                 " raw logs · " +
                 bytes(item.bytes),

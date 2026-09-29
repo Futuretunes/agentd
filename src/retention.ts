@@ -48,27 +48,44 @@ export function retention(
       logs = realpathSync(roots.logs);
     if (row.worktree) {
       const expected = join(root, row.id);
-      if (resolve(row.worktree) !== expected || !existsSync(expected))
+      if (resolve(row.worktree) !== expected)
         throw Error("Worktree is not available for safe cleanup");
-      const s = lstatSync(expected);
-      if (!s.isDirectory() || s.isSymbolicLink()) throw Error("Linked worktree refused");
-      const list = git(row.repo, ["worktree", "list", "--porcelain"]);
-      if (!list.split("\n").includes("worktree " + expected))
-        throw Error("Worktree registration mismatch");
-      // Read-only tasks should have no edits. Discarded edits require explicit cleanup approval.
-      if (
-        row.review !== "discarded" &&
-        git(expected, [
-          "status",
-          "--porcelain",
-          "--untracked-files=all",
-          "--ignored",
-        ]).trim()
-      )
-        throw Error("Unexpected files or changes are preserved");
-      const size = inventory(expected);
-      item.worktree = { path: expected, ...size };
-      item.bytes += size.bytes;
+      let s;
+      try {
+        s = lstatSync(expected);
+      } catch (error: any) {
+        if (error.code !== "ENOENT") throw error;
+      }
+      const registered = git(row.repo, ["worktree", "list", "--porcelain"])
+        .split("\n")
+        .includes("worktree " + expected);
+      if (!s) {
+        // A fresh approval may reconcile an interrupted removal, never replay it.
+        const started = db
+          .prepare("SELECT 1 FROM audit WHERE task=? AND action='cleanup-start' LIMIT 1")
+          .get(row.id);
+        if (registered || !started)
+          throw Error("Worktree is not available for safe cleanup");
+        item.worktree = { path: expected, missing: true };
+      } else {
+        if (!s.isDirectory() || s.isSymbolicLink())
+          throw Error("Linked worktree refused");
+        if (!registered) throw Error("Worktree registration mismatch");
+        // Read-only tasks should have no edits. Discarded edits require explicit cleanup approval.
+        if (
+          row.review !== "discarded" &&
+          git(expected, [
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+            "--ignored",
+          ]).trim()
+        )
+          throw Error("Unexpected files or changes are preserved");
+        const size = inventory(expected);
+        item.worktree = { path: expected, ...size };
+        item.bytes += size.bytes;
+      }
     }
     for (const suffix of [".log", ".checks.log"]) {
       const path = join(logs, row.id + suffix);
@@ -132,7 +149,8 @@ export function retention(
       items: value.items.map((x) => ({
         id: x.id,
         conversation: x.conversation,
-        worktree: !!x.worktree,
+        worktree: !!x.worktree && !x.worktree.missing,
+        reconcileWorktree: !!x.worktree?.missing,
         logs: x.logs.length,
         bytes: x.bytes,
       })),
@@ -159,20 +177,29 @@ export function retention(
             "SELECT t.*,p.repo FROM tasks t JOIN projects p ON p.id=t.project WHERE t.id=?",
           )
           .get(item.id) as any;
+        if (JSON.stringify(describe(row)) !== JSON.stringify(item))
+          throw Error("Storage changed. Review a fresh cleanup preview.");
         if (item.worktree) {
-          git(row.repo, [
-            "worktree",
-            "remove",
-            ...(row.review === "discarded" ? ["--force"] : []),
-            item.worktree.path,
-          ]);
+          if (!item.worktree.missing)
+            git(row.repo, [
+              "worktree",
+              "remove",
+              ...(row.review === "discarded" ? ["--force"] : []),
+              item.worktree.path,
+            ]);
           db.prepare("UPDATE tasks SET worktree=NULL WHERE id=?").run(item.id);
         }
         for (const log of item.logs) {
-          const fd = openSync(log.path, constants.O_WRONLY | constants.O_NOFOLLOW);
+          const fd = openSync(
+            log.path,
+            constants.O_WRONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+          );
           try {
             const s = fstatSync(fd);
             if (
+              !s.isFile() ||
+              s.mtimeMs !== log.mtime ||
+              s.ctimeMs !== log.ctime ||
               s.dev !== log.dev ||
               s.ino !== log.ino ||
               s.nlink !== 1 ||

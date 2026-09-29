@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-provider-usage.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-retention-recovery.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.42.0 — approved cleanup recovery
+
+[Handover](handovers/2026-09-29-retention-recovery.md): a fresh storage approval can reconcile a previously removed worktree when the earlier cleanup failed to persist its result. Missing paths without cleanup evidence, remaining Git registrations and links stay protected. Log identity and timestamps are rechecked. Validation is in progress; the staged installer still targets validated 0.41.0. Nothing deployed.
 
 ## Candidate 0.41.0 — provider usage and credits
 

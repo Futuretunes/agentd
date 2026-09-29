@@ -196,3 +196,7 @@ Task execution moves to `task-execution.ts`; a stable handle covers asynchronous
 ## Operator priority: provider credits — candidate 0.41.0
 
 The operator explicitly advanced provider credit reporting. Implemented Codex native `account/rateLimits/read` with remaining percentages, reset times, optional credit balance/reset counts, freshness and low-allowance guidance in Operations. Empty provider-only sandbox, access-only snapshot, fixed read-only protocol; no model, reset or purchase requests. Claude/Cursor remain unavailable with direct provider usage links; no undocumented credential endpoint scraping. Exact archive passed 169/169 Linux tests, zero skips, formatting, typecheck and CI; draft #45; not installed. Live installed-account acceptance remains distinct from fixture validation. Other stabilization items remain queued.
+
+## R6 interrupted cleanup recovery — candidate 0.42.0
+
+A new preview and approval can clear a stale worktree record after a previously approved removal succeeded but persistence failed. Exact managed path, absent filesystem entry, absent Git registration and prior cleanup audit are required; uncertain paths remain manual review. No startup deletion or approval replay. Logs recheck ordinary-file identity, size and timestamps before truncation. Tests cover injected persistence failure, restart, missing evidence, registrations, dangling links, recreated content and same-size log changes. Full release validation pending; not installed. Whole-cache/attachment retention, hard quotas and asynchronous cleanup remain open.
