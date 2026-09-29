@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.36.0 — repository operation ownership
 
-[Handover](handovers/2026-09-29-repository-owner.md): repository discovery/import/update has a separate manager with owned cancellation and shutdown cleanup, retaining existing project and admission rules. Exact Linux/CI pending; production unchanged and prior validated installer remains staged until checks finish.
+[Handover](handovers/2026-09-29-repository-owner.md): repository discovery/import/update has a separate manager with owned cancellation and shutdown cleanup, retaining existing project and admission rules. Exact archive `06a8391` passed 147/147 Linux tests, zero skips, formatting, typecheck and CI; draft #40 is open. Production remains unchanged; the single installer is staged for 0.36.0 and has not been run.
 
 ## Candidate 0.35.0 — dependency operation ownership
 

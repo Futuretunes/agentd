@@ -175,4 +175,4 @@ Dependency preparation is extracted from the runner and owns its operation ident
 
 ## R2 repository domain — candidate 0.36.0
 
-Repository discovery/import/update is extracted with owned completion, cancellation and shutdown cleanup. Existing project-specific protection, native profile handling and global admission are preserved. Immediate cancellation does not invoke transport. Exact Linux/CI pending; not installed. Publication/feedback and task/check decomposition plus transactional recovery remain open.
+Repository discovery/import/update is extracted with owned completion, cancellation and shutdown cleanup. Existing project-specific protection, native profile handling and global admission are preserved. Immediate cancellation does not invoke transport. Exact archive passed 147/147 Linux tests, zero skips, formatting, typecheck and CI; draft #40; not installed. Publication/feedback and task/check decomposition plus transactional recovery remain open.
