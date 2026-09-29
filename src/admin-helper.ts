@@ -137,6 +137,25 @@ export function startUpdate(
 
 // Rollback targets exactly the release the listing offers: the newest older version
 // with a compatible completed backup. The job re-derives and re-checks it.
+export function restartService(
+  target: unknown,
+  command = "/opt/agentd/scripts/admin_restart.py",
+) {
+  if (target !== "runner" && target !== "gateway") throw Error("Invalid restart request");
+  const output = execFileSync("/usr/bin/python3", ["-B", command, target], {
+    cwd: "/opt/agentd",
+    encoding: "utf8",
+    timeout: 65000,
+    maxBuffer: 4096,
+    env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const value = JSON.parse(output);
+  if (!value?.restarted || value.target !== target)
+    throw Error("Service restart refused");
+  return { restarted: true as const, target: value.target as "runner" | "gateway" };
+}
+
 export function startRollback(
   version: unknown,
   list: () => any = updates,
@@ -166,6 +185,7 @@ export function handleAdminRequest(
     diagnostics?: () => unknown;
     updates?: () => unknown;
     startUnit?: (unit: string) => void;
+    restart?: (target: unknown) => { restarted: true; target: "runner" | "gateway" };
   },
 ) {
   if (input?.op === "rotate-access-key") {
@@ -187,6 +207,11 @@ export function handleAdminRequest(
     if (Object.keys(input).sort().join(" ") !== "op version")
       throw Error("Unsupported admin operation");
     return startUpdate(input.version, config.updates ?? updates, config.startUnit);
+  }
+  if (input?.op === "service-restart") {
+    if (Object.keys(input).sort().join(" ") !== "op target")
+      throw Error("Unsupported admin operation");
+    return (config.restart ?? restartService)(input.target);
   }
   throw Error("Unsupported admin operation");
 }

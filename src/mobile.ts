@@ -33,6 +33,15 @@ export function mobile(c: Config) {
     accessPreviews = new Map<
       string,
       { fingerprint: string; newHash: string; expires: number }
+    >(),
+    serviceRestartPreviews = new Map<
+      string,
+      {
+        fingerprint: string;
+        target: "runner" | "gateway";
+        expires: number;
+        requiresIdle: boolean;
+      }
     >();
   let accessHash = c.accessHash;
   const bridge = (input: unknown) =>
@@ -359,6 +368,78 @@ export function mobile(c: Config) {
             return;
           }
           throw Error("Unsupported access-key action.");
+        }
+        if (path === "/api/service-restart" && req.method === "POST") {
+          const limitKey = "service-restart:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now();
+          for (const [owner, preview] of serviceRestartPreviews)
+            if (preview.expires < now) serviceRestartPreviews.delete(owner);
+          if (!accessKeyMatches(input.currentKey, accessHash))
+            throw Error("Current access key did not match.");
+          if (input.target !== "runner" && input.target !== "gateway")
+            throw Error("Choose the task runner or phone gateway.");
+          if (input.action === "preview") {
+            const plan = await call({
+                op: "admin-service-restart-plan",
+                target: input.target,
+              }),
+              updates = await call({ op: "admin-updates" }).catch(() => null);
+            if (updates?.running)
+              throw Error("An update or rollback is already running.");
+            if (updates && updates.configuration !== "ok")
+              throw Error("Server configuration needs review before restarting.");
+            const expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-service-restart-preview:${accountOwner}:${input.target}:${plan.idle}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            serviceRestartPreviews.set(accountOwner, {
+              fingerprint,
+              target: input.target,
+              expires,
+              requiresIdle: !plan.idle,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              target: input.target,
+              label: plan.label,
+              requiresIdle: !plan.idle,
+            });
+            return;
+          }
+          if (input.action === "restart") {
+            const preview = serviceRestartPreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint ||
+              input.target !== preview.target
+            )
+              throw Error("Service restart preview expired. Review it again.");
+            if (preview.requiresIdle && input.confirmedIdle !== true)
+              throw Error(
+                "Confirm that current work is stopped before restarting services.",
+              );
+            serviceRestartPreviews.delete(accountOwner);
+            await call({ op: "admin-service-restart", target: preview.target });
+            send(202, { restarted: true, target: preview.target });
+            return;
+          }
+          throw Error("Unsupported service restart action.");
         }
         if (path === "/api/storage" && req.method === "POST") {
           const input = await body(req);

@@ -35,40 +35,49 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
                   ? images.read(input.id)
                   : input.op === "task-output"
                     ? { text: "fixture output", truncated: false }
-                    : input.op === "admin-updates"
+                    : input.op === "admin-service-restart-plan"
                       ? {
-                          format: 1,
-                          installed: {
-                            version: "0.62.3",
-                            revision: "abc",
-                            taskSchemaVersion: 2,
-                          },
-                          configuration: "ok",
-                          running: false,
-                          job: null,
-                          candidates: [
-                            {
-                              version: "0.63.0",
-                              revision: "def",
-                              valid: true,
-                              newer: true,
-                            },
-                            {
-                              version: "0.62.3",
-                              revision: "abc",
-                              valid: true,
-                              newer: false,
-                            },
-                          ],
-                          rollback: {
-                            available: true,
-                            version: "0.62.2",
-                            revision: "old",
-                            completedAt: "2026-09-29T12:00:00+00:00",
-                            schemaChange: false,
-                          },
+                          target: input.target,
+                          idle: true,
+                          label:
+                            input.target === "runner" ? "Task runner" : "Phone gateway",
                         }
-                      : [],
+                      : input.op === "admin-service-restart"
+                        ? { restarted: true, target: input.target }
+                        : input.op === "admin-updates"
+                          ? {
+                              format: 1,
+                              installed: {
+                                version: "0.62.3",
+                                revision: "abc",
+                                taskSchemaVersion: 2,
+                              },
+                              configuration: "ok",
+                              running: false,
+                              job: null,
+                              candidates: [
+                                {
+                                  version: "0.63.0",
+                                  revision: "def",
+                                  valid: true,
+                                  newer: true,
+                                },
+                                {
+                                  version: "0.62.3",
+                                  revision: "abc",
+                                  valid: true,
+                                  newer: false,
+                                },
+                              ],
+                              rollback: {
+                                available: true,
+                                version: "0.62.2",
+                                revision: "old",
+                                completedAt: "2026-09-29T12:00:00+00:00",
+                                schemaChange: false,
+                              },
+                            }
+                          : [],
           }) + "\n",
         );
       } catch (e) {
