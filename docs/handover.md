@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.46.0 — background revision preparation
 
-[Handover](handovers/2026-09-29-async-revision-preparation.md): Request revisions now preserves its exact edit tree through an owner-bound cancellable background job. Mutations and dispatch wait while reads remain responsive. Existing revision identity recovers completed same-content requests across response loss or restart. The local suite passed 182 tests with nine expected Linux-only skips; exact Linux, CI and browser validation are pending. Installed baseline remains 0.43.0 and staged 0.45.0 remains unexecuted.
+[Handover](handovers/2026-09-29-async-revision-preparation.md): Request revisions now preserves its exact edit tree through an owner-bound cancellable background job. Mutations and dispatch wait while reads remain responsive. Existing revision identity recovers completed same-content requests across response loss or restart. Exact source `a59e264` passed 182/182 required Linux tests with zero skips, formatting, typecheck, both CI runs and browser cancellation/success acceptance. Draft #50 is open and the cumulative installer is staged but unexecuted. Installed baseline remains 0.43.0.
 
 ## Candidate 0.45.0 — background commit preparation
 

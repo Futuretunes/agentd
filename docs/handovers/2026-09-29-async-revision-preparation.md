@@ -2,7 +2,7 @@
 
 - Author: Codex.
 - Requested outcome: continue the backlog continuously, without intermediate operator installation, and keep Claude handovers current.
-- Status: implemented; local validation passed; exact Linux/CI/browser validation pending; not installed.
+- Status: implemented and fully validated; cumulative installer staged but not executed.
 - Release: cumulative 0.46.0, task schema 2 unchanged.
 - Branch/base: `feat/async-revision-preparation` from `feat/async-commit-preparation` at `3ad5e62`.
 
@@ -18,11 +18,13 @@ Cheap admission runs before creating the job and all authoritative checks repeat
 
 ## Validation evidence
 
-Formatting and typecheck passed. The full local suite passed 182 tests with nine expected Linux-only skips. A focused 15-test review/revision/gateway/mobile/error group passed. New coverage proves owner isolation, active retry reuse, cancellation before mutation, responsive reads, competing-mutation exclusion, changed-content refusal, exact seed preservation, different-request refusal, response-loss recovery and restart recovery. Exact Linux zero-skip validation, CI and the no-model browser flow are pending. No live model, consent, cleanup, publication or deployment calls were made.
+Formatting and typecheck passed. The full local suite passed 182 tests with nine expected Linux-only skips. A focused 15-test review/revision/gateway/mobile/error group passed. New coverage proves owner isolation, active retry reuse, cancellation before mutation, responsive reads, competing-mutation exclusion, changed-content refusal, exact seed preservation, different-request refusal, response-loss recovery and restart recovery.
+
+Exact source `a59e264153fced1b56317801ae558f45be43374d` was archived with SHA-256 `809c598fd9a36d230f1b281818d9b9bb68737dcba16dc4d0f73a5d4cfe6b0ed9`. That archive passed all 182 required Linux tests with zero skips, formatting and typecheck. GitHub push run `36532456444` and pull-request run `36532488054` both passed. A disposable no-model browser fixture visibly verified progress, cancellation leaving the review unchanged, a fresh retry and a new approval-gated revision turn. Draft PR #50 records the review boundary. No live model, consent, cleanup, publication or deployment calls were made.
 
 ## Deployment and rollback
 
-Installed production remains 0.43.0, task schema 2, starts 38. Exact validated 0.45.0 remains the single staged and unexecuted candidate until 0.46.0 replaces it after validation. Rollback must keep application/task state paired; native profiles remain separately preserved.
+Installed production remains 0.43.0, task schema 2, starts 38. One cumulative installer targets exact validated 0.46.0 and remains unexecuted. Rollback must keep application/task state paired; native profiles remain separately preserved.
 
 ## Constraints and known issues
 
@@ -30,4 +32,4 @@ The full snapshot/content preflight no longer occupies the browser request. The 
 
 ## Next steps
 
-Finish exact Linux/CI/browser validation, open a draft PR and replace the single staged installer without executing it. Then move restart-with-settings snapshot preparation into the background or extract review request routing if that is the safer next bounded slice. Preserve explicit run/check/commit/publication approvals. Claude review/consolidation and a deliberate main/tag decision remain pending; no merge is authorized.
+Move restart-with-settings snapshot preparation into the background or extract review request routing if that is the safer next bounded slice. Preserve explicit run/check/commit/publication approvals. Claude review/consolidation and a deliberate main/tag decision remain pending; no merge is authorized.
