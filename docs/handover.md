@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-bounded-large-review.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-durable-large-review-acknowledgements.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.57.0 — durable exact-tree large-review acknowledgements
+
+[Latest handover](handovers/2026-09-29-durable-large-review-acknowledgements.md): individually bounded files require an explicit audited acknowledgement tied to the task, exact tree, filename and patch fingerprint. Progress survives restart but never transfers to changed content. Complete acknowledgement remains evidence only; commit/revision/restart stay blocked for truncated reviews. Exact source `8117de5` passed 197/197 required Linux tests with zero skips, typecheck and formatting. The cumulative archive and launcher are staged but unexecuted. Production remains 0.55.0; PR and CI are pending.
 
 ## Candidate 0.56.0 — bounded per-file large-review inspection
 
