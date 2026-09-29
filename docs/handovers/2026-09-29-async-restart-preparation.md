@@ -6,7 +6,7 @@
 - Release: 0.47.0, task schema 2
 - Branch and base: `feat/async-restart-preparation` from `feat/async-revision-preparation`
 - Implementation commit(s): `b856bb74b419ac02f71a0bbb083871ec60790a9c`
-- PR: draft PR pending at the time this implementation evidence was recorded
+- PR: [draft #51](https://github.com/Futuretunes/agentd/pull/51)
 
 ## Changes and relevant files
 
@@ -36,12 +36,12 @@
   - a failed edit with a partial tracked change was prepared through the new endpoint;
   - the browser refreshed to show the original review as superseded and a new `Ready for your approval` edit turn;
   - no provider account, native CLI or model request was used.
-- CI was not yet run when this initial handover was written; add the workflow runs after pushing the draft PR.
+- GitHub CI passed for both the branch push (`36540465581`) and draft PR (`36540504962`), including Node 24, Node 26 and required Linux isolation jobs.
 
 ## Deployment and rollback
 
 - No deployment occurred. Production remains the operator-reported 0.43.0/task schema 2 baseline.
-- The exact archive is staged privately on the VM. Keep only one cumulative installer current after CI completes; do not execute it without a separate deployment instruction.
+- The exact archive and cumulative launcher are staged privately on the VM. Launcher SHA-256 is `c232b7f627d93e7624f31195a1a609b89a4cbb81f1b9e0192c04a7b59b834cf2`; it was syntax checked and not executed.
 - This release has no database migration. Existing 0.43 rollback boundaries remain unchanged.
 
 ## Constraints and known issues
@@ -53,7 +53,5 @@
 
 ## Next steps
 
-1. Push the branch, open a draft PR stacked on `feat/async-revision-preparation`, run both push and PR CI, and record the results here.
-2. Update the single cumulative staged installer and private operator note to exact 0.47.0 after CI passes; leave it unexecuted.
-3. Continue R10 with integration mutation preflights, preserving exact-tree approvals and conflict review.
-4. Continue R2 runner request-routing decomposition after the remaining synchronous Git preparation paths are bounded.
+1. Continue R10 with integration mutation preflights, preserving exact-tree approvals and conflict review.
+2. Continue R2 runner request-routing decomposition after the remaining synchronous Git preparation paths are bounded.
