@@ -29,6 +29,16 @@ def probe(timeout=10):
     result=value.get('result',{})
     if value.get('ok') is not True or result.get('format')!=1 or not isinstance(result.get('services'),dict):raise ValueError('Administration diagnostics probe failed')
 
+def unchanged(c):
+    """The installed unit already matches this release and the running helper answers."""
+    path=unit_path()
+    if path.is_symlink() or not path.is_file() or path.read_bytes()!=(Path(c['app'])/'deploy'/UNIT).read_bytes():return False
+    try:
+        if update.capture(['systemctl','show',UNIT,'--property=NeedDaemonReload','--value']).strip()!='no':return False
+        update.run(['systemctl','is-enabled','--quiet',UNIT]);update.run(['systemctl','is-active','--quiet',UNIT]);probe(5)
+    except (subprocess.CalledProcessError,OSError,ValueError):return False
+    return True
+
 def apply(c,previous,current,backup):
     path=unit_path();record=Path(c['deployment'])/'installed.json'
     if path.is_symlink() or not path.is_file():raise ValueError('Administration helper unit is not a regular file')
@@ -66,6 +76,9 @@ def main():
         if current!=previous['configuration']:raise ValueError('Installed configuration drifted')
         installed=json.loads((Path(c['app'])/'release-manifest.json').read_text())
         if installed!=previous['release'] or 'scripts/admin_diagnostics.py' not in installed.get('files',{}):raise ValueError('Install a compatible managed application first')
+        # The updater already restarted the helper with this release; rewriting an
+        # identical unit would only restart every service a second time.
+        if unchanged(c):print('Read-only administration diagnostics already installed and verified.');return
         backup=Path(tempfile.mkdtemp(prefix='agentd-diagnostics-backup-',dir=Path(c['app']).parent));apply(c,previous,current,backup)
 
 if __name__=='__main__':

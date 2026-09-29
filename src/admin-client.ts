@@ -65,7 +65,9 @@ export async function readUpdates(socket: string): Promise<any> {
     value?.format !== 1 ||
     !value.installed ||
     typeof value.installed.version !== "string" ||
-    !["ok", "drift", "recovery_required"].includes(value.configuration) ||
+    !["ok", "drift", "reload_required", "recovery_required"].includes(
+      value.configuration,
+    ) ||
     typeof value.running !== "boolean" ||
     !Array.isArray(value.candidates)
   )

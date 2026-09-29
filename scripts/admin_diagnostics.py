@@ -37,10 +37,7 @@ def gateway_config_readable(c):
 def snapshot():
     c=update.config(CONFIG);installed=json.loads((DEPLOYMENT/'installed.json').read_text())
     pending=sorted(p.name for p in DEPLOYMENT.glob('*pending.json'))
-    if pending:configuration='recovery_required'
-    else:
-        try:configuration='ok' if update.inventory(c)==installed.get('configuration') else 'drift'
-        except Exception:configuration='drift'
+    configuration=update.configuration_state(c,installed.get('configuration'),DEPLOYMENT)
     release=installed.get('release',{});revision=str(release.get('revision',''))
     if not re.fullmatch(r'[a-f0-9]{40}',revision):revision=''
     usage=shutil.disk_usage(c['app'])
