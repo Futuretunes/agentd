@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-routing-baseline.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-bounded-large-review.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.56.0 — bounded per-file large-review inspection
+
+[Latest handover](handovers/2026-09-29-bounded-large-review.md): aggregate-large safe text reviews expose owner-bound, exact-tree per-file inspection with repeated binary, sensitive-data and output bounds. Commit/revision/restart remain blocked for truncated reviews. Exact source `652b518` passed 196/196 required Linux tests with zero skips, typecheck and formatting. Draft PR #61 targets PR #60's branch; final CI is pending. The cumulative archive is staged but unexecuted. Production remains 0.55.0.
 
 ## Installed baseline — 0.55.0
 

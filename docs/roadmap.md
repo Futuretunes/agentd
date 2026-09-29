@@ -256,3 +256,7 @@ Attachment transfer, settings/model refresh and storage review/cleanup now dispa
 ## R1/R2 consolidated routing baseline — candidate 0.55.0
 
 The validated 0.49–0.55 linear stack is consolidated in main-targeted PR #60, ready for review as the intended merge candidate. Bounded #53–#59 are closed as superseded and retain review history. Exact implementation `1a6d7dc` and archive `bcfd941d` passed 194/194 required Ubuntu tests with zero skips, typecheck and formatting. Consolidated Node 24/26 and Linux CI passed; independent review and an explicit merge/tag decision remain; production health now confirms installed 0.55.0, task schema 2 and starts 39.
+
+## R14 bounded per-file large review — candidate 0.56.0
+
+Aggregate-large safe text diffs now list changed files for owner-bound inspection from the exact prepared tree. Every file request repeats changed-path membership, binary metadata, sensitive filename/content and 180 KB response checks; inert rendering is reused. Truncated reviews remain ineligible for commit, revision and restart, so this adds visibility without weakening approval. Exact source `652b518` passed 196/196 required Ubuntu tests with zero skips, typecheck and formatting. Draft #61 targets #60's branch and awaits final CI; cumulative archive staged, not installed. Next R14 slice: complete-file acknowledgement or bounded single-file pagination before any large-snapshot approval design.
