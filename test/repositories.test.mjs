@@ -276,3 +276,109 @@ test("cancelled and interrupted imports never register partial projects and remo
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+test("repository cancellation before dispatch never invokes transport and retains admission until recorded", async () => {
+  const f = fixture();
+  let calls = 0;
+  const app = runner({
+    repo: f.source,
+    stateDir: join(f.root, "state"),
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    repositoryCommand: async () => {
+      calls++;
+      return "";
+    },
+    accountStatus: () => ({ state: "signed_out" }),
+  });
+  await once(app.server, "listening");
+  try {
+    const job = app.request({ op: "repository-start", kind: "inspect", url });
+    app.request({ op: "repository-cancel", job: job.id });
+    assert.throws(
+      () => app.request({ op: "repository-start", kind: "inspect", url }),
+      /Wait/,
+    );
+    assert.throws(() => app.request({ op: "github-logout" }), /repository/);
+    assert.equal((await finished(app, job.id)).state, "cancelled");
+    assert.equal(calls, 0);
+    assert.throws(
+      () => app.request({ op: "repository-cancel", job: job.id }),
+      /not found/,
+    );
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test("repository shutdown retains ownership until partial import cleanup finishes", async () => {
+  const f = fixture();
+  let entered = false,
+    aborted = false,
+    closed = false,
+    release;
+  const cleanup = new Promise((resolve) => {
+    release = resolve;
+  });
+  const config = {
+    repo: f.source,
+    stateDir: join(f.root, "state"),
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    accountStatus: () => ({ state: "signed_out" }),
+    repositoryCommand: async (cwd, args, signal) => {
+      writeFileSync(join(cwd, "partial"), "fixture");
+      entered = true;
+      await new Promise((resolve) => {
+        if (signal.aborted) return resolve();
+        signal.addEventListener("abort", resolve, { once: true });
+      });
+      aborted = true;
+      await cleanup;
+      throw Error("cancelled");
+    },
+  };
+  const app = runner(config);
+  await once(app.server, "listening");
+  let closing;
+  try {
+    const job = app.request({
+      op: "repository-start",
+      kind: "import",
+      url,
+      branch: "main",
+      name: "Partial",
+    });
+    for (let i = 0; i < 200 && !entered; i++) await sleep(10);
+    assert.equal(entered, true);
+    closing = app.close().then(() => {
+      closed = true;
+    });
+    for (let i = 0; i < 200 && !aborted; i++) await sleep(10);
+    assert.equal(aborted, true);
+    assert.equal(closed, false);
+    assert.equal(
+      existsSync(join(config.stateDir, "projects", job.project, "partial")),
+      true,
+    );
+    release();
+    await closing;
+    assert.equal(closed, true);
+    assert.equal(existsSync(join(config.stateDir, "projects", job.project)), false);
+    const db = new DatabaseSync(join(config.stateDir, "tasks.sqlite"));
+    try {
+      assert.equal(
+        db.prepare("SELECT state FROM repository_jobs WHERE id=?").get(job.id).state,
+        "cancelled",
+      );
+      assert.equal(db.prepare("SELECT count(*) AS n FROM projects").get().n, 1);
+    } finally {
+      db.close();
+    }
+  } finally {
+    release();
+    if (closing) await closing;
+    else await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});

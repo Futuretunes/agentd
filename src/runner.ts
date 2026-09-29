@@ -1,3 +1,4 @@
+import { repositoryJobs } from "./repository-jobs.ts";
 import { dependencyJobs } from "./dependency-jobs.ts";
 import { admissionBlocked, type Operation, type BusyState } from "./operation-policy.ts";
 import { prepareWorktree } from "./worktree-preparation.ts";
@@ -52,14 +53,7 @@ import {
   type Mode,
 } from "./adapters.ts";
 import { renewals, renewalFailure } from "./renewal.ts";
-import {
-  githubURL,
-  branchName,
-  repositoryGit,
-  inspectRepository,
-  updateRepository,
-  type RepositoryGit,
-} from "./repositories.ts";
+import { branchName, repositoryGit, type RepositoryGit } from "./repositories.ts";
 import { githubAccount } from "./github-account.ts";
 import { accounts } from "./accounts.ts";
 import { snapshot, commitSnapshot, checkSnapshot } from "./changes.ts";
@@ -257,22 +251,11 @@ export function runner(c: Config) {
   };
   const git = (args: string[], repo = c.repo) => localGit(repo, args);
   const github = githubAccount(c.githubRoot ?? join(c.stateDir, "github"));
-  let repositoryWork:
-    | { id: string; project: string | null; abort: AbortController; done: Promise<void> }
-    | undefined;
-  const repositoryView = () =>
-    db
-      .prepare("SELECT * FROM repository_jobs ORDER BY updated DESC,rowid DESC LIMIT 20")
-      .all()
-      .map((row: any) => ({
-        ...row,
-        result: row.result ? JSON.parse(String(row.result)) : null,
-      }));
   function blocked(operation: Operation) {
     const read = (state: BusyState): boolean => {
       switch (state) {
         case "repository":
-          return !!repositoryWork;
+          return repositoryManager.busy();
         case "publication":
           return !!publicationWork;
         case "dependency":
@@ -309,133 +292,22 @@ export function runner(c: Config) {
     };
     return admissionBlocked(operation, read);
   }
-  const projectBusy = (id: string) => repositoryWork?.project === id;
-  function startRepository(input: any) {
-    requireSpace([c.stateDir, c.worktrees], limits.reserveBytes);
-    if (closing) throw Error("Service is stopping. Try again after it restarts.");
-    if (blocked("repository"))
-      throw Error("Wait for the current repository or GitHub connection operation.");
-    const kind = input.kind;
-    if (!["inspect", "import", "update"].includes(kind))
-      throw Error("Unsupported repository operation");
-    const existing = kind === "update" ? project(input.project) : null;
-    if (existing) {
-      if (existing.archived) throw Error("Restore this project before updating it.");
-      if (!existing.github_url || !existing.github_branch)
-        throw Error("Only projects imported from GitHub can be updated here.");
-      if (
-        (active && get(active.id)?.project === existing.id) ||
-        db
-          .prepare(
-            "SELECT id FROM tasks WHERE project=? AND (status IN ('waiting_for_approval','queued','running','cancelling') OR review='pending') LIMIT 1",
-          )
-          .get(existing.id)
-      )
-        throw Error("Finish or cancel project work and resolve reviews before updating.");
-    }
-    const source = githubURL(existing?.github_url ?? input.url),
-      branch =
-        kind === "inspect" ? null : branchName(existing?.github_branch ?? input.branch);
-    const name = kind === "import" ? title(input.name) : null,
-      id = randomUUID(),
-      projectId = existing
-        ? String(existing.id)
-        : kind === "import"
-          ? randomUUID()
-          : null,
-      abort = new AbortController();
-    if (
-      kind === "import" &&
-      db
-        .prepare("SELECT id FROM projects WHERE github_url=? AND github_branch=?")
-        .get(source, branch)
-    )
-      throw Error(
-        "This repository branch is already a project. Restore it from History if archived.",
-      );
-    db.prepare("INSERT INTO repository_jobs VALUES(?,?,?,?,?,?,?,?,?)").run(
-      id,
-      kind,
-      "running",
-      projectId,
-      source,
-      branch,
-      null,
-      null,
-      new Date().toISOString(),
-    );
-    const path =
-      kind === "import"
-        ? join(c.projectsDir ?? join(c.stateDir, "projects"), projectId!)
-        : null;
-    const git =
-      c.repositoryCommand ??
-      repositoryGit({ stateDir: c.stateDir, githubProfile: github.profile() });
-    const done = Promise.resolve().then(async () => {
-      let registered = false;
-      try {
-        let result: any;
-        if (kind === "inspect")
-          result = await inspectRepository(git, c.stateDir, source, abort.signal);
-        else if (kind === "update")
-          result = await updateRepository(
-            git,
-            String(existing!.repo),
-            source,
-            branch!,
-            abort.signal,
-          );
-        else {
-          mkdirSync(path!, { recursive: true, mode: 0o700 });
-          await git(
-            path!,
-            [
-              "clone",
-              "--depth",
-              "100",
-              "--single-branch",
-              "--no-tags",
-              "--no-recurse-submodules",
-              "--branch",
-              branch!,
-              "--",
-              source,
-              ".",
-            ],
-            abort.signal,
-            true,
-            path!,
-          );
-          if (abort.signal.aborted) throw Error("Import cancelled.");
-          const revision = await git(path!, ["rev-parse", "HEAD"], abort.signal);
-          db.prepare(
-            "INSERT INTO projects(id,name,repo,created,github_url,github_branch) VALUES(?,?,?,?,?,?)",
-          ).run(projectId, name, path, new Date().toISOString(), source, branch);
-          registered = true;
-          result = { project: projectId, revision };
-        }
-        db.prepare(
-          "UPDATE repository_jobs SET state='succeeded',result=?,updated=? WHERE id=?",
-        ).run(JSON.stringify(result), new Date().toISOString(), id);
-        audit("repository-" + kind, null, { project: projectId, source, branch });
-      } catch (error) {
-        if (path && !registered)
-          try {
-            rmSync(path, { recursive: true, force: true });
-          } catch {}
-        db.prepare("UPDATE repository_jobs SET state=?,error=?,updated=? WHERE id=?").run(
-          abort.signal.aborted ? "cancelled" : "failed",
-          (error as Error).message,
-          new Date().toISOString(),
-          id,
-        );
-      } finally {
-        repositoryWork = undefined;
-      }
-    });
-    repositoryWork = { id, project: existing ? String(existing.id) : null, abort, done };
-    return repositoryView().find((job) => job.id === id);
-  }
+  const repositoryManager = repositoryJobs({
+    db,
+    stateDir: c.stateDir,
+    worktrees: c.worktrees,
+    projectsDir: c.projectsDir,
+    limits,
+    project,
+    title,
+    activeProject: () => (active ? get(active.id)?.project : null),
+    closing: () => closing,
+    blocked: () => blocked("repository"),
+    profile: () => github.profile(),
+    audit,
+    command: c.repositoryCommand,
+  });
+  const projectBusy = repositoryManager.projectBusy;
   const dependencyManager = dependencyJobs({
     db,
     stateDir: c.stateDir,
@@ -1738,14 +1610,9 @@ export function runner(c: Config) {
         throw Error("Wait for the repository or publishing operation.");
       return github.logout();
     }
-    if (input.op === "repository-jobs") return repositoryView();
-    if (input.op === "repository-start") return startRepository(input);
-    if (input.op === "repository-cancel") {
-      if (!repositoryWork || repositoryWork.id !== input.job)
-        throw Error("Repository operation not found.");
-      repositoryWork.abort.abort();
-      return { ok: true };
-    }
+    if (input.op === "repository-jobs") return repositoryManager.view();
+    if (input.op === "repository-start") return repositoryManager.start(input);
+    if (input.op === "repository-cancel") return repositoryManager.cancel(input.job);
     if (input.op === "account-session")
       return { session: accountManager.view(input.owner), busy: accountManager.busy() };
     if (input.op === "account-start" && catalog.busy())
@@ -2593,8 +2460,7 @@ export function runner(c: Config) {
       publicationWork?.abort.abort();
       await publicationWork?.done;
       await dependencyManager.close();
-      repositoryWork?.abort.abort();
-      await repositoryWork?.done;
+      await repositoryManager.close();
       await github.close();
       await catalog.close();
       clearInterval(accountTimer);
