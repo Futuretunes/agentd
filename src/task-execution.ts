@@ -74,8 +74,8 @@ export function executeTask(c: Options, row: any): TaskExecution {
   };
   const run = async () => {
     try {
-      if (checkoutAbort.signal.aborted || c.closing())
-        throw Error("Worktree preparation stopped.");
+      if (c.closing() && !checkoutAbort.signal.aborted) owner.stop("interrupted");
+      if (checkoutAbort.signal.aborted) throw Error("Worktree preparation stopped.");
       requireSpace([c.stateDir, c.worktrees, c.logs], limits.reserveBytes);
       requireAdapter(String(row.adapter), String(row.mode));
       if (
@@ -97,8 +97,8 @@ export function executeTask(c: Options, row: any): TaskExecution {
         },
         checkoutAbort.signal,
       );
-      if (checkoutAbort.signal.aborted || c.closing())
-        throw Error("Worktree preparation stopped.");
+      if (c.closing() && !checkoutAbort.signal.aborted) owner.stop("interrupted");
+      if (checkoutAbort.signal.aborted) throw Error("Worktree preparation stopped.");
       requireAdapter(String(row.adapter), String(row.mode));
       let prompt = String(row.prompt);
       const pictures: string[] = [];

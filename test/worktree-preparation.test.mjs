@@ -346,3 +346,25 @@ test("task path persistence failure cannot start checkout or a command", async (
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+test("shutdown before scheduled checkout records interruption without starting preparation", async () => {
+  const f = fixture(),
+    x = executionFixture(f);
+  let closing = false,
+    calls = 0;
+  x.config.closing = () => closing;
+  x.config.prepareWorktree = async () => {
+    calls++;
+  };
+  try {
+    const owner = executeTask(x.config, x.row);
+    closing = true;
+    await owner.done;
+    assert.equal(calls, 0);
+    assert.deepEqual(x.transitions, ["running", "cancelling", "interrupted"]);
+    assert.deepEqual(x.owners, [owner]);
+  } finally {
+    x.db.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});

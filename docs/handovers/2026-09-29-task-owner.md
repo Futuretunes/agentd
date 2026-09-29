@@ -9,7 +9,7 @@
 
 `task-execution.ts` extracts asynchronous worktree preparation, attachment/context preparation, native invocation, isolation, process lifecycle, output/resource limits and terminal persistence. Queue selection, renewal, refreshed approval and global admission stay in the runner. A stable `TaskExecution` handle spans checkout and process execution; cancellation and shutdown continue awaiting the same promise. The runner only clears the handle completing its own run.
 
-Execution begins in a microtask after ownership is returned. Immediate cancellation is checked before path writes, checkout or command construction. Existing path-before-checkout recovery, partial edit preservation, adapter rechecks, native selection checks, context fingerprints and explicit edit/commit separation are retained. No additional worker concurrency or authority.
+Execution begins in a microtask after ownership is returned. Immediate cancellation is checked before path writes, checkout or command construction. Shutdown during that window records interruption rather than generic failure. Existing path-before-checkout recovery, partial edit preservation, adapter rechecks, native selection checks, context fingerprints and explicit edit/commit separation are retained. No additional worker concurrency or authority.
 
 ## Validation
 
