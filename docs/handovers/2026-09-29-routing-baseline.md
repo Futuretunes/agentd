@@ -2,7 +2,7 @@
 
 - Author/agent: Codex
 - Requested outcome: continue backlog work and keep review/handover state coherent.
-- Status: implementation and exact release validated; consolidated for review, not installed or merged.
+- Status: implementation and exact release validated, installed and consolidated for review; not merged.
 - Release: 0.55.0, task schema 2.
 - Branch and base: `release/0.55.0-routing-baseline` against `main`.
 - Exact implementation commit: `1a6d7dc3ccc665368339c5d2113efea0d71840c6`.
@@ -26,7 +26,7 @@ No live model request, account consent, publication, cleanup, deployment, merge 
 
 ## Deployment and rollback
 
-Production remains 0.43.0/task schema 2. The cumulative 0.55.0 archive and launcher are staged privately but unexecuted. A deployment must use the exact validated archive and managed updater; rollback still requires the matching application/task-state backup and separately preserved native profiles.
+The operator ran the staged managed updater. Read-only health verification confirms production 0.55.0/task schema 2, serial dispatch and starts 39; no updater remains active. The exact archive hash is unchanged. Rollback requires the managed application/task-state backup and separately preserved native profiles.
 
 ## Constraints and known issues
 

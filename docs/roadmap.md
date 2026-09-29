@@ -255,4 +255,4 @@ Attachment transfer, settings/model refresh and storage review/cleanup now dispa
 
 ## R1/R2 consolidated routing baseline — candidate 0.55.0
 
-The validated 0.49–0.55 linear stack is consolidated in main-targeted PR #60, ready for review as the intended merge candidate. Bounded #53–#59 are closed as superseded and retain review history. Exact implementation `1a6d7dc` and archive `bcfd941d` passed 194/194 required Ubuntu tests with zero skips, typecheck and formatting. Consolidated Node 24/26 and Linux CI passed; independent review and an explicit merge/tag decision remain; production stays 0.43.0.
+The validated 0.49–0.55 linear stack is consolidated in main-targeted PR #60, ready for review as the intended merge candidate. Bounded #53–#59 are closed as superseded and retain review history. Exact implementation `1a6d7dc` and archive `bcfd941d` passed 194/194 required Ubuntu tests with zero skips, typecheck and formatting. Consolidated Node 24/26 and Linux CI passed; independent review and an explicit merge/tag decision remain; production health now confirms installed 0.55.0, task schema 2 and starts 39.
