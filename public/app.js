@@ -3736,26 +3736,44 @@ async function renderConfigurationSettings() {
       report.tls.certificateExpires ? "muted" : "attention",
     ),
   );
-  const policy = node("section", undefined, "operation-section");
-  policy.append(node("h3", "Agent adapters"));
+  const policySection = node("section", undefined, "operation-section");
+  policySection.append(node("h3", "Agent adapters"));
   if (!adapters) {
-    policy.append(
+    policySection.append(
       node("p", "Adapter policy changes are not available on this install yet.", "muted"),
     );
   } else {
-    policy.append(
+    const liveEnabled = (policy.enabledAdapters ?? []).slice().sort().join(", "),
+      managedEnabled = (adapters.enabled ?? []).slice().sort().join(", "),
+      liveEditing = policy.editAdapters?.length
+        ? (policy.editAdapters ?? []).slice().sort().join(", ")
+        : "off",
+      managedEditing = adapters.editing
+        ? (adapters.editAdapters ?? []).slice().sort().join(", ") || "on"
+        : "off",
+      drifted = liveEnabled !== managedEnabled || liveEditing !== managedEditing;
+    policySection.append(
       node(
         "p",
-        `Enabled: ${(adapters.enabled ?? []).join(", ") || "none"}. Editing: ${
+        `Managed file: ${(adapters.enabled ?? []).join(", ") || "none"}; editing ${
           adapters.editing ? (adapters.editAdapters ?? []).join(", ") || "on" : "off"
         }.`,
       ),
     );
-    policy.append(
+    policySection.append(
       node(
         "p",
-        "Changing adapters writes the managed environment and requires a task runner restart before new work uses it.",
-        "muted",
+        `Running now: ${liveEnabled || "none"}; editing ${liveEditing}.`,
+        drifted ? "attention" : "good",
+      ),
+    );
+    policySection.append(
+      node(
+        "p",
+        drifted
+          ? "The managed file differs from the running task runner. Restart the task runner to apply it."
+          : "Changing adapters writes the managed environment. Restart the task runner afterward so new work uses it.",
+        drifted ? "attention" : "muted",
       ),
     );
   }
@@ -3767,6 +3785,22 @@ async function renderConfigurationSettings() {
     actions.push(
       button("Change agent adapters", () => renderAdapterPolicyForm(adapters)),
     );
+  if (adapters) {
+    const liveEnabled = (policy.enabledAdapters ?? []).slice().sort().join(", "),
+      managedEnabled = (adapters.enabled ?? []).slice().sort().join(", "),
+      liveEditing = policy.editAdapters?.length
+        ? (policy.editAdapters ?? []).slice().sort().join(", ")
+        : "off",
+      managedEditing = adapters.editing
+        ? (adapters.editAdapters ?? []).slice().sort().join(", ") || "on"
+        : "off";
+    if (liveEnabled !== managedEnabled || liveEditing !== managedEditing)
+      actions.push(
+        button("Restart task runner to apply", () =>
+          openConfigurationServiceRestart("runner", "Task runner"),
+        ),
+      );
+  }
   actions.push(
     button("Open GitHub settings", () => {
       configurationDialog.close();
@@ -3780,7 +3814,7 @@ async function renderConfigurationSettings() {
   configurationContent.replaceChildren(
     overview,
     tls,
-    policy,
+    policySection,
     guidance,
     ...actions,
     node(
@@ -3923,13 +3957,111 @@ function renderAdapterPolicyApproval(plan) {
         confirmed: true,
         ...(plan.requiresIdle ? { confirmedIdle: true } : {}),
       });
-      notice(
-        "Adapter policy saved. Restart the task runner from Diagnostics when ready.",
+      notice("Adapter policy saved. Restart the task runner to apply it.");
+      configurationContent.replaceChildren(
+        node("p", "Adapter policy was written to the managed environment.", "good"),
+        node(
+          "p",
+          "The running task runner still uses its startup environment until it restarts.",
+          "attention",
+        ),
+        button("Restart task runner now", () =>
+          openConfigurationServiceRestart("runner", "Task runner"),
+        ),
+        button("Back to configuration", () => void renderConfigurationSettings()),
       );
-      await renderConfigurationSettings();
     } catch (error) {
       notice(error.message);
       submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
+}
+function openConfigurationServiceRestart(target, label) {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    current = node("input"),
+    submit = node("button", "Review restart", "primary");
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      `Restart the ${label.toLowerCase()} to load the managed adapter policy.`,
+      "muted",
+    ),
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/service-restart", {
+        action: "preview",
+        target,
+        currentKey: current.value,
+      });
+      current.value = "";
+      renderConfigurationServiceRestartApproval(plan, target, label);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
+}
+function renderConfigurationServiceRestartApproval(plan, target, label) {
+  const form = node("form"),
+    currentLabel = node("label", "Enter the current access key again"),
+    current = node("input"),
+    idleLabel = node("label"),
+    idle = node("input"),
+    approve = node("button", `Restart ${label.toLowerCase()}`, "danger");
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  if (plan.requiresIdle) {
+    idle.type = "checkbox";
+    idle.required = true;
+    idleLabel.append(
+      idle,
+      document.createTextNode(" Current work is stopped or finished"),
+    );
+  }
+  approve.type = "submit";
+  form.append(
+    node(
+      "p",
+      `Confirm restart of the ${label.toLowerCase()}. You may be signed out briefly while it comes back.`,
+      "attention",
+    ),
+    currentLabel,
+    ...(plan.requiresIdle ? [idleLabel] : []),
+    approve,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    approve.disabled = true;
+    try {
+      await api("/api/service-restart", {
+        action: "restart",
+        target,
+        fingerprint: plan.fingerprint,
+        currentKey: current.value,
+        ...(plan.requiresIdle ? { confirmedIdle: true } : {}),
+      });
+      notice(`${label} restart requested.`);
+      configurationDialog.close();
+    } catch (error) {
+      notice(error.message);
+      approve.disabled = false;
     }
   };
   configurationContent.replaceChildren(form);
