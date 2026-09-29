@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.62.0 — safe GUI diagnostics
 
-[Latest handover](handovers/2026-09-29-codex-gui-diagnostics.md): Settings now shows and downloads a bounded report of release, managed drift/recovery, fixed service status, storage, uptime and recent sanitized failures. A fixed no-argument root probe cannot read task state, worktrees or account profiles and returns no raw journals, logs, prompts, paths, config contents or credentials. Managed updates restart the helper after an application swap. Portable validation passed 211 tests with 9 expected Linux-only skips; exact Ubuntu validation and release staging remain.
+[Latest handover](handovers/2026-09-29-codex-gui-diagnostics.md): Settings now shows and downloads a bounded report of release, managed drift/recovery, fixed service status, storage, uptime and recent sanitized failures. A fixed no-argument root probe cannot read task state, worktrees or account profiles and returns no raw journals, logs, prompts, paths, config contents or credentials. Managed updates restart the helper after an application swap. Exact source `192d25b` passed 211 portable tests with 9 expected Linux-only skips, typecheck, formatting and all Node 24/26/Ubuntu isolation CI. Draft #68 and the exact archive/launcher are staged but unexecuted; production remains 0.61.0.
 
 ## Candidate 0.61.0 — GUI access-key rotation
 

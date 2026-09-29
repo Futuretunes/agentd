@@ -33,10 +33,18 @@ fixed-purpose helper introduced for access-key rotation.
 - Focused boundary/UI/runner/gateway suite: 37/37 passed.
 - Portable suite: 211 tests, 202 passed, 9 Linux-only skipped, 0 failed.
 - Typecheck, formatting and diff checks pass.
-- Exact Ubuntu zero-skip validation, CI, release staging and the draft PR are the
-  remaining release steps at this handover point.
+- Node 24, Node 26 and required Ubuntu isolation CI pass on the exact branch.
+- The exact release archive and rollback-safe launcher are staged in the private
+  operator environment but remain unexecuted. Installation itself runs candidate
+  validation inside the production service boundary before swapping the app.
 
 No model task or administrative mutation was submitted.
+
+The exact release source is
+`192d25bd56c2d41055db0be89852aebb990fdd08`. Draft PR #68 targets the
+access-key candidate. Production was read-only verified on 0.61.0; candidate
+0.62.0 is not installed. Private paths and artifact hashes are recorded only in
+the VM operator handover.
 
 ## Next item
 
