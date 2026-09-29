@@ -6,7 +6,7 @@
 - Release: 0.51.0, task schema 2.
 - Branch and base: `refactor/service-read-routing` from `refactor/managed-request-routing`.
 - Implementation commit: `faf9642f715d6987af656e355fd219a2aaec9c7f`.
-- PR: https://github.com/Futuretunes/agentd/pull/55, draft against PR #54's branch.
+- PR: https://github.com/Futuretunes/agentd/pull/55, ready for review against PR #54's branch.
 
 ## Changes and relevant files
 
