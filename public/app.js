@@ -3664,6 +3664,142 @@ function openPreferences() {
   void loadAccounts();
 }
 $("preferences-menu").onclick = openPreferences;
+const accessKeyDialog = $("access-key-dialog"),
+  accessKeyContent = $("access-key-content");
+$("access-key-close").onclick = () => accessKeyDialog.close();
+$("access-key-settings").onclick = () => {
+  $("preferences-dialog").close();
+  renderAccessKeyForm();
+  accessKeyDialog.showModal();
+};
+function renderAccessKeyForm() {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    current = node("input"),
+    modeLabel = node("label", "New key"),
+    mode = node("select"),
+    customLabel = node("label", "Choose a new access key"),
+    custom = node("input"),
+    submit = node("button", "Review change", "primary");
+  current.type = custom.type = "password";
+  current.autocomplete = "current-password";
+  custom.autocomplete = "new-password";
+  current.required = true;
+  custom.minLength = 24;
+  custom.maxLength = 128;
+  for (const [value, label] of [
+    ["generated", "Generate a strong key"],
+    ["custom", "Choose my own key"],
+  ]) {
+    const option = node("option", label);
+    option.value = value;
+    mode.append(option);
+  }
+  const update = () => {
+    customLabel.hidden = custom.hidden = mode.value !== "custom";
+    custom.required = mode.value === "custom";
+  };
+  mode.onchange = update;
+  currentLabel.append(current);
+  modeLabel.append(mode);
+  customLabel.append(custom);
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      "You will review the exact change before it is applied. The current device stays signed in; every other session is closed.",
+      "muted",
+    ),
+    currentLabel,
+    modeLabel,
+    customLabel,
+    submit,
+  );
+  update();
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const currentKey = current.value,
+        plan = await api("/api/access-key", {
+          action: "preview",
+          mode: mode.value,
+          currentKey,
+          newKey: mode.value === "custom" ? custom.value : undefined,
+        }),
+        newKey = plan.generatedKey ?? custom.value;
+      current.value = "";
+      renderAccessKeyApproval(plan, newKey);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  accessKeyContent.replaceChildren(form);
+}
+function renderAccessKeyApproval(plan, newKey) {
+  const form = node("form"),
+    keyLabel = node("label", "New access key — save this now"),
+    key = node("input"),
+    savedLabel = node("label"),
+    saved = node("input"),
+    currentLabel = node("label", "Enter the current access key again"),
+    current = node("input"),
+    approve = node("button", "Change access key", "danger");
+  key.value = newKey;
+  key.readOnly = true;
+  key.setAttribute("aria-label", "New access key");
+  keyLabel.append(key);
+  saved.type = "checkbox";
+  saved.required = true;
+  savedLabel.append(saved, document.createTextNode(" I saved the new key securely"));
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  approve.type = "submit";
+  form.append(
+    node("p", "Review expires in five minutes.", "attention"),
+    keyLabel,
+    savedLabel,
+    currentLabel,
+    node(
+      "p",
+      `${plan.invalidatesOtherSessions} other signed-in session${plan.invalidatesOtherSessions === 1 ? "" : "s"} will be closed. This device stays signed in.`,
+      "muted",
+    ),
+    approve,
+    button("Start over", () => renderAccessKeyForm()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    approve.disabled = true;
+    try {
+      const result = await api("/api/access-key", {
+        action: "approve",
+        fingerprint: plan.fingerprint,
+        currentKey: current.value,
+        newKey,
+        saved: saved.checked,
+      });
+      key.value = "";
+      current.value = newKey = "";
+      accessKeyContent.replaceChildren(
+        node("h3", "Access key changed"),
+        node(
+          "p",
+          `${result.invalidated} other session${result.invalidated === 1 ? " was" : "s were"} signed out.`,
+          "good",
+        ),
+        button("Done", () => accessKeyDialog.close(), "primary"),
+      );
+    } catch (error) {
+      notice(error.message);
+      approve.disabled = false;
+    }
+  };
+  accessKeyContent.replaceChildren(form);
+}
 // Settings hands over to the focused editors instead of stacking modals.
 $("github-settings").onclick = () => {
   $("preferences-dialog").close();

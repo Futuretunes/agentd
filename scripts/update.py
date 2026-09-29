@@ -38,7 +38,7 @@ def canonical(value):
 def config(path):
     c = json.loads(Path(path).read_text())
     required = {'app','state','deployment','user','runnerUnit','mobileUnit','node','npm','healthUrl','configFiles','controlSocket'}
-    optional={'gatewayUser','gatewaySocket','resourceProfile','gatewayHardening'}
+    optional={'gatewayUser','gatewaySocket','resourceProfile','gatewayHardening','adminUnit','adminSocket'}
     if (set(c)-optional) != required or bool(c.get('gatewayUser')) != bool(c.get('gatewaySocket')): raise ValueError('Unexpected or missing configuration field')
     if c.get('resourceProfile') not in (None,'standard-v1'): raise ValueError('Unknown resource profile')
     if c.get('gatewayHardening') not in (None,'gateway-hardening-v1'): raise ValueError('Unknown gateway hardening profile')
@@ -51,6 +51,11 @@ def config(path):
         if not re.fullmatch(r'[a-z_][a-z0-9_-]*',c['gatewayUser']) or c['gatewayUser'] in ('root',c['user']): raise ValueError('Separate non-root gateway user required')
         canonical(c['gatewaySocket'])
         if Path(c['gatewaySocket']).parent == Path(c['controlSocket']).parent: raise ValueError('Separate socket directories required')
+    if bool(c.get('adminUnit')) != bool(c.get('adminSocket')): raise ValueError('Incomplete administration helper configuration')
+    if c.get('adminUnit'):
+        if not re.fullmatch(r'[a-zA-Z0-9_-]+\.service',c['adminUnit']) or c['adminUnit'] in (c['runnerUnit'],c['mobileUnit']): raise ValueError('Invalid administration helper unit')
+        canonical(c['adminSocket'])
+        if Path(c['adminSocket']).parent in (Path(c['controlSocket']).parent,Path(c.get('gatewaySocket','/run/unused')).parent): raise ValueError('Separate administration socket directory required')
     for path in c['configFiles']: canonical(path)
     if not re.fullmatch(r'[a-z_][a-z0-9_-]*',c['user']) or c['user'] == 'root': raise ValueError('Dedicated non-root service user required')
     for k in ('runnerUnit','mobileUnit'):
@@ -93,6 +98,7 @@ def inventory(c):
         if key=='runnerUnit':
             if environment.get('AGENTD_STATE_DIR','/srv/agentd/state')!=c['state'] or environment.get('AGENTD_CONTROL_SOCKET',str(Path(c['state'])/'control.sock'))!=c['controlSocket']: raise ValueError('Configured state/socket differs from service')
             if environment.get('AGENTD_RUNNER')!='1': raise ValueError('Task runner must be enabled')
+            if c.get('adminSocket') and environment.get('AGENTD_ADMIN_SOCKET')!=c['adminSocket']: raise ValueError('Administration helper socket environment mismatch')
         else:
             mobile_config=environment.get('AGENTD_MOBILE_CONFIG','/etc/agentd/mobile.json')
             if mobile_config not in c['configFiles']: raise ValueError('Include the mobile configuration in configFiles')
@@ -125,6 +131,18 @@ def inventory(c):
         # configured command, never its PID, timestamps or exit status.
         properties['ExecStart'] = properties['ExecStart'].split(' ; start_time=',1)[0]
         result[unit] = {'properties':hashlib.sha256(json.dumps(properties,sort_keys=True).encode()).hexdigest(),'files':hashes}
+    if c.get('adminUnit'):
+        text=capture(['systemctl','show',c['adminUnit'],*['--property='+p for p in PROPERTIES+['RuntimeDirectory','RuntimeDirectoryMode']]])
+        properties=dict(line.split('=',1) for line in text.splitlines() if '=' in line)
+        expected={'User':'root','Group':c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelTunables':'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes','LockPersonality':'yes','RestrictAddressFamilies':'AF_UNIX','RuntimeDirectory':'agentd-admin','RuntimeDirectoryMode':'0750'}
+        if properties.get('NeedDaemonReload')=='yes' or any(properties.get(k)!=v for k,v in expected.items()): raise ValueError('Unsupported administration helper configuration')
+        environment=dict(item.split('=',1) for item in shlex.split(properties.get('Environment','')) if '=' in item)
+        if environment.get('AGENTD_ADMIN_SOCKET')!=c['adminSocket'] or environment.get('AGENTD_MOBILE_CONFIG')!='/etc/agentd-web/mobile.json': raise ValueError('Administration helper environment mismatch')
+        if ('path='+c['node']+' ;') not in properties.get('ExecStart','') or ('argv[]='+c['node']+' '+c['app']+'/src/admin-helper.ts ;') not in properties.get('ExecStart',''): raise ValueError('Unsupported administration helper entry point')
+        files=[properties.get('FragmentPath',''),*properties.get('DropInPaths','').split()]
+        hashes={str(canonical(name)):hashlib.sha256(canonical(name).read_bytes()).hexdigest() for name in files if name}
+        properties['ExecStart']=properties['ExecStart'].split(' ; start_time=',1)[0]
+        result[c['adminUnit']]={'properties':hashlib.sha256(json.dumps(properties,sort_keys=True).encode()).hexdigest(),'files':hashes}
     result['configuration'] = {name:hashlib.sha256(Path(name).read_bytes()).hexdigest() for name in c['configFiles']}
     return result
 
@@ -299,7 +317,7 @@ if __name__ == '__main__':
         if root.is_symlink() or root.stat().st_uid!=0 or root.stat().st_mode & 0o077: raise ValueError('Deployment directory must be root-owned mode 700')
         with (root/'update.lock').open('w') as lock:
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-            if (root/'pending.json').exists() or (root/'gateway-pending.json').exists() or (root/'resources-pending.json').exists(): raise ValueError('An interrupted update requires administrator recovery; see pending.json')
+            if any(root.glob('*pending.json')): raise ValueError('An interrupted update requires administrator recovery; inspect the deployment journal')
             current=inventory(c); record=root/'installed.json'
             previous=json.loads(record.read_text()) if record.exists() else None
             if previous and previous['configuration']!=current: raise ValueError('Installed configuration drifted; review and reconcile it before updating')

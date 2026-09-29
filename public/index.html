@@ -177,9 +177,24 @@
           <option value="dark">Dark</option>
         </select>
       </section>
+      <section class="settings-section" aria-labelledby="settings-access-heading">
+        <h3 id="settings-access-heading">Workspace access</h3>
+        <p class="muted">
+          Change the key used to open this workspace. Other signed-in devices will
+          be signed out.
+        </p>
+        <button id="access-key-settings">Change access key</button>
+      </section>
       <section class="settings-section">
         <button id="logout" class="danger">Sign out of workspace</button>
       </section>
+    </dialog>
+    <dialog id="access-key-dialog" aria-labelledby="access-key-heading">
+      <div class="review-head">
+        <h2 id="access-key-heading">Change access key</h2>
+        <button id="access-key-close" aria-label="Close access key settings">×</button>
+      </div>
+      <div id="access-key-content"></div>
     </dialog>
     <dialog
       id="project-settings-dialog"

@@ -42,7 +42,7 @@ def records(c):
 
 def plan(c,now=None):
     now=time.time() if now is None else now
-    pending=any((Path(c['deployment'])/name).exists() for name in ('pending.json','gateway-pending.json','resources-pending.json'))
+    pending=any(Path(c['deployment']).glob('*pending.json'))
     items=records(c)
     for i,item in enumerate(items):
         item['eligible']=not pending and i>=KEEP and not item['pinned'] and item['completed']<=now-AGE

@@ -82,6 +82,7 @@ import { join, isAbsolute } from "node:path";
 import { createServer } from "node:net";
 
 type Config = {
+  rotateAccess?: (currentKey: string, newHash: string) => Promise<{ rotated: true }>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -1479,6 +1480,20 @@ export function runner(c: Config) {
     throw Error("Unknown review preparation operation");
   }
   function handleManagedOperationRequest(input: any) {
+    if (input.op === "admin-access-rotate") {
+      if (!c.rotateAccess) throw Error("Access-key rotation is not installed.");
+      if (
+        typeof input.currentKey !== "string" ||
+        input.currentKey.length > 256 ||
+        typeof input.newHash !== "string" ||
+        !/^[a-f0-9]{64}$/.test(input.newHash)
+      )
+        throw Error("Access-key rotation request is invalid.");
+      return c.rotateAccess(input.currentKey, input.newHash).then((result) => {
+        audit("rotate-access-key", null, { result: "succeeded" });
+        return result;
+      });
+    }
     requireNoReviewPreparationMutation(input);
     if (typeof input.op === "string" && input.op.startsWith("feedback-"))
       return publicationManager.feedback(input);

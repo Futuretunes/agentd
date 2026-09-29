@@ -1,0 +1,44 @@
+[Unit]
+Description=AgentD fixed-purpose administration helper
+Before=agentd.service
+
+[Service]
+Type=simple
+User=root
+Group=agentd
+WorkingDirectory=/opt/agentd
+ExecStart=/usr/local/bin/node /opt/agentd/src/admin-helper.ts
+Environment=AGENTD_ADMIN_SOCKET=/run/agentd-admin/admin.sock
+Environment=AGENTD_MOBILE_CONFIG=/etc/agentd-web/mobile.json
+RuntimeDirectory=agentd-admin
+RuntimeDirectoryMode=0750
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/agentd-web
+InaccessiblePaths=/srv/agentd /var/lib/agentd /etc/agentd
+PrivateDevices=true
+PrivateNetwork=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=CAP_CHOWN
+RestrictAddressFamilies=AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@mount @debug @raw-io @reboot @swap @clock @module
+SystemCallErrorNumber=EPERM
+MemoryMax=128M
+TasksMax=32
+LimitNOFILE=128
+LimitCORE=0
+
+[Install]
+WantedBy=multi-user.target

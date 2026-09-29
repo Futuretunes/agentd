@@ -6,6 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { rotateAccessKey } from "./admin-client.ts";
 
 const version: string = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
@@ -61,6 +62,10 @@ export function start(options: Options) {
   try {
     tasks = options.taskRunner
       ? runner({
+          rotateAccess: process.env.AGENTD_ADMIN_SOCKET
+            ? (currentKey, newHash) =>
+                rotateAccessKey(process.env.AGENTD_ADMIN_SOCKET!, currentKey, newHash)
+            : undefined,
           gateway: process.env.AGENTD_GATEWAY_SOCKET
             ? {
                 path: process.env.AGENTD_GATEWAY_SOCKET,

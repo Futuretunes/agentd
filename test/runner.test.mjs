@@ -688,3 +688,33 @@ test("answers separate stdout from diagnostic stderr while the full log preserve
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+test("access-key rotation uses only the fixed helper callback and audits no secret material", async () => {
+  const f = await fixture();
+  const currentKey = "current-secret-access-key",
+    newHash = "a".repeat(64),
+    seen = [];
+  try {
+    f.config.rotateAccess = async (...values) => {
+      seen.push(values);
+      return { rotated: true };
+    };
+    assert.deepEqual(
+      await f.app.request({
+        op: "admin-access-rotate",
+        owner: "b".repeat(64),
+        currentKey,
+        newHash,
+      }),
+      { rotated: true },
+    );
+    assert.deepEqual(seen, [[currentKey, newHash]]);
+    const audit = JSON.stringify(f.app.request({ op: "audit" }));
+    assert.match(audit, /rotate-access-key/);
+    assert.ok(!audit.includes(currentKey));
+    assert.ok(!audit.includes(newHash));
+  } finally {
+    await f.app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});

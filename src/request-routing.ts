@@ -29,6 +29,7 @@ export const reviewPreparationOperations = [
 ] as const;
 
 export const managedOperationOperations = [
+  "admin-access-rotate",
   "feedback-targets",
   "feedback-status",
   // Local compatibility name used by publication lifecycle tests and admin clients.

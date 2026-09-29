@@ -547,6 +547,39 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
     const otherLogin = await req("/api/login", { key: "test-access" });
     await req("/api/account", null, otherLogin.headers["set-cookie"][0]);
     assert.notEqual(calls.at(-1).owner, accountOwner);
+    const previewResponse = await req(
+        "/api/access-key",
+        { action: "preview", mode: "generated", currentKey: "test-access" },
+        cookie,
+      ),
+      preview = JSON.parse(previewResponse.body);
+    assert.equal(previewResponse.status, 200);
+    assert.match(preview.generatedKey, /^[A-Za-z0-9_-]{40,}$/);
+    assert.equal(preview.invalidatesOtherSessions, 1);
+    const rotation = await req(
+      "/api/access-key",
+      {
+        action: "approve",
+        fingerprint: preview.fingerprint,
+        currentKey: "test-access",
+        newKey: preview.generatedKey,
+        saved: true,
+      },
+      cookie,
+    );
+    assert.equal(rotation.status, 200);
+    assert.equal(calls.at(-1).op, "admin-access-rotate");
+    assert.equal(
+      calls.at(-1).newHash,
+      createHash("sha256").update(preview.generatedKey).digest("hex"),
+    );
+    assert.equal((await req("/api/tasks", null, cookie)).status, 200);
+    assert.equal(
+      (await req("/api/tasks", null, otherLogin.headers["set-cookie"][0])).status,
+      401,
+    );
+    assert.equal((await req("/api/login", { key: "test-access" })).status, 401);
+    assert.equal((await req("/api/login", { key: preview.generatedKey })).status, 200);
     assert.equal(
       (
         await req(

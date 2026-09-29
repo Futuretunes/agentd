@@ -1,6 +1,6 @@
 # Administration section — requirements (backlog)
 
-Status: requested by the operator on 2026-09-29; **not implemented**. This expands roadmap item 6 ("GUI administration") and the core requirement of [terminal-free operation](roadmap.md#core-product-requirement-terminal-free-operation).
+Status: access-key rotation is implemented in candidate 0.61.0; the remaining sections are not implemented. This expands roadmap item 6 ("GUI administration") and the core requirement of [terminal-free operation](roadmap.md#core-product-requirement-terminal-free-operation).
 
 ## What the operator asked for
 
@@ -70,3 +70,22 @@ The browser and the web gateway must never gain root or shell access. Today the 
 2. The read-only diagnostics page.
 3. The privileged helper with update plan/install/rollback of approved releases.
 4. The remaining configuration pages.
+
+## Candidate 0.61.0: access-key rotation
+
+Settings now offers a generated or strength-checked custom replacement with a
+five-minute, browser-session-bound preview. The current key is required for both
+preview and approval, and approval requires confirmation that the replacement
+was saved. Generated plaintext is returned once; preview state retains only its
+hash.
+
+The gateway forwards the exact approved digest through the unprivileged runner
+to a dedicated root helper on a private Unix socket. The helper accepts only
+access-key rotation, verifies the current key against the root-owned file and
+atomically replaces only `accessHash`. It has no network and can write only
+`/etc/agentd-web`. The gateway cannot reach its socket. Success keeps the
+approving browser session, closes all other sessions and audits no key material.
+
+The helper is installed by an explicit one-time privileged migration after the
+managed application update. Diagnostics, reviewed updates/rollback, CLI updates,
+backups and configuration editing remain future slices.

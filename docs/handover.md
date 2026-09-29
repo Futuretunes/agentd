@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-github-access-ceilings.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-codex-access-key-rotation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.61.0 — GUI access-key rotation
+
+[Latest handover](handovers/2026-09-29-codex-access-key-rotation.md): Settings now provides step-up-authenticated, exact-preview key rotation. A fixed-purpose root helper atomically changes only the root-owned access hash; the gateway has no helper access, generated plaintext is not retained, other sessions are invalidated and audit excludes secret material. Portable validation is green; exact zero-skip Linux validation and staging remain. Production stays on 0.59.1 and candidate 0.60.0 remains uninstalled.
 
 ## Candidate 0.60.0 — GitHub access ceilings
 
