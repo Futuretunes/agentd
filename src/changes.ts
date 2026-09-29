@@ -9,6 +9,7 @@ import {
 } from "./sensitive-data.ts";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 
 export { localGit as git } from "./git-policy.ts";
 import { localGit as git, gitOutput, GitOutputLimitError } from "./git-policy.ts";
@@ -94,7 +95,14 @@ export function treeSnapshot(worktree: string, revision: string, tree: string) {
   }
 }
 function readTreeSnapshot(worktree: string, revision: string, tree: string) {
-  const names = git(worktree, ["diff", "--name-only", "-z", revision, tree])
+  const names = git(worktree, [
+    "diff",
+    "--name-only",
+    "-z",
+    "--no-renames",
+    revision,
+    tree,
+  ])
     .split("\0")
     .filter(Boolean);
   const blocked = names.filter(sensitiveFilename);
@@ -161,10 +169,7 @@ function readTreeSnapshot(worktree: string, revision: string, tree: string) {
   return { tree, files: names, summary, patch, truncated, blocked };
 }
 
-// A combined review may exceed the display limit even when each changed file is
-// independently reviewable. This reads one exact-tree text diff with the same
-// binary, filename, content-scan and output bounds as the aggregate review.
-export function filePatch(repo: string, revision: string, tree: string, file: string) {
+function reviewableFile(repo: string, revision: string, tree: string, file: string) {
   if (
     !/^[a-f0-9]{40}$/.test(revision) ||
     !/^[a-f0-9]{40}$/.test(tree) ||
@@ -174,7 +179,7 @@ export function filePatch(repo: string, revision: string, tree: string, file: st
     file.includes("\0")
   )
     throw Error("Invalid file review request");
-  const names = git(repo, ["diff", "--name-only", "-z", revision, tree])
+  const names = git(repo, ["diff", "--name-only", "-z", "--no-renames", revision, tree])
     .split("\0")
     .filter(Boolean);
   if (!names.includes(file)) throw Error("File is not part of this review");
@@ -205,23 +210,105 @@ export function filePatch(repo: string, revision: string, tree: string, file: st
     if (body.includes("\0") || sensitiveContent(body).length)
       throw Error("This file requires separate review");
   }
-  const patch = gitOutput(
-    repo,
-    [
-      "--literal-pathspecs",
-      "diff",
-      "--no-ext-diff",
-      "--no-textconv",
-      "--no-color",
-      "--no-renames",
-      revision,
-      tree,
-      "--",
-      file,
-    ],
-    { maxBuffer: 180000 },
-  );
-  return { tree, file, patch };
+  return [
+    "--literal-pathspecs",
+    "diff",
+    "--no-ext-diff",
+    "--no-textconv",
+    "--no-color",
+    "--no-renames",
+    revision,
+    tree,
+    "--",
+    file,
+  ];
+}
+
+function fileFingerprint(tree: string, file: string, patch: string) {
+  return createHash("sha256")
+    .update("agentd-review-file-v1\0")
+    .update(tree)
+    .update("\0")
+    .update(file)
+    .update("\0")
+    .update(patch)
+    .digest("hex");
+}
+
+// A combined review may exceed the display limit even when each changed file is
+// independently reviewable. This reads one exact-tree text diff with the same
+// binary, filename, content-scan and output bounds as the aggregate review.
+export function filePatch(repo: string, revision: string, tree: string, file: string) {
+  const patch = gitOutput(repo, reviewableFile(repo, revision, tree, file), {
+    maxBuffer: 180000,
+  });
+  const fingerprint = fileFingerprint(tree, file, patch);
+  return { tree, file, patch, fingerprint };
+}
+
+const reviewPageBytes = 64 * 1024;
+
+function pageBoundaries(bytes: Buffer) {
+  const boundaries = [0];
+  while (boundaries.at(-1)! < bytes.length) {
+    const start = boundaries.at(-1)!;
+    let end = Math.min(bytes.length, start + reviewPageBytes);
+    if (end < bytes.length) {
+      while (end > start && (bytes[end] & 0xc0) === 0x80) end--;
+      const newline = bytes.lastIndexOf(10, end - 1);
+      if (newline >= start + reviewPageBytes / 2) end = newline + 1;
+    }
+    if (end <= start) throw Error("Could not paginate this file safely");
+    boundaries.push(end);
+  }
+  return boundaries;
+}
+
+// One changed text file can exceed the per-response bound. Revalidate the file,
+// then split a globally bounded exact patch into stable UTF-8 pages, preferring
+// line boundaries. Callers must acknowledge every page separately.
+export function filePatchPage(
+  repo: string,
+  revision: string,
+  tree: string,
+  file: string,
+  page: number,
+) {
+  if (!Number.isSafeInteger(page) || page < 0) throw Error("Invalid file review page");
+  const patch = gitOutput(repo, reviewableFile(repo, revision, tree, file), {
+      maxBuffer: 6 * 1024 * 1024,
+    }),
+    bytes = Buffer.from(patch, "utf8");
+  if (bytes.length <= 180000) throw Error("This file fits the standard review");
+  const boundaries = pageBoundaries(bytes),
+    pages = boundaries.length - 1;
+  if (page >= pages) throw Error("File review page is out of range");
+  const body = bytes.subarray(boundaries[page], boundaries[page + 1]).toString("utf8"),
+    fingerprint = fileFingerprint(tree, file, patch),
+    pageFingerprint = createHash("sha256")
+      .update("agentd-review-page-v1\0")
+      .update(fingerprint)
+      .update("\0")
+      .update(String(page))
+      .update("\0")
+      .update(String(pages))
+      .update("\0")
+      .update(body)
+      .digest("hex");
+  return {
+    tree,
+    file,
+    patch: body,
+    fingerprint,
+    fileFingerprint: fingerprint,
+    pageFingerprint,
+    page,
+    pages,
+    bytes: Buffer.byteLength(body),
+    pageBytes: Buffer.byteLength(body),
+    totalBytes: bytes.length,
+    paginated: true,
+  };
 }
 
 // Materialize only the approved Git tree, never the agent's mutable working directory.

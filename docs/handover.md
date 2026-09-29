@@ -1,6 +1,59 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-bounded-large-review.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-claude-in-app-updates.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Ownership — 2026-09-29
+
+**Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.63.0 — in-app updates (Claude)
+
+Settings > Updates installs **approved** releases through the runner, the administration helper and a fixed `agentd-update@<version>.service` job, with step-up key checks, a preview fingerprint and idle admission. See [handover](handovers/2026-09-29-claude-in-app-updates.md) and [managed updates](managed-updates.md). The host needs `apply_updates.py` once after installing.
+
+## Candidate 0.62.0 — safe GUI diagnostics
+
+[Latest handover](handovers/2026-09-29-codex-gui-diagnostics.md): Settings now shows and downloads a bounded report of release, managed drift/recovery, fixed service status, storage, uptime and recent sanitized failures. A fixed no-argument root probe cannot read task state, worktrees or account profiles and returns no raw journals, logs, prompts, paths, config contents or credentials. Managed updates restart the helper after an application swap. Exact source `192d25b` passed all 211 zero-skip Ubuntu deployment tests, typecheck, formatting and all Node 24/26/Ubuntu isolation CI. The application update is installed; the helper migration rolled back cleanly after exposing the startup race described below.
+
+The first operator install subsequently completed the 0.62.0 application swap and
+all 211 zero-skip Ubuntu tests, then exposed a helper-socket startup race in the
+one-time migration. Candidate 0.62.1 adds bounded readiness waits to both helper
+migrations. Exact source `15df341` passed 212 portable tests with 9 expected
+Linux-only skips, typecheck, formatting and all Node 24/26/Ubuntu isolation CI.
+The replacement archive, rollback verifier and launcher are staged but
+unexecuted. Production runs the healthy 0.62.0 application with runner/gateway
+active; the helper is absent after a complete rollback. Private recovery state
+and hashes are in the VM operator handover.
+
+## Candidate 0.61.0 — GUI access-key rotation
+
+[Latest handover](handovers/2026-09-29-codex-access-key-rotation.md): Settings now provides step-up-authenticated, exact-preview key rotation. A fixed-purpose root helper atomically changes only the root-owned access hash; the gateway has no helper access, generated plaintext is not retained, other sessions are invalidated and audit excludes secret material. Exact source `7096170` passed 207/207 zero-skip Ubuntu validation, typecheck, formatting and all required CI. Draft #67 and the cumulative archive/launcher are staged but unexecuted. Production stays on 0.59.1.
+
+## Candidate 0.60.0 — GitHub access ceilings
+
+[Latest handover](handovers/2026-09-29-github-access-ceilings.md): GitHub connections now persist an AgentD ceiling for repository operations, feedback reads or approved draft publishing. The runner enforces the ceiling before credential-bearing transports start, invalid metadata fails closed, and older connections become repository-only until explicit reconnection. The GUI separately discloses GitHub CLI's broader standard classic OAuth grant. This cumulative branch includes Claude's reviewed 0.59.1 rename-coverage, worker and gateway hardening changes. Exact source `2f3ede0` passed 203/203 required Ubuntu tests with zero skips, typecheck and formatting; Node 24/26 and required Linux CI passed. PR #66 is ready for review against PR #65; the exact archive and launcher are staged but unexecuted. Production remains 0.59.1.
+
+## Installed 0.59.1 — Claude review fixes plus gateway hardening (12:33 UTC; `main` = PR #60, protected)
+
+[Review](reviews/2026-09-29-claude-review-0.22-0.59.md), [handover](handovers/2026-09-29-claude-review-fixes.md), branch `fix/codex-review-2026-09-29`.
+
+- **F1 (high):** change listings detected renames, so a renamed file's deleted old path was missing from 0.59's required large-review coverage. Reproduced. Fixed with `--no-renames` and a regression test.
+- **F2 (medium):** the worker seccomp filter now also denies io_uring (ENOSYS), `open_tree` and `process_vm_*`, and this is proven inside the real sandbox.
+- Linux: 201/201, 0 skipped.
+- Gateway separation, limits, sandbox flags and storage cleanup were verified live or in code.
+
+Production now runs 0.59.1, with the gateway hardening applied and recorded. `main` is protected: PRs plus the three required checks. PR #61 now targets `main`; this work is PR #65.
+
+## Candidate 0.59.0 — exact-coverage large-review commit gate
+
+[Latest handover](handovers/2026-09-29-large-review-commit-gate.md): truncated aggregate reviews can run checks and commit only after every changed file has durable coverage for the same task and exact Git tree. Passing exact-tree checks, no conflicts and no blocked sensitive/binary/unscannable files remain mandatory. Revision and restart stay blocked. Exact source `39c30b4` passed 200/200 required Linux tests with zero skips, typecheck and formatting; Node 24/26 and required Linux CI passed. PR #64 is ready for review against PR #63's branch. The cumulative archive and launcher are staged but unexecuted. Production remains 0.55.0.
+
+## Candidate 0.58.0 — bounded paginated large-file review
+
+[Latest handover](handovers/2026-09-29-paginated-large-review.md): one individually oversized safe text diff is split into stable UTF-8 pages capped at 64 KiB, with exact whole-file and page fingerprints plus durable audited per-page coverage. Loading a page never marks it reviewed. Complete coverage remains evidence only; commit/revision/restart stay blocked for truncated reviews. Exact source `f132af0` passed 200/200 required Linux tests with zero skips, typecheck and formatting; Node 24/26 and required Linux CI passed. PR #63 is ready for review against PR #62's branch. The cumulative archive and launcher are staged but unexecuted. Production remains 0.55.0.
+
+## Candidate 0.57.0 — durable exact-tree large-review acknowledgements
+
+[Latest handover](handovers/2026-09-29-durable-large-review-acknowledgements.md): individually bounded files require an explicit audited acknowledgement tied to the task, exact tree, filename and patch fingerprint. Progress survives restart but never transfers to changed content. Complete acknowledgement remains evidence only; commit/revision/restart stay blocked for truncated reviews. Exact source `8117de5` passed 197/197 required Linux tests with zero skips, typecheck and formatting; Node 24/26 and required Linux CI passed. PR #62 is ready for review against PR #61's branch. The cumulative archive and launcher are staged but unexecuted. Production remains 0.55.0.
 
 ## Candidate 0.56.0 — bounded per-file large-review inspection
 
@@ -278,6 +331,9 @@ This review-response update records findings and bounded diagnostic evidence; it
 
 ## History and maintenance
 
+- [2026-09-29 — In-app updates (Claude)](handovers/2026-09-29-claude-in-app-updates.md)
+- [2026-09-29 — 0.62.2 fixes (Claude)](handovers/2026-09-29-claude-0.62.2.md)
+- [2026-09-29 — Claude review of 0.22–0.59 and fixes](handovers/2026-09-29-claude-review-fixes.md)
 - [2026-09-28 — Combined release 0.21.1](handovers/2026-09-28-combined-0.21.1.md)
 - [2026-09-28 — Fixes for redesign review D1–D9](handovers/2026-09-28-claude-redesign-fixes.md)
 - [2026-09-28 — Claude review of the 0.20.0 redesign](handovers/2026-09-28-claude-redesign-review.md)

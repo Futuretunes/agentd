@@ -12,6 +12,7 @@ import {
 } from "./repositories.ts";
 import { requireSpace, type Limits } from "./resources.ts";
 import { operationSlot } from "./operation-slot.ts";
+import { type GitHubAccess } from "./github-account.ts";
 type Options = {
   db: DatabaseSync;
   stateDir: string;
@@ -23,7 +24,7 @@ type Options = {
   title: (value: unknown) => string;
   closing: () => boolean;
   blocked: () => boolean;
-  profile: () => string | undefined;
+  profile: (required?: GitHubAccess) => string | undefined;
   audit: (action: string, task: string | null, detail: any) => void;
   command?: RepositoryGit;
 };
@@ -100,7 +101,10 @@ export function repositoryJobs(options: Options) {
         : null;
     const git =
       options.command ??
-      repositoryGit({ stateDir: options.stateDir, githubProfile: options.profile() });
+      repositoryGit({
+        stateDir: options.stateDir,
+        githubProfile: options.profile("repositories"),
+      });
     updatingProject = existing ? String(existing.id) : null;
     slot.start(
       id,

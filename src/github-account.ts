@@ -8,12 +8,25 @@ import {
   lstatSync,
   readdirSync,
   chmodSync,
+  writeFileSync,
+  readFileSync,
   openSync,
   fsyncSync,
   closeSync,
 } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+export type GitHubAccess = "repositories" | "feedback" | "publish";
+const accessRank: Record<GitHubAccess, number> = {
+  repositories: 0,
+  feedback: 1,
+  publish: 2,
+};
+const accessMessage: Record<GitHubAccess, string> = {
+  repositories: "private repository import and updates",
+  feedback: "private repositories and pull-request feedback reads",
+  publish: "private repositories, feedback reads and approved draft publishing",
+};
 export function githubAccount(root: string, executable = "/usr/local/bin/gh") {
   if (existsSync(root) && lstatSync(root).isSymbolicLink())
     throw Error("Invalid GitHub profile directory");
@@ -40,10 +53,34 @@ export function githubAccount(root: string, executable = "/usr/local/bin/gh") {
     }
   };
   const busy = () => !!current && !current.done;
+  const access = (): { level: GitHubAccess; configured: boolean; valid: boolean } => {
+    const file = join(profile, "agentd-access.json");
+    if (!existsSync(file))
+      return { level: "repositories", configured: false, valid: true };
+    try {
+      const stat = lstatSync(file);
+      if (stat.isSymbolicLink() || !stat.isFile() || stat.size > 1024) throw Error();
+      const value = JSON.parse(readFileSync(file, "utf8"));
+      if (value.version !== 1 || !Object.hasOwn(accessRank, value.level)) throw Error();
+      return { level: value.level, configured: true, valid: true };
+    } catch {
+      return { level: "repositories", configured: false, valid: false };
+    }
+  };
   const view = (owner?: string) => ({
     installed: existsSync(executable),
     connected: connected(),
     busy: busy(),
+    access: connected() ? access() : null,
+    authorization: {
+      method: "GitHub CLI device login",
+      providerGrant: ["repo", "read:org", "gist"],
+      note: "GitHub CLI requests this standard classic OAuth grant. AgentD enforces the selected access ceiling locally; the provider grant itself is broader.",
+      choices: Object.entries(accessMessage).map(([level, description]) => ({
+        level,
+        description,
+      })),
+    },
     session:
       current && typeof owner === "string" && current.owner === owner
         ? {
@@ -52,13 +89,16 @@ export function githubAccount(root: string, executable = "/usr/local/bin/gh") {
             code: current.code,
             url: current.code ? "https://github.com/login/device" : null,
             message: current.message,
+            access: current.access,
           }
         : null,
   });
-  function start(owner: string) {
+  function start(owner: string, requested: GitHubAccess) {
     if (closed || busy()) throw Error("A GitHub connection is already in progress.");
     if (!/^[a-f0-9]{64}$/.test(owner))
       throw Error("Authenticated browser session required");
+    if (!Object.hasOwn(accessRank, requested))
+      throw Error("Choose a supported GitHub access level.");
     if (!existsSync(executable)) throw Error("GitHub CLI is not installed.");
     mkdirSync(root, { recursive: true, mode: 0o700 });
     const temporary = mkdtempSync(join(root, "login-")),
@@ -72,6 +112,7 @@ export function githubAccount(root: string, executable = "/usr/local/bin/gh") {
       id: randomUUID(),
       owner,
       state: "starting",
+      access: requested,
       code: null as string | null,
       message: "Preparing GitHub sign-in…",
       done: false,
@@ -127,7 +168,9 @@ export function githubAccount(root: string, executable = "/usr/local/bin/gh") {
         session.code = code;
         session.state = "waiting";
         session.message =
-          "Open GitHub, enter this one-time code and review the requested permissions.";
+          "Open GitHub, enter this one-time code and review the requested permissions. AgentD will allow " +
+          accessMessage[requested] +
+          ".";
       }
     };
     child.stdout.on("data", capture);
@@ -152,6 +195,11 @@ export function githubAccount(root: string, executable = "/usr/local/bin/gh") {
           stat.size === 0
         )
           throw Error();
+        writeFileSync(
+          join(config, "agentd-access.json"),
+          JSON.stringify({ version: 1, level: requested }) + "\n",
+          { mode: 0o600, flag: "wx" },
+        );
         for (const name of readdirSync(config)) {
           const path = join(config, name);
           if (!lstatSync(path).isFile() || lstatSync(path).isSymbolicLink())
@@ -182,7 +230,8 @@ export function githubAccount(root: string, executable = "/usr/local/bin/gh") {
           closeSync(fd);
         }
         session.state = "succeeded";
-        session.message = "GitHub connected. Private imports use this server account.";
+        session.message =
+          "GitHub connected. AgentD allows " + accessMessage[requested] + ".";
       } catch {
         session.state = session.stopped ? "cancelled" : "failed";
         session.message =
@@ -197,7 +246,24 @@ export function githubAccount(root: string, executable = "/usr/local/bin/gh") {
   return {
     busy,
     view,
-    profile: () => (connected() ? profile : undefined),
+    profile(required: GitHubAccess = "repositories") {
+      if (!connected()) return undefined;
+      const policy = access();
+      if (!policy.valid)
+        throw Error(
+          "GitHub access policy is invalid. Reconnect before using this connection.",
+        );
+      if (accessRank[policy.level] < accessRank[required]) {
+        if (required === "publish")
+          throw Error(
+            "GitHub connection does not allow publishing. Reconnect with draft publishing access.",
+          );
+        throw Error(
+          "GitHub connection does not allow feedback reads. Reconnect with review access.",
+        );
+      }
+      return profile;
+    },
     start,
     cancel(owner: string, id: string) {
       if (current?.owner !== owner || current.id !== id)
