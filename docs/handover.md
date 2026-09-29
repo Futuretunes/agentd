@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.55.0 — complete explicit request routing
 
-[Latest handover](handovers/2026-09-29-support-routing.md): attachments, execution settings/model refresh and storage review/cleanup now have an explicit support route. Every supported request operation has one startup-validated owner; malformed and unknown requests retain the fail-closed fallback. Exact source `1a6d7dc` passed 194/194 required Linux tests with zero skips, typecheck and formatting. Draft PR #59 targets PR #58's branch; final CI is pending. The cumulative archive is staged but unexecuted. Production remains 0.43.0.
+[Latest handover](handovers/2026-09-29-support-routing.md): attachments, execution settings/model refresh and storage review/cleanup now have an explicit support route. Every supported request operation has one startup-validated owner; malformed and unknown requests retain the fail-closed fallback. Exact source `1a6d7dc` passed 194/194 required Linux tests with zero skips, typecheck and formatting. PR #59 is ready for review and targets PR #58's branch; Node 24/26 and Linux CI passed. The cumulative archive is staged but unexecuted. Production remains 0.43.0.
 
 ## Candidate 0.54.0 — explicit task-lifecycle routing
 

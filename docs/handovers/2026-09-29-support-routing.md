@@ -6,7 +6,7 @@
 - Release: 0.55.0, task schema 2.
 - Branch and base: `refactor/support-routing` from `refactor/task-routing`.
 - Implementation commit: `1a6d7dc3ccc665368339c5d2113efea0d71840c6`.
-- PR: https://github.com/Futuretunes/agentd/pull/59, draft against PR #58's branch pending final CI and review.
+- PR: https://github.com/Futuretunes/agentd/pull/59, ready for review against PR #58's branch.
 
 ## Changes and relevant files
 
@@ -21,7 +21,7 @@ Every supported operation now has one startup-validated route owner. The fallbac
 - macOS full suite: 185 passed, 0 failed; nine Linux-only tests skipped as expected.
 - Required Ubuntu suite from the exact archive: 194/194 passed with zero failures and zero skips.
 - Exact archive: version 0.55.0, task schema 2, SHA-256 `bcfd941d9a0770cf336402d5c3bec51cad406eb0ca2c105478e6a67c2ef2f829`.
-- GitHub Actions is pending for the documentation-complete branch and must pass before the PR is marked ready.
+- GitHub Actions runs `36555506625` and `36555512925`: Node 24, Node 26 and Required Linux isolation passed.
 
 No live model request, account consent, publication, cleanup, deployment, merge or tag occurred.
 
@@ -35,4 +35,4 @@ This completes operation-to-route ownership, but it does not finish broader modu
 
 ## Next steps
 
-After CI and review, mark #59 ready. Review the completed 0.49–0.55 routing stack as one baseline and decide whether to fold it into main-targeted #53 before continuing larger product items. Next product priorities remain R8 narrower GitHub consent, R14 binary/large-file review, GUI administration, retention quotas and notifications.
+Review the completed 0.49–0.55 routing stack as one baseline and decide whether to fold it into main-targeted #53 before continuing larger product items. Next product priorities remain R8 narrower GitHub consent, R14 binary/large-file review, GUI administration, retention quotas and notifications.
