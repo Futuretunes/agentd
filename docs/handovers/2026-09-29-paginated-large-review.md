@@ -6,7 +6,7 @@
 - Release: 0.58.0, task schema 2.
 - Branch and base: `feat/paginated-large-review` from `feat/durable-large-review-acknowledgements`.
 - Implementation commit: `f132af0c51baeb8c48643ca02c6da43d739d512c`.
-- PR: pending against PR #62's branch.
+- PR: https://github.com/Futuretunes/agentd/pull/63, ready for review against PR #62's branch.
 
 ## Changes and relevant files
 
@@ -23,7 +23,7 @@ The browser shows raw bounded diff pages, previous/next controls, explicit per-p
 - macOS full suite: 191 passed, 0 failed; nine Linux-only tests skipped as expected (200 total).
 - Required Ubuntu suite from the exact archive: 200/200 passed with zero failures and zero skips.
 - Exact archive: version 0.58.0, task schema 2, SHA-256 `1044e625a3bc9cb57eb77fae5522888d973f25f419b9808535faa78bbcdcf3e9`.
-- GitHub Actions: pending.
+- GitHub Actions runs `36562324205` and `36562354844` passed Node 24, Node 26 and required Linux isolation.
 
 No live model request, account consent, publication, cleanup, deployment, merge or tag occurred.
 
@@ -38,4 +38,3 @@ The full per-file diff has a 6 MiB ceiling so page discovery is globally bounded
 ## Next steps
 
 Before large reviews can authorize checks or commits, design a separate approval transition that proves complete standard-file and paginated-file coverage, revalidates the exact tree, and preserves existing blocked-file rules. R8 GitHub consent narrowing, GUI administration, retention quotas and notifications remain queued.
-
