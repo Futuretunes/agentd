@@ -93,11 +93,55 @@ export function diagnostics(command = "/opt/agentd/scripts/admin_diagnostics.py"
   return value;
 }
 
+function runScript(command: string) {
+  return execFileSync("/usr/bin/python3", ["-B", command], {
+    cwd: "/opt/agentd",
+    encoding: "utf8",
+    timeout: 20000,
+    maxBuffer: 32768,
+    env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+}
+
+export function updates(command = "/opt/agentd/scripts/admin_updates.py") {
+  const value = JSON.parse(runScript(command));
+  if (value?.format !== 1 || value.error) throw Error("Updates unavailable");
+  return value;
+}
+
+const releaseVersion = /^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$/;
+// Only a validated version reaches systemd. The job unit re-verifies the approval,
+// archive digest and version order before running the managed updater.
+export function startUpdate(
+  version: unknown,
+  list: () => any = updates,
+  start: (unit: string) => void = (unit) => {
+    execFileSync("/usr/bin/systemctl", ["start", "--no-block", unit], {
+      timeout: 10000,
+      stdio: "ignore",
+      env: { PATH: "/usr/bin:/bin", LANG: "C" },
+    });
+  },
+) {
+  if (typeof version !== "string" || !releaseVersion.test(version))
+    throw Error("Invalid update request");
+  const value = list();
+  if (value.running) throw Error("An update is already running");
+  if (value.configuration !== "ok") throw Error("Configuration needs review first");
+  const candidate = value.candidates?.find((item: any) => item.version === version);
+  if (!candidate?.valid || !candidate.newer) throw Error("Release is not installable");
+  start(`agentd-update@${version}.service`);
+  return { started: true as const, version };
+}
+
 export function handleAdminRequest(
   input: any,
   config: {
     mobileConfig: string;
     diagnostics?: () => unknown;
+    updates?: () => unknown;
+    startUnit?: (unit: string) => void;
   },
 ) {
   if (input?.op === "rotate-access-key") {
@@ -108,6 +152,13 @@ export function handleAdminRequest(
   }
   if (input?.op === "diagnostics" && Object.keys(input).join(" ") === "op")
     return (config.diagnostics ?? diagnostics)();
+  if (input?.op === "updates" && Object.keys(input).join(" ") === "op")
+    return (config.updates ?? updates)();
+  if (input?.op === "update-start") {
+    if (Object.keys(input).sort().join(" ") !== "op version")
+      throw Error("Unsupported admin operation");
+    return startUpdate(input.version, config.updates ?? updates, config.startUnit);
+  }
   throw Error("Unsupported admin operation");
 }
 

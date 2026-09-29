@@ -57,6 +57,28 @@ sudo python3 -B /tmp/agentd-release/scripts/reconcile_configuration.py --config 
 sudo python3 -B /tmp/agentd-release/scripts/reconcile_configuration.py --config /etc/agentd/update.json --accept /etc/agentd-web/mobile.json --apply
 ```
 
+## In-app updates (Settings > Updates, since 0.63.0)
+
+Once enabled (`sudo python3 -B /opt/agentd/scripts/apply_updates.py --config /etc/agentd/update.json`), the operator can install **approved** releases from the phone. Nothing else can be installed that way.
+
+1. **Approve.** After independent review and green CI, an administrator approves the exact archive. This verifies it against the independently recorded SHA-256 and places it with an approval record in root-only `/var/lib/agentd-releases/`. An approval is never silently replaced with different content.
+
+   ```sh
+   sudo python3 -B /opt/agentd/scripts/approve_release.py --archive /tmp/agentd-release.tar.gz --sha256 RECORDED_SHA256 --notes "Short release notes"
+   ```
+
+2. **Review and install in the app.** Settings > Updates lists newer approved releases.
+   - Preview needs the current access key and shows the version, revision and whether the task database changes.
+   - Install needs the key again, the matching preview fingerprint (valid 5 minutes) and a confirmation that services restart. Attempts share the sign-in rate limit.
+3. **Who checks what.**
+   - The gateway sends only a version.
+   - The runner refuses while tasks, preparations, account changes or other jobs are active.
+   - The administration helper accepts only `x.y.z`. It re-checks that the release is approved, valid and newer, that configuration is clean and that no update is running, then starts the fixed `agentd-update@<version>.service`.
+   - That job runs outside the helper sandbox. It re-verifies the approval and archive, refuses anything not newer, runs the release's own `update.py plan` and `install` (tests, stopped-state backup, swap, readiness, rollback), then the installed `apply_*` verifications.
+4. **Progress.** The job writes `update-status.json` (fixed messages only) and a root-only `update-<time>.log` in the deployment directory. Services restart near the end, and the operator is signed out. After signing in, Settings > Updates shows the result.
+
+Rollback from the app is not implemented yet; use the backup printed in the update log, as described below.
+
 ## Database compatibility
 
 `tasks.sqlite` uses `PRAGMA user_version=2` from release 0.32. Historical unversioned layouts (version 0) and the verified version-1 baseline migrate in one transaction, including legacy project/conversation ancestry, durable creation receipts and startup recovery. Invalid ancestry, schema validation or recovery failure rolls back schema/data/version together. Versioned schemas are validated and never silently repaired. A future version is refused before task recovery or worker-directory cleanup. Releases supporting only schema 1 refuse a schema-2 database; rollback requires the matching pre-update application and task-state backup, never merely replacing the code. Health retains metadata `schemaVersion: 1` and separately reports `taskSchemaVersion` (null with no runner).

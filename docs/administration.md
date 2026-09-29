@@ -1,7 +1,9 @@
 # Administration section — requirements (backlog)
 
-Status: access-key rotation is implemented in candidate 0.61.0 and read-only
-diagnostics in candidate 0.62.0; the remaining sections are not implemented. This
+Status: implemented are access-key rotation (0.61), read-only diagnostics (0.62) and
+in-app updates of approved releases (0.63, see
+[managed updates](managed-updates.md#in-app-updates-settings--updates-since-0630)).
+Open: rollback from the app, CLI updates, backups and the configuration pages. This
 expands roadmap item 6 ("GUI administration") and the core requirement of
 [terminal-free operation](roadmap.md#core-product-requirement-terminal-free-operation).
 

@@ -35,7 +35,33 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
                   ? images.read(input.id)
                   : input.op === "task-output"
                     ? { text: "fixture output", truncated: false }
-                    : [],
+                    : input.op === "admin-updates"
+                      ? {
+                          format: 1,
+                          installed: {
+                            version: "0.62.3",
+                            revision: "abc",
+                            taskSchemaVersion: 2,
+                          },
+                          configuration: "ok",
+                          running: false,
+                          job: null,
+                          candidates: [
+                            {
+                              version: "0.63.0",
+                              revision: "def",
+                              valid: true,
+                              newer: true,
+                            },
+                            {
+                              version: "0.62.3",
+                              revision: "abc",
+                              valid: true,
+                              newer: false,
+                            },
+                          ],
+                        }
+                      : [],
           }) + "\n",
         );
       } catch (e) {
@@ -605,6 +631,44 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
       ).status,
       429,
     );
+    // Settings > Updates: fresh key, bound preview, explicit confirmation, validated version.
+    const newKey = preview.generatedKey;
+    assert.equal(
+      JSON.parse((await req("/api/updates", null, cookie)).body).installed.version,
+      "0.62.3",
+    );
+    assert.equal(calls.at(-1).op, "admin-updates");
+    const update = (value) => req("/api/updates", value, cookie);
+    assert.equal(
+      (await update({ action: "preview", version: "0.63.0", currentKey: "wrong" }))
+        .status,
+      400,
+    );
+    assert.equal(
+      (await update({ action: "preview", version: "0.62.3", currentKey: newKey })).status,
+      400,
+    );
+    const updatePreview = JSON.parse(
+      (await update({ action: "preview", version: "0.63.0", currentKey: newKey })).body,
+    );
+    assert.match(updatePreview.fingerprint, /^[a-f0-9]{64}$/);
+    const install = (extra) =>
+      update({
+        action: "install",
+        version: "0.63.0",
+        fingerprint: updatePreview.fingerprint,
+        currentKey: newKey,
+        confirmed: true,
+        ...extra,
+      });
+    assert.equal((await install({ confirmed: false })).status, 400);
+    assert.equal((await install({ fingerprint: "0".repeat(64) })).status, 400);
+    const started = await install({});
+    assert.equal(started.status, 202);
+    assert.equal(calls.at(-1).op, "admin-update-start");
+    assert.equal(calls.at(-1).version, "0.63.0");
+    assert.match(calls.at(-1).owner, /^[a-f0-9]{64}$/);
+    assert.equal((await install({})).status, 400);
     assert.equal(
       (
         await req(
