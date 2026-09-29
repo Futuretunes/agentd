@@ -414,6 +414,82 @@ test("background review keeps reads responsive, excludes mutations and recovers 
   }
 });
 
+test("large-review file reads stay owner-bound and pinned to the prepared tree", async () => {
+  const f = setup();
+  const app = runner({
+    repo: f.repo,
+    stateDir: join(f.root, "state"),
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    editing: true,
+    editAdapters: ["codex"],
+    command: () => [
+      process.execPath,
+      ["-e", "require('fs').writeFileSync('README.md','large preview fixture\\n')"],
+    ],
+    isolate: (_tree, _state, command, args) => ({ command, args, cleanup() {} }),
+    reviewPrepare: async (input) => ({
+      ...snapshot(input.worktree, input.revision, input.stateDir),
+      patch: "",
+      truncated: true,
+      conflicts: [],
+    }),
+  });
+  await once(app.server, "listening");
+  try {
+    const task = app.request({
+      op: "create",
+      adapter: "codex",
+      prompt: "edit",
+      mode: "edit",
+    });
+    app.request({ op: "approve", id: task.id });
+    await finished(app, task.id);
+    const started = app.request({ op: "review-start", id: task.id, owner: "a" });
+    let job;
+    for (let i = 0; i < 100; i++) {
+      job = app.request({ op: "review-job", owner: "a", job: started.id });
+      if (job.status !== "preparing") break;
+      await sleep(10);
+    }
+    assert.equal(job.status, "succeeded");
+    assert.throws(
+      () =>
+        app.request({
+          op: "review-file",
+          owner: "b",
+          job: job.id,
+          tree: job.result.tree,
+          file: "README.md",
+        }),
+      /expired/,
+    );
+    assert.throws(
+      () =>
+        app.request({
+          op: "review-file",
+          owner: "a",
+          job: job.id,
+          tree: "0".repeat(40),
+          file: "README.md",
+        }),
+      /stale/,
+    );
+    const page = app.request({
+      op: "review-file",
+      owner: "a",
+      job: job.id,
+      tree: job.result.tree,
+      file: "README.md",
+    });
+    assert.equal(page.tree, job.result.tree);
+    assert.match(page.patch, /large preview fixture/);
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
 test("background check preparation is owner-bound, cancellable and revalidates exact changes", async () => {
   const f = setup();
   let release,

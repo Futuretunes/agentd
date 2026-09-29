@@ -1695,14 +1695,45 @@ async function openReview(id) {
         "error",
       ),
     );
-  if (value.truncated)
+  if (value.truncated) {
     content.append(
       node(
         "p",
-        "This diff is too large to approve here. Review and reduce it locally.",
+        "The combined diff is too large for one response. Inspect bounded text files below. Commit and revision approval remain unavailable until the change is reduced.",
         "error",
       ),
     );
+    if (!value.blocked.length) {
+      const files = node("section", undefined, "large-review-files");
+      files.append(node("h3", "Changed files"));
+      for (const file of value.files) {
+        const row = node("div", undefined, "large-review-file"),
+          status = node("span", "Not loaded", "muted"),
+          open = button("Inspect " + file, async () => {
+            open.disabled = true;
+            status.textContent = "Loading…";
+            try {
+              const page = await api("/api/review-jobs", {
+                action: "file",
+                job: job.id,
+                tree: value.tree,
+                file,
+              });
+              row.append(renderDiff(page.patch));
+              status.textContent = "Loaded from this exact snapshot";
+              open.remove();
+            } catch (error) {
+              status.textContent = error.message;
+              status.className = "error";
+              open.disabled = false;
+            }
+          });
+        row.append(open, status);
+        files.append(row);
+      }
+      content.append(files);
+    }
+  }
   content.append(renderDiff(value.patch));
   const checkState = value.checks
     ? value.checks.tree !== value.tree

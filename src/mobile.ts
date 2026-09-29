@@ -439,7 +439,7 @@ export function mobile(c: Config) {
         }
         if (path === "/api/review-jobs" && req.method === "POST") {
           const input = await body(req);
-          if (!["start", "status", "cancel"].includes(input.action))
+          if (!["start", "status", "file", "cancel"].includes(input.action))
             throw Error("Unsupported review action");
           send(
             200,
@@ -449,9 +449,18 @@ export function mobile(c: Config) {
                   ? "review-start"
                   : input.action === "status"
                     ? "review-job"
-                    : "review-cancel",
+                    : input.action === "file"
+                      ? "review-file"
+                      : "review-cancel",
               owner: accountOwner,
-              ...(input.action === "start" ? { id: input.id } : { job: input.job }),
+              ...(input.action === "start"
+                ? { id: input.id }
+                : {
+                    job: input.job,
+                    ...(input.action === "file"
+                      ? { tree: input.tree, file: input.file }
+                      : {}),
+                  }),
             }),
           );
           return;

@@ -20,6 +20,7 @@ const fields: Record<string, string> = {
   review: "id",
   "review-start": "id owner",
   "review-job": "job owner",
+  "review-file": "job tree file owner",
   "review-cancel": "job owner",
   "validation-start": "id tree owner",
   "validation-job": "job owner",

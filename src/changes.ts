@@ -161,6 +161,69 @@ function readTreeSnapshot(worktree: string, revision: string, tree: string) {
   return { tree, files: names, summary, patch, truncated, blocked };
 }
 
+// A combined review may exceed the display limit even when each changed file is
+// independently reviewable. This reads one exact-tree text diff with the same
+// binary, filename, content-scan and output bounds as the aggregate review.
+export function filePatch(repo: string, revision: string, tree: string, file: string) {
+  if (
+    !/^[a-f0-9]{40}$/.test(revision) ||
+    !/^[a-f0-9]{40}$/.test(tree) ||
+    typeof file !== "string" ||
+    !file ||
+    Buffer.byteLength(file) > 1024 ||
+    file.includes("\0")
+  )
+    throw Error("Invalid file review request");
+  const names = git(repo, ["diff", "--name-only", "-z", revision, tree])
+    .split("\0")
+    .filter(Boolean);
+  if (!names.includes(file)) throw Error("File is not part of this review");
+  if (sensitiveFilename(file)) throw Error("This file requires separate review");
+  if (
+    binaryNumstat(
+      git(repo, [
+        "--literal-pathspecs",
+        "diff",
+        "--numstat",
+        "-z",
+        "--no-renames",
+        revision,
+        tree,
+        "--",
+        file,
+      ]),
+    )
+  )
+    throw Error("Binary files require separate review");
+  const scan = contentScan();
+  for (const rev of [revision, tree]) {
+    const sha = blobID(
+      git(repo, ["--literal-pathspecs", "ls-tree", "-z", rev, "--", file]),
+    );
+    if (!sha || !acceptBlob(scan, sha, git(repo, ["cat-file", "-s", sha]))) continue;
+    const body = git(repo, ["cat-file", "blob", sha]);
+    if (body.includes("\0") || sensitiveContent(body).length)
+      throw Error("This file requires separate review");
+  }
+  const patch = gitOutput(
+    repo,
+    [
+      "--literal-pathspecs",
+      "diff",
+      "--no-ext-diff",
+      "--no-textconv",
+      "--no-color",
+      "--no-renames",
+      revision,
+      tree,
+      "--",
+      file,
+    ],
+    { maxBuffer: 180000 },
+  );
+  return { tree, file, patch };
+}
+
 // Materialize only the approved Git tree, never the agent's mutable working directory.
 // A detached worktree supplies the Git metadata expected by the isolation boundary.
 export function checkSnapshot(

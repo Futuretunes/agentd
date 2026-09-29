@@ -53,7 +53,7 @@ import { renewals, renewalFailure } from "./renewal.ts";
 import { type RepositoryGit } from "./repositories.ts";
 import { githubAccount } from "./github-account.ts";
 import { accounts } from "./accounts.ts";
-import { snapshot, commitSnapshot } from "./changes.ts";
+import { snapshot, commitSnapshot, filePatch } from "./changes.ts";
 import { isolated } from "./isolation.ts";
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID, createHash } from "node:crypto";
@@ -1064,6 +1064,25 @@ export function runner(c: Config) {
   function handleReviewPreparationRequest(input: any) {
     if (input.op === "review-job")
       return previewManager.view(input.owner ?? "local", input.job);
+    if (input.op === "review-file") {
+      const job = previewManager.view(input.owner ?? "local", input.job);
+      if (job.status !== "succeeded" || !job.result)
+        throw Error("Finish preparing the change preview first");
+      if (job.result.tree !== input.tree)
+        throw Error("The change preview is stale. Open it again.");
+      if (!job.result.truncated || job.result.blocked.length)
+        throw Error("Per-file review is unavailable for these changes");
+      if (!job.result.files.includes(input.file))
+        throw Error("File is not part of this review");
+      const row = get(job.task);
+      if (!row || row.review !== "pending") throw Error("Review is already resolved");
+      return filePatch(
+        String(project(String(row.project)).repo),
+        String(row.revision),
+        String(job.result.tree),
+        input.file,
+      );
+    }
     if (input.op === "review-cancel")
       return previewManager.cancel(input.owner ?? "local", input.job);
     if (input.op === "validation-job")
