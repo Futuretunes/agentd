@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.42.0 — approved cleanup recovery
 
-[Handover](handovers/2026-09-29-retention-recovery.md): a fresh storage approval can reconcile a previously removed worktree when the earlier cleanup failed to persist its result. Missing paths without cleanup evidence, remaining Git registrations and links stay protected. Log identity and timestamps are rechecked. Validation is in progress; the staged installer still targets validated 0.41.0. Nothing deployed.
+[Handover](handovers/2026-09-29-retention-recovery.md): a fresh storage approval can reconcile a previously removed worktree when the earlier cleanup failed to persist its result. Missing paths without cleanup evidence, remaining Git registrations and links stay protected. Log identity and timestamps are rechecked. Exact archive `3d96810` passed 175/175 required Linux tests with zero skips, formatting, typecheck and both CI runs; draft #46 is open. The single cumulative installer targets validated 0.42.0 and remains unexecuted. Production remains 0.22.0/schema 1. Next: asynchronous review/snapshot/integration jobs (R10), retaining explicit approvals and operation ownership.
 
 ## Candidate 0.41.0 — provider usage and credits
 
