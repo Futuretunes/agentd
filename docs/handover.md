@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-async-integration-preparation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-reviewed-release-baseline.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.49.0 — cumulative reviewed release baseline
+
+[Latest handover](handovers/2026-09-29-reviewed-release-baseline.md): review/check/commit/revision/restart preparation operations now have an explicit startup-validated request route owner. Duplicate route claims fail before service startup, while existing approval, isolation and exact-content checks remain unchanged. The complete linear stack is consolidated in main-targeted draft PR #53. Exact source `e96027d` passed 188/188 required Linux tests with zero skips plus Node 24/26 CI. The exact archive and cumulative launcher are staged but unexecuted; production remains 0.43.0. Stop here pending independent review and an explicit merge/tag decision.
 
 ## Candidate 0.48.0 — background integration preparation and application
 
