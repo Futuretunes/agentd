@@ -22,7 +22,7 @@ test("administration helper has one fixed entry point and no network or broad ho
   assert.match(unit, /^ExecStart=.*\/src\/admin-helper\.ts$/m);
   assert.match(unit, /^NoNewPrivileges=true$/m);
   assert.match(unit, /^ProtectSystem=strict$/m);
-  assert.match(unit, /^ReadWritePaths=\/etc\/agentd-web$/m);
+  assert.match(unit, /^ReadWritePaths=\/etc\/agentd-web \/etc\/agentd\/agentd\.env$/m);
   assert.match(unit, /^ReadOnlyPaths=\/etc\/agentd$/m);
   assert.match(unit, /^InaccessiblePaths=\/srv\/agentd \/var\/lib\/agentd$/m);
   assert.match(unit, /^RestrictAddressFamilies=AF_UNIX$/m);
