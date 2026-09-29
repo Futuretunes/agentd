@@ -200,3 +200,7 @@ The operator explicitly advanced provider credit reporting. Implemented Codex na
 ## R6 interrupted cleanup recovery — candidate 0.42.0
 
 A new preview and approval can clear a stale worktree record after a previously approved removal succeeded but persistence failed. Exact managed path, absent filesystem entry, absent Git registration and prior cleanup audit are required; uncertain paths remain manual review. No startup deletion or approval replay. Logs recheck ordinary-file identity, size and timestamps before truncation. Tests cover injected persistence failure, restart, missing evidence, registrations, dangling links, recreated content and same-size log changes. Exact archive `3d96810` passed 175/175 required Linux tests with zero skips, formatting, typecheck and CI; draft #46; staged, not installed. Whole-cache/attachment retention, hard quotas and asynchronous cleanup remain open.
+
+## Installed cumulative baseline and R10 preview work
+
+Operator confirmed 0.42.0 installed with 175 passing tests, task schema 2 and live resource cgroups verified. No live cleanup or provider quota acceptance was reported. Candidate 0.43.0 moves GUI change preview snapshots/conflict inspection into bounded cancellable child jobs with session ownership and polling. Existing commit/check/revision operations still recompute exact snapshots synchronously; R10 remains partial. Validation pending; candidate uninstalled.

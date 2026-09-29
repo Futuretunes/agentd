@@ -18,6 +18,9 @@ const fields: Record<string, string> = {
   "conversation-show": "id before",
   show: "id",
   review: "id",
+  "review-start": "id owner",
+  "review-job": "job owner",
+  "review-cancel": "job owner",
   "task-output": "id",
   create:
     "adapter prompt mode attachments parent conversation project overrides requestId",
@@ -66,6 +69,8 @@ const fields: Record<string, string> = {
   "attachment-read": "id",
 };
 export const gatewayMutations = new Set([
+  "review-start",
+  "review-cancel",
   "create",
   "retry",
   "restart-settings",

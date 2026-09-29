@@ -113,6 +113,23 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
     const expectedOwner = createHash("sha256")
       .update(cookie.split(";")[0].slice(15))
       .digest("hex");
+    for (const [action, op] of [
+      ["start", "review-start"],
+      ["status", "review-job"],
+      ["cancel", "review-cancel"],
+    ]) {
+      const payload =
+        action === "start"
+          ? { action, id: "x", owner: "spoofed" }
+          : { action, job: "j", owner: "spoofed" };
+      assert.equal((await req("/api/review-jobs", payload, cookie)).status, 200);
+      assert.equal(calls.at(-1).op, op);
+      assert.equal(calls.at(-1).owner, expectedOwner);
+      assert.equal(
+        (await req("/api/review-jobs", payload, cookie, "https://evil.example")).status,
+        403,
+      );
+    }
     assert.match(cookie, /HttpOnly; Secure; SameSite=Strict/);
     assert.equal((await req("/api/tasks", null, cookie)).status, 200);
     assert.equal(

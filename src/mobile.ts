@@ -437,6 +437,25 @@ export function mobile(c: Config) {
           res.end(value.text);
           return;
         }
+        if (path === "/api/review-jobs" && req.method === "POST") {
+          const input = await body(req);
+          if (!["start", "status", "cancel"].includes(input.action))
+            throw Error("Unsupported review action");
+          send(
+            200,
+            await call({
+              op:
+                input.action === "start"
+                  ? "review-start"
+                  : input.action === "status"
+                    ? "review-job"
+                    : "review-cancel",
+              owner: accountOwner,
+              ...(input.action === "start" ? { id: input.id } : { job: input.job }),
+            }),
+          );
+          return;
+        }
         const review = path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/review$/);
         if (review && req.method === "GET") {
           send(200, await call({ op: "review", id: review[1] }));

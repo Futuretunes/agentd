@@ -1,3 +1,5 @@
+import { reviewJobs } from "./review-jobs.ts";
+import { type prepareReview } from "./review-preview.ts";
 import { usageCache } from "./provider-usage.ts";
 import { probeUsage } from "./usage-probe.ts";
 import { executeTask, type TaskExecution } from "./task-execution.ts";
@@ -21,7 +23,7 @@ import {
 } from "./resources.ts";
 import { retention } from "./retention.ts";
 import { attachmentStore } from "./attachment-store.ts";
-import { gatewaySocket } from "./gateway-protocol.ts";
+import { gatewaySocket, gatewayMutations } from "./gateway-protocol.ts";
 import { initializeTaskDatabase } from "./task-database.ts";
 import { settings, resolveSettings, type Settings } from "./execution-settings.ts";
 import { modelCatalog, discoverModels } from "./model-catalog.ts";
@@ -62,6 +64,7 @@ import { join, isAbsolute } from "node:path";
 import { createServer } from "node:net";
 
 type Config = {
+  reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
   nativeVersion?: typeof probeNativeVersion;
@@ -222,6 +225,9 @@ export function runner(c: Config) {
   };
   const git = (args: string[], repo = c.repo) => localGit(repo, args);
   const github = githubAccount(c.githubRoot ?? join(c.stateDir, "github"));
+  const previewManager = reviewJobs(c.reviewPrepare, () => {
+    if (!closing) setImmediate(pump);
+  });
   function blocked(operation: Operation) {
     const read = (state: BusyState): boolean => {
       switch (state) {
@@ -609,7 +615,7 @@ export function runner(c: Config) {
       throw Error("This work mode is not enabled for this adapter");
   };
   function pump() {
-    if (blocked("dispatch")) return;
+    if (previewManager.busy() || blocked("dispatch")) return;
     const row = db
       .prepare("SELECT * FROM tasks WHERE status='queued' ORDER BY created,id LIMIT 1")
       .get();
@@ -678,7 +684,7 @@ export function runner(c: Config) {
     );
   }
   function available(row: any) {
-    if (blocked("review"))
+    if (previewManager.busy() || blocked("review"))
       throw Error("Wait for the active worker before reviewing changes");
     if (
       row.mode !== "edit" ||
@@ -773,6 +779,54 @@ export function runner(c: Config) {
   }
   function handleRequest(input: any) {
     if (closing) throw new Error("Service is stopping");
+    if (input.op === "review-job")
+      return previewManager.view(input.owner ?? "local", input.job);
+    if (input.op === "review-cancel")
+      return previewManager.cancel(input.owner ?? "local", input.job);
+    if (input.op === "review-start") {
+      const row = get(input.id);
+      if (!row) throw Error("Task not found");
+      // Same owner retries recover the active preview rather than start duplicate Git work.
+      if (!previewManager.busy()) {
+        available(row);
+        if (
+          repositoryManager.busy() ||
+          publicationManager.busy() ||
+          dependencyManager.busy()
+        )
+          throw Error("Wait for repository preparation before reviewing changes.");
+      }
+      return previewManager.start(
+        input.owner ?? "local",
+        input.id,
+        {
+          worktree: String(row.worktree),
+          revision: String(row.revision),
+          stateDir: c.stateDir,
+          mergeParent: row.merge_parent as string | null,
+          conflictPaths: JSON.parse(String(row.conflict_paths ?? "[]")),
+        },
+        (value) => ({
+          project: row.project,
+          ...value,
+          mergeParent: row.merge_parent,
+          checks: row.checks
+            ? ((v: any) => ({ ...v, output: v.log ? logTail(v.log) : "" }))(
+                JSON.parse(String(row.checks)),
+              )
+            : null,
+          commit: row.commit_sha,
+          branch: row.branch,
+          decision: row.review,
+        }),
+      );
+    }
+    if (
+      previewManager.busy() &&
+      (gatewayMutations.has(input.op) ||
+        ["project-register", "project-checks"].includes(input.op))
+    )
+      throw Error("Wait for the change preview, or cancel it before changing work.");
     const actor = auditContext.getStore(),
       receipt = receipts.inspect(
         input,
@@ -1773,7 +1827,9 @@ export function runner(c: Config) {
     async close() {
       closing = true;
       usageAbort.abort();
+      const previewClosed = previewManager.close();
       await publicationManager.close();
+      await previewClosed;
       await usageWork;
       await dependencyManager.close();
       await repositoryManager.close();

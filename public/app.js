@@ -1603,7 +1603,41 @@ $("compose").onsubmit = async (e) => {
   }
 };
 async function openReview(id) {
-  const value = await api("/api/tasks/" + id + "/review");
+  const progress = document.createElement("dialog");
+  progress.append(
+    node("h2", "Preparing change preview"),
+    node("p", "You can cancel while the project changes are inspected."),
+  );
+  document.body.append(progress);
+  progress.showModal();
+  let cancelled = false,
+    job;
+  const stop = async () => {
+    cancelled = true;
+    if (job) await api("/api/review-jobs", { action: "cancel", job: job.id });
+  };
+  progress.append(button("Cancel preview", stop));
+  progress.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    void stop().catch((error) => notice(error.message));
+  });
+  let value;
+  try {
+    job = await api("/api/review-jobs", { action: "start", id });
+    if (cancelled) await stop();
+    while (job.status === "preparing") {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      job = await api("/api/review-jobs", { action: "status", job: job.id });
+    }
+    if (cancelled || job.status === "cancelled") return;
+    if (job.status !== "succeeded")
+      throw Error(job.error || "Change preview failed. Open the review again.");
+    value = job.result;
+  } finally {
+    progress.close();
+    progress.remove();
+  }
+
   reviewTask = id;
   reviewTree = value.tree;
   const content = $("review-content");

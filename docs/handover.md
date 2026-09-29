@@ -1,6 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-retention-recovery.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-async-review.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.43.0 — background change previews
+
+[Handover](handovers/2026-09-29-async-review.md): GUI change previews run in a bounded cancellable background helper, with session-owned polling and mutation exclusion. Checks/commits still revalidate exact content. Validation in progress; not installed.
+
+## Installed baseline — 0.42.0
+
+The operator reported successful cumulative installation: 175/175 tests, task schema 2, live cgroup resource limits verified, service healthy with starts 37. Application/configuration rollback backups were created; native profiles and project checkouts preserved. Provider usage live acceptance and production cleanup remain unverified. Earlier candidate sections below are historical staging records.
 
 ## Candidate 0.42.0 — approved cleanup recovery
 
