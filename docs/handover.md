@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.43.0 — background change previews
 
-[Handover](handovers/2026-09-29-async-review.md): GUI change previews run in a bounded cancellable background helper, with session-owned polling and mutation exclusion. Checks/commits still revalidate exact content. Validation in progress; not installed.
+[Handover](handovers/2026-09-29-async-review.md): GUI change previews run in a bounded cancellable background helper, with session-owned polling and mutation exclusion. Checks/commits still revalidate exact content. Exact source `53e2173` passed 179/179 required Linux tests with zero skips, formatting, typecheck and CI. Local browser progress/completion/cancellation verified; draft #47 is open. The cumulative installer is staged for 0.43.0, unexecuted; installed baseline remains 0.42.0.
 
 ## Installed baseline — 0.42.0
 
