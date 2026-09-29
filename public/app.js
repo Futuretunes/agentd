@@ -3737,6 +3737,28 @@ async function renderConfigurationSettings() {
       report.tls.certificateExpires ? "muted" : "attention",
     ),
   );
+  if (report.tls.subject)
+    tls.append(node("p", "Subject: " + report.tls.subject, "muted"));
+  if (report.tls.issuer) tls.append(node("p", "Issuer: " + report.tls.issuer, "muted"));
+  if (report.tls.fingerprintSha256)
+    tls.append(node("p", "Fingerprint: " + report.tls.fingerprintSha256, "muted"));
+  if (typeof report.tls.daysRemaining === "number")
+    tls.append(
+      node(
+        "p",
+        report.tls.daysRemaining < 0
+          ? "Certificate is expired."
+          : report.tls.daysRemaining + " day(s) remaining.",
+        report.tls.daysRemaining < 14 ? "attention" : "muted",
+      ),
+    );
+  tls.append(
+    node(
+      "p",
+      "Replacement writes the managed gateway certificate and key. Restart the phone gateway afterward.",
+      "muted",
+    ),
+  );
   const policySection = node("section", undefined, "operation-section");
   policySection.append(node("h3", "Agent adapters"));
   if (!adapters) {
@@ -3812,6 +3834,7 @@ async function renderConfigurationSettings() {
     );
   if (runtime)
     actions.push(button("Change runtime flags", () => renderRuntimeFlagsForm(runtime)));
+  actions.push(button("Replace TLS certificate", () => renderTlsReplaceForm(report.tls)));
   if (adapters) {
     const liveEnabled = (policy.enabledAdapters ?? []).slice().sort().join(", "),
       managedEnabled = (adapters.enabled ?? []).slice().sort().join(", "),
@@ -3851,6 +3874,139 @@ async function renderConfigurationSettings() {
       "muted",
     ),
   );
+}
+function renderTlsReplaceForm(current) {
+  const form = node("form"),
+    certificate = node("textarea"),
+    key = node("textarea"),
+    currentLabel = node("label", "Current access key"),
+    currentKey = node("input"),
+    submit = node("button", "Review TLS certificate", "primary"),
+    section = node("section", undefined, "operation-section");
+  section.append(node("h3", "Replace managed TLS certificate"));
+  section.append(
+    node(
+      "p",
+      current?.certificateExpires
+        ? "Current expiry: " + current.certificateExpires
+        : "Current certificate metadata is unavailable.",
+      "muted",
+    ),
+  );
+  certificate.required = true;
+  certificate.rows = 8;
+  certificate.placeholder = "-----BEGIN CERTIFICATE-----";
+  key.required = true;
+  key.rows = 8;
+  key.placeholder = "-----BEGIN PRIVATE KEY-----";
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  const certLabel = node("label", "Certificate PEM");
+  certLabel.append(certificate);
+  const keyLabel = node("label", "Private key PEM");
+  keyLabel.append(key);
+  form.append(
+    section,
+    certLabel,
+    keyLabel,
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      if (certificate.value.length > 16384 || key.value.length > 16384)
+        throw Error("Certificate or key is too large.");
+      const plan = await api("/api/tls", {
+        action: "preview",
+        currentKey: currentKey.value,
+        certificate: certificate.value,
+        key: key.value,
+      });
+      currentKey.value = "";
+      renderTlsReplaceApproval(plan, certificate.value, key.value);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
+}
+function renderTlsReplaceApproval(plan, certificate, key) {
+  const form = node("form"),
+    confirm = node("input"),
+    idle = node("input"),
+    currentLabel = node("label", "Enter the current access key again"),
+    currentKey = node("input"),
+    submit = node("button", "Apply TLS certificate", "primary"),
+    confirmLabel = node("label", "I understand the phone gateway must be restarted"),
+    idleLabel = node(
+      "label",
+      "Current work, account changes and preparations are stopped",
+    );
+  confirm.type = "checkbox";
+  confirm.required = true;
+  confirmLabel.prepend(confirm);
+  idle.type = "checkbox";
+  if (plan.requiresIdle) {
+    idle.required = true;
+    idleLabel.prepend(idle);
+  }
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      "Replace the managed TLS certificate and private key. Browsers will see the new certificate after the phone gateway restarts.",
+      "attention",
+    ),
+    confirmLabel,
+    ...(plan.requiresIdle ? [idleLabel] : []),
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const result = await api("/api/tls", {
+        action: "apply",
+        fingerprint: plan.fingerprint,
+        certificate,
+        key,
+        currentKey: currentKey.value,
+        confirmed: true,
+        ...(plan.requiresIdle ? { confirmedIdle: true } : {}),
+      });
+      notice("TLS certificate saved. Restart the phone gateway to apply it.");
+      configurationContent.replaceChildren(
+        node("p", "TLS certificate files were replaced.", "good"),
+        ...(result.fingerprintSha256
+          ? [node("p", "New fingerprint: " + result.fingerprintSha256, "muted")]
+          : []),
+        ...(result.certificateExpires
+          ? [node("p", "Expires: " + result.certificateExpires, "muted")]
+          : []),
+        button("Restart phone gateway now", () =>
+          openConfigurationServiceRestart("gateway", "Phone gateway"),
+        ),
+        button("Back to configuration", () => void renderConfigurationSettings()),
+      );
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
 }
 function renderRuntimeFlagsForm(current) {
   const form = node("form"),
@@ -3916,6 +4072,8 @@ function renderRuntimeFlagsApproval(plan) {
   const form = node("form"),
     confirm = node("input"),
     idle = node("input"),
+    currentLabel = node("label", "Enter the current access key again"),
+    currentKey = node("input"),
     submit = node("button", "Apply runtime flags", "primary"),
     confirmLabel = node("label", "I understand the task runner must be restarted"),
     idleLabel = node(
@@ -3931,6 +4089,10 @@ function renderRuntimeFlagsApproval(plan) {
     idle.required = true;
     idleLabel.prepend(idle);
   }
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
   submit.type = "submit";
   form.append(
     node(
@@ -3942,6 +4104,7 @@ function renderRuntimeFlagsApproval(plan) {
     ),
     confirmLabel,
     ...(plan.requiresIdle ? [idleLabel] : []),
+    currentLabel,
     submit,
     button("Cancel", () => void renderConfigurationSettings()),
   );
@@ -3953,6 +4116,7 @@ function renderRuntimeFlagsApproval(plan) {
         action: "apply",
         fingerprint: plan.fingerprint,
         flags: plan.flags,
+        currentKey: currentKey.value,
         confirmed: true,
         ...(plan.requiresIdle ? { confirmedIdle: true } : {}),
       });
@@ -4058,6 +4222,8 @@ function renderAdapterPolicyApproval(plan) {
   const form = node("form"),
     confirm = node("input"),
     idle = node("input"),
+    currentLabel = node("label", "Enter the current access key again"),
+    currentKey = node("input"),
     submit = node("button", "Apply adapter policy", "primary"),
     confirmLabel = node("label", "I understand the task runner must be restarted"),
     idleLabel = node(
@@ -4072,6 +4238,10 @@ function renderAdapterPolicyApproval(plan) {
     idle.required = true;
     idleLabel.prepend(idle);
   }
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
   submit.type = "submit";
   form.append(
     node(
@@ -4088,6 +4258,7 @@ function renderAdapterPolicyApproval(plan) {
     ),
     confirmLabel,
     ...(plan.requiresIdle ? [idleLabel] : []),
+    currentLabel,
     submit,
     button("Cancel", () => void renderConfigurationSettings()),
   );
@@ -4101,6 +4272,7 @@ function renderAdapterPolicyApproval(plan) {
         enabled: plan.enabled,
         editing: plan.editing,
         editAdapters: plan.editAdapters,
+        currentKey: currentKey.value,
         confirmed: true,
         ...(plan.requiresIdle ? { confirmedIdle: true } : {}),
       });

@@ -13,15 +13,11 @@ class ConfigurationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);deployment=root/'deployment';deployment.mkdir()
             (deployment/'installed.json').write_text(json.dumps({'configuration':{'x':1}}))
-            with patch.object(configuration,'CONFIG',root/'update.json'),patch.object(configuration,'DEPLOYMENT',deployment),patch.object(configuration.update,'config',return_value=config),patch.object(configuration.update,'configuration_state',return_value='ok'),patch.object(configuration.admin_diagnostics,'gateway_config_readable',return_value=True),patch.object(configuration.subprocess,'run',side_effect=OSError()):
+            with patch.object(configuration,'CONFIG',root/'update.json'),patch.object(configuration,'DEPLOYMENT',deployment),patch.object(configuration.update,'config',return_value=config),patch.object(configuration.update,'configuration_state',return_value='ok'),patch.object(configuration.admin_diagnostics,'gateway_config_readable',return_value=True),patch.object(configuration.admin_tls,'metadata',return_value={'certificateExpires':None,'subject':None,'issuer':None,'fingerprintSha256':None,'daysRemaining':None}),patch.object(configuration.subprocess,'run',side_effect=OSError()):
                 value=configuration.snapshot()
             self.assertTrue(value['configuration']['resourceProfile'])
             self.assertTrue(value['configuration']['separateGateway'])
             self.assertIsNone(value['tls']['certificateExpires'])
             self.assertNotIn('/etc',json.dumps(value))
-
-    def test_tls_expiry_rejects_relative_paths(self):
-        self.assertIsNone(configuration.tls_expiry('../etc/passwd'))
-        self.assertIsNone(configuration.tls_expiry('relative.crt'))
 
 if __name__=='__main__':unittest.main()

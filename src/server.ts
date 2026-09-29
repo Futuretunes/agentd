@@ -16,6 +16,7 @@ import {
   applyAdapters,
   readRuntimeFlags,
   applyRuntimeFlags as writeRuntimeFlags,
+  replaceTls,
   restartService,
   rotateAccessKey,
   startRollback,
@@ -125,6 +126,10 @@ export function start(options: Options) {
             : undefined,
           applyRuntimeFlags: process.env.AGENTD_ADMIN_SOCKET
             ? (flags) => writeRuntimeFlags(process.env.AGENTD_ADMIN_SOCKET!, flags)
+            : undefined,
+          replaceTlsCertificate: process.env.AGENTD_ADMIN_SOCKET
+            ? (certificate, key) =>
+                replaceTls(process.env.AGENTD_ADMIN_SOCKET!, certificate, key)
             : undefined,
           gateway: process.env.AGENTD_GATEWAY_SOCKET
             ? {

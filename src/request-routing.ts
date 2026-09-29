@@ -36,6 +36,7 @@ export const managedOperationOperations = [
   "admin-backups-prune",
   "admin-adapters-apply",
   "admin-runtime-flags-apply",
+  "admin-tls-replace",
   "feedback-targets",
   "feedback-status",
   // Local compatibility name used by publication lifecycle tests and admin clients.

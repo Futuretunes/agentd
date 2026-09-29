@@ -105,6 +105,7 @@ type Config = {
     credentialRenewal: boolean;
     codexChat: boolean;
   }) => Promise<any>;
+  replaceTlsCertificate?: (certificate: string, key: string) => Promise<any>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -1609,6 +1610,27 @@ export function runner(c: Config) {
         );
       return c.applyRuntimeFlags(input.flags).then((result) => {
         audit("runtime-flags-apply", null, { flags: input.flags });
+        return result;
+      });
+    }
+    if (input.op === "admin-tls-replace") {
+      if (!c.replaceTlsCertificate)
+        throw Error("TLS certificate replacement is not installed.");
+      if (
+        typeof input.certificate !== "string" ||
+        typeof input.key !== "string" ||
+        input.certificate.length > 16384 ||
+        input.key.length > 16384
+      )
+        throw Error("TLS certificate request is invalid.");
+      if (blocked("update"))
+        throw Error(
+          "Finish or stop current work, account changes and preparations before replacing the TLS certificate.",
+        );
+      return c.replaceTlsCertificate(input.certificate, input.key).then((result) => {
+        audit("tls-replace", null, {
+          fingerprintSha256: result.fingerprintSha256 ?? null,
+        });
         return result;
       });
     }

@@ -72,6 +72,17 @@ export function mobile(c: Config) {
         };
         requiresIdle: boolean;
       }
+    >(),
+    tlsPreviews = new Map<
+      string,
+      {
+        fingerprint: string;
+        inventory: string;
+        expires: number;
+        certificate: string;
+        key: string;
+        requiresIdle: boolean;
+      }
     >();
   let accessHash = c.accessHash;
   const bridge = (input: unknown) =>
@@ -79,14 +90,14 @@ export function mobile(c: Config) {
       const encoded = JSON.stringify(gatewayRequest(input)) + "\n";
       const s = createConnection(c.socket);
       let text = "";
-      s.setTimeout(10000, () => s.destroy(new Error("Runner timed out")));
+      const op = (input as any)?.op;
+      s.setTimeout(op === "admin-tls-replace" ? 25000 : 10000, () =>
+        s.destroy(new Error("Runner timed out")),
+      );
       s.on("connect", () => s.write(encoded));
       s.on("data", (b) => {
         text += b;
-        if (
-          Buffer.byteLength(text) >
-          ((input as any)?.op === "attachment-read" ? 8_000_000 : 4_000_000)
-        )
+        if (Buffer.byteLength(text) > (op === "attachment-read" ? 8_000_000 : 4_000_000))
           s.destroy(new Error("Response too large"));
       });
       s.on("error", reject);
@@ -741,6 +752,106 @@ export function mobile(c: Config) {
             return;
           }
           throw Error("Unsupported runtime flags action.");
+        }
+        if (path === "/api/tls" && req.method === "POST") {
+          const limitKey = "tls:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now();
+          for (const [owner, preview] of tlsPreviews)
+            if (preview.expires < now) tlsPreviews.delete(owner);
+          if (!accessKeyMatches(input.currentKey, accessHash))
+            throw Error("Current access key did not match.");
+          if (
+            typeof input.certificate !== "string" ||
+            typeof input.key !== "string" ||
+            input.certificate.length > 16384 ||
+            input.key.length > 16384
+          )
+            throw Error("TLS certificate request is invalid.");
+          if (input.action === "preview") {
+            const current = await call({ op: "admin-configuration" }),
+              plan = await call({
+                op: "admin-service-restart-plan",
+                target: "gateway",
+              }),
+              inventory =
+                typeof current.tls?.fingerprintSha256 === "string"
+                  ? current.tls.fingerprintSha256
+                  : "none",
+              expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              material = createHash("sha256")
+                .update(input.certificate)
+                .update("\0")
+                .update(input.key)
+                .digest("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-tls-replace-preview:${accountOwner}:${inventory}:${material}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            tlsPreviews.set(accountOwner, {
+              fingerprint,
+              inventory,
+              expires,
+              certificate: input.certificate,
+              key: input.key,
+              requiresIdle: !plan.idle,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              inventory,
+              subject: current.tls?.subject ?? null,
+              certificateExpires: current.tls?.certificateExpires ?? null,
+              requiresIdle: !plan.idle,
+              requiresRestart: true,
+            });
+            return;
+          }
+          if (input.action === "apply") {
+            const preview = tlsPreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint ||
+              input.certificate !== preview.certificate ||
+              input.key !== preview.key
+            )
+              throw Error("TLS certificate preview expired. Review it again.");
+            if (preview.requiresIdle && input.confirmedIdle !== true)
+              throw Error(
+                "Confirm that current work is stopped before replacing the TLS certificate.",
+              );
+            if (input.confirmed !== true)
+              throw Error("Confirm the TLS certificate change.");
+            const current = await call({ op: "admin-configuration" }),
+              inventory =
+                typeof current.tls?.fingerprintSha256 === "string"
+                  ? current.tls.fingerprintSha256
+                  : "none";
+            if (inventory !== preview.inventory)
+              throw Error("TLS certificate changed. Review it again.");
+            tlsPreviews.delete(accountOwner);
+            const result = await call({
+              op: "admin-tls-replace",
+              certificate: preview.certificate,
+              key: preview.key,
+            });
+            send(200, result);
+            return;
+          }
+          throw Error("Unsupported TLS action.");
         }
         if (path === "/api/storage" && req.method === "POST") {
           const input = await body(req);
