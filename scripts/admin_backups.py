@@ -6,10 +6,12 @@ sys.dont_write_bytecode=True
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import update
 import backup_retention
+import run_rollback as rollback
 
 CONFIG=Path('/etc/agentd/update.json')
+DEPLOYMENT=Path('/var/lib/agentd-deployment')
 
-def public_item(item):
+def public_item(item,rollback_id=None):
     name=Path(item['path']).name
     if not name.startswith('agentd-backup-'):raise ValueError('Unexpected backup name')
     return {
@@ -19,18 +21,39 @@ def public_item(item):
         'bytes':int(item.get('bytes') or 0),
         'pinned':bool(item.get('pinned')),
         'eligible':bool(item.get('eligible')),
+        'rollbackTarget':bool(rollback_id and name==rollback_id),
     }
 
 def snapshot():
     c=update.config(CONFIG)
     value=backup_retention.plan(c)
+    rollback_id=None
+    rollback_view={'available':False,'reason':'Rollback target is unavailable.','backupId':None}
+    try:
+        installed=json.loads((DEPLOYMENT/'installed.json').read_text())['release']
+        target,reason=rollback.candidate(c,installed,CONFIG)
+        if target:
+            rollback_id=Path(target['path']).name
+            rollback_view={
+                'available':True,
+                'version':target['version'],
+                'revision':target['revision'][:12],
+                'completedAt':target['completedAt'],
+                'backupId':rollback_id,
+                'reason':None,
+            }
+        else:
+            rollback_view={'available':False,'reason':reason or 'No earlier version backup is available.','backupId':None}
+    except Exception:
+        pass
     return {
         'format':1,
         'keep':value['keep'],
         'minimumAgeDays':value['minimumAgeDays'],
         'blocked':bool(value['blocked']),
         'fingerprint':value['fingerprint'],
-        'items':[public_item(item) for item in value['items']],
+        'rollback':rollback_view,
+        'items':[public_item(item,rollback_id) for item in value['items']],
     }
 
 def prune(fingerprint):
