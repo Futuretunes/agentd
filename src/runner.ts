@@ -1,3 +1,4 @@
+import { removeDependencyStage } from "./dependency-recovery.ts";
 import { repositoryJobs } from "./repository-jobs.ts";
 import { dependencyJobs } from "./dependency-jobs.ts";
 import { admissionBlocked, type Operation, type BusyState } from "./operation-policy.ts";
@@ -153,11 +154,7 @@ export function runner(c: Config) {
   for (const job of db
     .prepare("SELECT id FROM dependency_jobs WHERE state!='succeeded'")
     .all())
-    if (/^[a-f0-9-]{36}$/.test(String(job.id)))
-      rmSync(join(c.stateDir, "dependencies", String(job.id)), {
-        recursive: true,
-        force: true,
-      });
+    removeDependencyStage(db, c.stateDir, String(job.id));
   for (const name of readdirSync(c.stateDir))
     if (name.startsWith("worker-") || name.startsWith("git-home-"))
       rmSync(join(c.stateDir, name), { recursive: true, force: true });

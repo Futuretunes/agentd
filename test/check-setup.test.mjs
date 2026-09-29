@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -351,6 +352,95 @@ test("cancelling dependency setup before dispatch records cancellation without s
     assert.equal(result.plan.ready, false);
     assert.equal(existsSync(join(config.stateDir, "dependencies", job.id)), false);
     assert.throws(() => app.request({ op: "check-cancel", id: job.id }), /not found/);
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test("dependency publication rolls back the project pointer when success persistence fails", async () => {
+  const f = fixture(),
+    config = {
+      repo: f.repo,
+      stateDir: join(f.root, "state"),
+      worktrees: join(f.root, "trees"),
+      logs: join(f.root, "logs"),
+      command: () => [process.execPath, ["-e", ""]],
+      accountStatus: () => ({ state: "signed_out" }),
+      prepareDependencies: async (stage) => {
+        mkdirSync(join(stage, "node_modules"));
+        writeFileSync(join(stage, "node_modules", "marker"), "keep");
+      },
+    };
+  const app = runner(config);
+  await once(app.server, "listening");
+  const db = new DatabaseSync(join(config.stateDir, "tasks.sqlite"));
+  try {
+    const plan = app.request({ op: "check-setup", project: "default" }).plan;
+    app.request({
+      op: "check-prepare",
+      project: "default",
+      fingerprint: plan.fingerprint,
+    });
+    await done(app);
+    const previous = app.request({ op: "projects" })[0].check_dependencies;
+    db.exec(
+      "CREATE TRIGGER fail_dependency_success BEFORE UPDATE OF state ON dependency_jobs WHEN NEW.state='succeeded' BEGIN SELECT RAISE(ABORT,'fixture publication failure'); END",
+    );
+    const job = app.request({
+      op: "check-prepare",
+      project: "default",
+      fingerprint: plan.fingerprint,
+    });
+    const result = await done(app);
+    assert.equal(result.jobs[0].state, "failed");
+    assert.equal(result.plan.ready, true);
+    assert.equal(app.request({ op: "projects" })[0].check_dependencies, previous);
+    assert.equal(readFileSync(join(previous, "marker"), "utf8"), "keep");
+    assert.equal(existsSync(join(config.stateDir, "dependencies", job.id)), false);
+  } finally {
+    db.exec("DROP TRIGGER IF EXISTS fail_dependency_success");
+    db.close();
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test("startup preserves dependencies referenced by a project despite a legacy interrupted job marker", async () => {
+  const f = fixture(),
+    config = {
+      repo: f.repo,
+      stateDir: join(f.root, "state"),
+      worktrees: join(f.root, "trees"),
+      logs: join(f.root, "logs"),
+      command: () => [process.execPath, ["-e", ""]],
+      accountStatus: () => ({ state: "signed_out" }),
+      prepareDependencies: async (stage) => {
+        mkdirSync(join(stage, "node_modules"));
+        writeFileSync(join(stage, "node_modules", "marker"), "preserve");
+      },
+    };
+  let app = runner(config);
+  await once(app.server, "listening");
+  try {
+    const plan = app.request({ op: "check-setup", project: "default" }).plan;
+    const job = app.request({
+      op: "check-prepare",
+      project: "default",
+      fingerprint: plan.fingerprint,
+    });
+    await done(app);
+    const path = app.request({ op: "projects" })[0].check_dependencies;
+    await app.close();
+    const db = new DatabaseSync(join(config.stateDir, "tasks.sqlite"));
+    db.prepare("UPDATE dependency_jobs SET state='running' WHERE id=?").run(job.id);
+    db.close();
+    app = runner(config);
+    await once(app.server, "listening");
+    assert.equal(readFileSync(join(path, "marker"), "utf8"), "preserve");
+    const current = app.request({ op: "check-setup", project: "default" });
+    assert.equal(current.jobs[0].state, "interrupted");
+    assert.equal(current.plan.ready, true);
   } finally {
     await app.close();
     rmSync(f.root, { recursive: true, force: true });

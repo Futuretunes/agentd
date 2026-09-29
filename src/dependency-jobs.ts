@@ -1,6 +1,7 @@
+import { publishDependencies, removeDependencyStage } from "./dependency-recovery.ts";
 import { type DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
   checkManifest,
@@ -118,20 +119,16 @@ export function dependencyJobs(options: Options) {
             throw Error(
               "Dependency files changed. Previous setup was kept; review and prepare again.",
             );
-          db.prepare(
-            "UPDATE projects SET check_dependencies=?,check_lock=?,check_manifest=? WHERE id=?",
-          ).run(
-            join(stage, "node_modules"),
-            value.lockHash,
-            value.fingerprint,
-            target.p.id,
-          );
-          db.prepare(
-            "UPDATE dependency_jobs SET state='succeeded',updated=? WHERE id=?",
-          ).run(new Date().toISOString(), id);
+          publishDependencies(db, {
+            project: String(target.p.id),
+            job: id,
+            path: join(stage, "node_modules"),
+            lock: value.lockHash,
+            manifest: value.fingerprint,
+          });
         } catch (e) {
           try {
-            rmSync(stage, { recursive: true, force: true });
+            removeDependencyStage(db, options.stateDir, id);
           } catch {}
           db.prepare(
             "UPDATE dependency_jobs SET state=?,error=?,updated=? WHERE id=?",

@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-repository-owner.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-dependency-recovery.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.37.0 — dependency publication recovery
+
+[Handover](handovers/2026-09-29-dependency-recovery.md): project dependency selection and job success publish atomically; failure/startup cleanup preserves referenced or uncertain stages. Fault-injection and restart coverage added. Exact Linux/CI pending; not deployed.
 
 ## Candidate 0.36.0 — repository operation ownership
 
