@@ -6,9 +6,13 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.66.0 — Agents & CLIs versions (Cursor)
+
+Settings > Agents & CLIs shows installed vs tested native CLI versions, refresh, and the guided host update procedure. Binary install from the phone remains deferred. See [handover](handovers/2026-09-29-cursor-cli-versions.md). Not installed. Next admin slice: GUI backups.
+
 ## Candidate 0.65.0 — approval-gated service restart (Cursor)
 
-Settings > Diagnostics can restart the task runner or phone gateway with step-up access-key preview, idle admission and fixed helper `systemctl restart` of configured units only. See [handover](handovers/2026-09-29-cursor-service-restart.md). Not installed. Next admin slice: CLI updates. Merge PR stack #61–#72 remains open unless already completed.
+Settings > Diagnostics can restart the task runner or phone gateway with step-up access-key preview, idle admission and fixed helper `systemctl restart` of configured units only. See [handover](handovers/2026-09-29-cursor-service-restart.md). Not installed.
 
 ## Installed and live-accepted 0.64.1 — reload_required, single restart (Claude)
 

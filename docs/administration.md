@@ -7,7 +7,9 @@ diagnostics (0.62), in-app updates of approved releases (0.63) and rollback
 Operator live-accepted 0.64.1 install and rollback to 0.64.0 on 2026-09-29.
 Implemented in candidate 0.65.0: approval-gated restart of the task runner or phone
 gateway from Diagnostics, with step-up access-key preview, idle admission and helper-side
-configuration/update guards. Open, in order: CLI updates; backups; configuration pages. This expands roadmap item 6 ("GUI administration") and the core requirement of
+configuration/update guards. Implemented in candidate 0.66.0: Settings > Agents & CLIs
+compatibility view, refresh and guided host-update procedure (binary install still not
+in-app). Open, in order: CLI binary install helper (future); backups; configuration pages. This expands roadmap item 6 ("GUI administration") and the core requirement of
 [terminal-free operation](roadmap.md#core-product-requirement-terminal-free-operation).
 
 ## What the operator asked for

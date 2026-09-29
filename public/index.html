@@ -177,6 +177,14 @@
         </p>
         <button id="access-key-settings">Change access key</button>
       </section>
+      <section class="settings-section" aria-labelledby="settings-cli-heading">
+        <h3 id="settings-cli-heading">Agents &amp; CLIs</h3>
+        <p class="muted">
+          Compare installed agent CLI versions with the releases this server was tested
+          against, and follow the guided update steps when they differ.
+        </p>
+        <button id="cli-settings">Review CLI versions</button>
+      </section>
       <section class="settings-section" aria-labelledby="settings-diagnostics-heading">
         <h3 id="settings-diagnostics-heading">Diagnostics</h3>
         <p class="muted">
@@ -210,6 +218,13 @@
         <button id="updates-close" aria-label="Close updates">×</button>
       </div>
       <div id="updates-content" aria-live="polite"></div>
+    </dialog>
+    <dialog id="cli-dialog" aria-labelledby="cli-heading">
+      <div class="review-head">
+        <h2 id="cli-heading">Agents &amp; CLIs</h2>
+        <button id="cli-close" aria-label="Close CLI settings">×</button>
+      </div>
+      <div id="cli-content" aria-live="polite"></div>
     </dialog>
     <dialog id="diagnostics-dialog" aria-labelledby="diagnostics-heading">
       <div class="review-head">

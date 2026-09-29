@@ -3672,6 +3672,113 @@ $("access-key-settings").onclick = () => {
   renderAccessKeyForm();
   accessKeyDialog.showModal();
 };
+const cliDialog = $("cli-dialog"),
+  cliContent = $("cli-content");
+$("cli-close").onclick = () => cliDialog.close();
+$("cli-settings").onclick = () => {
+  $("preferences-dialog").close();
+  void openCliSettings();
+};
+async function openCliSettings() {
+  cliContent.replaceChildren(node("p", "Checking installed CLI versions…", "muted"));
+  cliDialog.showModal();
+  try {
+    await renderCliSettings();
+  } catch (error) {
+    cliContent.replaceChildren(
+      node("p", error.message || "CLI status is unavailable.", "error"),
+    );
+  }
+}
+async function renderCliSettings() {
+  const report = await api("/api/operations"),
+    names = { claude: "Claude", codex: "Codex", cursor: "Cursor" },
+    adapters = report.adapters ?? [],
+    mismatch = adapters.some((value) => value.nativeVersion?.state === "mismatch"),
+    unavailable = adapters.some(
+      (value) =>
+        !value.nativeVersion?.version || value.nativeVersion?.state === "unavailable",
+    );
+  const list = node("section", undefined, "operation-section");
+  list.append(node("h3", "Installed vs tested"));
+  for (const value of adapters) {
+    const version = value.nativeVersion,
+      title = names[value.id] ?? value.id,
+      card = node("div", undefined, "operation-card");
+    card.append(node("h4", title));
+    card.append(
+      node(
+        "p",
+        "Tested: " + (version?.testedVersion ?? value.nativeLimits?.testedVersion ?? "—"),
+        "muted",
+      ),
+    );
+    card.append(
+      node(
+        "p",
+        version?.version
+          ? "Installed: " +
+              version.version +
+              (version.state === "verified"
+                ? " · matches"
+                : " · compatibility review needed")
+          : version?.state === "checking"
+            ? "Checking installed version…"
+            : "Installed version unavailable.",
+        version?.state === "mismatch"
+          ? "attention"
+          : version?.state === "verified"
+            ? "good"
+            : "muted",
+      ),
+    );
+    if (version?.checkedAt)
+      card.append(
+        node("p", "Checked " + new Date(version.checkedAt).toLocaleString(), "muted"),
+      );
+    list.append(card);
+  }
+  const guide = node("section", undefined, "operation-section");
+  guide.append(node("h3", "Guided CLI update"));
+  guide.append(
+    node(
+      "p",
+      mismatch || unavailable
+        ? "A different or missing CLI can break model discovery, renewals and pinned work modes. Follow these steps on the server; AgentD does not download or replace native CLIs from the phone yet."
+        : "Versions match the tested pins. If you update a CLI later, follow these steps before using it for work.",
+      mismatch || unavailable ? "attention" : "muted",
+    ),
+  );
+  for (const step of [
+    "1. Finish or stop active runs, preparations and account changes.",
+    "2. Keep the current tested binary for rollback. Do not copy account profiles into a release.",
+    "3. Stage the official native binary in a disposable profile and review release notes, flags, auth/renewal format and tools.",
+    "4. Update AgentD's shared version pin and related adapters together, then run the Linux isolation suite.",
+    "5. Install the reviewed binary while idle, refresh this page, then use separately approved smoke work if needed.",
+  ])
+    guide.append(node("p", step));
+  const refresh = button("Refresh versions", async () => {
+    refresh.disabled = true;
+    try {
+      await api("/api/account", { action: "refresh" });
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await renderCliSettings();
+    } catch (error) {
+      notice(error.message);
+      refresh.disabled = false;
+    }
+  });
+  cliContent.replaceChildren(
+    list,
+    guide,
+    refresh,
+    node(
+      "p",
+      "Binary installs stay administrator-managed until a narrowly scoped in-app CLI updater exists. See the native CLI updates document in the repository.",
+      "muted",
+    ),
+  );
+}
 const diagnosticsDialog = $("diagnostics-dialog"),
   diagnosticsContent = $("diagnostics-content");
 $("diagnostics-close").onclick = () => diagnosticsDialog.close();
