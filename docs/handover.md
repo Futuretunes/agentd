@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.67.0 — managed backups (Cursor)
+
+Settings > Backups lists sanitized managed update backups and can remove only retention-eligible items with step-up preview. Version restore remains Updates rollback. See [handover](handovers/2026-09-29-cursor-managed-backups.md). Not installed. Next admin slice: configuration pages.
+
 ## Candidate 0.66.0 — Agents & CLIs versions (Cursor)
 
 Settings > Agents & CLIs shows installed vs tested native CLI versions, refresh, and the guided host update procedure. Binary install from the phone remains deferred. See [handover](handovers/2026-09-29-cursor-cli-versions.md). Not installed. Next admin slice: GUI backups.

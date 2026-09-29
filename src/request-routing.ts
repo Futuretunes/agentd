@@ -33,6 +33,7 @@ export const managedOperationOperations = [
   "admin-update-start",
   "admin-rollback-start",
   "admin-service-restart",
+  "admin-backups-prune",
   "feedback-targets",
   "feedback-status",
   // Local compatibility name used by publication lifecycle tests and admin clients.
@@ -68,6 +69,7 @@ export const serviceReadOperations = [
   "admin-diagnostics",
   "admin-updates",
   "admin-service-restart-plan",
+  "admin-backups",
 ] as const;
 
 export const workspaceReadOperations = [

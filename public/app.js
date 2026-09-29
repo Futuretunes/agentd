@@ -3672,6 +3672,177 @@ $("access-key-settings").onclick = () => {
   renderAccessKeyForm();
   accessKeyDialog.showModal();
 };
+const backupsDialog = $("backups-dialog"),
+  backupsContent = $("backups-content");
+$("backups-close").onclick = () => backupsDialog.close();
+$("backups-settings").onclick = () => {
+  $("preferences-dialog").close();
+  void openBackupsSettings();
+};
+async function openBackupsSettings() {
+  backupsContent.replaceChildren(node("p", "Loading managed backups…", "muted"));
+  backupsDialog.showModal();
+  try {
+    await renderBackupsSettings();
+  } catch (error) {
+    backupsContent.replaceChildren(
+      node("p", error.message || "Backups are unavailable.", "error"),
+    );
+  }
+}
+async function renderBackupsSettings() {
+  const report = await api("/api/backups"),
+    bytes = (value) =>
+      value >= 1024 ** 3
+        ? (value / 1024 ** 3).toFixed(1) + " GiB"
+        : (value / 1024 ** 2).toFixed(1) + " MiB",
+    list = node("section", undefined, "operation-section"),
+    eligible = (report.items ?? []).filter((item) => item.eligible).length;
+  list.append(node("h3", "Update backups"));
+  list.append(
+    node(
+      "p",
+      `Retention keeps the newest ${report.keep} backups and anything newer than ${report.minimumAgeDays} days. Pinned backups and pending recovery block cleanup.`,
+      "muted",
+    ),
+  );
+  if (report.blocked)
+    list.append(node("p", "Pending recovery is blocking backup cleanup.", "attention"));
+  if (!(report.items ?? []).length)
+    list.append(node("p", "No managed update backups are recorded yet.", "muted"));
+  for (const item of report.items ?? []) {
+    const card = node("div", undefined, "operation-card");
+    card.append(
+      node(
+        "p",
+        `AgentD ${item.version} · ${new Date(item.completedAt * 1000).toLocaleString()} · ${bytes(item.bytes)}`,
+      ),
+    );
+    card.append(
+      node(
+        "p",
+        item.pinned
+          ? "Pinned · kept"
+          : item.eligible
+            ? "Eligible for cleanup"
+            : "Retained",
+        item.eligible ? "attention" : "muted",
+      ),
+    );
+    list.append(card);
+  }
+  const actions = [];
+  if (eligible && !report.blocked) {
+    actions.push(
+      button("Review eligible cleanup", () => renderBackupCleanupForm(eligible)),
+    );
+  }
+  actions.push(
+    button("Open Updates for restore", () => {
+      backupsDialog.close();
+      $("updates-settings").click();
+    }),
+  );
+  backupsContent.replaceChildren(
+    list,
+    ...actions,
+    node(
+      "p",
+      "Restoring an older AgentD version and its task data is done from Settings > Updates (Roll back). Worktree cleanup stays under Activity.",
+      "muted",
+    ),
+  );
+}
+function renderBackupCleanupForm(eligible) {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    current = node("input"),
+    submit = node("button", "Review cleanup", "primary");
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      `${eligible} eligible managed backup${eligible === 1 ? "" : "s"} can be removed. Newer, recent and pinned backups stay.`,
+      "attention",
+    ),
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderBackupsSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/backups", {
+        action: "preview",
+        currentKey: current.value,
+      });
+      current.value = "";
+      renderBackupCleanupApproval(plan);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  backupsContent.replaceChildren(form);
+}
+function renderBackupCleanupApproval(plan) {
+  const form = node("form"),
+    currentLabel = node("label", "Enter the current access key again"),
+    current = node("input"),
+    confirmLabel = node("label"),
+    confirmed = node("input"),
+    approve = node("button", "Remove eligible backups", "danger");
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  confirmed.type = "checkbox";
+  confirmed.required = true;
+  confirmLabel.append(
+    confirmed,
+    document.createTextNode(
+      ` Remove ${plan.eligible} eligible backup${plan.eligible === 1 ? "" : "s"}`,
+    ),
+  );
+  approve.type = "submit";
+  form.append(
+    node("p", "Review expires in five minutes.", "attention"),
+    currentLabel,
+    confirmLabel,
+    approve,
+    button("Start over", () => renderBackupCleanupForm(plan.eligible)),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    approve.disabled = true;
+    try {
+      const result = await api("/api/backups", {
+        action: "prune",
+        fingerprint: plan.fingerprint,
+        currentKey: current.value,
+        confirmed: confirmed.checked,
+      });
+      backupsContent.replaceChildren(
+        node("h3", "Cleanup finished"),
+        node(
+          "p",
+          `Removed ${result.removed} managed backup${result.removed === 1 ? "" : "s"}.`,
+          "good",
+        ),
+        button("Done", () => void renderBackupsSettings(), "primary"),
+      );
+    } catch (error) {
+      notice(error.message);
+      approve.disabled = false;
+    }
+  };
+  backupsContent.replaceChildren(form);
+}
 const cliDialog = $("cli-dialog"),
   cliContent = $("cli-content");
 $("cli-close").onclick = () => cliDialog.close();

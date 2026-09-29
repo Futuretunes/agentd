@@ -90,6 +90,8 @@ type Config = {
   restartService?: (
     target: "runner" | "gateway",
   ) => Promise<{ restarted: true; target: "runner" | "gateway" }>;
+  adminBackups?: () => Promise<any>;
+  pruneManagedBackups?: (fingerprint: string) => Promise<{ removed: number }>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -1548,6 +1550,20 @@ export function runner(c: Config) {
         return result;
       });
     }
+    if (input.op === "admin-backups-prune") {
+      if (!c.pruneManagedBackups) throw Error("Backup management is not installed.");
+      if (
+        typeof input.fingerprint !== "string" ||
+        !/^[a-f0-9]{64}$/.test(input.fingerprint)
+      )
+        throw Error("Backup cleanup request is invalid.");
+      if (blocked("storage"))
+        throw Error("Finish or stop current work before cleaning managed backups.");
+      return c.pruneManagedBackups(input.fingerprint).then((result) => {
+        audit("backups-prune", null, { removed: result.removed });
+        return result;
+      });
+    }
     requireNoReviewPreparationMutation(input);
     if (typeof input.op === "string" && input.op.startsWith("feedback-"))
       return publicationManager.feedback(input);
@@ -1603,6 +1619,10 @@ export function runner(c: Config) {
     if (input.op === "admin-updates") {
       if (!c.adminUpdates) throw Error("In-app updates are not installed.");
       return c.adminUpdates();
+    }
+    if (input.op === "admin-backups") {
+      if (!c.adminBackups) throw Error("Backup management is not installed.");
+      return c.adminBackups();
     }
     if (input.op === "admin-service-restart-plan") {
       if (input.target !== "runner" && input.target !== "gateway")

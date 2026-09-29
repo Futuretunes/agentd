@@ -156,6 +156,41 @@ export function restartService(
   return { restarted: true as const, target: value.target as "runner" | "gateway" };
 }
 
+export function listBackups(command = "/opt/agentd/scripts/admin_backups.py") {
+  const output = execFileSync("/usr/bin/python3", ["-B", command], {
+    cwd: "/opt/agentd",
+    encoding: "utf8",
+    timeout: 20000,
+    maxBuffer: 65536,
+    env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const value = JSON.parse(output);
+  if (value?.format !== 1 || !Array.isArray(value.items) || value.error)
+    throw Error("Backups unavailable");
+  return value;
+}
+
+export function pruneBackups(
+  fingerprint: unknown,
+  command = "/opt/agentd/scripts/admin_backups.py",
+) {
+  if (typeof fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(fingerprint))
+    throw Error("Invalid backup cleanup request");
+  const output = execFileSync("/usr/bin/python3", ["-B", command, "prune", fingerprint], {
+    cwd: "/opt/agentd",
+    encoding: "utf8",
+    timeout: 120000,
+    maxBuffer: 4096,
+    env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const value = JSON.parse(output);
+  if (value?.format !== 1 || !Number.isSafeInteger(value.removed))
+    throw Error("Backup cleanup refused");
+  return { removed: value.removed as number };
+}
+
 export function startRollback(
   version: unknown,
   list: () => any = updates,
@@ -186,6 +221,8 @@ export function handleAdminRequest(
     updates?: () => unknown;
     startUnit?: (unit: string) => void;
     restart?: (target: unknown) => { restarted: true; target: "runner" | "gateway" };
+    backups?: () => unknown;
+    pruneBackups?: (fingerprint: unknown) => { removed: number };
   },
 ) {
   if (input?.op === "rotate-access-key") {
@@ -212,6 +249,13 @@ export function handleAdminRequest(
     if (Object.keys(input).sort().join(" ") !== "op target")
       throw Error("Unsupported admin operation");
     return (config.restart ?? restartService)(input.target);
+  }
+  if (input?.op === "backups" && Object.keys(input).join(" ") === "op")
+    return (config.backups ?? listBackups)();
+  if (input?.op === "backups-prune") {
+    if (Object.keys(input).sort().join(" ") !== "fingerprint op")
+      throw Error("Unsupported admin operation");
+    return (config.pruneBackups ?? pruneBackups)(input.fingerprint);
   }
   throw Error("Unsupported admin operation");
 }
