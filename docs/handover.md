@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-service-read-routing.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-workspace-read-routing.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.52.0 — explicit workspace-read routing
+
+[Latest handover](handovers/2026-09-29-workspace-read-routing.md): project lists, conversation history/detail and local task listing now have a disjoint explicit read route. Returned data and mutation authority are unchanged. Exact source `742eec8` passed 191/191 required Linux tests with zero skips, typecheck and formatting. Draft PR #56 targets PR #55's branch; final CI is pending. The cumulative archive is staged but unexecuted. Production remains 0.43.0.
 
 ## Candidate 0.51.0 — explicit service-read routing
 

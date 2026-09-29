@@ -236,3 +236,7 @@ Publication/feedback, dependency preparation, GitHub account, repository and nat
 ## R2 service-read routing — candidate 0.51.0
 
 Capabilities, Operations status and local audit reads now dispatch through one explicit read-only route. Their existing capability/account/usage/resource/task summary behavior is unchanged, browser gateway authority remains separate, and route ownership is tested as disjoint from preparation and managed mutations. Exact source `faf9642` passed 190/190 required Ubuntu tests with zero skips, Node 24/26 CI, typecheck and formatting. Draft #55 targets #54's branch; cumulative archive staged, not installed. Next bounded slice: project/conversation reads, then their mutations separately.
+
+## R2 workspace-read routing — candidate 0.52.0
+
+Project lists, archived projects, history/search, project conversations, paginated conversation detail and local task listing now dispatch through one explicit read route. Existing validation, output bounds and data are unchanged; every workspace mutation stays on the guarded core path. Exact source `742eec8` passed 191/191 required Ubuntu tests with zero skips, typecheck and formatting. Draft #56 targets #55's branch and awaits final CI; the cumulative archive is staged, not installed. Next bounded slice: project/conversation mutations, then task actions separately.
