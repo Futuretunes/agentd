@@ -5,7 +5,7 @@
 - Status: implemented; not installed
 - Release: 0.72.0
 - Branch and base: `feat/gui-cli-binary-helper` on `main` (0.71.0)
-- PR: (open after push)
+- PR: #82
 
 ## Changes and relevant files
 
