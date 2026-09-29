@@ -4,6 +4,7 @@ import {
   requestRouter,
   reviewPreparationOperations,
   serviceReadOperations,
+  supportOperations,
   taskOperations,
   workspaceMutationOperations,
   workspaceReadOperations,
@@ -2010,10 +2011,8 @@ export function runner(c: Config) {
     }
     throw Error("Unknown task operation");
   }
-  function handleCoreRequest(input: any) {
+  function handleSupportRequest(input: any) {
     requireNoReviewPreparationMutation(input);
-    const { receipt, recovered } = inspectCreationRequest(input);
-    if (recovered) return recovered;
     if (input.op === "attachment-upload") {
       requireSpace([c.stateDir], limits.reserveBytes);
       return images.upload(input);
@@ -2127,6 +2126,12 @@ export function runner(c: Config) {
       );
     }
 
+    throw Error("Unknown support operation");
+  }
+  function handleCoreRequest(input: any) {
+    requireNoReviewPreparationMutation(input);
+    const { receipt, recovered } = inspectCreationRequest(input);
+    if (recovered) return recovered;
     throw new Error("Unknown operation");
   }
   const dispatchRequest = requestRouter(
@@ -2160,6 +2165,11 @@ export function runner(c: Config) {
         name: "tasks",
         operations: taskOperations,
         handle: handleTaskRequest,
+      },
+      {
+        name: "support",
+        operations: supportOperations,
+        handle: handleSupportRequest,
       },
     ],
     handleCoreRequest,

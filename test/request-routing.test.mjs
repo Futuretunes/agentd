@@ -5,6 +5,7 @@ import {
   requestRouter,
   reviewPreparationOperations,
   serviceReadOperations,
+  supportOperations,
   taskOperations,
   workspaceMutationOperations,
   workspaceReadOperations,
@@ -122,6 +123,24 @@ test("request routing assigns task lifecycle operations to one owner", () => {
   );
   for (const op of taskOperations) route({ op });
   assert.deepEqual(seen, taskOperations);
+});
+
+test("request routing assigns support operations without weakening fallback", () => {
+  const seen = [];
+  const route = requestRouter(
+    [
+      { name: "tasks", operations: taskOperations, handle() {} },
+      {
+        name: "support",
+        operations: supportOperations,
+        handle: (input) => seen.push(input.op),
+      },
+    ],
+    (input) => seen.push("fallback:" + String(input?.op)),
+  );
+  for (const op of supportOperations) route({ op });
+  route({ op: "unknown" });
+  assert.deepEqual(seen, [...supportOperations, "fallback:unknown"]);
 });
 
 test("request routing rejects duplicate ownership at startup", () => {

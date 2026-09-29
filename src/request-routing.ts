@@ -91,6 +91,16 @@ export const taskOperations = [
   "cancel",
 ] as const;
 
+export const supportOperations = [
+  "attachment-upload",
+  "attachment-read",
+  "settings-view",
+  "settings-save",
+  "models-refresh",
+  "storage-preview",
+  "storage-cleanup",
+] as const;
+
 /**
  * Build the runner's operation table once at startup. An operation has one owner;
  * duplicate claims fail before either handler can receive a request.
