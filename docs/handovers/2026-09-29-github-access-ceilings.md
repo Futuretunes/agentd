@@ -4,8 +4,8 @@
 - Requested outcome: pick up the next backlog item after the 0.59.0 large-review gate.
 - Status: implemented and locally validated; exact Linux and CI validation pending.
 - Release: 0.60.0, task schema 2.
-- Branch and base: `feat/github-access-ceilings` from `feat/large-review-commit-eligibility`.
-- PR: pending; intended to target PR #64's branch.
+- Branch and base: `feat/github-access-ceilings`, cumulatively merged with `fix/codex-review-2026-09-29` after concurrent review work was detected.
+- PR: [#66](https://github.com/Futuretunes/agentd/pull/66), intended to target PR #65's branch after the cumulative merge is pushed.
 
 ## Changes and relevant files
 
@@ -26,7 +26,7 @@ No live model request, GitHub account consent, repository publication, deploymen
 
 ## Deployment and rollback
 
-Production remains the verified 0.55.0/task-schema-2 baseline. No 0.60.0 archive or launcher has been staged yet. Existing native profiles must remain outside application rollback. After installation, an existing GitHub connection is repository-only until the operator reconnects and deliberately selects feedback or publishing access.
+Production runs the verified 0.59.1/task-schema-2 baseline installed from Claude's reviewed branch. No 0.60.0 archive or launcher has been staged yet. Existing native profiles must remain outside application rollback. After installation, an existing GitHub connection is repository-only until the operator reconnects and deliberately selects feedback or publishing access.
 
 ## Constraints and known issues
 
@@ -34,4 +34,4 @@ The AgentD ceiling controls trusted daemon behavior but does not reduce the OAut
 
 ## Next steps
 
-Commit and push the implementation, open a stacked PR against `feat/large-review-commit-eligibility`, build the exact archive, run required Ubuntu validation and CI, then update this handover and the cumulative staged installer. Independent review and consolidation of PRs #60 onward remain open.
+Complete the cumulative merge with Claude's 0.59.1 review fixes, retarget PR #66 to PR #65, build the exact archive, run required Ubuntu validation and CI, then update this handover and the staged installer. Independent review and consolidation of the remaining stack remain open.
