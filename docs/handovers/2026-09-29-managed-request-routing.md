@@ -6,7 +6,7 @@
 - Release: 0.50.0, task schema 2.
 - Branch and base: `refactor/managed-request-routing` from `release/0.49.0-reviewed-baseline`.
 - Implementation commit: `268e28ad2a31a15b66aa1cf00cc2d989e2fe9405`.
-- PR: https://github.com/Futuretunes/agentd/pull/54, draft against the cumulative baseline.
+- PR: https://github.com/Futuretunes/agentd/pull/54, ready for review against the cumulative baseline.
 
 ## Changes and relevant files
 

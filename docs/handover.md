@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.50.0 — explicit routing for extracted managers
 
-[Latest handover](handovers/2026-09-29-managed-request-routing.md): publication/feedback, dependency, GitHub, repository and native-account operations now have one startup-validated route owner. The existing preparation mutation exclusion is shared by managed and core paths. Exact source `268e28a` passed 189/189 required Linux tests with zero skips, typecheck, formatting and Node 24/26 CI. Draft PR #54 targets the unmerged cumulative baseline; the exact archive is staged but unexecuted. Production remains 0.43.0.
+[Latest handover](handovers/2026-09-29-managed-request-routing.md): publication/feedback, dependency, GitHub, repository and native-account operations now have one startup-validated route owner. The existing preparation mutation exclusion is shared by managed and core paths. Exact source `268e28a` passed 189/189 required Linux tests with zero skips, typecheck, formatting and Node 24/26 CI. PR #54 is ready for review against the unmerged cumulative baseline; the exact archive is staged but unexecuted. Production remains 0.43.0.
 
 ## Candidate 0.49.0 — cumulative reviewed release baseline
 
