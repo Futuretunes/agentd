@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.45.0 — background commit preparation
 
-[Handover](handovers/2026-09-29-async-commit-preparation.md): GUI commit approval now runs exact snapshot admission in an owner-bound cancellable background job. Competing mutations and task dispatch wait while reads stay responsive. Exact ref/tree/parents/message checks recover a completed request after response loss or restart. The local suite passed 181 tests with nine expected Linux-only skips; exact Linux, CI and browser validation are pending. Installed baseline remains 0.43.0 and the staged 0.44.0 installer remains unexecuted.
+[Handover](handovers/2026-09-29-async-commit-preparation.md): GUI commit approval now runs exact snapshot admission in an owner-bound cancellable background job. Competing mutations and task dispatch wait while reads stay responsive. Exact ref/tree/parents/message checks recover a completed request after response loss or restart. Exact source `05ab5ca` passed 181/181 required Linux tests with zero skips, formatting, typecheck, both CI runs and the browser cancellation/success flow. Draft #49 is open and the cumulative installer is staged but unexecuted. Installed baseline remains 0.43.0.
 
 ## Candidate 0.44.0 — background check preparation
 
