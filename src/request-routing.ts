@@ -10,6 +10,8 @@ export const reviewPreparationOperations = [
   "review-job",
   "review-file",
   "review-file-acknowledge",
+  "review-file-page",
+  "review-file-page-acknowledge",
   "review-cancel",
   "review-start",
   "validation-job",

@@ -130,6 +130,33 @@ test("gateway authority rejects admin operations, extra path fields and missing 
       owner,
     }),
   );
+  assert.equal(
+    gatewayRequest({
+      op: "review-file-page-acknowledge",
+      job: "job",
+      tree: "d".repeat(40),
+      file: "README.md",
+      page: 1,
+      pages: 3,
+      fileFingerprint: "e".repeat(64),
+      pageFingerprint: "f".repeat(64),
+      owner,
+    }).page,
+    1,
+  );
+  assert.throws(() =>
+    gatewayRequest({
+      op: "review-file-page-acknowledge",
+      job: "job",
+      tree: "d".repeat(40),
+      file: "README.md",
+      page: 3,
+      pages: 3,
+      fileFingerprint: "e".repeat(64),
+      pageFingerprint: "f".repeat(64),
+      owner,
+    }),
+  );
 });
 const call = (path, data) =>
   new Promise((resolve, reject) => {

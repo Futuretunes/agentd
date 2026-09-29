@@ -22,6 +22,9 @@ const fields: Record<string, string> = {
   "review-job": "job owner",
   "review-file": "job tree file owner",
   "review-file-acknowledge": "job tree file fingerprint owner",
+  "review-file-page": "job tree file page owner",
+  "review-file-page-acknowledge":
+    "job tree file page pages fileFingerprint pageFingerprint owner",
   "review-cancel": "job owner",
   "validation-start": "id tree owner",
   "validation-job": "job owner",
@@ -86,6 +89,7 @@ const fields: Record<string, string> = {
 export const gatewayMutations = new Set([
   "review-start",
   "review-file-acknowledge",
+  "review-file-page-acknowledge",
   "review-cancel",
   "validation-start",
   "validation-cancel",
@@ -149,6 +153,26 @@ export function gatewayRequest(value: unknown): Record<string, any> {
     (typeof input.owner !== "string" || !/^[a-f0-9]{64}$/.test(input.owner))
   )
     throw Error("Browser owner required");
+  if (
+    input.op === "review-file-page" &&
+    (!Number.isSafeInteger(input.page) || input.page < 0)
+  )
+    throw Error("Reload the paginated file review.");
+  if (
+    input.op === "review-file-page-acknowledge" &&
+    (typeof input.tree !== "string" ||
+      !/^[a-f0-9]{40}$/.test(input.tree) ||
+      !Number.isSafeInteger(input.page) ||
+      !Number.isSafeInteger(input.pages) ||
+      input.page < 0 ||
+      input.pages <= 1 ||
+      input.page >= input.pages ||
+      typeof input.fileFingerprint !== "string" ||
+      !/^[a-f0-9]{64}$/.test(input.fileFingerprint) ||
+      typeof input.pageFingerprint !== "string" ||
+      !/^[a-f0-9]{64}$/.test(input.pageFingerprint))
+  )
+    throw Error("Reload the paginated file review before marking this page reviewed.");
   if (
     input.op === "review-file-acknowledge" &&
     (typeof input.tree !== "string" ||

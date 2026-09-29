@@ -118,6 +118,8 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
       ["status", "review-job"],
       ["file", "review-file"],
       ["acknowledge", "review-file-acknowledge"],
+      ["page", "review-file-page"],
+      ["acknowledgePage", "review-file-page-acknowledge"],
       ["cancel", "review-cancel"],
     ]) {
       const payload =
@@ -127,11 +129,19 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
               action,
               job: "j",
               owner: "spoofed",
-              ...(["file", "acknowledge"].includes(action)
+              ...(["file", "acknowledge", "page", "acknowledgePage"].includes(action)
                 ? {
                     tree: "a".repeat(40),
                     file: "README.md",
                     ...(action === "acknowledge" ? { fingerprint: "b".repeat(64) } : {}),
+                    ...(["page", "acknowledgePage"].includes(action) ? { page: 0 } : {}),
+                    ...(action === "acknowledgePage"
+                      ? {
+                          pages: 2,
+                          fileFingerprint: "c".repeat(64),
+                          pageFingerprint: "d".repeat(64),
+                        }
+                      : {}),
                   }
                 : {}),
             };

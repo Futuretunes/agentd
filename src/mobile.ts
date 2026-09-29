@@ -440,7 +440,15 @@ export function mobile(c: Config) {
         if (path === "/api/review-jobs" && req.method === "POST") {
           const input = await body(req);
           if (
-            !["start", "status", "file", "acknowledge", "cancel"].includes(input.action)
+            ![
+              "start",
+              "status",
+              "file",
+              "acknowledge",
+              "page",
+              "acknowledgePage",
+              "cancel",
+            ].includes(input.action)
           )
             throw Error("Unsupported review action");
           send(
@@ -455,18 +463,34 @@ export function mobile(c: Config) {
                       ? "review-file"
                       : input.action === "acknowledge"
                         ? "review-file-acknowledge"
-                        : "review-cancel",
+                        : input.action === "page"
+                          ? "review-file-page"
+                          : input.action === "acknowledgePage"
+                            ? "review-file-page-acknowledge"
+                            : "review-cancel",
               owner: accountOwner,
               ...(input.action === "start"
                 ? { id: input.id }
                 : {
                     job: input.job,
-                    ...(["file", "acknowledge"].includes(input.action)
+                    ...(["file", "acknowledge", "page", "acknowledgePage"].includes(
+                      input.action,
+                    )
                       ? {
                           tree: input.tree,
                           file: input.file,
                           ...(input.action === "acknowledge"
                             ? { fingerprint: input.fingerprint }
+                            : {}),
+                          ...(["page", "acknowledgePage"].includes(input.action)
+                            ? { page: input.page }
+                            : {}),
+                          ...(input.action === "acknowledgePage"
+                            ? {
+                                pages: input.pages,
+                                fileFingerprint: input.fileFingerprint,
+                                pageFingerprint: input.pageFingerprint,
+                              }
                             : {}),
                         }
                       : {}),

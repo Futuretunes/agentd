@@ -23,7 +23,7 @@ import { creationRequests } from "./creation-requests.ts";
 import { followupContext } from "./followup-context.ts";
 import { testedVersions } from "./native-policy.ts";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { localGit } from "./git-policy.ts";
+import { localGit, GitOutputLimitError } from "./git-policy.ts";
 import {
   resourceLimits,
   requireSpace,
@@ -53,10 +53,13 @@ import { renewals, renewalFailure } from "./renewal.ts";
 import { type RepositoryGit } from "./repositories.ts";
 import { githubAccount } from "./github-account.ts";
 import { accounts } from "./accounts.ts";
-import { snapshot, commitSnapshot, filePatch } from "./changes.ts";
+import { snapshot, commitSnapshot, filePatch, filePatchPage } from "./changes.ts";
 import {
   acknowledgeReviewFile,
+  acknowledgeReviewPage,
   acknowledgedReviewFiles,
+  acknowledgedReviewPages,
+  paginatedReviewProgress,
 } from "./review-acknowledgements.ts";
 import { isolated } from "./isolation.ts";
 import { DatabaseSync } from "node:sqlite";
@@ -1068,7 +1071,14 @@ export function runner(c: Config) {
   function handleReviewPreparationRequest(input: any) {
     if (input.op === "review-job")
       return previewManager.view(input.owner ?? "local", input.job);
-    if (["review-file", "review-file-acknowledge"].includes(input.op)) {
+    if (
+      [
+        "review-file",
+        "review-file-acknowledge",
+        "review-file-page",
+        "review-file-page-acknowledge",
+      ].includes(input.op)
+    ) {
       const job = previewManager.view(input.owner ?? "local", input.job);
       if (job.status !== "succeeded" || !job.result)
         throw Error("Finish preparing the change preview first");
@@ -1080,19 +1090,70 @@ export function runner(c: Config) {
         throw Error("File is not part of this review");
       const row = get(job.task);
       if (!row || row.review !== "pending") throw Error("Review is already resolved");
-      const page = filePatch(
-        String(project(String(row.project)).repo),
-        String(row.revision),
-        String(job.result.tree),
-        input.file,
-      );
-      if (input.op === "review-file")
-        return {
-          ...page,
-          acknowledged:
-            acknowledgedReviewFiles(db, String(row.id), page.tree, [page.file]).length ===
-            1,
+      const repo = String(project(String(row.project)).repo),
+        revision = String(row.revision),
+        tree = String(job.result.tree);
+      if (input.op === "review-file") {
+        try {
+          const value = filePatch(repo, revision, tree, input.file);
+          return {
+            ...value,
+            acknowledged:
+              acknowledgedReviewFiles(db, String(row.id), value.tree, [value.file])
+                .length === 1,
+          };
+        } catch (error) {
+          if (!(error instanceof GitOutputLimitError)) throw error;
+          const value = filePatchPage(repo, revision, tree, input.file, 0),
+            acknowledgedPages = acknowledgedReviewPages(db, String(row.id), {
+              tree: value.tree,
+              file: value.file,
+              pages: value.pages,
+              fileFingerprint: value.fingerprint,
+            });
+          return { ...value, acknowledgedPages };
+        }
+      }
+      if (input.op === "review-file-page") {
+        const value = filePatchPage(repo, revision, tree, input.file, input.page),
+          acknowledgedPages = acknowledgedReviewPages(db, String(row.id), {
+            tree: value.tree,
+            file: value.file,
+            pages: value.pages,
+            fileFingerprint: value.fingerprint,
+          });
+        return { ...value, acknowledgedPages };
+      }
+      if (input.op === "review-file-page-acknowledge") {
+        const value = filePatchPage(repo, revision, tree, input.file, input.page);
+        if (
+          input.pages !== value.pages ||
+          input.fileFingerprint !== value.fingerprint ||
+          input.pageFingerprint !== value.pageFingerprint
+        )
+          throw Error(
+            "The paginated file review changed. Reload it before marking this page reviewed.",
+          );
+        const plan = {
+          tree: value.tree,
+          file: value.file,
+          page: value.page,
+          pages: value.pages,
+          fileFingerprint: value.fingerprint,
+          pageFingerprint: value.pageFingerprint,
         };
+        auditedWrite("acknowledge-review-page", String(row.id), plan, () =>
+          acknowledgeReviewPage(db, String(row.id), plan),
+        );
+        const acknowledgedPages = acknowledgedReviewPages(db, String(row.id), plan);
+        return {
+          ...plan,
+          acknowledged: true,
+          acknowledgedPages,
+          complete: acknowledgedPages.length === value.pages,
+        };
+      }
+      const page = filePatch(repo, revision, tree, input.file);
       if (input.fingerprint !== page.fingerprint)
         throw Error("The file review changed. Reload it before marking it reviewed.");
       auditedWrite(
@@ -1171,6 +1232,10 @@ export function runner(c: Config) {
             value.truncated && !value.blocked.length
               ? acknowledgedReviewFiles(db, String(row.id), value.tree, value.files)
               : [],
+          paginatedFiles:
+            value.truncated && !value.blocked.length
+              ? paginatedReviewProgress(db, String(row.id), value.tree, value.files)
+              : {},
           mergeParent: row.merge_parent,
           checks: row.checks
             ? ((v: any) => ({ ...v, output: v.log ? logTail(v.log) : "" }))(

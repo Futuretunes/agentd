@@ -1704,12 +1704,15 @@ async function openReview(id) {
       ),
     );
     if (!value.blocked.length) {
-      const acknowledged = new Set(value.acknowledgedFiles ?? []),
+      const completed = new Set(value.acknowledgedFiles ?? []),
+        paginated = value.paginatedFiles ?? {},
         files = node("section", undefined, "large-review-files"),
         progress = node("p", undefined, "muted");
+      for (const [file, state] of Object.entries(paginated))
+        if (state.acknowledged.length === state.pages) completed.add(file);
       const updateProgress = () => {
-        progress.textContent = `${acknowledged.size} of ${value.files.length} files explicitly reviewed for this exact snapshot.`;
-        if (acknowledged.size === value.files.length) {
+        progress.textContent = `${completed.size} of ${value.files.length} files have complete review coverage for this exact snapshot.`;
+        if (completed.size === value.files.length) {
           progress.className = "good";
           progress.textContent +=
             " The review record is complete; commit and revision remain unavailable for this oversized change.";
@@ -1718,14 +1721,16 @@ async function openReview(id) {
       updateProgress();
       files.append(node("h3", "Changed files"), progress);
       for (const file of value.files) {
+        const savedPages = paginated[file],
+          initialStatus = completed.has(file)
+            ? "Reviewed for this exact snapshot"
+            : savedPages
+              ? `${savedPages.acknowledged.length} of ${savedPages.pages} pages reviewed`
+              : "Not reviewed";
         const row = node("div", undefined, "large-review-file"),
-          status = node(
-            "span",
-            acknowledged.has(file) ? "Reviewed for this exact snapshot" : "Not reviewed",
-            acknowledged.has(file) ? "good" : "muted",
-          ),
+          status = node("span", initialStatus, completed.has(file) ? "good" : "muted"),
           open = button(
-            (acknowledged.has(file) ? "Inspect again " : "Inspect ") + file,
+            (completed.has(file) || savedPages ? "Inspect again " : "Inspect ") + file,
             async () => {
               open.disabled = true;
               status.textContent = "Loading…";
@@ -1737,9 +1742,111 @@ async function openReview(id) {
                   tree: value.tree,
                   file,
                 });
+                if (page.paginated) {
+                  const showPage = async (current) => {
+                    row.querySelector(".paginated-review")?.remove();
+                    const panel = node("section", undefined, "paginated-review"),
+                      pageStatus = node("span", undefined, "muted"),
+                      seen = new Set(current.acknowledgedPages),
+                      controls = node("div", undefined, "paginated-controls"),
+                      previous = button("Previous page", async () => {
+                        previous.disabled = true;
+                        try {
+                          await showPage(
+                            await api("/api/review-jobs", {
+                              action: "page",
+                              job: job.id,
+                              tree: value.tree,
+                              file,
+                              page: current.page - 1,
+                            }),
+                          );
+                        } catch (error) {
+                          pageStatus.textContent = error.message;
+                          pageStatus.className = "error";
+                          previous.disabled = false;
+                        }
+                      }),
+                      next = button("Next page", async () => {
+                        next.disabled = true;
+                        try {
+                          await showPage(
+                            await api("/api/review-jobs", {
+                              action: "page",
+                              job: job.id,
+                              tree: value.tree,
+                              file,
+                              page: current.page + 1,
+                            }),
+                          );
+                        } catch (error) {
+                          pageStatus.textContent = error.message;
+                          pageStatus.className = "error";
+                          next.disabled = false;
+                        }
+                      });
+                    previous.disabled = current.page === 0;
+                    next.disabled = current.page + 1 === current.pages;
+                    pageStatus.textContent = seen.has(current.page)
+                      ? `Page ${current.page + 1} of ${current.pages} reviewed`
+                      : `Page ${current.page + 1} of ${current.pages} · ${seen.size} reviewed`;
+                    if (seen.has(current.page)) pageStatus.className = "good";
+                    else {
+                      const mark = button("Mark this page reviewed", async () => {
+                        mark.disabled = true;
+                        pageStatus.textContent = "Saving page review…";
+                        try {
+                          const saved = await api("/api/review-jobs", {
+                            action: "acknowledgePage",
+                            job: job.id,
+                            tree: value.tree,
+                            file,
+                            page: current.page,
+                            pages: current.pages,
+                            fileFingerprint: current.fingerprint,
+                            pageFingerprint: current.pageFingerprint,
+                          });
+                          current.acknowledgedPages = saved.acknowledgedPages;
+                          paginated[file] = {
+                            pages: current.pages,
+                            acknowledged: saved.acknowledgedPages,
+                          };
+                          if (saved.complete) completed.add(file);
+                          status.textContent = saved.complete
+                            ? "Reviewed for this exact snapshot"
+                            : `${saved.acknowledgedPages.length} of ${current.pages} pages reviewed`;
+                          status.className = saved.complete ? "good" : "muted";
+                          updateProgress();
+                          await showPage(current);
+                        } catch (error) {
+                          pageStatus.textContent = error.message;
+                          pageStatus.className = "error";
+                          mark.disabled = false;
+                        }
+                      });
+                      controls.append(mark);
+                    }
+                    controls.prepend(previous, next, pageStatus);
+                    panel.append(
+                      node(
+                        "p",
+                        `Bounded raw diff page ${current.page + 1} of ${current.pages}. Page boundaries do not omit content.`,
+                        "muted",
+                      ),
+                      controls,
+                      node("pre", current.patch, "result paginated-diff"),
+                    );
+                    row.append(panel);
+                  };
+                  await showPage(page);
+                  status.textContent = `${page.acknowledgedPages.length} of ${page.pages} pages reviewed`;
+                  status.className = "muted";
+                  open.remove();
+                  return;
+                }
                 row.append(renderDiff(page.patch));
                 if (page.acknowledged) {
-                  acknowledged.add(file);
+                  completed.add(file);
                   status.textContent = "Reviewed for this exact snapshot";
                   status.className = "good";
                   updateProgress();
@@ -1755,7 +1862,7 @@ async function openReview(id) {
                         file,
                         fingerprint: page.fingerprint,
                       });
-                      acknowledged.add(file);
+                      completed.add(file);
                       status.textContent = "Reviewed for this exact snapshot";
                       status.className = "good";
                       mark.remove();
