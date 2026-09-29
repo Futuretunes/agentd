@@ -208,6 +208,79 @@ export function pruneBackups(
   return { removed: value.removed as number };
 }
 
+const adapterId = /^(claude|codex|cursor)$/;
+
+function normalizeAdapters(value: unknown) {
+  if (!Array.isArray(value) || value.length > 3) throw Error("Invalid adapter policy");
+  const items = value.map((item) => {
+    if (typeof item !== "string" || !adapterId.test(item))
+      throw Error("Invalid adapter policy");
+    return item;
+  });
+  if (new Set(items).size !== items.length) throw Error("Invalid adapter policy");
+  return items;
+}
+
+export function adapterPolicy(command = "/opt/agentd/scripts/admin_adapters.py") {
+  const output = execFileSync("/usr/bin/python3", ["-B", command], {
+    cwd: "/opt/agentd",
+    encoding: "utf8",
+    timeout: 10000,
+    maxBuffer: 8192,
+    env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const value = JSON.parse(output);
+  if (
+    value?.format !== 1 ||
+    !Array.isArray(value.enabled) ||
+    typeof value.fingerprint !== "string" ||
+    value.error
+  )
+    throw Error("Adapter policy unavailable");
+  return value;
+}
+
+export function applyAdapterPolicy(
+  enabled: unknown,
+  editing: unknown,
+  editAdapters: unknown,
+  command = "/opt/agentd/scripts/admin_adapters.py",
+) {
+  const request = {
+    enabled: normalizeAdapters(enabled),
+    editing: editing === true,
+    editAdapters: normalizeAdapters(editAdapters ?? []),
+  };
+  if (!request.enabled.length) throw Error("Invalid adapter policy");
+  if (request.editing && !request.editAdapters.length)
+    throw Error("Invalid adapter policy");
+  if (!request.editing) request.editAdapters = [];
+  if (request.editAdapters.some((item) => !request.enabled.includes(item)))
+    throw Error("Invalid adapter policy");
+  const output = execFileSync(
+    "/usr/bin/python3",
+    ["-B", command, JSON.stringify(request)],
+    {
+      cwd: "/opt/agentd",
+      encoding: "utf8",
+      timeout: 10000,
+      maxBuffer: 8192,
+      env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  );
+  const value = JSON.parse(output);
+  if (
+    value?.format !== 1 ||
+    !Array.isArray(value.enabled) ||
+    typeof value.fingerprint !== "string" ||
+    value.error
+  )
+    throw Error("Adapter policy change refused");
+  return value;
+}
+
 export function startRollback(
   version: unknown,
   list: () => any = updates,
@@ -241,6 +314,12 @@ export function handleAdminRequest(
     restart?: (target: unknown) => { restarted: true; target: "runner" | "gateway" };
     backups?: () => unknown;
     pruneBackups?: (fingerprint: unknown) => { removed: number };
+    adapters?: () => unknown;
+    applyAdapters?: (
+      enabled: unknown,
+      editing: unknown,
+      editAdapters: unknown,
+    ) => unknown;
   },
 ) {
   if (input?.op === "rotate-access-key") {
@@ -276,6 +355,17 @@ export function handleAdminRequest(
     if (Object.keys(input).sort().join(" ") !== "fingerprint op")
       throw Error("Unsupported admin operation");
     return (config.pruneBackups ?? pruneBackups)(input.fingerprint);
+  }
+  if (input?.op === "adapters" && Object.keys(input).join(" ") === "op")
+    return (config.adapters ?? adapterPolicy)();
+  if (input?.op === "adapters-apply") {
+    if (Object.keys(input).sort().join(" ") !== "editAdapters editing enabled op")
+      throw Error("Unsupported admin operation");
+    return (config.applyAdapters ?? applyAdapterPolicy)(
+      input.enabled,
+      input.editing,
+      input.editAdapters,
+    );
   }
   throw Error("Unsupported admin operation");
 }
