@@ -23,11 +23,21 @@ from release import verify, extract
 
 PROPERTIES = ['NeedDaemonReload', 'User', 'Group', 'WorkingDirectory', 'ExecStart', 'Environment', 'EnvironmentFiles', 'FragmentPath', 'DropInPaths', 'NoNewPrivileges', 'CapabilityBoundingSet', 'ProtectSystem', 'ProtectHome', 'PrivateTmp', 'ProtectKernelTunables', 'ProtectKernelModules', 'ProtectControlGroups', 'RestrictSUIDSGID', 'LockPersonality', 'RestrictAddressFamilies', 'ReadWritePaths', 'ReadOnlyPaths', 'InaccessiblePaths', 'SystemCallFilter', 'RestrictNamespaces', 'ProtectProc', 'ProcSubset']
 
+class ReloadRequired(ValueError):
+    """systemd has unit files on disk that it has not loaded yet (often an unrelated unit)."""
+
 def run(args, **kwargs):
     return subprocess.run(args, check=True, text=True, **kwargs)
 
 def capture(args):
     return run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+
+def configuration_state(c, recorded, deployment):
+    """ok, drift, reload_required or recovery_required, for read-only status views."""
+    if any(Path(deployment).glob('*pending.json')): return 'recovery_required'
+    try: return 'ok' if inventory(c) == recorded else 'drift'
+    except ReloadRequired: return 'reload_required'
+    except Exception: return 'drift'
 
 def canonical(value):
     path = Path(value)
@@ -38,11 +48,12 @@ def canonical(value):
 def config(path):
     c = json.loads(Path(path).read_text())
     required = {'app','state','deployment','user','runnerUnit','mobileUnit','node','npm','healthUrl','configFiles','controlSocket'}
-    optional={'gatewayUser','gatewaySocket','resourceProfile','gatewayHardening','adminUnit','adminSocket','updateUnit'}
+    optional={'gatewayUser','gatewaySocket','resourceProfile','gatewayHardening','adminUnit','adminSocket','updateUnit','rollbackUnit'}
     if (set(c)-optional) != required or bool(c.get('gatewayUser')) != bool(c.get('gatewaySocket')): raise ValueError('Unexpected or missing configuration field')
     if c.get('resourceProfile') not in (None,'standard-v1'): raise ValueError('Unknown resource profile')
     if c.get('gatewayHardening') not in (None,'gateway-hardening-v1'): raise ValueError('Unknown gateway hardening profile')
     if c.get('updateUnit') not in (None,'agentd-update@.service'): raise ValueError('Unknown update unit')
+    if c.get('rollbackUnit') not in (None,'agentd-rollback@.service'): raise ValueError('Unknown rollback unit')
     paths = [canonical(c[k]) for k in ('app','state','deployment')]
     for i, a in enumerate(paths):
         if any(a == b or a in b.parents or b in a.parents for b in paths[i+1:]): raise ValueError('Application, state and deployment paths must be disjoint')
@@ -88,7 +99,7 @@ def inventory(c):
             from apply_resources import PROPERTIES as resource_properties
         text = capture(['systemctl','show',unit,*['--property='+p for p in (PROPERTIES+resource_properties+(['SupplementaryGroups','RuntimeDirectory','RuntimeDirectoryMode','PrivateDevices'] if c.get('gatewayUser') else []))]])
         properties = dict(line.split('=',1) for line in text.splitlines() if '=' in line)
-        if properties.get('NeedDaemonReload') == 'yes': raise ValueError('Reload and review changed unit files before updating')
+        if properties.get('NeedDaemonReload') == 'yes': raise ReloadRequired('Reload and review changed unit files before updating')
         for name, value in {'User':c.get('gatewayUser',c['user']) if key=='mobileUnit' else c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','CapabilityBoundingSet':'','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes'}.items():
             if properties.get(name) != value: raise ValueError('Unsupported service security configuration: '+name)
         # The runner template locks personality; the gateway template does not.
@@ -150,7 +161,8 @@ def inventory(c):
         text=capture(['systemctl','show',c['adminUnit'],*['--property='+p for p in PROPERTIES+['RuntimeDirectory','RuntimeDirectoryMode']]])
         properties=dict(line.split('=',1) for line in text.splitlines() if '=' in line)
         expected={'User':'root','Group':c['user'],'WorkingDirectory':c['app'],'NoNewPrivileges':'yes','ProtectSystem':'strict','ProtectHome':'yes','PrivateTmp':'yes','ProtectKernelTunables':'yes','ProtectKernelModules':'yes','ProtectControlGroups':'yes','RestrictSUIDSGID':'yes','LockPersonality':'yes','RestrictAddressFamilies':'AF_UNIX','RuntimeDirectory':'agentd-admin','RuntimeDirectoryMode':'0750'}
-        if properties.get('NeedDaemonReload')=='yes' or any(properties.get(k)!=v for k,v in expected.items()): raise ValueError('Unsupported administration helper configuration')
+        if properties.get('NeedDaemonReload')=='yes': raise ReloadRequired('Reload and review changed unit files before updating')
+        if any(properties.get(k)!=v for k,v in expected.items()): raise ValueError('Unsupported administration helper configuration')
         environment=dict(item.split('=',1) for item in shlex.split(properties.get('Environment','')) if '=' in item)
         if environment.get('AGENTD_ADMIN_SOCKET')!=c['adminSocket'] or environment.get('AGENTD_MOBILE_CONFIG')!='/etc/agentd-web/mobile.json': raise ValueError('Administration helper environment mismatch')
         if ('path='+c['node']+' ;') not in properties.get('ExecStart','') or ('argv[]='+c['node']+' '+c['app']+'/src/admin-helper.ts ;') not in properties.get('ExecStart',''): raise ValueError('Unsupported administration helper entry point')

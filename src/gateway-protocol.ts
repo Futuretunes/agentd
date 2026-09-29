@@ -11,6 +11,7 @@ const fields: Record<string, string> = {
   "admin-diagnostics": "",
   "admin-updates": "",
   "admin-update-start": "owner version",
+  "admin-rollback-start": "owner version",
   capabilities: "",
   operations: "",
   projects: "",
@@ -93,6 +94,7 @@ const fields: Record<string, string> = {
 export const gatewayMutations = new Set([
   "admin-access-rotate",
   "admin-update-start",
+  "admin-rollback-start",
   "review-start",
   "review-file-acknowledge",
   "review-file-page-acknowledge",

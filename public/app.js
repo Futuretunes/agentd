@@ -3692,7 +3692,9 @@ $("diagnostics-settings").onclick = async () => {
         ? "Configuration matches the installed release."
         : configuration === "recovery_required"
           ? "An interrupted update needs administrator recovery."
-          : "Configuration changed outside the managed installer and needs review.";
+          : configuration === "reload_required"
+            ? "Service files on the server changed but the service manager has not reloaded them yet. On the server, run: sudo systemctl daemon-reload"
+            : "Configuration changed outside the managed installer and needs review.";
     const gatewayConfig =
       report.configuration.gatewayConfigReadable === false
         ? node(
@@ -3919,6 +3921,7 @@ const stageLabels = {
   verifying: "verifying the approved release",
   planning: "checking configuration and idle state",
   installing: "testing and installing",
+  restoring: "restoring the previous version and its data",
   verifying_services: "verifying services after the update",
 };
 function stopUpdatesPoll() {
@@ -3939,8 +3942,16 @@ function lastUpdate(job) {
   if (job.state === "succeeded")
     return node(
       "p",
-      `Last update: ${job.version} installed ${new Date(job.updatedAt).toLocaleString()}.`,
+      job.kind === "rollback"
+        ? `Last change: rolled back to ${job.version} ${new Date(job.updatedAt).toLocaleString()}. ${job.savedVersion ?? "The newer version"} and its data were kept in a server backup.`
+        : `Last update: ${job.version} installed ${new Date(job.updatedAt).toLocaleString()}.`,
       "good",
+    );
+  if (job.kind === "rollback")
+    return node(
+      "p",
+      `The rollback to ${job.version} stopped while ${stageLabels[job.failedStage] ?? "rolling back"}. ${job.failedStage === "verifying_services" ? "The earlier version is running, but a check afterwards failed. Open Diagnostics." : "What was running before was restored."} Details are in the server's logs.`,
+      "attention",
     );
   const outcome =
     job.failedStage === "installing"
@@ -3975,7 +3986,9 @@ async function renderUpdates() {
           "p",
           value.configuration === "recovery_required"
             ? "Updates are paused: an interrupted update needs administrator recovery."
-            : "Updates are paused: the server configuration changed outside the installer and needs review.",
+            : value.configuration === "reload_required"
+              ? "Updates are paused: another program changed service files on the server without reloading them. On the server, run: sudo systemctl daemon-reload — then refresh this page."
+              : "Updates are paused: the server configuration changed outside the installer and needs review.",
           "attention",
         ),
       );
@@ -4007,6 +4020,28 @@ async function renderUpdates() {
       card.append(review);
       parts.push(card);
     }
+    const back = node("section", undefined, "operation-section");
+    back.append(node("h3", "Roll back"));
+    if (value.rollback?.available) {
+      back.append(
+        node(
+          "p",
+          `Return to AgentD ${value.rollback.version}, saved ${new Date(value.rollback.completedAt).toLocaleString()}${value.rollback.schemaChange ? " (includes an older task database)" : ""}.`,
+        ),
+        node(
+          "p",
+          "Tasks and changes made since then are set aside in a server backup, not deleted.",
+          "muted",
+        ),
+      );
+      const start = button("Review rollback", () => renderRollbackReview(value.rollback));
+      start.disabled = value.configuration !== "ok";
+      back.append(start);
+    } else
+      back.append(
+        node("p", value.rollback?.reason ?? "No earlier version is available.", "muted"),
+      );
+    parts.push(back);
     updatesContent.replaceChildren(...parts);
   } catch (error) {
     updatesContent.replaceChildren(node("p", error.message, "error"));
@@ -4087,11 +4122,81 @@ function renderUpdateReview(release) {
   );
   key.focus();
 }
+function renderRollbackReview(target) {
+  const label = node("label", "Current access key"),
+    key = node("input");
+  key.type = "password";
+  key.id = "rollback-current-key";
+  key.autocomplete = "current-password";
+  label.htmlFor = key.id;
+  const details = node("div");
+  const preview = button(
+    "Preview rollback",
+    async () => {
+      const value = await api("/api/updates", {
+        action: "rollback-preview",
+        currentKey: key.value,
+      });
+      const confirm = node("input"),
+        confirmLabel = node(
+          "label",
+          " I understand that services restart, I will be signed out, and tasks since this backup are set aside.",
+        );
+      confirm.type = "checkbox";
+      confirm.id = "rollback-confirm";
+      confirmLabel.prepend(confirm);
+      const go = button(
+        "Roll back",
+        async () => {
+          await api("/api/updates", {
+            action: "rollback",
+            version: value.rollback.version,
+            fingerprint: value.fingerprint,
+            currentKey: key.value,
+            confirmed: confirm.checked,
+          });
+          key.value = "";
+          renderUpdateProgress({
+            job: {
+              kind: "rollback",
+              version: value.rollback.version,
+              stage: "verifying",
+            },
+          });
+        },
+        "danger",
+      );
+      details.replaceChildren(
+        node(
+          "p",
+          `From ${value.installed.version} back to ${value.rollback.version} (revision ${value.rollback.revision}), saved ${new Date(value.rollback.completedAt).toLocaleString()}.`,
+        ),
+        node(
+          "p",
+          "The current version and all current task data are saved to a new server backup first. The earlier version and its data are then restored. If anything fails, what is running now is put back.",
+          "muted",
+        ),
+        confirmLabel,
+        go,
+      );
+    },
+    "primary",
+  );
+  updatesContent.replaceChildren(
+    node("h3", `Roll back to AgentD ${target.version}`),
+    label,
+    key,
+    preview,
+    details,
+    button("Back", () => renderUpdates()),
+  );
+  key.focus();
+}
 function renderUpdateProgress(value) {
   stopUpdatesPoll();
   const status = node("p", undefined, "run-progress");
   const show = (job) => {
-    status.textContent = `Updating to ${job?.version ?? "the new version"}: ${stageLabels[job?.stage] ?? "starting"}…`;
+    status.textContent = `${job?.kind === "rollback" ? "Rolling back" : "Updating"} to ${job?.version ?? "the new version"}: ${stageLabels[job?.stage] ?? "starting"}…`;
   };
   show(value.job);
   updatesContent.replaceChildren(

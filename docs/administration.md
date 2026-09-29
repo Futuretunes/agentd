@@ -1,9 +1,9 @@
 # Administration section — requirements (backlog)
 
 Status: implemented are access-key rotation (0.61), read-only diagnostics (0.62) and
-in-app updates of approved releases (0.63, see
+in-app updates of approved releases (0.63) and rollback (0.64, see
 [managed updates](managed-updates.md#in-app-updates-settings--updates-since-0630)).
-Open: rollback from the app, CLI updates, backups and the configuration pages. This
+Open: CLI updates, backups and the configuration pages. This
 expands roadmap item 6 ("GUI administration") and the core requirement of
 [terminal-free operation](roadmap.md#core-product-requirement-terminal-free-operation).
 

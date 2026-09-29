@@ -65,12 +65,24 @@ export async function readUpdates(socket: string): Promise<any> {
     value?.format !== 1 ||
     !value.installed ||
     typeof value.installed.version !== "string" ||
-    !["ok", "drift", "recovery_required"].includes(value.configuration) ||
+    !["ok", "drift", "reload_required", "recovery_required"].includes(
+      value.configuration,
+    ) ||
     typeof value.running !== "boolean" ||
     !Array.isArray(value.candidates)
   )
     throw Error("Updates response is invalid.");
   return value;
+}
+
+export async function startRollback(
+  socket: string,
+  version: string,
+): Promise<{ started: true; version: string }> {
+  if (typeof version !== "string" || !releaseVersion.test(version))
+    throw Error("Rollback request is invalid.");
+  await request(socket, { op: "rollback-start", version }, 15000);
+  return { started: true, version };
 }
 
 export async function startUpdate(
