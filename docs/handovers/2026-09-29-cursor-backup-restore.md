@@ -5,7 +5,7 @@
 - Status: implemented; not installed
 - Release: 0.73.0
 - Branch and base: `feat/gui-backup-restore` on `main` (0.72.1)
-- PR: (open after push)
+- PR: #85
 
 ## Changes and relevant files
 
