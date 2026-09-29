@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Upgrade the fixed administration helper for bounded read-only diagnostics."""
-import argparse,fcntl,json,os,socket,subprocess,sys,tempfile
+import argparse,fcntl,json,os,socket,subprocess,sys,tempfile,time
 from pathlib import Path
 import update
 from separate_gateway import atomic
@@ -10,14 +10,21 @@ SOCKET='/run/agentd-admin/admin.sock'
 
 def unit_path():return Path('/etc/systemd/system')/UNIT
 
-def probe():
-    with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as client:
-        client.settimeout(10);client.connect(SOCKET)
-        client.sendall(b'{"op":"diagnostics"}\n');data=b''
-        while not data.endswith(b'\n'):
-            chunk=client.recv(32768)
-            if not chunk or len(data)+len(chunk)>32768:raise ValueError('Invalid diagnostics response')
-            data+=chunk
+def probe(timeout=10):
+    deadline=time.monotonic()+timeout
+    while True:
+        try:
+            with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as client:
+                client.settimeout(2);client.connect(SOCKET)
+                client.sendall(b'{"op":"diagnostics"}\n');data=b''
+                while not data.endswith(b'\n'):
+                    chunk=client.recv(32768)
+                    if not chunk or len(data)+len(chunk)>32768:raise ValueError('Invalid diagnostics response')
+                    data+=chunk
+            break
+        except (FileNotFoundError,ConnectionRefusedError,socket.timeout):
+            if time.monotonic()>=deadline:raise ValueError('Administration helper socket did not become ready')
+            time.sleep(0.1)
     value=json.loads(data)
     result=value.get('result',{})
     if value.get('ok') is not True or result.get('format')!=1 or not isinstance(result.get('services'),dict):raise ValueError('Administration diagnostics probe failed')

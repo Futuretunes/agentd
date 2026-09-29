@@ -4,7 +4,12 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.62.0 — safe GUI diagnostics
 
-[Latest handover](handovers/2026-09-29-codex-gui-diagnostics.md): Settings now shows and downloads a bounded report of release, managed drift/recovery, fixed service status, storage, uptime and recent sanitized failures. A fixed no-argument root probe cannot read task state, worktrees or account profiles and returns no raw journals, logs, prompts, paths, config contents or credentials. Managed updates restart the helper after an application swap. Exact source `192d25b` passed 211 portable tests with 9 expected Linux-only skips, typecheck, formatting and all Node 24/26/Ubuntu isolation CI. Draft #68 and the exact archive/launcher are staged but unexecuted; production remains 0.61.0.
+[Latest handover](handovers/2026-09-29-codex-gui-diagnostics.md): Settings now shows and downloads a bounded report of release, managed drift/recovery, fixed service status, storage, uptime and recent sanitized failures. A fixed no-argument root probe cannot read task state, worktrees or account profiles and returns no raw journals, logs, prompts, paths, config contents or credentials. Managed updates restart the helper after an application swap. Exact source `192d25b` passed all 211 zero-skip Ubuntu deployment tests, typecheck, formatting and all Node 24/26/Ubuntu isolation CI. The application update is installed; the helper migration rolled back cleanly after exposing the startup race described below.
+
+The first operator install subsequently completed the 0.62.0 application swap and
+all 211 zero-skip Ubuntu tests, then exposed a helper-socket startup race in the
+one-time migration. Candidate 0.62.1 adds bounded readiness waits to both helper
+migrations. Its replacement archive and exact validation details are pending.
 
 ## Candidate 0.61.0 — GUI access-key rotation
 

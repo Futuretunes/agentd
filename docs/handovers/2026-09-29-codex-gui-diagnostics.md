@@ -1,5 +1,21 @@
 # Handover — safe GUI diagnostics
 
+## 0.62.1 helper-start readiness fix
+
+The operator's first 0.62.0 install passed all 211 Ubuntu tests and completed the
+managed application swap, then the one-time administration migration received
+`ENOENT` while probing the newly started helper socket. The migration rolled back
+fully and retained its recovery journal and backup as designed; production health
+reported 0.62.0 while the optional helper remained absent.
+
+Candidate 0.62.1 gives both administration migrations a bounded readiness loop
+for the fixed socket. It retries only missing/refused/timed-out socket connection,
+never a malformed or rejected response. A regression test proves each migration
+recovers from a first-attempt missing socket. The private installer independently
+re-verifies the complete rollback before removing only the stale journal, retains
+the backup, installs 0.62.1 and then installs or upgrades the helper according to
+managed configuration.
+
 ## Scope
 
 Candidate 0.62.0 implements the second GUI administration slice through the

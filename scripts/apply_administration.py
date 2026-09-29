@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Install the fixed-purpose root helper used by approval-gated GUI administration."""
-import argparse,fcntl,json,os,shutil,socket,subprocess,sys,tempfile
+import argparse,fcntl,json,os,shutil,socket,subprocess,sys,tempfile,time
 from pathlib import Path
 import update
 from separate_gateway import atomic
@@ -12,11 +12,18 @@ DROP='110-administration.conf'
 def paths(c):
     return Path('/etc/systemd/system')/UNIT,Path('/etc/systemd/system')/(c['runnerUnit']+'.d')/DROP
 
-def probe():
-    with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as client:
-        client.settimeout(5);client.connect(SOCKET)
-        client.sendall((json.dumps({'op':'rotate-access-key','currentKey':'invalid','newHash':'0'*64})+'\n').encode())
-        data=client.recv(4096)
+def probe(timeout=10):
+    deadline=time.monotonic()+timeout
+    while True:
+        try:
+            with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as client:
+                client.settimeout(2);client.connect(SOCKET)
+                client.sendall((json.dumps({'op':'rotate-access-key','currentKey':'invalid','newHash':'0'*64})+'\n').encode())
+                data=client.recv(4096)
+            break
+        except (FileNotFoundError,ConnectionRefusedError,socket.timeout):
+            if time.monotonic()>=deadline:raise ValueError('Administration helper socket did not become ready')
+            time.sleep(0.1)
     if json.loads(data).get('ok') is not False:raise ValueError('Administration helper accepted an invalid step-up key')
 
 def apply(c,config_path,previous,current,backup):
