@@ -477,6 +477,27 @@ export function mobile(c: Config) {
           );
           return;
         }
+        if (path === "/api/commit-jobs" && req.method === "POST") {
+          const input = await body(req);
+          if (!["start", "status", "cancel"].includes(input.action))
+            throw Error("Unsupported commit action");
+          send(
+            200,
+            await call({
+              op:
+                input.action === "start"
+                  ? "commit-start"
+                  : input.action === "status"
+                    ? "commit-job"
+                    : "commit-cancel",
+              owner: accountOwner,
+              ...(input.action === "start"
+                ? { id: input.id, tree: input.tree, message: input.message }
+                : { job: input.job }),
+            }),
+          );
+          return;
+        }
         const review = path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/review$/);
         if (review && req.method === "GET") {
           send(200, await call({ op: "review", id: review[1] }));

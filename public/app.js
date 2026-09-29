@@ -1764,14 +1764,13 @@ async function openReview(id) {
       const commit = button(
         "Commit",
         async () => {
-          await api("/api/action", {
-            op: "commit",
+          await startCommit(
             id,
-            tree: value.tree,
-            message: input.value.trim() || "Apply reviewed changes",
-          });
-          notice("Committed to a new local branch. Nothing was pushed.");
-          await openReview(id);
+            value.tree,
+            input.value.trim() || "Apply reviewed changes",
+            actions,
+            checksBox,
+          );
         },
         "primary",
       );
@@ -1866,6 +1865,33 @@ async function startValidation(id, tree, actions, checksBox) {
     button("Stop checks", () => api("/api/action", { op: "cancel", id }), "danger"),
   );
   checksBox.lastChild.textContent = "Running…";
+}
+async function startCommit(id, tree, message, actions, checksBox) {
+  let job = await api("/api/commit-jobs", { action: "start", id, tree, message });
+  const stop = button(
+    "Stop preparing commit",
+    async () => {
+      job = await api("/api/commit-jobs", { action: "cancel", job: job.id });
+    },
+    "danger",
+  );
+  actions.replaceChildren(stop);
+  checksBox.lastChild.textContent = "Preparing exact commit…";
+  while (job.status === "preparing") {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    job = await api("/api/commit-jobs", { action: "status", job: job.id });
+  }
+  if (job.status === "cancelled") {
+    await openReview(id);
+    return;
+  }
+  if (job.status !== "succeeded") {
+    const error = job.error || "Commit preparation failed. Review the changes again.";
+    await openReview(id);
+    throw Error(error);
+  }
+  notice("Committed to a new local branch. Nothing was pushed.");
+  await openReview(id);
 }
 $("review-close").onclick = () => {
   $("review-dialog").close();

@@ -235,6 +235,13 @@ export function runner(c: Config) {
     },
     "check-preparation",
   );
+  const commitManager = reviewJobs(
+    c.reviewPrepare,
+    () => {
+      if (!closing) setImmediate(pump);
+    },
+    "commit-preparation",
+  );
   function blocked(operation: Operation) {
     const read = (state: BusyState): boolean => {
       switch (state) {
@@ -622,7 +629,13 @@ export function runner(c: Config) {
       throw Error("This work mode is not enabled for this adapter");
   };
   function pump() {
-    if (previewManager.busy() || validationManager.busy() || blocked("dispatch")) return;
+    if (
+      previewManager.busy() ||
+      validationManager.busy() ||
+      commitManager.busy() ||
+      blocked("dispatch")
+    )
+      return;
     const row = db
       .prepare("SELECT * FROM tasks WHERE status='queued' ORDER BY created,id LIMIT 1")
       .get();
@@ -690,10 +703,11 @@ export function runner(c: Config) {
       row,
     );
   }
-  function available(row: any, ownValidation = false) {
+  function available(row: any, ownValidation = false, ownCommit = false) {
     if (
       previewManager.busy() ||
       (!ownValidation && validationManager.busy()) ||
+      (!ownCommit && commitManager.busy()) ||
       blocked("review")
     )
       throw Error("Wait for the active worker before reviewing changes");
@@ -773,6 +787,41 @@ export function runner(c: Config) {
     active = owner;
     return { status: "running" };
   }
+  function commitReview(row: any, input: any, prepared?: any) {
+    available(row, false, !!prepared);
+    const value = prepared ?? review(row);
+    if (row.review !== "pending") throw Error("Review is already resolved");
+    if (!value.files.length && !row.merge_parent) throw Error("No changes to commit");
+    if (value.conflicts.length)
+      throw Error("Resolve conflict markers before committing.");
+    if (value.tree !== input.tree) throw Error("Changes have changed. Review again.");
+    if (value.truncated || value.blocked.length)
+      throw Error(
+        "Review contains oversized changes or sensitive files or credential content; resolve them before committing",
+      );
+    const checks = row.checks ? JSON.parse(String(row.checks)) : null;
+    if (
+      checks?.status !== "passed" ||
+      checks.input !== "git-tree-v1" ||
+      checks.tree !== value.tree
+    )
+      throw Error("Checks must pass for the exact reviewed changes");
+    const message = title(input.message),
+      branch = "agentd/" + row.id;
+    audit("approve-commit", input.id, { tree: value.tree, branch });
+    const sha = commitSnapshot(
+      String(project(String(row.project)).repo),
+      String(row.revision),
+      value.tree,
+      branch,
+      message,
+      row.merge_parent ? String(row.merge_parent) : undefined,
+    );
+    db.prepare(
+      "UPDATE tasks SET review='committed',commit_sha=?,branch=? WHERE id=?",
+    ).run(sha, branch, row.id);
+    return get(input.id);
+  }
   function request(input: any) {
     return auditContext.run({ kind: "local" }, () => handleRequest(input));
   }
@@ -806,6 +855,10 @@ export function runner(c: Config) {
         running.stop("cancelled");
       return validationManager.view(input.owner ?? "local", input.job);
     }
+    if (input.op === "commit-job")
+      return commitManager.view(input.owner ?? "local", input.job);
+    if (input.op === "commit-cancel")
+      return commitManager.cancel(input.owner ?? "local", input.job);
     if (input.op === "review-start") {
       const row = get(input.id);
       if (!row) throw Error("Task not found");
@@ -879,8 +932,65 @@ export function runner(c: Config) {
         input.id + ":" + input.tree,
       );
     }
+    if (input.op === "commit-start") {
+      const row = get(input.id);
+      if (!row) throw Error("Task not found");
+      if (!commitManager.busy()) {
+        if (row.review === "committed") {
+          const message = title(input.message),
+            branch = "agentd/" + row.id,
+            repo = String(project(String(row.project)).repo),
+            sha = String(row.commit_sha ?? ""),
+            expectedParents = [
+              String(row.revision),
+              ...(row.merge_parent ? [String(row.merge_parent)] : []),
+            ].join(" ");
+          if (
+            row.branch === branch &&
+            sha &&
+            git(["rev-parse", "refs/heads/" + branch], repo) === sha &&
+            git(["rev-parse", sha + "^{tree}"], repo) === input.tree &&
+            git(["show", "-s", "--format=%P", sha], repo) === expectedParents &&
+            git(["show", "-s", "--format=%B", sha], repo) === message
+          )
+            return {
+              id: createHash("sha256")
+                .update("committed\0" + input.id + "\0" + sha + "\0" + message)
+                .digest("hex"),
+              task: input.id,
+              status: "succeeded",
+              result: row,
+              error: null,
+            };
+          throw Error("Review is already resolved");
+        }
+        available(row);
+        if (row.review !== "pending") throw Error("Review is already resolved");
+        title(input.message);
+      }
+      const key = createHash("sha256")
+        .update(input.id + "\0" + input.tree + "\0" + input.message)
+        .digest("hex");
+      return commitManager.start(
+        input.owner ?? "local",
+        input.id,
+        {
+          worktree: String(row.worktree),
+          revision: String(row.revision),
+          stateDir: c.stateDir,
+          mergeParent: row.merge_parent as string | null,
+          conflictPaths: JSON.parse(String(row.conflict_paths ?? "[]")),
+        },
+        (value) => {
+          const current = get(input.id);
+          if (!current) throw Error("Task not found");
+          return commitReview(current, input, value);
+        },
+        key,
+      );
+    }
     if (
-      (previewManager.busy() || validationManager.busy()) &&
+      (previewManager.busy() || validationManager.busy() || commitManager.busy()) &&
       (gatewayMutations.has(input.op) ||
         ["project-register", "project-checks"].includes(input.op))
     )
@@ -1764,37 +1874,7 @@ export function runner(c: Config) {
       return get(input.id);
     }
     if (input.op === "commit") {
-      const value = review(row);
-      if (row.review !== "pending") throw Error("Review is already resolved");
-      if (!value.files.length && !row.merge_parent) throw Error("No changes to commit");
-      if (value.conflicts.length)
-        throw Error("Resolve conflict markers before committing.");
-      if (value.tree !== input.tree) throw Error("Changes have changed. Review again.");
-      if (value.truncated || value.blocked.length)
-        throw Error(
-          "Review contains oversized changes or sensitive files or credential content; resolve them before committing",
-        );
-      if (
-        value.checks?.status !== "passed" ||
-        value.checks.input !== "git-tree-v1" ||
-        value.checks.tree !== value.tree
-      )
-        throw Error("Checks must pass for the exact reviewed changes");
-      const message = title(input.message),
-        branch = "agentd/" + row.id;
-      audit("approve-commit", input.id, { tree: value.tree, branch });
-      const sha = commitSnapshot(
-        String(project(String(row.project)).repo),
-        String(row.revision),
-        value.tree,
-        branch,
-        message,
-        row.merge_parent ? String(row.merge_parent) : undefined,
-      );
-      db.prepare(
-        "UPDATE tasks SET review='committed',commit_sha=?,branch=? WHERE id=?",
-      ).run(sha, branch, row.id);
-      return get(input.id);
+      return commitReview(row, input);
     }
     if (input.op === "show")
       return {
@@ -1887,8 +1967,9 @@ export function runner(c: Config) {
       usageAbort.abort();
       const previewClosed = previewManager.close();
       const validationClosed = validationManager.close();
+      const commitClosed = commitManager.close();
       await publicationManager.close();
-      await Promise.all([previewClosed, validationClosed]);
+      await Promise.all([previewClosed, validationClosed, commitClosed]);
       await usageWork;
       await dependencyManager.close();
       await repositoryManager.close();
