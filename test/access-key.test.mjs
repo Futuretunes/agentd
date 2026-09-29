@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { accessKeyHash, accessKeyMatches, validateAccessKey } from "../src/access-key.ts";
-import { rotateAccessFile } from "../src/admin-helper.ts";
+import { handleAdminRequest, rotateAccessFile } from "../src/admin-helper.ts";
 
 test("access keys are strongly validated and compared by digest", () => {
   const key = "correct-horse-battery-staple-8391";
@@ -20,6 +20,28 @@ test("access keys are strongly validated and compared by digest", () => {
   assert.equal(accessKeyMatches("wrong", accessKeyHash(key)), false);
   for (const weak of ["short", "a".repeat(24), "spaces are not accepted even when long"])
     assert.throws(() => validateAccessKey(weak));
+});
+
+test("administration helper accepts only its fixed diagnostic request", () => {
+  const result = { format: 1, generatedAt: "fixture" };
+  assert.equal(
+    handleAdminRequest(
+      { op: "diagnostics" },
+      { mobileConfig: "/unused", diagnostics: () => result },
+    ),
+    result,
+  );
+  for (const input of [
+    { op: "diagnostics", command: "id" },
+    { op: "diagnostics", path: "/etc/shadow" },
+    { op: "journal" },
+  ])
+    assert.throws(() =>
+      handleAdminRequest(input, {
+        mobileConfig: "/unused",
+        diagnostics: () => result,
+      }),
+    );
 });
 
 test("fixed-purpose helper atomically replaces only the root-owned access digest", () => {
@@ -36,7 +58,13 @@ test("fixed-purpose helper atomically replaces only the root-owned access digest
     );
     const owner = process.getuid();
     assert.throws(() => rotateAccessFile(path, "wrong", accessKeyHash(newKey), owner));
-    rotateAccessFile(path, oldKey, accessKeyHash(newKey), owner);
+    // Rotate under the helper's own umask: the original mode must survive.
+    const previousUmask = process.umask(0o077);
+    try {
+      rotateAccessFile(path, oldKey, accessKeyHash(newKey), owner);
+    } finally {
+      process.umask(previousUmask);
+    }
     const value = JSON.parse(readFileSync(path, "utf8"));
     assert.equal(value.accessHash, accessKeyHash(newKey));
     assert.equal(value.origin, "https://fixture");

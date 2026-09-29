@@ -3672,6 +3672,97 @@ $("access-key-settings").onclick = () => {
   renderAccessKeyForm();
   accessKeyDialog.showModal();
 };
+const diagnosticsDialog = $("diagnostics-dialog"),
+  diagnosticsContent = $("diagnostics-content");
+$("diagnostics-close").onclick = () => diagnosticsDialog.close();
+$("diagnostics-settings").onclick = async () => {
+  $("preferences-dialog").close();
+  diagnosticsContent.replaceChildren(node("p", "Checking server health…", "muted"));
+  diagnosticsDialog.showModal();
+  try {
+    const report = await api("/api/diagnostics"),
+      bytes = (value) =>
+        value >= 1024 ** 3
+          ? (value / 1024 ** 3).toFixed(1) + " GiB"
+          : (value / 1024 ** 2).toFixed(1) + " MiB";
+    const configuration = report.configuration.state,
+      summary = node("p", undefined, configuration === "ok" ? "good" : "attention");
+    summary.textContent =
+      configuration === "ok"
+        ? "Configuration matches the installed release."
+        : configuration === "recovery_required"
+          ? "An interrupted update needs administrator recovery."
+          : "Configuration changed outside the managed installer and needs review.";
+    const gatewayConfig =
+      report.configuration.gatewayConfigReadable === false
+        ? node(
+            "p",
+            "The phone gateway cannot read its configuration file. It keeps working now but will not start after the next restart. Ask your administrator to restore read access for the gateway.",
+            "attention",
+          )
+        : null;
+    const services = node("section", undefined, "operation-section");
+    services.append(node("h3", "Services"));
+    for (const [name, service] of Object.entries(report.services))
+      services.append(
+        node(
+          "p",
+          `${name[0].toUpperCase() + name.slice(1)} · ${service.state} (${service.detail}) · ${service.restarts ?? "unknown"} restarts`,
+          service.state === "active" ? "good" : "attention",
+        ),
+      );
+    const failures = node("section", undefined, "operation-section");
+    failures.append(node("h3", "Recent failed runs"));
+    if (!report.runner.recentFailures.length)
+      failures.append(
+        node("p", "No recent failed, timed-out or interrupted runs.", "muted"),
+      );
+    for (const failure of report.runner.recentFailures)
+      failures.append(
+        node(
+          "p",
+          `${failure.id.slice(0, 8)} · ${failure.status} · ${failure.error ?? "No safe error summary available."}`,
+        ),
+      );
+    const download = button("Download safe report", () => {
+      const blob = new Blob([JSON.stringify(report, null, 2) + "\n"], {
+          type: "application/json",
+        }),
+        url = URL.createObjectURL(blob),
+        link = document.createElement("a");
+      link.href = url;
+      link.download = `agentd-diagnostics-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+    diagnosticsContent.replaceChildren(
+      summary,
+      ...(gatewayConfig ? [gatewayConfig] : []),
+
+      node(
+        "p",
+        `AgentD ${report.release.version} · revision ${report.release.revision ?? "unknown"} · ${Math.floor(report.runner.uptimeSeconds / 60)} minutes uptime`,
+      ),
+      node(
+        "p",
+        `${bytes(report.storage.freeBytes)} free of ${bytes(report.storage.totalBytes)}`,
+        "muted",
+      ),
+      services,
+      failures,
+      download,
+      node(
+        "p",
+        `Generated ${new Date(report.generatedAt).toLocaleString()}. This report excludes prompts, raw logs, credentials, configuration contents and private paths.`,
+        "muted",
+      ),
+    );
+  } catch (error) {
+    diagnosticsContent.replaceChildren(
+      node("p", error.message || "Diagnostics are unavailable.", "error"),
+    );
+  }
+};
 function renderAccessKeyForm() {
   const form = node("form"),
     currentLabel = node("label", "Current access key"),
@@ -3819,3 +3910,207 @@ $("project-menu").onclick = () => {
   $("project-settings-dialog").showModal();
 };
 $("project-settings-close").onclick = () => $("project-settings-dialog").close();
+
+// Settings > Updates: approved releases only; installing needs the current key again.
+const updatesDialog = $("updates-dialog"),
+  updatesContent = $("updates-content");
+let updatesPoll = null;
+const stageLabels = {
+  verifying: "verifying the approved release",
+  planning: "checking configuration and idle state",
+  installing: "testing and installing",
+  verifying_services: "verifying services after the update",
+};
+function stopUpdatesPoll() {
+  if (updatesPoll) clearInterval(updatesPoll);
+  updatesPoll = null;
+}
+$("updates-close").onclick = () => {
+  stopUpdatesPoll();
+  updatesDialog.close();
+};
+$("updates-settings").onclick = () => {
+  $("preferences-dialog").close();
+  updatesDialog.showModal();
+  void renderUpdates();
+};
+function lastUpdate(job) {
+  if (!job || job.state === "running") return null;
+  if (job.state === "succeeded")
+    return node(
+      "p",
+      `Last update: ${job.version} installed ${new Date(job.updatedAt).toLocaleString()}.`,
+      "good",
+    );
+  const outcome =
+    job.failedStage === "installing"
+      ? "If a step failed, the installer restored the previous version automatically."
+      : job.failedStage === "verifying_services"
+        ? "The new version was installed, but a check afterwards failed. Open Diagnostics."
+        : "Nothing was changed.";
+  return node(
+    "p",
+    `The update to ${job.version} stopped while ${stageLabels[job.failedStage] ?? "updating"}. ${outcome} Details are in the server's update log.`,
+    "attention",
+  );
+}
+async function renderUpdates() {
+  stopUpdatesPoll();
+  updatesContent.replaceChildren(node("p", "Checking for updates…", "muted"));
+  try {
+    const value = await api("/api/updates");
+    if (value.running || value.job?.state === "running")
+      return renderUpdateProgress(value);
+    const installed = node(
+      "p",
+      `Installed: AgentD ${value.installed.version} · revision ${value.installed.revision || "unknown"}`,
+    );
+    const parts = [installed];
+    const last = lastUpdate(value.job);
+    if (last) parts.push(last);
+    const available = value.candidates.filter((item) => item.valid && item.newer);
+    if (value.configuration !== "ok")
+      parts.push(
+        node(
+          "p",
+          value.configuration === "recovery_required"
+            ? "Updates are paused: an interrupted update needs administrator recovery."
+            : "Updates are paused: the server configuration changed outside the installer and needs review.",
+          "attention",
+        ),
+      );
+    if (!available.length)
+      parts.push(
+        node(
+          "p",
+          "You're up to date. New releases appear here after they have been reviewed and approved.",
+          "muted",
+        ),
+      );
+    for (const release of available) {
+      const card = node("section", undefined, "operation-section");
+      card.append(
+        node("h3", `AgentD ${release.version}`),
+        node(
+          "p",
+          `Revision ${release.revision} · approved ${release.approvedAt ? new Date(release.approvedAt).toLocaleDateString() : "—"}${release.schemaChange ? " · includes a database update" : ""}`,
+          "muted",
+        ),
+      );
+      if (release.notes) card.append(node("p", release.notes));
+      const review = button(
+        "Review update",
+        () => renderUpdateReview(release),
+        "primary",
+      );
+      review.disabled = value.configuration !== "ok";
+      card.append(review);
+      parts.push(card);
+    }
+    updatesContent.replaceChildren(...parts);
+  } catch (error) {
+    updatesContent.replaceChildren(node("p", error.message, "error"));
+  }
+}
+function renderUpdateReview(release) {
+  const label = node("label", "Current access key"),
+    key = node("input");
+  key.type = "password";
+  key.id = "update-current-key";
+  key.autocomplete = "current-password";
+  label.htmlFor = key.id;
+  const details = node("div");
+  const preview = button(
+    "Preview update",
+    async () => {
+      const value = await api("/api/updates", {
+        action: "preview",
+        version: release.version,
+        currentKey: key.value,
+      });
+      const confirm = node("input"),
+        confirmLabel = node(
+          "label",
+          " I understand that services restart for a few minutes and I will be signed out.",
+        );
+      confirm.type = "checkbox";
+      confirm.id = "update-confirm";
+      confirmLabel.prepend(confirm);
+      const install = button(
+        "Install update",
+        async () => {
+          await api("/api/updates", {
+            action: "install",
+            version: value.release.version,
+            fingerprint: value.fingerprint,
+            currentKey: key.value,
+            confirmed: confirm.checked,
+          });
+          key.value = "";
+          renderUpdateProgress({
+            job: { version: value.release.version, stage: "verifying" },
+          });
+        },
+        "primary",
+      );
+      details.replaceChildren(
+        node(
+          "p",
+          `From ${value.installed.version} to ${value.release.version} (revision ${value.release.revision}).`,
+        ),
+        node(
+          "p",
+          value.release.schemaChange
+            ? "This release updates the task database. A backup is taken first; rolling back later also restores the database from that backup."
+            : "No database change.",
+          value.release.schemaChange ? "attention" : "muted",
+        ),
+        node(
+          "p",
+          "The installer checks that no work is running, runs all tests, backs up the current version and data, then switches. If any step fails it restores the previous version.",
+          "muted",
+        ),
+        confirmLabel,
+        install,
+      );
+    },
+    "primary",
+  );
+  updatesContent.replaceChildren(
+    node("h3", `Update to AgentD ${release.version}`),
+    ...(release.notes ? [node("p", release.notes)] : []),
+    label,
+    key,
+    preview,
+    details,
+    button("Back", () => renderUpdates()),
+  );
+  key.focus();
+}
+function renderUpdateProgress(value) {
+  stopUpdatesPoll();
+  const status = node("p", undefined, "run-progress");
+  const show = (job) => {
+    status.textContent = `Updating to ${job?.version ?? "the new version"}: ${stageLabels[job?.stage] ?? "starting"}…`;
+  };
+  show(value.job);
+  updatesContent.replaceChildren(
+    status,
+    node(
+      "p",
+      "Services restart near the end and you will be signed out. Sign in again, then open Settings > Updates to see the result.",
+      "muted",
+    ),
+  );
+  updatesPoll = setInterval(async () => {
+    try {
+      const next = await api("/api/updates");
+      if (!next.running && next.job?.state !== "running") {
+        stopUpdatesPoll();
+        void renderUpdates();
+      } else show(next.job);
+    } catch {
+      status.textContent = "Services are restarting…";
+    }
+  }, 3000);
+}

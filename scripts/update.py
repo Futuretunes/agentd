@@ -38,10 +38,11 @@ def canonical(value):
 def config(path):
     c = json.loads(Path(path).read_text())
     required = {'app','state','deployment','user','runnerUnit','mobileUnit','node','npm','healthUrl','configFiles','controlSocket'}
-    optional={'gatewayUser','gatewaySocket','resourceProfile','gatewayHardening','adminUnit','adminSocket'}
+    optional={'gatewayUser','gatewaySocket','resourceProfile','gatewayHardening','adminUnit','adminSocket','updateUnit'}
     if (set(c)-optional) != required or bool(c.get('gatewayUser')) != bool(c.get('gatewaySocket')): raise ValueError('Unexpected or missing configuration field')
     if c.get('resourceProfile') not in (None,'standard-v1'): raise ValueError('Unknown resource profile')
     if c.get('gatewayHardening') not in (None,'gateway-hardening-v1'): raise ValueError('Unknown gateway hardening profile')
+    if c.get('updateUnit') not in (None,'agentd-update@.service'): raise ValueError('Unknown update unit')
     paths = [canonical(c[k]) for k in ('app','state','deployment')]
     for i, a in enumerate(paths):
         if any(a == b or a in b.parents or b in a.parents for b in paths[i+1:]): raise ValueError('Application, state and deployment paths must be disjoint')
@@ -63,6 +64,20 @@ def config(path):
     if c['runnerUnit'] == c['mobileUnit']: raise ValueError('Separate units required')
     if not re.fullmatch(r'http://127\.0\.0\.1:[0-9]+/healthz',c['healthUrl']): raise ValueError('Loopback health URL required')
     return c
+
+def config_fingerprint(name):
+    # Bind content, owner, group and mode: a permission change is drift too.
+    # A supported access-key rotation only replaces "accessHash" with another valid
+    # digest, so that single value is masked; any other edit (or an invalid digest)
+    # still changes the fingerprint.
+    path=Path(name); info=path.stat(); data=path.read_bytes()
+    try:
+        value=json.loads(data)
+        if isinstance(value,dict) and re.fullmatch(r'[a-f0-9]{64}',str(value.get('accessHash',''))):
+            data=json.dumps(dict(value,accessHash='<rotatable>'),sort_keys=True,separators=(',',':')).encode()
+    except ValueError: pass
+    digest=hashlib.sha256(b'agentd-config-v2\0'+data).hexdigest()
+    return {'sha256':digest,'uid':info.st_uid,'gid':info.st_gid,'mode':oct(info.st_mode & 0o7777)}
 
 def inventory(c):
     result = {}
@@ -143,7 +158,7 @@ def inventory(c):
         hashes={str(canonical(name)):hashlib.sha256(canonical(name).read_bytes()).hexdigest() for name in files if name}
         properties['ExecStart']=properties['ExecStart'].split(' ; start_time=',1)[0]
         result[c['adminUnit']]={'properties':hashlib.sha256(json.dumps(properties,sort_keys=True).encode()).hexdigest(),'files':hashes}
-    result['configuration'] = {name:hashlib.sha256(Path(name).read_bytes()).hexdigest() for name in c['configFiles']}
+    result['configuration'] = {name:config_fingerprint(name) for name in c['configFiles']}
     return result
 
 def idle(state, maximum):
@@ -273,7 +288,7 @@ def copy_state(source, destination):
 
 def apply(c, manifest, stage, previous, current, backup):
     app,state=Path(c['app']),Path(c['state'])
-    runner,mobile=c['runnerUnit'],c['mobileUnit']
+    runner,mobile,admin=c['runnerUnit'],c['mobileUnit'],c.get('adminUnit')
     swapped=False
     control_idle(c)
     try:
@@ -282,6 +297,7 @@ def apply(c, manifest, stage, previous, current, backup):
         idle(state,manifest['taskSchemaVersion'])
         # Stop the daemon to close all writers, then recheck durable jobs.
         run(['systemctl','stop',runner])
+        if admin: run(['systemctl','stop',admin])
         idle(state,manifest['taskSchemaVersion'])
         if inventory(c) != current: raise ValueError('Configuration changed while preparing update')
         copy_state(state,backup/'state')
@@ -289,19 +305,21 @@ def apply(c, manifest, stage, previous, current, backup):
         try: stage.rename(app)
         except BaseException: (backup/'app').rename(app); raise
         swapped=True
+        if admin: run(['systemctl','start',admin])
         run(['systemctl','start',runner]); ready(c,manifest)
         run(['systemctl','start',mobile]); run(['systemctl','is-active','--quiet',runner,mobile])
+        if admin: run(['systemctl','is-active','--quiet',admin])
         record={'release':manifest,'configuration':current}
         if inventory(c) != current: raise ValueError('Configuration changed during service restart')
         target=Path(c['deployment'])/'installed.json'
         temporary=target.with_suffix('.tmp'); temporary.write_text(json.dumps(record,sort_keys=True,indent=2)+'\n'); temporary.chmod(0o600); temporary.replace(target)
     except BaseException:
         if swapped:
-            run(['systemctl','stop',mobile,runner])
+            run(['systemctl','stop',mobile,runner,*([admin] if admin else [])])
             app.rename(backup/'failed-app'); (backup/'app').rename(app)
             state.rename(backup/'failed-state'); copy_state(backup/'state',state)
         # Old app and matching state, with native profiles/journals outside state untouched.
-        run(['systemctl','start',runner,mobile])
+        run(['systemctl','start',*([admin] if admin else []),runner,mobile])
         raise
 
 if __name__ == '__main__':

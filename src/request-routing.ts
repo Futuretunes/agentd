@@ -30,6 +30,7 @@ export const reviewPreparationOperations = [
 
 export const managedOperationOperations = [
   "admin-access-rotate",
+  "admin-update-start",
   "feedback-targets",
   "feedback-status",
   // Local compatibility name used by publication lifecycle tests and admin clients.
@@ -58,7 +59,13 @@ export const managedOperationOperations = [
   "account-refresh",
 ] as const;
 
-export const serviceReadOperations = ["capabilities", "operations", "audit"] as const;
+export const serviceReadOperations = [
+  "capabilities",
+  "operations",
+  "audit",
+  "admin-diagnostics",
+  "admin-updates",
+] as const;
 
 export const workspaceReadOperations = [
   "projects",

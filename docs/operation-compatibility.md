@@ -2,20 +2,20 @@
 
 `src/operation-policy.ts` centralizes the runner's existing global admission checks. This is a **directional start policy**, not an exclusive lock or a claim that all overlapping operations are safe. The extraction deliberately preserves behavior so subsequent changes can be reviewed independently. The runner reads blockers lazily in the listed order.
 
-| Starting operation | Existing states that block this admission check |
-| --- | --- |
-| Repository discovery/import/update | Repository, publication, dependencies, GitHub sign-in |
-| Publication preview/approval | Publication, repository, dependencies, GitHub sign-in |
-| Dependency preparation | Dependencies, repository, publication, worker, account busy, preparation, queued task |
-| GitHub feedback/integration | Publication, repository, dependencies, worker, account busy, GitHub sign-in, queued task |
-| Account status probes | Probes, shutdown, worker, model discovery, account busy |
-| Worker dispatch | Shutdown, worker, dependencies, model discovery, account busy, account probes when credential renewal is enabled |
-| Storage preview/cleanup | Worker, preparation, account busy, dependencies, repository, publication, model discovery, queued/running/cancelling task, preparing review job |
-| Model discovery | Worker, preparation, account busy, probes, dependencies, model discovery |
-| GitHub login/logout | Repository, publication |
-| Native account login/logout | Worker, dependencies, preparation, renewal, probes, queued task |
-| Validation checks | Account busy, dependencies; followed by review availability below |
-| Review availability | Worker, queued task |
+| Starting operation                 | Existing states that block this admission check                                                                                                 |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository discovery/import/update | Repository, publication, dependencies, GitHub sign-in                                                                                           |
+| Publication preview/approval       | Publication, repository, dependencies, GitHub sign-in                                                                                           |
+| Dependency preparation             | Dependencies, repository, publication, worker, account busy, preparation, queued task                                                           |
+| GitHub feedback/integration        | Publication, repository, dependencies, worker, account busy, GitHub sign-in, queued task                                                        |
+| Account status probes              | Probes, shutdown, worker, model discovery, account busy                                                                                         |
+| Worker dispatch                    | Shutdown, worker, dependencies, model discovery, account busy, account probes when credential renewal is enabled                                |
+| Storage preview/cleanup            | Worker, preparation, account busy, dependencies, repository, publication, model discovery, queued/running/cancelling task, preparing review job |
+| Model discovery                    | Worker, preparation, account busy, probes, dependencies, model discovery                                                                        |
+| GitHub login/logout                | Repository, publication                                                                                                                         |
+| Native account login/logout        | Worker, dependencies, preparation, renewal, probes, queued task                                                                                 |
+| Validation checks                  | Account busy, dependencies; followed by review availability below                                                                               |
+| Review availability                | Worker, queued task                                                                                                                             |
 
 Definitions:
 

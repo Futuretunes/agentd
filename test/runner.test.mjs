@@ -718,3 +718,32 @@ test("access-key rotation uses only the fixed helper callback and audits no secr
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+test("diagnostics combine the fixed helper snapshot with sanitized runner failures", async () => {
+  const f = await fixture();
+  try {
+    f.config.adminDiagnostics = async () => ({
+      format: 1,
+      generatedAt: new Date().toISOString(),
+      release: { version: "fixture" },
+      configuration: { state: "ok" },
+      services: {},
+      storage: { freeBytes: 1, totalBytes: 2 },
+    });
+    const task = f.app.request({ op: "create", adapter: "claude", prompt: "fail" });
+    f.app.request({ op: "approve", id: task.id });
+    await status(f.app, task.id, ["failed"]);
+    const value = await f.app.request({ op: "admin-diagnostics" });
+    assert.equal(value.configuration.state, "ok");
+    assert.ok(value.runner.uptimeSeconds >= 0);
+    assert.deepEqual(
+      value.runner.recentFailures.map((row) => row.id),
+      [task.id],
+    );
+    assert.ok(!JSON.stringify(value).includes("prompt"));
+    assert.ok(!JSON.stringify(value).includes(f.root));
+  } finally {
+    await f.app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
