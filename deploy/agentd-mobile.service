@@ -24,6 +24,21 @@ ProtectControlGroups=true
 RestrictSUIDSGID=true
 CapabilityBoundingSet=
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Gateway hardening (scripts/apply_gateway_hardening.py). No MemoryDenyWriteExecute:
+# Node's JIT needs it; no PrivateUsers: it would break gateway socket group access.
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+ProtectClock=yes
+ProtectKernelLogs=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RemoveIPC=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @mount @debug @cpu-emulation @obsolete @raw-io @reboot @swap @clock @module
+SystemCallErrorNumber=EPERM
 # Limits apply to the whole service, including workers and checks.
 MemoryHigh=402653184
 MemoryMax=536870912

@@ -521,7 +521,7 @@ test("large-review file reads stay owner-bound and pinned to the prepared tree",
       await sleep(10);
     }
     assert.equal(blocked.status, "failed");
-    assert.match(blocked.error, /oversized/);
+    assert.match(blocked.error, /Checks must pass/);
     assert.equal(
       app.request({
         op: "review-file",
@@ -563,7 +563,11 @@ test("one oversized file requires durable acknowledgement of every bounded page"
       process.execPath,
       ["-e", "require('fs').writeFileSync('README.md','after\\n'.repeat(30000))"],
     ],
-    isolate: (_tree, _state, command, args) => ({ command, args, cleanup() {} }),
+    isolate: (_tree, _state, command, args, adapter) => ({
+      command: adapter ? command : process.execPath,
+      args: adapter ? args : ["-e", "console.log('checks passed')"],
+      cleanup() {},
+    }),
   });
   await once(app.server, "listening");
   const poll = async (op, job) => {
@@ -588,6 +592,20 @@ test("one oversized file requires durable acknowledgement of every bounded page"
     const job = await poll("review-job", started.id);
     assert.equal(job.status, "succeeded");
     assert.equal(job.result.truncated, true);
+    assert.throws(
+      () => app.request({ op: "validate", id: task.id, tree: job.result.tree }),
+      /Complete the exact file review/,
+    );
+    assert.throws(
+      () =>
+        app.request({
+          op: "commit",
+          id: task.id,
+          tree: job.result.tree,
+          message: "Not reviewed",
+        }),
+      /Complete the exact file review/,
+    );
     const first = app.request({
       op: "review-file",
       owner: "a",
@@ -632,6 +650,16 @@ test("one oversized file requires durable acknowledgement of every bounded page"
       pages: first.pages,
       acknowledged: Array.from({ length: first.pages }, (_, i) => i),
     });
+    assert.equal(persisted.result.largeReviewComplete, true);
+    app.request({ op: "project-checks", id: "default", dependencies: f.repo });
+    const validation = app.request({
+      op: "validation-start",
+      owner: "a",
+      id: task.id,
+      tree: job.result.tree,
+    });
+    assert.equal((await poll("validation-job", validation.id)).status, "succeeded");
+    assert.equal((await checked(app, task.id)).status, "passed");
     const commit = app.request({
       op: "commit-start",
       owner: "a",
@@ -639,9 +667,9 @@ test("one oversized file requires durable acknowledgement of every bounded page"
       tree: job.result.tree,
       message: "Still blocked",
     });
-    const blocked = await poll("commit-job", commit.id);
-    assert.equal(blocked.status, "failed");
-    assert.match(blocked.error, /oversized/);
+    const committed = await poll("commit-job", commit.id);
+    assert.equal(committed.status, "succeeded");
+    assert.equal(committed.result.review, "committed");
     assert.equal(
       app
         .request({ op: "audit" })

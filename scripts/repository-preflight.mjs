@@ -39,7 +39,7 @@ try {
     "github: public repository discovery and clone verified; no repository scripts ran",
   );
   account = githubAccount(join(root, "github"), process.argv[2] ?? "/usr/local/bin/gh");
-  account.start(owner);
+  account.start(owner, "repositories");
   let recognized = false;
   for (let n = 0; n < 150; n++) {
     const view = account.view(owner);

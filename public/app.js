@@ -1699,7 +1699,7 @@ async function openReview(id) {
     content.append(
       node(
         "p",
-        "The combined diff is too large for one response. Inspect bounded text files below. Commit and revision approval remain unavailable until the change is reduced.",
+        "The combined diff is too large for one response. Inspect every bounded text file below. Complete coverage can unlock checks and commit for this exact snapshot; revision requests remain unavailable.",
         "error",
       ),
     );
@@ -1715,7 +1715,7 @@ async function openReview(id) {
         if (completed.size === value.files.length) {
           progress.className = "good";
           progress.textContent +=
-            " The review record is complete; commit and revision remain unavailable for this oversized change.";
+            " The review record is complete. Refreshing will unlock checks and commit for this exact snapshot.";
         }
       };
       updateProgress();
@@ -1811,12 +1811,16 @@ async function openReview(id) {
                             pages: current.pages,
                             acknowledged: saved.acknowledgedPages,
                           };
-                          if (saved.complete) completed.add(file);
-                          status.textContent = saved.complete
+                          if (saved.fileComplete) completed.add(file);
+                          status.textContent = saved.fileComplete
                             ? "Reviewed for this exact snapshot"
                             : `${saved.acknowledgedPages.length} of ${current.pages} pages reviewed`;
-                          status.className = saved.complete ? "good" : "muted";
+                          status.className = saved.fileComplete ? "good" : "muted";
                           updateProgress();
+                          if (saved.complete) {
+                            await openReview(id);
+                            return;
+                          }
                           await showPage(current);
                         } catch (error) {
                           pageStatus.textContent = error.message;
@@ -1868,6 +1872,7 @@ async function openReview(id) {
                       mark.remove();
                       updateProgress();
                       value.acknowledgedFiles = saved.acknowledgedFiles;
+                      if (saved.complete) await openReview(id);
                     } catch (error) {
                       status.textContent = error.message;
                       status.className = "error";
@@ -1945,19 +1950,21 @@ async function openReview(id) {
     const check = button("Run checks", async () => {
       await startValidation(id, value.tree, actions, checksBox);
     });
-    check.disabled = !!value.conflicts?.length || !checksReady;
+    const reviewReady =
+      !value.blocked.length && (!value.truncated || value.largeReviewComplete);
+    check.disabled = !!value.conflicts?.length || !checksReady || !reviewReady;
     const passed = value.checks?.status === "passed" && value.checks?.tree === value.tree;
     const commitReady =
       (value.files.length || value.mergeParent) &&
       !value.conflicts?.length &&
-      !value.truncated &&
-      !value.blocked.length &&
+      reviewReady &&
       passed;
     let next;
     if (value.conflicts?.length)
       next = "Resolve the conflicts first. Use Request revisions to ask your agent.";
-    else if (value.truncated || value.blocked.length)
-      next = "Resolve the warnings above before committing.";
+    else if (value.blocked.length) next = "Resolve the warnings above before committing.";
+    else if (value.truncated && !value.largeReviewComplete)
+      next = "Review and mark every changed file page before running checks.";
     else if (!checksReady)
       next = setup?.error
         ? "This project has no supported checks yet: " + setup.error
@@ -2453,8 +2460,8 @@ $("github-close").onclick = () => {
   $("github-content").replaceChildren();
   githubRendered = "";
 };
-async function githubAction(action, session) {
-  await api("/api/github", { action, session });
+async function githubAction(action, session, access) {
+  await api("/api/github", { action, session, access });
   githubRendered = "";
   await updateGithub();
 }
@@ -2468,12 +2475,27 @@ async function updateGithub() {
     if (signature === githubRendered) return;
     githubRendered = signature;
     const box = $("github-content");
+    const currentAccess = data.access?.level;
     box.replaceChildren(
       node(
         "p",
         data.connected
-          ? "A GitHub connection is saved. Importing verifies repository access."
+          ? "A GitHub connection is saved. AgentD access: " +
+              (!data.access?.valid
+                ? "invalid policy; reconnect before using this connection"
+                : data.access?.configured
+                  ? data.authorization.choices.find((v) => v.level === currentAccess)
+                      ?.description
+                  : "repository-only compatibility for an older connection; reconnect to choose an explicit ceiling") +
+              "."
           : "No GitHub connection saved.",
+      ),
+      node("p", data.authorization.note),
+      node(
+        "p",
+        "Provider grant shown by GitHub CLI: " +
+          data.authorization.providerGrant.join(", ") +
+          ". Choose the smallest AgentD ceiling that covers this server's work.",
       ),
     );
     const session = data.session;
@@ -2498,9 +2520,20 @@ async function updateGithub() {
         ),
       );
     else if (!data.busy) {
+      const access = document.createElement("select");
+      access.setAttribute("aria-label", "GitHub access ceiling");
+      for (const choice of data.authorization.choices) {
+        const option = document.createElement("option");
+        option.value = choice.level;
+        option.textContent = choice.description;
+        option.selected = choice.level === (currentAccess ?? "repositories");
+        access.append(option);
+      }
       box.append(
+        node("label", "AgentD access ceiling", "field-label"),
+        access,
         button(data.connected ? "Reconnect GitHub" : "Connect GitHub", () =>
-          githubAction("start"),
+          githubAction("start", null, access.value),
         ),
       );
       if (data.connected)
@@ -3631,6 +3664,233 @@ function openPreferences() {
   void loadAccounts();
 }
 $("preferences-menu").onclick = openPreferences;
+const accessKeyDialog = $("access-key-dialog"),
+  accessKeyContent = $("access-key-content");
+$("access-key-close").onclick = () => accessKeyDialog.close();
+$("access-key-settings").onclick = () => {
+  $("preferences-dialog").close();
+  renderAccessKeyForm();
+  accessKeyDialog.showModal();
+};
+const diagnosticsDialog = $("diagnostics-dialog"),
+  diagnosticsContent = $("diagnostics-content");
+$("diagnostics-close").onclick = () => diagnosticsDialog.close();
+$("diagnostics-settings").onclick = async () => {
+  $("preferences-dialog").close();
+  diagnosticsContent.replaceChildren(node("p", "Checking server health…", "muted"));
+  diagnosticsDialog.showModal();
+  try {
+    const report = await api("/api/diagnostics"),
+      bytes = (value) =>
+        value >= 1024 ** 3
+          ? (value / 1024 ** 3).toFixed(1) + " GiB"
+          : (value / 1024 ** 2).toFixed(1) + " MiB";
+    const configuration = report.configuration.state,
+      summary = node("p", undefined, configuration === "ok" ? "good" : "attention");
+    summary.textContent =
+      configuration === "ok"
+        ? "Configuration matches the installed release."
+        : configuration === "recovery_required"
+          ? "An interrupted update needs administrator recovery."
+          : "Configuration changed outside the managed installer and needs review.";
+    const gatewayConfig =
+      report.configuration.gatewayConfigReadable === false
+        ? node(
+            "p",
+            "The phone gateway cannot read its configuration file. It keeps working now but will not start after the next restart. Ask your administrator to restore read access for the gateway.",
+            "attention",
+          )
+        : null;
+    const services = node("section", undefined, "operation-section");
+    services.append(node("h3", "Services"));
+    for (const [name, service] of Object.entries(report.services))
+      services.append(
+        node(
+          "p",
+          `${name[0].toUpperCase() + name.slice(1)} · ${service.state} (${service.detail}) · ${service.restarts ?? "unknown"} restarts`,
+          service.state === "active" ? "good" : "attention",
+        ),
+      );
+    const failures = node("section", undefined, "operation-section");
+    failures.append(node("h3", "Recent failed runs"));
+    if (!report.runner.recentFailures.length)
+      failures.append(
+        node("p", "No recent failed, timed-out or interrupted runs.", "muted"),
+      );
+    for (const failure of report.runner.recentFailures)
+      failures.append(
+        node(
+          "p",
+          `${failure.id.slice(0, 8)} · ${failure.status} · ${failure.error ?? "No safe error summary available."}`,
+        ),
+      );
+    const download = button("Download safe report", () => {
+      const blob = new Blob([JSON.stringify(report, null, 2) + "\n"], {
+          type: "application/json",
+        }),
+        url = URL.createObjectURL(blob),
+        link = document.createElement("a");
+      link.href = url;
+      link.download = `agentd-diagnostics-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+    diagnosticsContent.replaceChildren(
+      summary,
+      ...(gatewayConfig ? [gatewayConfig] : []),
+
+      node(
+        "p",
+        `AgentD ${report.release.version} · revision ${report.release.revision ?? "unknown"} · ${Math.floor(report.runner.uptimeSeconds / 60)} minutes uptime`,
+      ),
+      node(
+        "p",
+        `${bytes(report.storage.freeBytes)} free of ${bytes(report.storage.totalBytes)}`,
+        "muted",
+      ),
+      services,
+      failures,
+      download,
+      node(
+        "p",
+        `Generated ${new Date(report.generatedAt).toLocaleString()}. This report excludes prompts, raw logs, credentials, configuration contents and private paths.`,
+        "muted",
+      ),
+    );
+  } catch (error) {
+    diagnosticsContent.replaceChildren(
+      node("p", error.message || "Diagnostics are unavailable.", "error"),
+    );
+  }
+};
+function renderAccessKeyForm() {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    current = node("input"),
+    modeLabel = node("label", "New key"),
+    mode = node("select"),
+    customLabel = node("label", "Choose a new access key"),
+    custom = node("input"),
+    submit = node("button", "Review change", "primary");
+  current.type = custom.type = "password";
+  current.autocomplete = "current-password";
+  custom.autocomplete = "new-password";
+  current.required = true;
+  custom.minLength = 24;
+  custom.maxLength = 128;
+  for (const [value, label] of [
+    ["generated", "Generate a strong key"],
+    ["custom", "Choose my own key"],
+  ]) {
+    const option = node("option", label);
+    option.value = value;
+    mode.append(option);
+  }
+  const update = () => {
+    customLabel.hidden = custom.hidden = mode.value !== "custom";
+    custom.required = mode.value === "custom";
+  };
+  mode.onchange = update;
+  currentLabel.append(current);
+  modeLabel.append(mode);
+  customLabel.append(custom);
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      "You will review the exact change before it is applied. The current device stays signed in; every other session is closed.",
+      "muted",
+    ),
+    currentLabel,
+    modeLabel,
+    customLabel,
+    submit,
+  );
+  update();
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const currentKey = current.value,
+        plan = await api("/api/access-key", {
+          action: "preview",
+          mode: mode.value,
+          currentKey,
+          newKey: mode.value === "custom" ? custom.value : undefined,
+        }),
+        newKey = plan.generatedKey ?? custom.value;
+      current.value = "";
+      renderAccessKeyApproval(plan, newKey);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  accessKeyContent.replaceChildren(form);
+}
+function renderAccessKeyApproval(plan, newKey) {
+  const form = node("form"),
+    keyLabel = node("label", "New access key — save this now"),
+    key = node("input"),
+    savedLabel = node("label"),
+    saved = node("input"),
+    currentLabel = node("label", "Enter the current access key again"),
+    current = node("input"),
+    approve = node("button", "Change access key", "danger");
+  key.value = newKey;
+  key.readOnly = true;
+  key.setAttribute("aria-label", "New access key");
+  keyLabel.append(key);
+  saved.type = "checkbox";
+  saved.required = true;
+  savedLabel.append(saved, document.createTextNode(" I saved the new key securely"));
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  approve.type = "submit";
+  form.append(
+    node("p", "Review expires in five minutes.", "attention"),
+    keyLabel,
+    savedLabel,
+    currentLabel,
+    node(
+      "p",
+      `${plan.invalidatesOtherSessions} other signed-in session${plan.invalidatesOtherSessions === 1 ? "" : "s"} will be closed. This device stays signed in.`,
+      "muted",
+    ),
+    approve,
+    button("Start over", () => renderAccessKeyForm()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    approve.disabled = true;
+    try {
+      const result = await api("/api/access-key", {
+        action: "approve",
+        fingerprint: plan.fingerprint,
+        currentKey: current.value,
+        newKey,
+        saved: saved.checked,
+      });
+      key.value = "";
+      current.value = newKey = "";
+      accessKeyContent.replaceChildren(
+        node("h3", "Access key changed"),
+        node(
+          "p",
+          `${result.invalidated} other session${result.invalidated === 1 ? " was" : "s were"} signed out.`,
+          "good",
+        ),
+        button("Done", () => accessKeyDialog.close(), "primary"),
+      );
+    } catch (error) {
+      notice(error.message);
+      approve.disabled = false;
+    }
+  };
+  accessKeyContent.replaceChildren(form);
+}
 // Settings hands over to the focused editors instead of stacking modals.
 $("github-settings").onclick = () => {
   $("preferences-dialog").close();
@@ -3650,3 +3910,207 @@ $("project-menu").onclick = () => {
   $("project-settings-dialog").showModal();
 };
 $("project-settings-close").onclick = () => $("project-settings-dialog").close();
+
+// Settings > Updates: approved releases only; installing needs the current key again.
+const updatesDialog = $("updates-dialog"),
+  updatesContent = $("updates-content");
+let updatesPoll = null;
+const stageLabels = {
+  verifying: "verifying the approved release",
+  planning: "checking configuration and idle state",
+  installing: "testing and installing",
+  verifying_services: "verifying services after the update",
+};
+function stopUpdatesPoll() {
+  if (updatesPoll) clearInterval(updatesPoll);
+  updatesPoll = null;
+}
+$("updates-close").onclick = () => {
+  stopUpdatesPoll();
+  updatesDialog.close();
+};
+$("updates-settings").onclick = () => {
+  $("preferences-dialog").close();
+  updatesDialog.showModal();
+  void renderUpdates();
+};
+function lastUpdate(job) {
+  if (!job || job.state === "running") return null;
+  if (job.state === "succeeded")
+    return node(
+      "p",
+      `Last update: ${job.version} installed ${new Date(job.updatedAt).toLocaleString()}.`,
+      "good",
+    );
+  const outcome =
+    job.failedStage === "installing"
+      ? "If a step failed, the installer restored the previous version automatically."
+      : job.failedStage === "verifying_services"
+        ? "The new version was installed, but a check afterwards failed. Open Diagnostics."
+        : "Nothing was changed.";
+  return node(
+    "p",
+    `The update to ${job.version} stopped while ${stageLabels[job.failedStage] ?? "updating"}. ${outcome} Details are in the server's update log.`,
+    "attention",
+  );
+}
+async function renderUpdates() {
+  stopUpdatesPoll();
+  updatesContent.replaceChildren(node("p", "Checking for updates…", "muted"));
+  try {
+    const value = await api("/api/updates");
+    if (value.running || value.job?.state === "running")
+      return renderUpdateProgress(value);
+    const installed = node(
+      "p",
+      `Installed: AgentD ${value.installed.version} · revision ${value.installed.revision || "unknown"}`,
+    );
+    const parts = [installed];
+    const last = lastUpdate(value.job);
+    if (last) parts.push(last);
+    const available = value.candidates.filter((item) => item.valid && item.newer);
+    if (value.configuration !== "ok")
+      parts.push(
+        node(
+          "p",
+          value.configuration === "recovery_required"
+            ? "Updates are paused: an interrupted update needs administrator recovery."
+            : "Updates are paused: the server configuration changed outside the installer and needs review.",
+          "attention",
+        ),
+      );
+    if (!available.length)
+      parts.push(
+        node(
+          "p",
+          "You're up to date. New releases appear here after they have been reviewed and approved.",
+          "muted",
+        ),
+      );
+    for (const release of available) {
+      const card = node("section", undefined, "operation-section");
+      card.append(
+        node("h3", `AgentD ${release.version}`),
+        node(
+          "p",
+          `Revision ${release.revision} · approved ${release.approvedAt ? new Date(release.approvedAt).toLocaleDateString() : "—"}${release.schemaChange ? " · includes a database update" : ""}`,
+          "muted",
+        ),
+      );
+      if (release.notes) card.append(node("p", release.notes));
+      const review = button(
+        "Review update",
+        () => renderUpdateReview(release),
+        "primary",
+      );
+      review.disabled = value.configuration !== "ok";
+      card.append(review);
+      parts.push(card);
+    }
+    updatesContent.replaceChildren(...parts);
+  } catch (error) {
+    updatesContent.replaceChildren(node("p", error.message, "error"));
+  }
+}
+function renderUpdateReview(release) {
+  const label = node("label", "Current access key"),
+    key = node("input");
+  key.type = "password";
+  key.id = "update-current-key";
+  key.autocomplete = "current-password";
+  label.htmlFor = key.id;
+  const details = node("div");
+  const preview = button(
+    "Preview update",
+    async () => {
+      const value = await api("/api/updates", {
+        action: "preview",
+        version: release.version,
+        currentKey: key.value,
+      });
+      const confirm = node("input"),
+        confirmLabel = node(
+          "label",
+          " I understand that services restart for a few minutes and I will be signed out.",
+        );
+      confirm.type = "checkbox";
+      confirm.id = "update-confirm";
+      confirmLabel.prepend(confirm);
+      const install = button(
+        "Install update",
+        async () => {
+          await api("/api/updates", {
+            action: "install",
+            version: value.release.version,
+            fingerprint: value.fingerprint,
+            currentKey: key.value,
+            confirmed: confirm.checked,
+          });
+          key.value = "";
+          renderUpdateProgress({
+            job: { version: value.release.version, stage: "verifying" },
+          });
+        },
+        "primary",
+      );
+      details.replaceChildren(
+        node(
+          "p",
+          `From ${value.installed.version} to ${value.release.version} (revision ${value.release.revision}).`,
+        ),
+        node(
+          "p",
+          value.release.schemaChange
+            ? "This release updates the task database. A backup is taken first; rolling back later also restores the database from that backup."
+            : "No database change.",
+          value.release.schemaChange ? "attention" : "muted",
+        ),
+        node(
+          "p",
+          "The installer checks that no work is running, runs all tests, backs up the current version and data, then switches. If any step fails it restores the previous version.",
+          "muted",
+        ),
+        confirmLabel,
+        install,
+      );
+    },
+    "primary",
+  );
+  updatesContent.replaceChildren(
+    node("h3", `Update to AgentD ${release.version}`),
+    ...(release.notes ? [node("p", release.notes)] : []),
+    label,
+    key,
+    preview,
+    details,
+    button("Back", () => renderUpdates()),
+  );
+  key.focus();
+}
+function renderUpdateProgress(value) {
+  stopUpdatesPoll();
+  const status = node("p", undefined, "run-progress");
+  const show = (job) => {
+    status.textContent = `Updating to ${job?.version ?? "the new version"}: ${stageLabels[job?.stage] ?? "starting"}…`;
+  };
+  show(value.job);
+  updatesContent.replaceChildren(
+    status,
+    node(
+      "p",
+      "Services restart near the end and you will be signed out. Sign in again, then open Settings > Updates to see the result.",
+      "muted",
+    ),
+  );
+  updatesPoll = setInterval(async () => {
+    try {
+      const next = await api("/api/updates");
+      if (!next.running && next.job?.state !== "running") {
+        stopUpdatesPoll();
+        void renderUpdates();
+      } else show(next.job);
+    } catch {
+      status.textContent = "Services are restarting…";
+    }
+  }, 3000);
+}

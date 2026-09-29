@@ -41,6 +41,23 @@ export const admission = {
   accountChange: ["worker", "dependency", "preparing", "renewal", "probes", "queued"],
   checks: ["account", "dependency"],
   review: ["worker", "queued"],
+  // Installing an update stops the runner and gateway.
+  update: [
+    "closing",
+    "worker",
+    "queued",
+    "unsettled",
+    "preparing",
+    "account",
+    "renewal",
+    "probes",
+    "dependency",
+    "repository",
+    "publication",
+    "github",
+    "models",
+    "reviewPreparation",
+  ],
 } as const;
 export type Operation = keyof typeof admission;
 export type BusyState = (typeof admission)[Operation][number];

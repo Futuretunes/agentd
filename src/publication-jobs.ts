@@ -5,6 +5,7 @@ import { rmSync } from "node:fs";
 import { localGit } from "./git-policy.ts";
 import { operationSlot } from "./operation-slot.ts";
 import { branchName, repositoryGit, type RepositoryGit } from "./repositories.ts";
+import { type GitHubAccess } from "./github-account.ts";
 import {
   integrationGit,
   githubReviewAPI,
@@ -30,7 +31,7 @@ type Options = {
   project: (id: string) => any;
   conversation: (id: string) => any;
   blocked: (operation: "publication" | "feedback") => boolean;
-  profile: () => string | undefined;
+  profile: (required?: GitHubAccess) => string | undefined;
   requireAdapter: (id: string, mode: "edit") => unknown;
   bindExecution: (id: string) => unknown;
   audit: (action: string, task: string | null, detail: any) => void;
@@ -107,7 +108,7 @@ export function publicationJobs(c: Options) {
         "Wait for current publishing, repository, dependency or GitHub sign-in work.",
       );
     slot.assertAvailable();
-    const profile = c.profile();
+    const profile = c.profile("publish");
     if (!profile && !c.pullAPI)
       throw Error("Connect GitHub before preparing publication.");
     const stored = approve
@@ -407,7 +408,10 @@ export function publicationJobs(c: Options) {
         worktree = join(c.worktrees, id),
         gitCommand =
           c.repositoryCommand ??
-          repositoryGit({ stateDir: c.stateDir, githubProfile: c.profile() });
+          repositoryGit({
+            stateDir: c.stateDir,
+            githubProfile: c.profile("repositories"),
+          });
       const recovered = get(id);
       if (recovered) {
         db.prepare(
@@ -558,7 +562,7 @@ export function publicationJobs(c: Options) {
     if (!["comments", "integration"].includes(kind))
       throw Error("Unsupported review operation");
     slot.assertAvailable();
-    const profile = c.profile();
+    const profile = c.profile(kind === "comments" ? "feedback" : "repositories");
     if (!profile && !c.reviewAPI && !c.repositoryCommand)
       throw Error("Connect GitHub first.");
     let publication: any = null;

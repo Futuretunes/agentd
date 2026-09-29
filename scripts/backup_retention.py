@@ -16,7 +16,13 @@ def size(path,limit=MAX_TOTAL):
     total=0;entries=0
     for directory,dirs,files in os.walk(path,followlinks=False):
         for name in [*dirs,*files]:
-            p=Path(directory)/name;s=p.lstat();entries+=1
+            p=Path(directory)/name
+            # admission() measures live state: the running service replaces files
+            # atomically, so an entry may vanish between listing and lstat. The
+            # real backup is taken later with services stopped.
+            try:s=p.lstat()
+            except FileNotFoundError:continue
+            entries+=1
             if entries>500000:raise ValueError('Backup inventory exceeds its entry budget')
             if stat.S_ISREG(s.st_mode):total+=max(s.st_size,s.st_blocks*512)
             elif not (stat.S_ISDIR(s.st_mode) or stat.S_ISLNK(s.st_mode)):raise ValueError('Special files require manual backup review')
@@ -42,7 +48,7 @@ def records(c):
 
 def plan(c,now=None):
     now=time.time() if now is None else now
-    pending=any((Path(c['deployment'])/name).exists() for name in ('pending.json','gateway-pending.json','resources-pending.json'))
+    pending=any(Path(c['deployment']).glob('*pending.json'))
     items=records(c)
     for i,item in enumerate(items):
         item['eligible']=not pending and i>=KEEP and not item['pinned'] and item['completed']<=now-AGE
