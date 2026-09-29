@@ -94,3 +94,15 @@ export async function startUpdate(
   await request(socket, { op: "update-start", version }, 15000);
   return { started: true, version };
 }
+
+export async function restartService(
+  socket: string,
+  target: "runner" | "gateway",
+): Promise<{ restarted: true; target: "runner" | "gateway" }> {
+  if (target !== "runner" && target !== "gateway")
+    throw Error("Service restart request is invalid.");
+  const value: any = await request(socket, { op: "service-restart", target }, 65000);
+  if (value?.restarted !== true || value.target !== target)
+    throw Error("Service restart response is invalid.");
+  return { restarted: true, target };
+}

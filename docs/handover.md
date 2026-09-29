@@ -6,13 +6,21 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
-## Approved 0.64.1 — reload_required, single restart (Claude)
+## Candidate 0.66.0 — Agents & CLIs versions (Cursor)
 
-Unloaded unit files (often another program's) are reported as `reload_required` with the exact fix, not as drift. Updates restart services once, and new job units install automatically. 0.64.0 is installed and the rollback unit is present. See [handover](handovers/2026-09-29-claude-0.64.1.md).
+Settings > Agents & CLIs shows installed vs tested native CLI versions, refresh, and the guided host update procedure. Binary install from the phone remains deferred. See [handover](handovers/2026-09-29-cursor-cli-versions.md). Not installed. Next admin slice: GUI backups.
+
+## Candidate 0.65.0 — approval-gated service restart (Cursor)
+
+Settings > Diagnostics can restart the task runner or phone gateway with step-up access-key preview, idle admission and fixed helper `systemctl restart` of configured units only. See [handover](handovers/2026-09-29-cursor-service-restart.md). Not installed.
+
+## Installed and live-accepted 0.64.1 — reload_required, single restart (Claude)
+
+Unloaded unit files (often another program's) are reported as `reload_required` with the exact fix, not as drift. Updates restart services once, and new job units install automatically. Operator installed 0.64.1 from Settings > Updates and confirmed rollback to 0.64.0 works. See [handover](handovers/2026-09-29-claude-0.64.1.md).
 
 ## Installed 0.64.0 — in-app rollback (Claude)
 
-Settings > Updates can roll back to the newest compatible older version and its task data, saving what was running first. See [handover](handovers/2026-09-29-claude-in-app-rollback.md). Installed from Settings > Updates on 2026-09-29; live rollback acceptance follows after 0.64.1.
+Settings > Updates can roll back to the newest compatible older version and its task data, saving what was running first. See [handover](handovers/2026-09-29-claude-in-app-rollback.md). Live rollback acceptance confirmed with 0.64.1 → 0.64.0 on 2026-09-29.
 
 ## Candidate 0.63.0 — in-app updates (Claude)
 

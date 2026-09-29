@@ -9,6 +9,7 @@ import { pathToFileURL } from "node:url";
 import {
   readDiagnostics,
   readUpdates,
+  restartService,
   rotateAccessKey,
   startRollback,
   startUpdate,
@@ -83,6 +84,13 @@ export function start(options: Options) {
           rotateAccess: process.env.AGENTD_ADMIN_SOCKET
             ? (currentKey, newHash) =>
                 rotateAccessKey(process.env.AGENTD_ADMIN_SOCKET!, currentKey, newHash)
+            : undefined,
+          restartService: process.env.AGENTD_ADMIN_SOCKET
+            ? (target) =>
+                restartService(
+                  process.env.AGENTD_ADMIN_SOCKET!,
+                  target as "runner" | "gateway",
+                )
             : undefined,
           gateway: process.env.AGENTD_GATEWAY_SOCKET
             ? {

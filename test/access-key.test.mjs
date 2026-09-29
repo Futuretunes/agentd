@@ -22,6 +22,27 @@ test("access keys are strongly validated and compared by digest", () => {
     assert.throws(() => validateAccessKey(weak));
 });
 
+test("administration helper accepts only fixed service restart requests", () => {
+  const restarted = [];
+  const run = (target) => {
+    restarted.push(target);
+    return { restarted: true, target };
+  };
+  assert.deepEqual(
+    handleAdminRequest(
+      { op: "service-restart", target: "gateway" },
+      { mobileConfig: "/unused", restart: run },
+    ),
+    { restarted: true, target: "gateway" },
+  );
+  assert.deepEqual(restarted, ["gateway"]);
+  for (const input of [
+    { op: "service-restart", target: "admin" },
+    { op: "service-restart", target: "runner", unit: "agentd.service" },
+  ])
+    assert.throws(() => handleAdminRequest(input, { mobileConfig: "/unused" }));
+});
+
 test("administration helper accepts only its fixed diagnostic request", () => {
   const result = { format: 1, generatedAt: "fixture" };
   assert.equal(

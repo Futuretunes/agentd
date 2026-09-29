@@ -3672,6 +3672,113 @@ $("access-key-settings").onclick = () => {
   renderAccessKeyForm();
   accessKeyDialog.showModal();
 };
+const cliDialog = $("cli-dialog"),
+  cliContent = $("cli-content");
+$("cli-close").onclick = () => cliDialog.close();
+$("cli-settings").onclick = () => {
+  $("preferences-dialog").close();
+  void openCliSettings();
+};
+async function openCliSettings() {
+  cliContent.replaceChildren(node("p", "Checking installed CLI versions…", "muted"));
+  cliDialog.showModal();
+  try {
+    await renderCliSettings();
+  } catch (error) {
+    cliContent.replaceChildren(
+      node("p", error.message || "CLI status is unavailable.", "error"),
+    );
+  }
+}
+async function renderCliSettings() {
+  const report = await api("/api/operations"),
+    names = { claude: "Claude", codex: "Codex", cursor: "Cursor" },
+    adapters = report.adapters ?? [],
+    mismatch = adapters.some((value) => value.nativeVersion?.state === "mismatch"),
+    unavailable = adapters.some(
+      (value) =>
+        !value.nativeVersion?.version || value.nativeVersion?.state === "unavailable",
+    );
+  const list = node("section", undefined, "operation-section");
+  list.append(node("h3", "Installed vs tested"));
+  for (const value of adapters) {
+    const version = value.nativeVersion,
+      title = names[value.id] ?? value.id,
+      card = node("div", undefined, "operation-card");
+    card.append(node("h4", title));
+    card.append(
+      node(
+        "p",
+        "Tested: " + (version?.testedVersion ?? value.nativeLimits?.testedVersion ?? "—"),
+        "muted",
+      ),
+    );
+    card.append(
+      node(
+        "p",
+        version?.version
+          ? "Installed: " +
+              version.version +
+              (version.state === "verified"
+                ? " · matches"
+                : " · compatibility review needed")
+          : version?.state === "checking"
+            ? "Checking installed version…"
+            : "Installed version unavailable.",
+        version?.state === "mismatch"
+          ? "attention"
+          : version?.state === "verified"
+            ? "good"
+            : "muted",
+      ),
+    );
+    if (version?.checkedAt)
+      card.append(
+        node("p", "Checked " + new Date(version.checkedAt).toLocaleString(), "muted"),
+      );
+    list.append(card);
+  }
+  const guide = node("section", undefined, "operation-section");
+  guide.append(node("h3", "Guided CLI update"));
+  guide.append(
+    node(
+      "p",
+      mismatch || unavailable
+        ? "A different or missing CLI can break model discovery, renewals and pinned work modes. Follow these steps on the server; AgentD does not download or replace native CLIs from the phone yet."
+        : "Versions match the tested pins. If you update a CLI later, follow these steps before using it for work.",
+      mismatch || unavailable ? "attention" : "muted",
+    ),
+  );
+  for (const step of [
+    "1. Finish or stop active runs, preparations and account changes.",
+    "2. Keep the current tested binary for rollback. Do not copy account profiles into a release.",
+    "3. Stage the official native binary in a disposable profile and review release notes, flags, auth/renewal format and tools.",
+    "4. Update AgentD's shared version pin and related adapters together, then run the Linux isolation suite.",
+    "5. Install the reviewed binary while idle, refresh this page, then use separately approved smoke work if needed.",
+  ])
+    guide.append(node("p", step));
+  const refresh = button("Refresh versions", async () => {
+    refresh.disabled = true;
+    try {
+      await api("/api/account", { action: "refresh" });
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await renderCliSettings();
+    } catch (error) {
+      notice(error.message);
+      refresh.disabled = false;
+    }
+  });
+  cliContent.replaceChildren(
+    list,
+    guide,
+    refresh,
+    node(
+      "p",
+      "Binary installs stay administrator-managed until a narrowly scoped in-app CLI updater exists. See the native CLI updates document in the repository.",
+      "muted",
+    ),
+  );
+}
 const diagnosticsDialog = $("diagnostics-dialog"),
   diagnosticsContent = $("diagnostics-content");
 $("diagnostics-close").onclick = () => diagnosticsDialog.close();
@@ -3713,6 +3820,31 @@ $("diagnostics-settings").onclick = async () => {
           service.state === "active" ? "good" : "attention",
         ),
       );
+    if (
+      report.configuration.administrationHelper &&
+      configuration === "ok" &&
+      report.services.runner &&
+      report.services.gateway
+    ) {
+      const restartSection = node("section", undefined, "operation-section");
+      restartSection.append(node("h3", "Restart services"));
+      restartSection.append(
+        node(
+          "p",
+          "Restarts require your access key again. Active work must be stopped first.",
+          "muted",
+        ),
+      );
+      for (const target of ["runner", "gateway"]) {
+        const label = target === "runner" ? "Task runner" : "Phone gateway";
+        restartSection.append(
+          button(`Restart ${label.toLowerCase()}`, () =>
+            openServiceRestartForm(target, label),
+          ),
+        );
+      }
+      services.append(restartSection);
+    }
     const failures = node("section", undefined, "operation-section");
     failures.append(node("h3", "Recent failed runs"));
     if (!report.runner.recentFailures.length)
@@ -3829,6 +3961,101 @@ function renderAccessKeyForm() {
     }
   };
   accessKeyContent.replaceChildren(form);
+}
+function openServiceRestartForm(target, label) {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    current = node("input"),
+    submit = node("button", "Review restart", "primary");
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  submit.type = "submit";
+  form.append(
+    node("p", `Restart the ${label.toLowerCase()}.`, "muted"),
+    currentLabel,
+    submit,
+    button("Cancel", () => $("diagnostics-settings").click()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/service-restart", {
+        action: "preview",
+        target,
+        currentKey: current.value,
+      });
+      current.value = "";
+      renderServiceRestartApproval(plan, target, label);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  diagnosticsContent.replaceChildren(form);
+}
+function renderServiceRestartApproval(plan, target, label) {
+  const form = node("form"),
+    currentLabel = node("label", "Enter the current access key again"),
+    current = node("input"),
+    idleLabel = node("label"),
+    idle = node("input"),
+    approve = node("button", `Restart ${label.toLowerCase()}`, "danger");
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  if (plan.requiresIdle) {
+    idle.type = "checkbox";
+    idle.required = true;
+    idleLabel.append(
+      idle,
+      document.createTextNode(" Current work is stopped or finished"),
+    );
+  }
+  approve.type = "submit";
+  form.append(
+    node("p", "Review expires in five minutes.", "attention"),
+    node(
+      "p",
+      plan.requiresIdle
+        ? "A task, queue item or preparation is still active. Confirm it is stopped before continuing."
+        : "No active work is blocking a restart.",
+      plan.requiresIdle ? "attention" : "muted",
+    ),
+    currentLabel,
+    ...(plan.requiresIdle ? [idleLabel] : []),
+    approve,
+    button("Start over", () => openServiceRestartForm(target, label)),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    approve.disabled = true;
+    try {
+      await api("/api/service-restart", {
+        action: "restart",
+        target,
+        fingerprint: plan.fingerprint,
+        currentKey: current.value,
+        confirmedIdle: plan.requiresIdle ? idle.checked : true,
+      });
+      diagnosticsContent.replaceChildren(
+        node("h3", "Restart requested"),
+        node(
+          "p",
+          `The ${label.toLowerCase()} is restarting. Refresh diagnostics in a moment if this page disconnects.`,
+          "good",
+        ),
+        button("Close", () => diagnosticsDialog.close(), "primary"),
+      );
+    } catch (error) {
+      notice(error.message);
+      approve.disabled = false;
+    }
+  };
+  diagnosticsContent.replaceChildren(form);
 }
 function renderAccessKeyApproval(plan, newKey) {
   const form = node("form"),
