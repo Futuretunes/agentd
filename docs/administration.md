@@ -9,7 +9,7 @@ Implemented in candidate 0.65.0: approval-gated restart of the task runner or ph
 gateway from Diagnostics, with step-up access-key preview, idle admission and helper-side
 configuration/update guards. Implemented in candidate 0.66.0: Settings > Agents & CLIs
 compatibility view, refresh and guided host-update procedure (binary install still not
-in-app). Implemented in candidate 0.67.0: Settings > Backups list and approval-gated eligible prune. Implemented in candidate 0.68.0: read-only Configuration overview. Implemented in candidate 0.69.0: adapter policy mutations (enabled/edit adapters) with step-up preview; runner restart still required afterward. Open, in order: further configuration mutations (profile/hardening/TLS); CLI binary install helper (future). This expands roadmap item 6 ("GUI administration") and the core requirement of
+in-app). Implemented in candidate 0.67.0: Settings > Backups list and approval-gated eligible prune. Implemented in candidate 0.68.0: read-only Configuration overview. Implemented in candidate 0.69.0: adapter policy mutations (enabled/edit adapters) with step-up preview; runner restart still required afterward. Implemented in candidate 0.70.0: runtime flag mutations (hardened workers, credential renewal, Codex chat). Open, in order: further configuration mutations (profile/hardening/TLS); CLI binary install helper (future). This expands roadmap item 6 ("GUI administration") and the core requirement of
 [terminal-free operation](roadmap.md#core-product-requirement-terminal-free-operation).
 
 ## What the operator asked for

@@ -14,6 +14,8 @@ import {
   pruneBackups,
   readAdapters,
   applyAdapters,
+  readRuntimeFlags,
+  applyRuntimeFlags as writeRuntimeFlags,
   restartService,
   rotateAccessKey,
   startRollback,
@@ -117,6 +119,12 @@ export function start(options: Options) {
                   editing,
                   editAdapters,
                 )
+            : undefined,
+          adminRuntimeFlags: process.env.AGENTD_ADMIN_SOCKET
+            ? () => readRuntimeFlags(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          applyRuntimeFlags: process.env.AGENTD_ADMIN_SOCKET
+            ? (flags) => writeRuntimeFlags(process.env.AGENTD_ADMIN_SOCKET!, flags)
             : undefined,
           gateway: process.env.AGENTD_GATEWAY_SOCKET
             ? {

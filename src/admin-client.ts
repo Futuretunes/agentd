@@ -176,3 +176,22 @@ export async function applyAdapters(
     throw Error("Adapter policy change was refused.");
   return value;
 }
+
+export async function readRuntimeFlags(socket: string): Promise<any> {
+  const value: any = await request(socket, { op: "runtime-flags" });
+  if (
+    value?.format !== 1 ||
+    !value.flags ||
+    typeof value.fingerprint !== "string" ||
+    !/^[a-f0-9]{64}$/.test(value.fingerprint)
+  )
+    throw Error("Runtime flags response is invalid.");
+  return value;
+}
+
+export async function applyRuntimeFlags(socket: string, flags: object): Promise<any> {
+  const value: any = await request(socket, { op: "runtime-flags-apply", flags }, 15000);
+  if (value?.format !== 1 || !value.flags || typeof value.fingerprint !== "string")
+    throw Error("Runtime flags change was refused.");
+  return value;
+}

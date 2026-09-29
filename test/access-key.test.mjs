@@ -97,6 +97,41 @@ test("administration helper accepts only fixed adapter policy requests", () => {
     );
 });
 
+test("administration helper accepts only fixed runtime flag requests", () => {
+  const applied = [];
+  const run = (flags) => {
+    applied.push(flags);
+    return { format: 1, flags, fingerprint: "c".repeat(64) };
+  };
+  assert.equal(
+    handleAdminRequest(
+      {
+        op: "runtime-flags-apply",
+        flags: {
+          strictWorkers: true,
+          credentialRenewal: false,
+          codexChat: false,
+        },
+      },
+      { mobileConfig: "/unused", applyRuntimeFlags: run },
+    ).format,
+    1,
+  );
+  assert.deepEqual(applied, [
+    { strictWorkers: true, credentialRenewal: false, codexChat: false },
+  ]);
+  assert.throws(() =>
+    handleAdminRequest(
+      {
+        op: "runtime-flags-apply",
+        flags: { strictWorkers: true },
+        path: "/etc/passwd",
+      },
+      { mobileConfig: "/unused", applyRuntimeFlags: run },
+    ),
+  );
+});
+
 test("administration helper accepts only its fixed diagnostic request", () => {
   const result = { format: 1, generatedAt: "fixture" };
   assert.equal(

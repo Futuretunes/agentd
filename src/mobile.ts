@@ -58,6 +58,20 @@ export function mobile(c: Config) {
         editAdapters: string[];
         requiresIdle: boolean;
       }
+    >(),
+    runtimeFlagPreviews = new Map<
+      string,
+      {
+        fingerprint: string;
+        inventory: string;
+        expires: number;
+        flags: {
+          strictWorkers: boolean;
+          credentialRenewal: boolean;
+          codexChat: boolean;
+        };
+        requiresIdle: boolean;
+      }
     >();
   let accessHash = c.accessHash;
   const bridge = (input: unknown) =>
@@ -638,6 +652,95 @@ export function mobile(c: Config) {
             return;
           }
           throw Error("Unsupported adapter policy action.");
+        }
+        if (path === "/api/runtime-flags" && req.method === "GET") {
+          send(200, await call({ op: "admin-runtime-flags" }));
+          return;
+        }
+        if (path === "/api/runtime-flags" && req.method === "POST") {
+          const limitKey = "runtime-flags:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now();
+          for (const [owner, preview] of runtimeFlagPreviews)
+            if (preview.expires < now) runtimeFlagPreviews.delete(owner);
+          if (!accessKeyMatches(input.currentKey, accessHash))
+            throw Error("Current access key did not match.");
+          const flags = {
+            strictWorkers: input.flags?.strictWorkers === true,
+            credentialRenewal: input.flags?.credentialRenewal === true,
+            codexChat: input.flags?.codexChat === true,
+          };
+          if ((flags.credentialRenewal || flags.codexChat) && !flags.strictWorkers)
+            throw Error(
+              "Turn on hardened workers before credential renewal or Codex chat.",
+            );
+          if (input.action === "preview") {
+            const current = await call({ op: "admin-runtime-flags" }),
+              plan = await call({
+                op: "admin-service-restart-plan",
+                target: "runner",
+              }),
+              expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-runtime-flags-preview:${accountOwner}:${current.fingerprint}:${flags.strictWorkers}:${flags.credentialRenewal}:${flags.codexChat}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            runtimeFlagPreviews.set(accountOwner, {
+              fingerprint,
+              inventory: current.fingerprint,
+              expires,
+              flags,
+              requiresIdle: !plan.idle,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              inventory: current.fingerprint,
+              flags,
+              requiresIdle: !plan.idle,
+              requiresRestart: true,
+            });
+            return;
+          }
+          if (input.action === "apply") {
+            const preview = runtimeFlagPreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint ||
+              JSON.stringify(input.flags) !== JSON.stringify(preview.flags)
+            )
+              throw Error("Runtime flags preview expired. Review it again.");
+            if (preview.requiresIdle && input.confirmedIdle !== true)
+              throw Error(
+                "Confirm that current work is stopped before changing runtime flags.",
+              );
+            if (input.confirmed !== true)
+              throw Error("Confirm the runtime flags change.");
+            const current = await call({ op: "admin-runtime-flags" });
+            if (current.fingerprint !== preview.inventory)
+              throw Error("Runtime flags changed. Review it again.");
+            runtimeFlagPreviews.delete(accountOwner);
+            const result = await call({
+              op: "admin-runtime-flags-apply",
+              flags: preview.flags,
+            });
+            send(200, result);
+            return;
+          }
+          throw Error("Unsupported runtime flags action.");
         }
         if (path === "/api/storage" && req.method === "POST") {
           const input = await body(req);
