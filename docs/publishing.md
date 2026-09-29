@@ -1,6 +1,6 @@
 # GitHub publishing and pull requests
 
-After an edit has passed checks and received local commit approval, open **View committed changes → Publish to GitHub**. Connect GitHub through **Import from GitHub → GitHub connection** first, using an account with permission to push and create pull requests in the destination repository.
+After an edit has passed checks and received local commit approval, open **View committed changes → Publish to GitHub**. Connect GitHub through **Import from GitHub → GitHub connection** first, choose **draft publishing** as the AgentD access ceiling, and use an account with permission to push and create pull requests in the destination repository. A repository-only or feedback-only connection is refused before publication transport starts.
 
 1. Choose the target base branch and enter the pull request title and description.
 2. Choose **Prepare preview**. This reads GitHub and fetches the base; it does not upload work or create a pull request.
@@ -21,7 +21,7 @@ Publishing may trigger repository GitHub Actions and subscriber notifications, e
 
 ## Credentials and execution
 
-The trusted daemon uses the existing native GitHub CLI profile. GitHub credentials never enter task workers or their worktrees. Git runs with repository hooks disabled, explicit commit/ref arguments, HTTPS-only transport, and without inherited user credential helpers or proxy environment variables. Pull request metadata is sent as JSON on stdin to a fixed GitHub API endpoint; titles and descriptions are not shell commands. Browser routes retain authentication, same-origin and CSRF protections; browser ownership is derived on the server.
+The trusted daemon uses the existing native GitHub CLI profile only after its persisted AgentD ceiling authorizes the operation. Repository import needs repository access, comment import needs feedback access and branch upload/draft-PR creation needs publishing access. GitHub credentials never enter task workers or their worktrees. Git runs with repository hooks disabled, explicit commit/ref arguments, HTTPS-only transport, and without inherited user credential helpers or proxy environment variables. Pull request metadata is sent as JSON on stdin to a fixed GitHub API endpoint; titles and descriptions are not shell commands. Browser routes retain authentication, same-origin and CSRF protections; browser ownership is derived on the server.
 
 Repository import/update, dependency preparation, GitHub account changes and publication are serialized. Worker isolation and provider networking policy are unchanged. GitHub network operations have bounded process timeouts and output sizes. Durable progress records precede remote writes; no publication automatically resumes after restart.
 

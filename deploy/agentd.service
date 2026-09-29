@@ -1,6 +1,7 @@
 [Unit]
 Description=Agent orchestrator foundation
-After=network.target
+After=network.target agentd-admin.service
+Wants=agentd-admin.service
 StartLimitIntervalSec=60
 StartLimitBurst=3
 
@@ -17,6 +18,7 @@ Environment=AGENTD_RUNNER=1
 EnvironmentFile=/etc/agentd/agentd.env
 Environment=AGENTD_CONTROL_SOCKET=/run/agentd/control.sock
 Environment=AGENTD_GATEWAY_SOCKET=/run/agentd-web/gateway.sock
+Environment=AGENTD_ADMIN_SOCKET=/run/agentd-admin/admin.sock
 # Set AGENTD_GATEWAY_GID to the dedicated agentd-web group ID when provisioning.
 RuntimeDirectory=agentd agentd-web
 RuntimeDirectoryMode=0700

@@ -1,6 +1,11 @@
 # Administration section — requirements (backlog)
 
-Status: requested by the operator on 2026-09-29; **not implemented**. This expands roadmap item 6 ("GUI administration") and the core requirement of [terminal-free operation](roadmap.md#core-product-requirement-terminal-free-operation).
+Status: implemented are access-key rotation (0.61), read-only diagnostics (0.62) and
+in-app updates of approved releases (0.63, see
+[managed updates](managed-updates.md#in-app-updates-settings--updates-since-0630)).
+Open: rollback from the app, CLI updates, backups and the configuration pages. This
+expands roadmap item 6 ("GUI administration") and the core requirement of
+[terminal-free operation](roadmap.md#core-product-requirement-terminal-free-operation).
 
 ## What the operator asked for
 
@@ -70,3 +75,41 @@ The browser and the web gateway must never gain root or shell access. Today the 
 2. The read-only diagnostics page.
 3. The privileged helper with update plan/install/rollback of approved releases.
 4. The remaining configuration pages.
+
+## Candidate 0.61.0: access-key rotation
+
+Settings now offers a generated or strength-checked custom replacement with a
+five-minute, browser-session-bound preview. The current key is required for both
+preview and approval, and approval requires confirmation that the replacement
+was saved. Generated plaintext is returned once; preview state retains only its
+hash.
+
+The gateway forwards the exact approved digest through the unprivileged runner
+to a dedicated root helper on a private Unix socket. The helper accepts only
+access-key rotation, verifies the current key against the root-owned file and
+atomically replaces only `accessHash`. It has no network and can write only
+`/etc/agentd-web`. The gateway cannot reach its socket. Success keeps the
+approving browser session, closes all other sessions and audits no key material.
+
+The helper is installed by an explicit one-time privileged migration after the
+managed application update. Reviewed updates/rollback, CLI updates, backups and
+configuration editing remain future slices.
+
+## Candidate 0.62.0: safe diagnostics
+
+Settings now shows a read-only server report with the installed release, managed
+configuration state, fixed AgentD unit states and restart counts, service uptime,
+storage capacity and up to ten recent failed or interrupted runs. Failed-run
+details pass through the existing public error sanitizer.
+
+The root helper runs one fixed Python probe with no browser-supplied arguments.
+It reads only the managed installer inventory, fixed systemd unit properties and
+filesystem capacity. It cannot access task state, project worktrees or native
+account profiles, and it returns no journals, prompts, raw logs, environment,
+configuration contents, credentials or private paths. The unprivileged runner
+adds only task IDs, state, update time and sanitized error summaries. The GUI can
+download the same bounded JSON report it displays.
+
+Read-only diagnostics do not restart or change anything and therefore require a
+signed-in workspace session without a second key prompt. Service restart and all
+other administrative mutations retain the preview, step-up and audit requirement.
