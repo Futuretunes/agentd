@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-managed-request-routing.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-service-read-routing.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.51.0 — explicit service-read routing
+
+[Latest handover](handovers/2026-09-29-service-read-routing.md): capabilities, Operations status and local audit reads now have a disjoint explicit route owner. Returned data and browser authority are unchanged. Exact source `faf9642` passed 190/190 required Linux tests with zero skips, typecheck, formatting and Node 24/26 CI. Draft PR #55 targets PR #54's branch; the cumulative archive is staged but unexecuted. Production remains 0.43.0.
 
 ## Candidate 0.50.0 — explicit routing for extracted managers
 

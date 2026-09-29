@@ -232,3 +232,7 @@ Review/check/commit/revision/restart preparation operations now dispatch through
 ## R2 managed request routing — candidate 0.50.0
 
 Publication/feedback, dependency preparation, GitHub account, repository and native-account operations now dispatch through one explicit managed-operation route. Review-preparation mutations and core mutations call the same existing exclusion guard; manager ownership, approvals, audit context, cancellation and gateway allowlists remain unchanged. An omitted local feedback compatibility name was caught and corrected by lifecycle tests before commit. Exact source `268e28a` passed 189/189 required Ubuntu tests with zero skips, Node 24/26 CI, typecheck and formatting. PR #54 is ready for review against the 0.49.0 baseline; cumulative archive staged, not installed. Next bounded R2 slice: read-only operations/workspace routing.
+
+## R2 service-read routing — candidate 0.51.0
+
+Capabilities, Operations status and local audit reads now dispatch through one explicit read-only route. Their existing capability/account/usage/resource/task summary behavior is unchanged, browser gateway authority remains separate, and route ownership is tested as disjoint from preparation and managed mutations. Exact source `faf9642` passed 190/190 required Ubuntu tests with zero skips, Node 24/26 CI, typecheck and formatting. Draft #55 targets #54's branch; cumulative archive staged, not installed. Next bounded slice: project/conversation reads, then their mutations separately.
