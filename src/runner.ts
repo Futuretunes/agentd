@@ -83,6 +83,7 @@ import { createServer } from "node:net";
 
 type Config = {
   adminDiagnostics?: () => Promise<any>;
+  adminConfiguration?: () => Promise<any>;
   rotateAccess?: (currentKey: string, newHash: string) => Promise<{ rotated: true }>;
   adminUpdates?: () => Promise<any>;
   startUpdate?: (version: string) => Promise<{ started: true; version: string }>;
@@ -1623,6 +1624,10 @@ export function runner(c: Config) {
     if (input.op === "admin-backups") {
       if (!c.adminBackups) throw Error("Backup management is not installed.");
       return c.adminBackups();
+    }
+    if (input.op === "admin-configuration") {
+      if (!c.adminConfiguration) throw Error("Configuration overview is not installed.");
+      return c.adminConfiguration();
     }
     if (input.op === "admin-service-restart-plan") {
       if (input.target !== "runner" && input.target !== "gateway")

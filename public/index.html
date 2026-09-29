@@ -193,6 +193,14 @@
         </p>
         <button id="diagnostics-settings">View diagnostics</button>
       </section>
+      <section class="settings-section" aria-labelledby="settings-configuration-heading">
+        <h3 id="settings-configuration-heading">Configuration</h3>
+        <p class="muted">
+          Read-only view of managed hardening, resource profile and certificate status.
+          Changing those values from the phone is not available yet.
+        </p>
+        <button id="configuration-settings">View configuration</button>
+      </section>
       <section class="settings-section" aria-labelledby="settings-backups-heading">
         <h3 id="settings-backups-heading">Backups</h3>
         <p class="muted">
@@ -226,6 +234,13 @@
         <button id="updates-close" aria-label="Close updates">×</button>
       </div>
       <div id="updates-content" aria-live="polite"></div>
+    </dialog>
+    <dialog id="configuration-dialog" aria-labelledby="configuration-heading">
+      <div class="review-head">
+        <h2 id="configuration-heading">Configuration</h2>
+        <button id="configuration-close" aria-label="Close configuration">×</button>
+      </div>
+      <div id="configuration-content" aria-live="polite"></div>
     </dialog>
     <dialog id="backups-dialog" aria-labelledby="backups-heading">
       <div class="review-head">

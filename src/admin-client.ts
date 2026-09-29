@@ -57,6 +57,19 @@ export async function readDiagnostics(socket: string): Promise<any> {
   return value;
 }
 
+export async function readConfiguration(socket: string): Promise<any> {
+  const value: any = await request(socket, { op: "configuration" });
+  if (
+    value?.format !== 1 ||
+    typeof value.generatedAt !== "string" ||
+    !value.configuration ||
+    !value.tls ||
+    !value.notes
+  )
+    throw Error("Configuration response is invalid.");
+  return value;
+}
+
 const releaseVersion = /^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$/;
 
 export async function readUpdates(socket: string): Promise<any> {

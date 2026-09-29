@@ -3672,6 +3672,87 @@ $("access-key-settings").onclick = () => {
   renderAccessKeyForm();
   accessKeyDialog.showModal();
 };
+const configurationDialog = $("configuration-dialog"),
+  configurationContent = $("configuration-content");
+$("configuration-close").onclick = () => configurationDialog.close();
+$("configuration-settings").onclick = () => {
+  $("preferences-dialog").close();
+  void openConfigurationSettings();
+};
+async function openConfigurationSettings() {
+  configurationContent.replaceChildren(
+    node("p", "Loading configuration overview…", "muted"),
+  );
+  configurationDialog.showModal();
+  try {
+    const report = await api("/api/configuration"),
+      flags = report.configuration,
+      yesNo = (value) => (value ? "Yes" : "No"),
+      state =
+        flags.state === "ok"
+          ? "Matches the installed release"
+          : flags.state === "reload_required"
+            ? "Needs sudo systemctl daemon-reload"
+            : flags.state === "recovery_required"
+              ? "Interrupted update needs recovery"
+              : "Changed outside the managed installer";
+    const overview = node("section", undefined, "operation-section");
+    overview.append(node("h3", "Managed status"));
+    overview.append(node("p", state, flags.state === "ok" ? "good" : "attention"));
+    for (const [label, value] of [
+      ["Standard resource profile", flags.resourceProfile],
+      ["Gateway hardening profile", flags.gatewayHardening],
+      ["Separate gateway identity", flags.separateGateway],
+      ["Administration helper", flags.administrationHelper],
+      ["Gateway can read its config", flags.gatewayConfigReadable !== false],
+      ["Recovery pending", flags.recoveryPending],
+    ])
+      overview.append(
+        node(
+          "p",
+          `${label}: ${yesNo(value)}`,
+          value && label !== "Recovery pending" ? "good" : "muted",
+        ),
+      );
+    const tls = node("section", undefined, "operation-section");
+    tls.append(node("h3", "TLS certificate"));
+    tls.append(
+      node(
+        "p",
+        report.tls.certificateExpires
+          ? "Expires: " + report.tls.certificateExpires
+          : "Expiry could not be read from the managed certificate.",
+        report.tls.certificateExpires ? "muted" : "attention",
+      ),
+    );
+    const guidance = node("section", undefined, "operation-section");
+    guidance.append(node("h3", "Where to change things"));
+    for (const note of Object.values(report.notes ?? {}))
+      guidance.append(node("p", note));
+    configurationContent.replaceChildren(
+      overview,
+      tls,
+      guidance,
+      button("Open GitHub settings", () => {
+        configurationDialog.close();
+        $("github-settings").click();
+      }),
+      button("Open agent defaults", () => {
+        configurationDialog.close();
+        $("settings-defaults").click();
+      }),
+      node(
+        "p",
+        `Generated ${new Date(report.generatedAt).toLocaleString()}. No configuration contents or private paths are included.`,
+        "muted",
+      ),
+    );
+  } catch (error) {
+    configurationContent.replaceChildren(
+      node("p", error.message || "Configuration is unavailable.", "error"),
+    );
+  }
+}
 const backupsDialog = $("backups-dialog"),
   backupsContent = $("backups-content");
 $("backups-close").onclick = () => backupsDialog.close();

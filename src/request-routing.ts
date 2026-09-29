@@ -67,6 +67,7 @@ export const serviceReadOperations = [
   "operations",
   "audit",
   "admin-diagnostics",
+  "admin-configuration",
   "admin-updates",
   "admin-service-restart-plan",
   "admin-backups",
