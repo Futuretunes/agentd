@@ -414,6 +414,274 @@ test("background review keeps reads responsive, excludes mutations and recovers 
   }
 });
 
+test("large-review file reads stay owner-bound and pinned to the prepared tree", async () => {
+  const f = setup();
+  const app = runner({
+    repo: f.repo,
+    stateDir: join(f.root, "state"),
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    editing: true,
+    editAdapters: ["codex"],
+    command: () => [
+      process.execPath,
+      ["-e", "require('fs').writeFileSync('README.md','large preview fixture\\n')"],
+    ],
+    isolate: (_tree, _state, command, args) => ({ command, args, cleanup() {} }),
+    reviewPrepare: async (input) => ({
+      ...snapshot(input.worktree, input.revision, input.stateDir),
+      patch: "",
+      truncated: true,
+      conflicts: [],
+    }),
+  });
+  await once(app.server, "listening");
+  try {
+    const task = app.request({
+      op: "create",
+      adapter: "codex",
+      prompt: "edit",
+      mode: "edit",
+    });
+    app.request({ op: "approve", id: task.id });
+    await finished(app, task.id);
+    const started = app.request({ op: "review-start", id: task.id, owner: "a" });
+    let job;
+    for (let i = 0; i < 100; i++) {
+      job = app.request({ op: "review-job", owner: "a", job: started.id });
+      if (job.status !== "preparing") break;
+      await sleep(10);
+    }
+    assert.equal(job.status, "succeeded");
+    assert.throws(
+      () =>
+        app.request({
+          op: "review-file",
+          owner: "b",
+          job: job.id,
+          tree: job.result.tree,
+          file: "README.md",
+        }),
+      /expired/,
+    );
+    assert.throws(
+      () =>
+        app.request({
+          op: "review-file",
+          owner: "a",
+          job: job.id,
+          tree: "0".repeat(40),
+          file: "README.md",
+        }),
+      /stale/,
+    );
+    const page = app.request({
+      op: "review-file",
+      owner: "a",
+      job: job.id,
+      tree: job.result.tree,
+      file: "README.md",
+    });
+    assert.equal(page.tree, job.result.tree);
+    assert.match(page.patch, /large preview fixture/);
+    assert.equal(page.acknowledged, false);
+    assert.throws(
+      () =>
+        app.request({
+          op: "review-file-acknowledge",
+          owner: "a",
+          job: job.id,
+          tree: job.result.tree,
+          file: "README.md",
+          fingerprint: "0".repeat(64),
+        }),
+      /changed/,
+    );
+    const saved = app.request({
+      op: "review-file-acknowledge",
+      owner: "a",
+      job: job.id,
+      tree: job.result.tree,
+      file: "README.md",
+      fingerprint: page.fingerprint,
+    });
+    assert.equal(saved.acknowledged, true);
+    assert.equal(saved.complete, true);
+    assert.deepEqual(saved.acknowledgedFiles, ["README.md"]);
+    let blocked = app.request({
+      op: "commit-start",
+      owner: "a",
+      id: task.id,
+      tree: job.result.tree,
+      message: "Still blocked",
+    });
+    for (let i = 0; i < 100; i++) {
+      blocked = app.request({ op: "commit-job", owner: "a", job: blocked.id });
+      if (blocked.status !== "preparing") break;
+      await sleep(10);
+    }
+    assert.equal(blocked.status, "failed");
+    assert.match(blocked.error, /Checks must pass/);
+    assert.equal(
+      app.request({
+        op: "review-file",
+        owner: "a",
+        job: job.id,
+        tree: job.result.tree,
+        file: "README.md",
+      }).acknowledged,
+      true,
+    );
+    const audit = app.request({ op: "audit" });
+    assert.equal(
+      audit.find((item) => item.action === "acknowledge-review-file").task,
+      task.id,
+    );
+    const again = app.request({ op: "review-start", id: task.id, owner: "a" });
+    for (let i = 0; i < 100; i++) {
+      job = app.request({ op: "review-job", owner: "a", job: again.id });
+      if (job.status !== "preparing") break;
+      await sleep(10);
+    }
+    assert.deepEqual(job.result.acknowledgedFiles, ["README.md"]);
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test("one oversized file requires durable acknowledgement of every bounded page", async () => {
+  const f = setup();
+  const app = runner({
+    repo: f.repo,
+    stateDir: join(f.root, "state"),
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    editing: true,
+    editAdapters: ["codex"],
+    command: () => [
+      process.execPath,
+      ["-e", "require('fs').writeFileSync('README.md','after\\n'.repeat(30000))"],
+    ],
+    isolate: (_tree, _state, command, args, adapter) => ({
+      command: adapter ? command : process.execPath,
+      args: adapter ? args : ["-e", "console.log('checks passed')"],
+      cleanup() {},
+    }),
+  });
+  await once(app.server, "listening");
+  const poll = async (op, job) => {
+    let value;
+    for (let i = 0; i < 100; i++) {
+      value = app.request({ op, owner: "a", job });
+      if (value.status !== "preparing") return value;
+      await sleep(10);
+    }
+    return value;
+  };
+  try {
+    const task = app.request({
+      op: "create",
+      adapter: "codex",
+      prompt: "large edit",
+      mode: "edit",
+    });
+    app.request({ op: "approve", id: task.id });
+    await finished(app, task.id);
+    const started = app.request({ op: "review-start", id: task.id, owner: "a" });
+    const job = await poll("review-job", started.id);
+    assert.equal(job.status, "succeeded");
+    assert.equal(job.result.truncated, true);
+    assert.throws(
+      () => app.request({ op: "validate", id: task.id, tree: job.result.tree }),
+      /Complete the exact file review/,
+    );
+    assert.throws(
+      () =>
+        app.request({
+          op: "commit",
+          id: task.id,
+          tree: job.result.tree,
+          message: "Not reviewed",
+        }),
+      /Complete the exact file review/,
+    );
+    const first = app.request({
+      op: "review-file",
+      owner: "a",
+      job: job.id,
+      tree: job.result.tree,
+      file: "README.md",
+    });
+    assert.equal(first.paginated, true);
+    assert.ok(first.pages > 1);
+    for (let page = 0; page < first.pages; page++) {
+      const value =
+        page === 0
+          ? first
+          : app.request({
+              op: "review-file-page",
+              owner: "a",
+              job: job.id,
+              tree: job.result.tree,
+              file: "README.md",
+              page,
+            });
+      const saved = app.request({
+        op: "review-file-page-acknowledge",
+        owner: "a",
+        job: job.id,
+        tree: job.result.tree,
+        file: "README.md",
+        page,
+        pages: value.pages,
+        fileFingerprint: value.fileFingerprint,
+        pageFingerprint: value.pageFingerprint,
+      });
+      assert.deepEqual(
+        saved.acknowledgedPages,
+        Array.from({ length: page + 1 }, (_, i) => i),
+      );
+      assert.equal(saved.complete, page === first.pages - 1);
+    }
+    const again = app.request({ op: "review-start", id: task.id, owner: "a" });
+    const persisted = await poll("review-job", again.id);
+    assert.deepEqual(persisted.result.paginatedFiles["README.md"], {
+      pages: first.pages,
+      acknowledged: Array.from({ length: first.pages }, (_, i) => i),
+    });
+    assert.equal(persisted.result.largeReviewComplete, true);
+    app.request({ op: "project-checks", id: "default", dependencies: f.repo });
+    const validation = app.request({
+      op: "validation-start",
+      owner: "a",
+      id: task.id,
+      tree: job.result.tree,
+    });
+    assert.equal((await poll("validation-job", validation.id)).status, "succeeded");
+    assert.equal((await checked(app, task.id)).status, "passed");
+    const commit = app.request({
+      op: "commit-start",
+      owner: "a",
+      id: task.id,
+      tree: job.result.tree,
+      message: "Still blocked",
+    });
+    const committed = await poll("commit-job", commit.id);
+    assert.equal(committed.status, "succeeded");
+    assert.equal(committed.result.review, "committed");
+    assert.equal(
+      app
+        .request({ op: "audit" })
+        .filter((entry) => entry.action === "acknowledge-review-page").length,
+      first.pages,
+    );
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
 test("background check preparation is owner-bound, cancellable and revalidates exact changes", async () => {
   const f = setup();
   let release,

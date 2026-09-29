@@ -369,7 +369,7 @@ export async function previewPublication(options: {
     metadata = publicationText(pull.title, pull.body ?? "");
     updateFields = { previousHead: options.update.head, pullNumber: pull.number };
   }
-  const stat = await git(repo, ["diff", "--stat", baseSha, head], signal),
+  const stat = await git(repo, ["diff", "--stat", "--no-renames", baseSha, head], signal),
     fields = {
       destination,
       base,

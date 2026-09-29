@@ -1,10 +1,11 @@
 import { publicError, browserResult } from "./public-errors.ts";
+import { accessKeyHash, accessKeyMatches, validateAccessKey } from "./access-key.ts";
 import { gatewayRequest, gatewayMutations } from "./gateway-protocol.ts";
 import { createServer } from "node:https";
 import { createConnection } from "node:net";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import type { IncomingMessage } from "node:http";
 type Config = {
@@ -20,7 +21,16 @@ type Config = {
 };
 export function mobile(c: Config) {
   const sessions = new Map<string, number>(),
-    attempts = new Map<string, { count: number; until: number }>();
+    attempts = new Map<string, { count: number; until: number }>(),
+    updatePreviews = new Map<
+      string,
+      { fingerprint: string; version: string; expires: number }
+    >(),
+    accessPreviews = new Map<
+      string,
+      { fingerprint: string; newHash: string; expires: number }
+    >();
+  let accessHash = c.accessHash;
   const bridge = (input: unknown) =>
     new Promise<any>((resolve, reject) => {
       const encoded = JSON.stringify(gatewayRequest(input)) + "\n";
@@ -125,11 +135,7 @@ export function mobile(c: Config) {
           attempt.count++;
           attempts.set(address, attempt);
           const input = await body(req);
-          const hash = createHash("sha256")
-            .update(String(input.key ?? ""))
-            .digest();
-          const expected = Buffer.from(c.accessHash, "hex");
-          if (expected.length !== 32 || !timingSafeEqual(hash, expected)) {
+          if (!accessKeyMatches(input.key, accessHash)) {
             send(401, { error: "Access key did not match" });
             return;
           }
@@ -159,6 +165,150 @@ export function mobile(c: Config) {
             ...input,
             ...(gatewayMutations.has(input.op) ? { owner: accountOwner } : {}),
           });
+        if (path === "/api/updates" && req.method === "GET") {
+          send(200, await call({ op: "admin-updates" }));
+          return;
+        }
+        if (path === "/api/updates" && req.method === "POST") {
+          // Installing restarts every service: re-check the access key, bind the
+          // approval to a fresh preview and share the sign-in rate limit.
+          const limitKey = "updates:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now();
+          for (const [owner, preview] of updatePreviews)
+            if (preview.expires < now) updatePreviews.delete(owner);
+          if (!accessKeyMatches(input.currentKey, accessHash))
+            throw Error("Current access key did not match.");
+          if (input.action === "preview") {
+            const value = await call({ op: "admin-updates" }),
+              candidate = value.candidates?.find(
+                (item: any) => item.version === input.version,
+              );
+            if (!candidate?.valid || !candidate.newer)
+              throw Error("Choose a newer approved release.");
+            if (value.configuration !== "ok")
+              throw Error("Server configuration needs review before updating.");
+            if (value.running) throw Error("An update is already running.");
+            const expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-update-preview:${accountOwner}:${value.installed.version}:${candidate.version}:${candidate.revision}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            updatePreviews.set(accountOwner, {
+              fingerprint,
+              version: candidate.version,
+              expires,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              installed: value.installed,
+              release: candidate,
+            });
+            return;
+          }
+          if (input.action === "install") {
+            const preview = updatePreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint ||
+              input.version !== preview.version
+            )
+              throw Error("Update preview expired. Review it again.");
+            if (input.confirmed !== true)
+              throw Error("Confirm that services will restart during the update.");
+            updatePreviews.delete(accountOwner);
+            await call({ op: "admin-update-start", version: preview.version });
+            send(202, { started: true, version: preview.version });
+            return;
+          }
+          throw Error("Unsupported update action.");
+        }
+        if (path === "/api/access-key" && req.method === "POST") {
+          // The current key is re-checked here; limit guesses like the sign-in form.
+          const limitKey = "access-key:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now();
+          for (const [owner, preview] of accessPreviews)
+            if (preview.expires < now) accessPreviews.delete(owner);
+          if (input.action === "preview") {
+            if (!accessKeyMatches(input.currentKey, accessHash))
+              throw Error("Current access key did not match.");
+            const generated = input.mode === "generated";
+            if (!generated && input.mode !== "custom")
+              throw Error("Choose a generated or custom access key.");
+            const newKey = generated
+              ? randomBytes(32).toString("base64url")
+              : validateAccessKey(input.newKey);
+            const newHash = accessKeyHash(newKey);
+            if (newHash === accessHash) throw Error("New access key must be different.");
+            const expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-access-key-preview:${accountOwner}:${accessHash}:${newHash}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            accessPreviews.set(accountOwner, { fingerprint, newHash, expires });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              generatedKey: generated ? newKey : null,
+              invalidatesOtherSessions: Math.max(0, sessions.size - 1),
+            });
+            return;
+          }
+          if (input.action === "approve") {
+            const preview = accessPreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint
+            )
+              throw Error("Access-key preview expired. Review it again.");
+            if (!input.saved || !accessKeyMatches(input.currentKey, accessHash))
+              throw Error("Confirm the saved key and enter the current key again.");
+            const newKey = validateAccessKey(input.newKey);
+            if (accessKeyHash(newKey) !== preview.newHash)
+              throw Error("The new access key changed. Review it again.");
+            await call({
+              op: "admin-access-rotate",
+              currentKey: input.currentKey,
+              newHash: preview.newHash,
+            });
+            const invalidated = Math.max(0, sessions.size - 1);
+            accessHash = preview.newHash;
+            for (const session of sessions.keys())
+              if (session !== id) sessions.delete(session);
+            accessPreviews.clear();
+            send(200, { rotated: true, invalidated });
+            return;
+          }
+          throw Error("Unsupported access-key action.");
+        }
         if (path === "/api/storage" && req.method === "POST") {
           const input = await body(req);
           if (!["preview", "cleanup"].includes(input.action))
@@ -346,6 +496,7 @@ export function mobile(c: Config) {
               op: "github-" + input.action,
               owner: accountOwner,
               session: input.session,
+              access: input.access,
             }),
           );
           return;
@@ -408,6 +559,10 @@ export function mobile(c: Config) {
           send(200, await call({ op: "operations" }));
           return;
         }
+        if (path === "/api/diagnostics" && req.method === "GET") {
+          send(200, await call({ op: "admin-diagnostics" }));
+          return;
+        }
         const parameters = new URL(req.url ?? "/", c.origin).searchParams;
         if (path === "/api/history" && req.method === "GET") {
           send(
@@ -439,7 +594,17 @@ export function mobile(c: Config) {
         }
         if (path === "/api/review-jobs" && req.method === "POST") {
           const input = await body(req);
-          if (!["start", "status", "cancel"].includes(input.action))
+          if (
+            ![
+              "start",
+              "status",
+              "file",
+              "acknowledge",
+              "page",
+              "acknowledgePage",
+              "cancel",
+            ].includes(input.action)
+          )
             throw Error("Unsupported review action");
           send(
             200,
@@ -449,9 +614,42 @@ export function mobile(c: Config) {
                   ? "review-start"
                   : input.action === "status"
                     ? "review-job"
-                    : "review-cancel",
+                    : input.action === "file"
+                      ? "review-file"
+                      : input.action === "acknowledge"
+                        ? "review-file-acknowledge"
+                        : input.action === "page"
+                          ? "review-file-page"
+                          : input.action === "acknowledgePage"
+                            ? "review-file-page-acknowledge"
+                            : "review-cancel",
               owner: accountOwner,
-              ...(input.action === "start" ? { id: input.id } : { job: input.job }),
+              ...(input.action === "start"
+                ? { id: input.id }
+                : {
+                    job: input.job,
+                    ...(["file", "acknowledge", "page", "acknowledgePage"].includes(
+                      input.action,
+                    )
+                      ? {
+                          tree: input.tree,
+                          file: input.file,
+                          ...(input.action === "acknowledge"
+                            ? { fingerprint: input.fingerprint }
+                            : {}),
+                          ...(["page", "acknowledgePage"].includes(input.action)
+                            ? { page: input.page }
+                            : {}),
+                          ...(input.action === "acknowledgePage"
+                            ? {
+                                pages: input.pages,
+                                fileFingerprint: input.fileFingerprint,
+                                pageFingerprint: input.pageFingerprint,
+                              }
+                            : {}),
+                        }
+                      : {}),
+                  }),
             }),
           );
           return;

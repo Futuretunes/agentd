@@ -8,6 +8,10 @@ export type RequestRoute = {
 
 export const reviewPreparationOperations = [
   "review-job",
+  "review-file",
+  "review-file-acknowledge",
+  "review-file-page",
+  "review-file-page-acknowledge",
   "review-cancel",
   "review-start",
   "validation-job",
@@ -25,6 +29,8 @@ export const reviewPreparationOperations = [
 ] as const;
 
 export const managedOperationOperations = [
+  "admin-access-rotate",
+  "admin-update-start",
   "feedback-targets",
   "feedback-status",
   // Local compatibility name used by publication lifecycle tests and admin clients.
@@ -53,7 +59,13 @@ export const managedOperationOperations = [
   "account-refresh",
 ] as const;
 
-export const serviceReadOperations = ["capabilities", "operations", "audit"] as const;
+export const serviceReadOperations = [
+  "capabilities",
+  "operations",
+  "audit",
+  "admin-diagnostics",
+  "admin-updates",
+] as const;
 
 export const workspaceReadOperations = [
   "projects",

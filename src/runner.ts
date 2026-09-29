@@ -23,7 +23,7 @@ import { creationRequests } from "./creation-requests.ts";
 import { followupContext } from "./followup-context.ts";
 import { testedVersions } from "./native-policy.ts";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { localGit } from "./git-policy.ts";
+import { localGit, GitOutputLimitError } from "./git-policy.ts";
 import {
   resourceLimits,
   requireSpace,
@@ -53,7 +53,15 @@ import { renewals, renewalFailure } from "./renewal.ts";
 import { type RepositoryGit } from "./repositories.ts";
 import { githubAccount } from "./github-account.ts";
 import { accounts } from "./accounts.ts";
-import { snapshot, commitSnapshot } from "./changes.ts";
+import { snapshot, commitSnapshot, filePatch, filePatchPage } from "./changes.ts";
+import {
+  acknowledgeReviewFile,
+  acknowledgeReviewPage,
+  acknowledgedReviewFiles,
+  acknowledgedReviewPages,
+  paginatedReviewProgress,
+  reviewCoverage,
+} from "./review-acknowledgements.ts";
 import { isolated } from "./isolation.ts";
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID, createHash } from "node:crypto";
@@ -74,6 +82,10 @@ import { join, isAbsolute } from "node:path";
 import { createServer } from "node:net";
 
 type Config = {
+  adminDiagnostics?: () => Promise<any>;
+  rotateAccess?: (currentKey: string, newHash: string) => Promise<{ rotated: true }>;
+  adminUpdates?: () => Promise<any>;
+  startUpdate?: (version: string) => Promise<{ started: true; version: string }>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -318,7 +330,7 @@ export function runner(c: Config) {
     activeProject: () => (active ? get(active.id)?.project : null),
     closing: () => closing,
     blocked: () => blocked("repository"),
-    profile: () => github.profile(),
+    profile: (required) => github.profile(required),
     audit,
     command: c.repositoryCommand,
   });
@@ -344,7 +356,7 @@ export function runner(c: Config) {
     project,
     conversation,
     blocked,
-    profile: () => github.profile(),
+    profile: (required) => github.profile(required),
     requireAdapter: (id, mode) => requireAdapter(id, mode),
     bindExecution,
     audit,
@@ -798,6 +810,13 @@ export function runner(c: Config) {
       );
     if ((prepared ? prepared.conflicts : review(row).conflicts).length)
       throw Error("Resolve conflict markers before running checks.");
+    if (value.blocked.length)
+      throw Error("Resolve files that require separate review before running checks.");
+    if (
+      value.truncated &&
+      !reviewCoverage(db, String(row.id), value.tree, value.files).complete
+    )
+      throw Error("Complete the exact file review before running checks.");
     const p = project(String(row.project));
     if (!p.check_dependencies)
       throw Error("Open Set up checks to prepare this project’s dependencies.");
@@ -829,10 +848,15 @@ export function runner(c: Config) {
     if (value.conflicts.length)
       throw Error("Resolve conflict markers before committing.");
     if (value.tree !== input.tree) throw Error("Changes have changed. Review again.");
-    if (value.truncated || value.blocked.length)
+    if (value.blocked.length)
       throw Error(
-        "Review contains oversized changes or sensitive files or credential content; resolve them before committing",
+        "Review contains sensitive, binary or unscannable files; resolve them before committing",
       );
+    if (
+      value.truncated &&
+      !reviewCoverage(db, String(row.id), value.tree, value.files).complete
+    )
+      throw Error("Complete the exact file review before committing these changes");
     const checks = row.checks ? JSON.parse(String(row.checks)) : null;
     if (
       checks?.status !== "passed" ||
@@ -1064,6 +1088,116 @@ export function runner(c: Config) {
   function handleReviewPreparationRequest(input: any) {
     if (input.op === "review-job")
       return previewManager.view(input.owner ?? "local", input.job);
+    if (
+      [
+        "review-file",
+        "review-file-acknowledge",
+        "review-file-page",
+        "review-file-page-acknowledge",
+      ].includes(input.op)
+    ) {
+      const job = previewManager.view(input.owner ?? "local", input.job);
+      if (job.status !== "succeeded" || !job.result)
+        throw Error("Finish preparing the change preview first");
+      if (job.result.tree !== input.tree)
+        throw Error("The change preview is stale. Open it again.");
+      if (!job.result.truncated || job.result.blocked.length)
+        throw Error("Per-file review is unavailable for these changes");
+      if (!job.result.files.includes(input.file))
+        throw Error("File is not part of this review");
+      const row = get(job.task);
+      if (!row || row.review !== "pending") throw Error("Review is already resolved");
+      const repo = String(project(String(row.project)).repo),
+        revision = String(row.revision),
+        tree = String(job.result.tree);
+      if (input.op === "review-file") {
+        try {
+          const value = filePatch(repo, revision, tree, input.file);
+          return {
+            ...value,
+            acknowledged:
+              acknowledgedReviewFiles(db, String(row.id), value.tree, [value.file])
+                .length === 1,
+          };
+        } catch (error) {
+          if (!(error instanceof GitOutputLimitError)) throw error;
+          const value = filePatchPage(repo, revision, tree, input.file, 0),
+            acknowledgedPages = acknowledgedReviewPages(db, String(row.id), {
+              tree: value.tree,
+              file: value.file,
+              pages: value.pages,
+              fileFingerprint: value.fingerprint,
+            });
+          return { ...value, acknowledgedPages };
+        }
+      }
+      if (input.op === "review-file-page") {
+        const value = filePatchPage(repo, revision, tree, input.file, input.page),
+          acknowledgedPages = acknowledgedReviewPages(db, String(row.id), {
+            tree: value.tree,
+            file: value.file,
+            pages: value.pages,
+            fileFingerprint: value.fingerprint,
+          });
+        return { ...value, acknowledgedPages };
+      }
+      if (input.op === "review-file-page-acknowledge") {
+        const value = filePatchPage(repo, revision, tree, input.file, input.page);
+        if (
+          input.pages !== value.pages ||
+          input.fileFingerprint !== value.fingerprint ||
+          input.pageFingerprint !== value.pageFingerprint
+        )
+          throw Error(
+            "The paginated file review changed. Reload it before marking this page reviewed.",
+          );
+        const plan = {
+          tree: value.tree,
+          file: value.file,
+          page: value.page,
+          pages: value.pages,
+          fileFingerprint: value.fingerprint,
+          pageFingerprint: value.pageFingerprint,
+        };
+        auditedWrite("acknowledge-review-page", String(row.id), plan, () =>
+          acknowledgeReviewPage(db, String(row.id), plan),
+        );
+        const acknowledgedPages = acknowledgedReviewPages(db, String(row.id), plan);
+        const coverage = reviewCoverage(db, String(row.id), value.tree, job.result.files);
+        return {
+          ...plan,
+          acknowledged: true,
+          acknowledgedPages,
+          fileComplete: acknowledgedPages.length === value.pages,
+          complete: coverage.complete,
+        };
+      }
+      const page = filePatch(repo, revision, tree, input.file);
+      if (input.fingerprint !== page.fingerprint)
+        throw Error("The file review changed. Reload it before marking it reviewed.");
+      auditedWrite(
+        "acknowledge-review-file",
+        String(row.id),
+        { tree: page.tree, file: page.file, fingerprint: page.fingerprint },
+        () => acknowledgeReviewFile(db, String(row.id), page),
+      );
+      const acknowledged = acknowledgedReviewFiles(
+        db,
+        String(row.id),
+        page.tree,
+        job.result.files,
+      );
+      const coverage = reviewCoverage(db, String(row.id), page.tree, job.result.files);
+      return {
+        tree: page.tree,
+        file: page.file,
+        fingerprint: page.fingerprint,
+        acknowledged: true,
+        fileComplete: true,
+        acknowledgedFiles: acknowledged,
+        complete: coverage.complete,
+      };
+    }
     if (input.op === "review-cancel")
       return previewManager.cancel(input.owner ?? "local", input.job);
     if (input.op === "validation-job")
@@ -1115,6 +1249,18 @@ export function runner(c: Config) {
         (value) => ({
           project: row.project,
           ...value,
+          acknowledgedFiles:
+            value.truncated && !value.blocked.length
+              ? acknowledgedReviewFiles(db, String(row.id), value.tree, value.files)
+              : [],
+          paginatedFiles:
+            value.truncated && !value.blocked.length
+              ? paginatedReviewProgress(db, String(row.id), value.tree, value.files)
+              : {},
+          largeReviewComplete:
+            value.truncated && !value.blocked.length
+              ? reviewCoverage(db, String(row.id), value.tree, value.files).complete
+              : false,
           mergeParent: row.merge_parent,
           checks: row.checks
             ? ((v: any) => ({ ...v, output: v.log ? logTail(v.log) : "" }))(
@@ -1337,6 +1483,37 @@ export function runner(c: Config) {
     throw Error("Unknown review preparation operation");
   }
   function handleManagedOperationRequest(input: any) {
+    if (input.op === "admin-update-start") {
+      if (!c.startUpdate) throw Error("In-app updates are not installed.");
+      if (
+        typeof input.version !== "string" ||
+        !/^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$/.test(input.version)
+      )
+        throw Error("Update request is invalid.");
+      // The installer stops both services; never start it under active work.
+      if (blocked("update"))
+        throw Error(
+          "Finish or stop current work, account changes and preparations before updating.",
+        );
+      return c.startUpdate(input.version).then((result) => {
+        audit("update-start", null, { version: input.version });
+        return result;
+      });
+    }
+    if (input.op === "admin-access-rotate") {
+      if (!c.rotateAccess) throw Error("Access-key rotation is not installed.");
+      if (
+        typeof input.currentKey !== "string" ||
+        input.currentKey.length > 256 ||
+        typeof input.newHash !== "string" ||
+        !/^[a-f0-9]{64}$/.test(input.newHash)
+      )
+        throw Error("Access-key rotation request is invalid.");
+      return c.rotateAccess(input.currentKey, input.newHash).then((result) => {
+        audit("rotate-access-key", null, { result: "succeeded" });
+        return result;
+      });
+    }
     requireNoReviewPreparationMutation(input);
     if (typeof input.op === "string" && input.op.startsWith("feedback-"))
       return publicationManager.feedback(input);
@@ -1351,7 +1528,7 @@ export function runner(c: Config) {
     if (input.op === "github-start") {
       if (blocked("githubChange"))
         throw Error("Wait for the repository or publishing operation.");
-      return github.start(input.owner);
+      return github.start(input.owner, input.access);
     }
     if (input.op === "github-cancel") return github.cancel(input.owner, input.session);
     if (input.op === "github-logout") {
@@ -1389,6 +1566,32 @@ export function runner(c: Config) {
     throw Error("Unknown managed operation");
   }
   function handleServiceReadRequest(input: any) {
+    if (input.op === "admin-updates") {
+      if (!c.adminUpdates) throw Error("In-app updates are not installed.");
+      return c.adminUpdates();
+    }
+    if (input.op === "admin-diagnostics") {
+      if (!c.adminDiagnostics) throw Error("Diagnostics are not installed.");
+      return c.adminDiagnostics().then((system) => ({
+        ...system,
+        runner: {
+          uptimeSeconds: Math.max(0, Math.floor(process.uptime())),
+          recentFailures: db
+            .prepare(
+              `SELECT id,status,updated,error FROM tasks
+               WHERE status IN ('failed','timed_out','interrupted')
+               ORDER BY updated DESC,rowid DESC LIMIT 10`,
+            )
+            .all()
+            .map((row: any) => ({
+              id: row.id,
+              status: row.status,
+              updated: row.updated,
+              error: operationError(row.error),
+            })),
+        },
+      }));
+    }
     if (input.op === "capabilities") {
       const adapters = capabilities();
       return {

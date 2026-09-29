@@ -30,8 +30,12 @@ def filter_fd():
             number=lib.seccomp_syscall_resolve_name(name.encode())
             if number<0:raise RuntimeError('Required syscall rule is unavailable: '+name)
             if lib.seccomp_rule_add_array(context,ERRNO|error,number,1 if comparison is not None else 0,C.byref(comparison) if comparison is not None else None)!=0:raise RuntimeError('Cannot add syscall rule: '+name)
-        for name in ('unshare','setns','mount','umount2','pivot_root','ptrace','bpf','perf_event_open','keyctl','add_key','request_key','reboot','kexec_load','init_module','finit_module','delete_module','open_by_handle_at','move_mount','fsopen','fsconfig','fsmount','fspick','userfaultfd'):
+        for name in ('unshare','setns','mount','umount2','pivot_root','ptrace','bpf','perf_event_open','keyctl','add_key','request_key','reboot','kexec_load','init_module','finit_module','delete_module','open_by_handle_at','move_mount','fsopen','fsconfig','fsmount','fspick','open_tree','userfaultfd','process_vm_readv','process_vm_writev'):
             deny(name)
+        # io_uring is a large kernel attack surface; ENOSYS makes libuv/libc fall back
+        # to ordinary syscalls instead of failing.
+        for name in ('io_uring_setup','io_uring_enter','io_uring_register'):
+            deny(name,errno.ENOSYS)
         # libc falls back to clone for normal threads/processes. Namespace flags
         # on clone are independently rejected, including future fallback callers.
         deny('clone3',errno.ENOSYS)

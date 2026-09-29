@@ -35,7 +35,33 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
                   ? images.read(input.id)
                   : input.op === "task-output"
                     ? { text: "fixture output", truncated: false }
-                    : [],
+                    : input.op === "admin-updates"
+                      ? {
+                          format: 1,
+                          installed: {
+                            version: "0.62.3",
+                            revision: "abc",
+                            taskSchemaVersion: 2,
+                          },
+                          configuration: "ok",
+                          running: false,
+                          job: null,
+                          candidates: [
+                            {
+                              version: "0.63.0",
+                              revision: "def",
+                              valid: true,
+                              newer: true,
+                            },
+                            {
+                              version: "0.62.3",
+                              revision: "abc",
+                              valid: true,
+                              newer: false,
+                            },
+                          ],
+                        }
+                      : [],
           }) + "\n",
         );
       } catch (e) {
@@ -113,15 +139,41 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
     const expectedOwner = createHash("sha256")
       .update(cookie.split(";")[0].slice(15))
       .digest("hex");
+    const diagnostics = await req("/api/diagnostics", null, cookie);
+    assert.equal(diagnostics.status, 200);
+    assert.equal(calls.at(-1).op, "admin-diagnostics");
     for (const [action, op] of [
       ["start", "review-start"],
       ["status", "review-job"],
+      ["file", "review-file"],
+      ["acknowledge", "review-file-acknowledge"],
+      ["page", "review-file-page"],
+      ["acknowledgePage", "review-file-page-acknowledge"],
       ["cancel", "review-cancel"],
     ]) {
       const payload =
         action === "start"
           ? { action, id: "x", owner: "spoofed" }
-          : { action, job: "j", owner: "spoofed" };
+          : {
+              action,
+              job: "j",
+              owner: "spoofed",
+              ...(["file", "acknowledge", "page", "acknowledgePage"].includes(action)
+                ? {
+                    tree: "a".repeat(40),
+                    file: "README.md",
+                    ...(action === "acknowledge" ? { fingerprint: "b".repeat(64) } : {}),
+                    ...(["page", "acknowledgePage"].includes(action) ? { page: 0 } : {}),
+                    ...(action === "acknowledgePage"
+                      ? {
+                          pages: 2,
+                          fileFingerprint: "c".repeat(64),
+                          pageFingerprint: "d".repeat(64),
+                        }
+                      : {}),
+                  }
+                : {}),
+            };
       assert.equal((await req("/api/review-jobs", payload, cookie)).status, 200);
       assert.equal(calls.at(-1).op, op);
       assert.equal(calls.at(-1).owner, expectedOwner);
@@ -390,11 +442,17 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
     });
     await req(
       "/api/github",
-      { action: "start", owner: "spoof", profile: "/tmp" },
+      {
+        action: "start",
+        access: "feedback",
+        owner: "spoof",
+        profile: "/tmp",
+      },
       cookie,
     );
     assert.equal(calls.at(-1).op, "github-start");
     assert.match(calls.at(-1).owner, /^[a-f0-9]{64}$/);
+    assert.equal(calls.at(-1).access, "feedback");
     assert.equal(calls.at(-1).profile, undefined);
     await req(
       "/api/repositories",
@@ -518,6 +576,99 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
     const otherLogin = await req("/api/login", { key: "test-access" });
     await req("/api/account", null, otherLogin.headers["set-cookie"][0]);
     assert.notEqual(calls.at(-1).owner, accountOwner);
+    const previewResponse = await req(
+        "/api/access-key",
+        { action: "preview", mode: "generated", currentKey: "test-access" },
+        cookie,
+      ),
+      preview = JSON.parse(previewResponse.body);
+    assert.equal(previewResponse.status, 200);
+    assert.match(preview.generatedKey, /^[A-Za-z0-9_-]{40,}$/);
+    assert.equal(preview.invalidatesOtherSessions, 1);
+    const rotation = await req(
+      "/api/access-key",
+      {
+        action: "approve",
+        fingerprint: preview.fingerprint,
+        currentKey: "test-access",
+        newKey: preview.generatedKey,
+        saved: true,
+      },
+      cookie,
+    );
+    assert.equal(rotation.status, 200);
+    assert.equal(calls.at(-1).op, "admin-access-rotate");
+    assert.equal(
+      calls.at(-1).newHash,
+      createHash("sha256").update(preview.generatedKey).digest("hex"),
+    );
+    assert.equal((await req("/api/tasks", null, cookie)).status, 200);
+    assert.equal(
+      (await req("/api/tasks", null, otherLogin.headers["set-cookie"][0])).status,
+      401,
+    );
+    assert.equal((await req("/api/login", { key: "test-access" })).status, 401);
+    assert.equal((await req("/api/login", { key: preview.generatedKey })).status, 200);
+    // Current-key guesses on the rotation form share the sign-in limit (10 per minute).
+    for (let guess = 0; guess < 8; guess++)
+      assert.notEqual(
+        (
+          await req(
+            "/api/access-key",
+            { action: "preview", mode: "generated", currentKey: "wrong-" + guess },
+            cookie,
+          )
+        ).status,
+        429,
+      );
+    assert.equal(
+      (
+        await req(
+          "/api/access-key",
+          { action: "preview", mode: "generated", currentKey: "wrong" },
+          cookie,
+        )
+      ).status,
+      429,
+    );
+    // Settings > Updates: fresh key, bound preview, explicit confirmation, validated version.
+    const newKey = preview.generatedKey;
+    assert.equal(
+      JSON.parse((await req("/api/updates", null, cookie)).body).installed.version,
+      "0.62.3",
+    );
+    assert.equal(calls.at(-1).op, "admin-updates");
+    const update = (value) => req("/api/updates", value, cookie);
+    assert.equal(
+      (await update({ action: "preview", version: "0.63.0", currentKey: "wrong" }))
+        .status,
+      400,
+    );
+    assert.equal(
+      (await update({ action: "preview", version: "0.62.3", currentKey: newKey })).status,
+      400,
+    );
+    const updatePreview = JSON.parse(
+      (await update({ action: "preview", version: "0.63.0", currentKey: newKey })).body,
+    );
+    assert.match(updatePreview.fingerprint, /^[a-f0-9]{64}$/);
+    const install = (extra) =>
+      update({
+        action: "install",
+        version: "0.63.0",
+        fingerprint: updatePreview.fingerprint,
+        currentKey: newKey,
+        confirmed: true,
+        ...extra,
+      });
+    assert.equal((await install({ confirmed: false })).status, 400);
+    assert.equal((await install({ fingerprint: "0".repeat(64) })).status, 400);
+    const started = await install({});
+    assert.equal(started.status, 202);
+    assert.equal(calls.at(-1).op, "admin-update-start");
+    assert.equal(calls.at(-1).version, "0.63.0");
+    assert.match(calls.at(-1).owner, /^[a-f0-9]{64}$/);
+    assert.equal((await install({})).status, 400);
     assert.equal(
       (
         await req(

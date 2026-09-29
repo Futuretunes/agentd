@@ -688,3 +688,62 @@ test("answers separate stdout from diagnostic stderr while the full log preserve
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+test("access-key rotation uses only the fixed helper callback and audits no secret material", async () => {
+  const f = await fixture();
+  const currentKey = "current-secret-access-key",
+    newHash = "a".repeat(64),
+    seen = [];
+  try {
+    f.config.rotateAccess = async (...values) => {
+      seen.push(values);
+      return { rotated: true };
+    };
+    assert.deepEqual(
+      await f.app.request({
+        op: "admin-access-rotate",
+        owner: "b".repeat(64),
+        currentKey,
+        newHash,
+      }),
+      { rotated: true },
+    );
+    assert.deepEqual(seen, [[currentKey, newHash]]);
+    const audit = JSON.stringify(f.app.request({ op: "audit" }));
+    assert.match(audit, /rotate-access-key/);
+    assert.ok(!audit.includes(currentKey));
+    assert.ok(!audit.includes(newHash));
+  } finally {
+    await f.app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test("diagnostics combine the fixed helper snapshot with sanitized runner failures", async () => {
+  const f = await fixture();
+  try {
+    f.config.adminDiagnostics = async () => ({
+      format: 1,
+      generatedAt: new Date().toISOString(),
+      release: { version: "fixture" },
+      configuration: { state: "ok" },
+      services: {},
+      storage: { freeBytes: 1, totalBytes: 2 },
+    });
+    const task = f.app.request({ op: "create", adapter: "claude", prompt: "fail" });
+    f.app.request({ op: "approve", id: task.id });
+    await status(f.app, task.id, ["failed"]);
+    const value = await f.app.request({ op: "admin-diagnostics" });
+    assert.equal(value.configuration.state, "ok");
+    assert.ok(value.runner.uptimeSeconds >= 0);
+    assert.deepEqual(
+      value.runner.recentFailures.map((row) => row.id),
+      [task.id],
+    );
+    assert.ok(!JSON.stringify(value).includes("prompt"));
+    assert.ok(!JSON.stringify(value).includes(f.root));
+  } finally {
+    await f.app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});

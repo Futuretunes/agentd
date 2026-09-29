@@ -28,25 +28,17 @@
       </form>
     </section>
     <div id="workspace" hidden>
-      <button
-        id="drawer-backdrop"
-        hidden
-        aria-label="Close navigation"
-      ></button>
+      <button id="drawer-backdrop" hidden aria-label="Close navigation"></button>
       <aside id="sidebar" aria-label="Workspace navigation">
         <div class="sidebar-head">
           <a href="/" class="brand">◈ agentd</a
           ><button id="drawer-close" aria-label="Close navigation">×</button>
         </div>
         <button id="new" class="new-chat">＋ New conversation</button>
-        <button id="history-menu" class="nav-action">
-          Search &amp; history
-        </button>
+        <button id="history-menu" class="nav-action">Search &amp; history</button>
         <div class="section-label">
           <span>Projects</span
-          ><button id="add-project" aria-label="Create or import project">
-            ＋
-          </button>
+          ><button id="add-project" aria-label="Create or import project">＋</button>
         </div>
         <nav id="projects" aria-label="Projects"></nav>
         <div class="section-label"><span>Conversations</span></div>
@@ -121,8 +113,9 @@
                     ><select id="adapter">
                       <option value="codex">Codex</option>
                       <option value="claude">Claude</option>
-                      <option value="cursor">Cursor</option></select
-                    ><p id="agent-reasons" class="muted"></p>
+                      <option value="cursor">Cursor</option>
+                    </select>
+                    <p id="agent-reasons" class="muted"></p>
                     <div class="picker-model">
                       <span id="selection-summary"></span
                       ><button type="button" id="run-options">
@@ -132,8 +125,7 @@
                   </div>
                 </details>
               </div>
-              <button type="button" id="stop-current" class="danger" hidden>
-                Stop</button
+              <button type="button" id="stop-current" class="danger" hidden>Stop</button
               ><button class="primary" id="send">Send ↑</button>
             </div>
           </form>
@@ -156,8 +148,8 @@
       <section class="settings-section" aria-labelledby="settings-github-heading">
         <h3 id="settings-github-heading">GitHub</h3>
         <p class="muted">
-          Used for private imports and draft pull requests. Credentials stay on
-          this server and are never given to agents.
+          Used for private imports and draft pull requests. Credentials stay on this
+          server and are never given to agents.
         </p>
         <button id="github-settings">Manage GitHub connection</button>
       </section>
@@ -177,19 +169,59 @@
           <option value="dark">Dark</option>
         </select>
       </section>
+      <section class="settings-section" aria-labelledby="settings-access-heading">
+        <h3 id="settings-access-heading">Workspace access</h3>
+        <p class="muted">
+          Change the key used to open this workspace. Other signed-in devices will be
+          signed out.
+        </p>
+        <button id="access-key-settings">Change access key</button>
+      </section>
+      <section class="settings-section" aria-labelledby="settings-diagnostics-heading">
+        <h3 id="settings-diagnostics-heading">Diagnostics</h3>
+        <p class="muted">
+          Check this server's health and download a safe report for support. Prompts,
+          logs, credentials and private paths are excluded.
+        </p>
+        <button id="diagnostics-settings">View diagnostics</button>
+      </section>
+      <section class="settings-section" aria-labelledby="settings-updates-heading">
+        <h3 id="settings-updates-heading">Updates</h3>
+        <p class="muted">
+          Install reviewed and approved releases. Services restart during an update and
+          you will be signed out.
+        </p>
+        <button id="updates-settings">Check for updates</button>
+      </section>
       <section class="settings-section">
         <button id="logout" class="danger">Sign out of workspace</button>
       </section>
     </dialog>
-    <dialog
-      id="project-settings-dialog"
-      aria-labelledby="project-settings-heading"
-    >
+    <dialog id="access-key-dialog" aria-labelledby="access-key-heading">
+      <div class="review-head">
+        <h2 id="access-key-heading">Change access key</h2>
+        <button id="access-key-close" aria-label="Close access key settings">×</button>
+      </div>
+      <div id="access-key-content"></div>
+    </dialog>
+    <dialog id="updates-dialog" aria-labelledby="updates-heading">
+      <div class="review-head">
+        <h2 id="updates-heading">Updates</h2>
+        <button id="updates-close" aria-label="Close updates">×</button>
+      </div>
+      <div id="updates-content" aria-live="polite"></div>
+    </dialog>
+    <dialog id="diagnostics-dialog" aria-labelledby="diagnostics-heading">
+      <div class="review-head">
+        <h2 id="diagnostics-heading">Server diagnostics</h2>
+        <button id="diagnostics-close" aria-label="Close diagnostics">×</button>
+      </div>
+      <div id="diagnostics-content" aria-live="polite"></div>
+    </dialog>
+    <dialog id="project-settings-dialog" aria-labelledby="project-settings-heading">
       <div class="review-head">
         <h2 id="project-settings-heading">Project settings</h2>
-        <button id="project-settings-close" aria-label="Close project settings">
-          ×
-        </button>
+        <button id="project-settings-close" aria-label="Close project settings">×</button>
       </div>
       <section id="project-info" hidden></section>
       <button id="project-defaults">Agent defaults for this project</button>
@@ -206,9 +238,9 @@
           required
         />
         <p class="muted">
-          Creates an empty local Git repository. You can plan and ask questions
-          here. Edits can be committed only after supported npm checks pass.
-          Other check profiles are not available yet.
+          Creates an empty local Git repository. You can plan and ask questions here.
+          Edits can be committed only after supported npm checks pass. Other check
+          profiles are not available yet.
         </p>
         <div class="actions">
           <button type="button" id="project-close">Cancel</button
@@ -292,24 +324,21 @@
         ><button class="primary">Import project</button>
       </form>
       <p class="muted">
-        Public repositories need no sign-in. Private repositories use your
-        GitHub connection. Imports include up to 100 commits on one branch, with
-        a 512 MB limit. Submodules, LFS downloads and setup scripts are not run.
+        Public repositories need no sign-in. Private repositories use your GitHub
+        connection. Imports include up to 100 commits on one branch, with a 512 MB limit.
+        Submodules, LFS downloads and setup scripts are not run.
       </p>
       <div id="repository-status" aria-live="polite"></div>
     </dialog>
     <dialog id="github-dialog">
       <div class="review-head">
         <h2>GitHub connection</h2>
-        <button id="github-close" aria-label="Close GitHub connection">
-          ×
-        </button>
+        <button id="github-close" aria-label="Close GitHub connection">×</button>
       </div>
       <p class="muted">
-        Sign in on GitHub and review its requested permissions. Credentials stay
-        on this server and are never given to agents. Disconnect removes the
-        saved connection here; revoke its authorization on GitHub to remove
-        access everywhere.
+        Sign in on GitHub and review its requested permissions. Credentials stay on this
+        server and are never given to agents. Disconnect removes the saved connection
+        here; revoke its authorization on GitHub to remove access everywhere.
       </p>
       <div id="github-content" aria-live="polite"></div>
     </dialog>
@@ -326,21 +355,17 @@
         <button id="publishing-close" aria-label="Close publishing">×</button>
       </div>
       <p class="muted">
-        Previewing only reads GitHub. Approval uploads the displayed commits and
-        creates or updates a draft pull request. Nothing is merged
-        automatically.
+        Previewing only reads GitHub. Approval uploads the displayed commits and creates
+        or updates a draft pull request. Nothing is merged automatically.
       </p>
       <form id="publishing-form">
         <label for="publishing-target">Publication</label
         ><select id="publishing-target">
           <option value="">Create a new draft PR</option></select
         ><label for="publishing-base">GitHub base branch</label
-        ><input
-          id="publishing-base"
-          value="main"
-          required
-          maxlength="200"
-        /><label for="publishing-title">Pull request title</label
+        ><input id="publishing-base" value="main" required maxlength="200" /><label
+          for="publishing-title"
+          >Pull request title</label
         ><input
           id="publishing-title"
           value="Apply reviewed changes"
@@ -361,17 +386,11 @@
       <form id="revision-form">
         <h2>Request revisions</h2>
         <p class="muted">
-          The current edits are kept. Your agent continues from them after you
-          approve the run, and the result needs fresh checks and commit
-          approval.
+          The current edits are kept. Your agent continues from them after you approve the
+          run, and the result needs fresh checks and commit approval.
         </p>
         <label for="revision-prompt">What should change?</label
-        ><textarea
-          id="revision-prompt"
-          rows="5"
-          maxlength="16000"
-          required
-        ></textarea>
+        ><textarea id="revision-prompt" rows="5" maxlength="16000" required></textarea>
         <p id="revision-status" class="muted" role="status"></p>
         <div class="actions">
           <button type="button" id="revision-close">Cancel</button
@@ -393,9 +412,7 @@
     <dialog id="feedback-dialog">
       <div class="review-head">
         <h2>GitHub feedback and conflicts</h2>
-        <button id="feedback-close" aria-label="Close GitHub feedback">
-          ×
-        </button>
+        <button id="feedback-close" aria-label="Close GitHub feedback">×</button>
       </div>
       <label for="feedback-target">Published pull request</label
       ><select id="feedback-target"></select
@@ -407,8 +424,8 @@
         Preview base integration
       </button>
       <p class="muted">
-        Previews read GitHub without changing it. Integration preserves your
-        published history and requires fresh checks and commit approval.
+        Previews read GitHub without changing it. Integration preserves your published
+        history and requires fresh checks and commit approval.
       </p>
       <div id="feedback-content" aria-live="polite"></div>
     </dialog>
