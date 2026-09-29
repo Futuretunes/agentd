@@ -5,6 +5,7 @@ import {
   requestRouter,
   reviewPreparationOperations,
   serviceReadOperations,
+  workspaceMutationOperations,
   workspaceReadOperations,
 } from "../src/request-routing.ts";
 
@@ -86,6 +87,23 @@ test("request routing assigns workspace reads without claiming mutations", () =>
   assert.deepEqual(seen, workspaceReadOperations);
   assert.equal(workspaceReadOperations.includes("project-rename"), false);
   assert.equal(workspaceReadOperations.includes("conversation-archive"), false);
+});
+
+test("request routing assigns workspace mutations separately from reads", () => {
+  const seen = [];
+  const route = requestRouter(
+    [
+      { name: "workspace-reads", operations: workspaceReadOperations, handle() {} },
+      {
+        name: "workspace-mutations",
+        operations: workspaceMutationOperations,
+        handle: (input) => seen.push(input.op),
+      },
+    ],
+    () => {},
+  );
+  for (const op of workspaceMutationOperations) route({ op });
+  assert.deepEqual(seen, workspaceMutationOperations);
 });
 
 test("request routing rejects duplicate ownership at startup", () => {

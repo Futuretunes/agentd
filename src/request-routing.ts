@@ -64,6 +64,18 @@ export const workspaceReadOperations = [
   "list",
 ] as const;
 
+export const workspaceMutationOperations = [
+  "project-checks",
+  "project-create",
+  "project-register",
+  "project-archive",
+  "project-restore",
+  "project-rename",
+  "conversation-restore",
+  "conversation-rename",
+  "conversation-archive",
+] as const;
+
 /**
  * Build the runner's operation table once at startup. An operation has one owner;
  * duplicate claims fail before either handler can receive a request.
