@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.61.0 — GUI access-key rotation
 
-[Latest handover](handovers/2026-09-29-codex-access-key-rotation.md): Settings now provides step-up-authenticated, exact-preview key rotation. A fixed-purpose root helper atomically changes only the root-owned access hash; the gateway has no helper access, generated plaintext is not retained, other sessions are invalidated and audit excludes secret material. Portable validation and exact 207/207 zero-skip Ubuntu validation are green; staging remains. Production stays on 0.59.1 and candidate 0.60.0 remains uninstalled.
+[Latest handover](handovers/2026-09-29-codex-access-key-rotation.md): Settings now provides step-up-authenticated, exact-preview key rotation. A fixed-purpose root helper atomically changes only the root-owned access hash; the gateway has no helper access, generated plaintext is not retained, other sessions are invalidated and audit excludes secret material. Exact source `7096170` passed 207/207 zero-skip Ubuntu validation, typecheck, formatting and all required CI. Draft #67 and the cumulative archive/launcher are staged but unexecuted. Production stays on 0.59.1.
 
 ## Candidate 0.60.0 — GitHub access ceilings
 

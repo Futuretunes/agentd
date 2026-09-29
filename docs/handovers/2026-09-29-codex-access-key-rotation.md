@@ -42,8 +42,14 @@ uses an invalid key and must be refused; installation never rotates the live key
   preservation and symlink refusal.
 - Runner coverage proves secrets and the replacement digest never enter audit.
 
-Cumulative archive/installer staging remains before operator installation. No
-live key was rotated and no model task ran.
+The cumulative archive and launcher are staged but unexecuted. No live key was
+rotated and no model task ran.
+
+The exact validated release source is
+`7096170a7d0b10ece9abc32fae1344b6dcdbef78`. The cumulative archive and
+unexecuted launcher are staged in the private operator environment; their paths
+and hashes are recorded only in the private operator handover. Draft PR #67 is
+stacked on #66 and all required GitHub checks pass.
 
 ## Next item
 
