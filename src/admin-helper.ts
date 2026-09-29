@@ -343,6 +343,36 @@ export function applyRuntimeFlags(
   return value;
 }
 
+export function replaceTlsCertificate(
+  certificate: unknown,
+  key: unknown,
+  command = "/opt/agentd/scripts/admin_tls.py",
+) {
+  if (
+    typeof certificate !== "string" ||
+    typeof key !== "string" ||
+    certificate.length > 16384 ||
+    key.length > 16384
+  )
+    throw Error("Invalid TLS certificate request");
+  const output = execFileSync(
+    "/usr/bin/python3",
+    ["-B", command, JSON.stringify({ certificate, key })],
+    {
+      cwd: "/opt/agentd",
+      encoding: "utf8",
+      timeout: 15000,
+      maxBuffer: 8192,
+      env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  );
+  const value = JSON.parse(output);
+  if (value?.format !== 1 || value.replaced !== true || value.error)
+    throw Error("TLS certificate change refused");
+  return value;
+}
+
 export function startRollback(
   version: unknown,
   list: () => any = updates,
@@ -384,6 +414,7 @@ export function handleAdminRequest(
     ) => unknown;
     runtimeFlags?: () => unknown;
     applyRuntimeFlags?: (flags: unknown) => unknown;
+    replaceTls?: (certificate: unknown, key: unknown) => unknown;
   },
 ) {
   if (input?.op === "rotate-access-key") {
@@ -438,6 +469,11 @@ export function handleAdminRequest(
       throw Error("Unsupported admin operation");
     return (config.applyRuntimeFlags ?? applyRuntimeFlags)(input.flags);
   }
+  if (input?.op === "tls-replace") {
+    if (Object.keys(input).sort().join(" ") !== "certificate key op")
+      throw Error("Unsupported admin operation");
+    return (config.replaceTls ?? replaceTlsCertificate)(input.certificate, input.key);
+  }
   throw Error("Unsupported admin operation");
 }
 
@@ -457,11 +493,11 @@ export function adminHelper(config: {
     throw Error("Invalid admin helper configuration");
   const server = createServer((connection) => {
     let data = "";
-    connection.setTimeout(5000, () => connection.destroy());
+    connection.setTimeout(20000, () => connection.destroy());
     connection.on("error", () => {});
     connection.on("data", (chunk) => {
       data += chunk;
-      if (Buffer.byteLength(data) > 2048) return connection.destroy();
+      if (Buffer.byteLength(data) > 65536) return connection.destroy();
       if (!data.includes("\n")) return;
       connection.removeAllListeners("data");
       try {

@@ -195,3 +195,25 @@ export async function applyRuntimeFlags(socket: string, flags: object): Promise<
     throw Error("Runtime flags change was refused.");
   return value;
 }
+
+export async function replaceTls(
+  socket: string,
+  certificate: string,
+  key: string,
+): Promise<any> {
+  if (
+    typeof certificate !== "string" ||
+    typeof key !== "string" ||
+    certificate.length > 16384 ||
+    key.length > 16384
+  )
+    throw Error("TLS certificate request is invalid.");
+  const value: any = await request(
+    socket,
+    { op: "tls-replace", certificate, key },
+    20000,
+  );
+  if (value?.format !== 1 || value.replaced !== true)
+    throw Error("TLS certificate change was refused.");
+  return value;
+}
