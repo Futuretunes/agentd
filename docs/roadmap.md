@@ -240,3 +240,7 @@ Capabilities, Operations status and local audit reads now dispatch through one e
 ## R2 workspace-read routing — candidate 0.52.0
 
 Project lists, archived projects, history/search, project conversations, paginated conversation detail and local task listing now dispatch through one explicit read route. Existing validation, output bounds and data are unchanged; every workspace mutation stays on the guarded core path. Exact source `742eec8` passed 191/191 required Ubuntu tests with zero skips, typecheck and formatting. PR #56 is ready for review against #55's branch; Node 24/26 and Linux CI passed; the cumulative archive is staged, not installed. Next bounded slice: project/conversation mutations, then task actions separately.
+
+## R2 workspace-mutation routing — candidate 0.53.0
+
+Project check setup, local creation/registration, project lifecycle and conversation lifecycle operations now dispatch through one explicit mutation route. Existing busy-state admission, archive checks, audit transactions and durable project-creation receipts are preserved. Task creation/actions remain separate. Exact source `100b5fa` passed 192/192 required Ubuntu tests with zero skips, typecheck and formatting. Draft #57 targets #56's branch and awaits final CI; cumulative archive staged, not installed. Next bounded slice: task reads/actions, then attachments/settings/storage separately.
