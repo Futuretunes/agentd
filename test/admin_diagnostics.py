@@ -32,4 +32,16 @@ class DiagnosticsTest(unittest.TestCase):
         self.assertEqual(command[:3],['/usr/bin/systemctl','show','agentd.service'])
         with self.assertRaises(ValueError):diagnostics.service('../other.service')
 
+    def test_gateway_config_readability_reflects_owner_group_and_mode(self):
+        import os,pwd
+        me=pwd.getpwuid(os.getuid())
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'mobile.json';path.write_text('{}')
+            c={'configFiles':[str(path)],'gatewayUser':me.pw_name,'user':me.pw_name}
+            os.chmod(path,0o640);self.assertTrue(diagnostics.gateway_config_readable(c))
+            with patch.object(diagnostics.pwd,'getpwnam',return_value=SimpleNamespace(pw_uid=me.pw_uid+1,pw_gid=me.pw_gid)):
+                self.assertTrue(diagnostics.gateway_config_readable(c))
+                os.chmod(path,0o600);self.assertFalse(diagnostics.gateway_config_readable(c))
+            self.assertIsNone(diagnostics.gateway_config_readable({'configFiles':[]}))
+
 if __name__=='__main__':unittest.main()

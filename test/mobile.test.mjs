@@ -583,6 +583,28 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
     );
     assert.equal((await req("/api/login", { key: "test-access" })).status, 401);
     assert.equal((await req("/api/login", { key: preview.generatedKey })).status, 200);
+    // Current-key guesses on the rotation form share the sign-in limit (10 per minute).
+    for (let guess = 0; guess < 8; guess++)
+      assert.notEqual(
+        (
+          await req(
+            "/api/access-key",
+            { action: "preview", mode: "generated", currentKey: "wrong-" + guess },
+            cookie,
+          )
+        ).status,
+        429,
+      );
+    assert.equal(
+      (
+        await req(
+          "/api/access-key",
+          { action: "preview", mode: "generated", currentKey: "wrong" },
+          cookie,
+        )
+      ).status,
+      429,
+    );
     assert.equal(
       (
         await req(

@@ -64,6 +64,20 @@ def config(path):
     if not re.fullmatch(r'http://127\.0\.0\.1:[0-9]+/healthz',c['healthUrl']): raise ValueError('Loopback health URL required')
     return c
 
+def config_fingerprint(name):
+    # Bind content, owner, group and mode: a permission change is drift too.
+    # A supported access-key rotation only replaces "accessHash" with another valid
+    # digest, so that single value is masked; any other edit (or an invalid digest)
+    # still changes the fingerprint.
+    path=Path(name); info=path.stat(); data=path.read_bytes()
+    try:
+        value=json.loads(data)
+        if isinstance(value,dict) and re.fullmatch(r'[a-f0-9]{64}',str(value.get('accessHash',''))):
+            data=json.dumps(dict(value,accessHash='<rotatable>'),sort_keys=True,separators=(',',':')).encode()
+    except ValueError: pass
+    digest=hashlib.sha256(b'agentd-config-v2\0'+data).hexdigest()
+    return {'sha256':digest,'uid':info.st_uid,'gid':info.st_gid,'mode':oct(info.st_mode & 0o7777)}
+
 def inventory(c):
     result = {}
     for key in ('runnerUnit','mobileUnit'):
@@ -143,7 +157,7 @@ def inventory(c):
         hashes={str(canonical(name)):hashlib.sha256(canonical(name).read_bytes()).hexdigest() for name in files if name}
         properties['ExecStart']=properties['ExecStart'].split(' ; start_time=',1)[0]
         result[c['adminUnit']]={'properties':hashlib.sha256(json.dumps(properties,sort_keys=True).encode()).hexdigest(),'files':hashes}
-    result['configuration'] = {name:hashlib.sha256(Path(name).read_bytes()).hexdigest() for name in c['configFiles']}
+    result['configuration'] = {name:config_fingerprint(name) for name in c['configFiles']}
     return result
 
 def idle(state, maximum):

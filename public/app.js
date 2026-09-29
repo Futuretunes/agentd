@@ -3693,6 +3693,14 @@ $("diagnostics-settings").onclick = async () => {
         : configuration === "recovery_required"
           ? "An interrupted update needs administrator recovery."
           : "Configuration changed outside the managed installer and needs review.";
+    const gatewayConfig =
+      report.configuration.gatewayConfigReadable === false
+        ? node(
+            "p",
+            "The phone gateway cannot read its configuration file. It keeps working now but will not start after the next restart. Ask your administrator to restore read access for the gateway.",
+            "attention",
+          )
+        : null;
     const services = node("section", undefined, "operation-section");
     services.append(node("h3", "Services"));
     for (const [name, service] of Object.entries(report.services))
@@ -3729,6 +3737,8 @@ $("diagnostics-settings").onclick = async () => {
     });
     diagnosticsContent.replaceChildren(
       summary,
+      ...(gatewayConfig ? [gatewayConfig] : []),
+
       node(
         "p",
         `AgentD ${report.release.version} · revision ${report.release.revision ?? "unknown"} · ${Math.floor(report.runner.uptimeSeconds / 60)} minutes uptime`,

@@ -162,6 +162,18 @@ export function mobile(c: Config) {
             ...(gatewayMutations.has(input.op) ? { owner: accountOwner } : {}),
           });
         if (path === "/api/access-key" && req.method === "POST") {
+          // The current key is re-checked here; limit guesses like the sign-in form.
+          const limitKey = "access-key:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
           const input = await body(req),
             now = Date.now();
           for (const [owner, preview] of accessPreviews)

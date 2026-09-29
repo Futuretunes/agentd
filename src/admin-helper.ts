@@ -55,6 +55,9 @@ export function rotateAccessFile(
       flag: "wx",
     });
     chownSync(temporary, info.uid, info.gid);
+    // The helper runs with umask 077; restore the original mode explicitly so the
+    // gateway group can still read its configuration after a rotation.
+    chmodSync(temporary, info.mode & 0o777);
     const temporaryFd = openSync(temporary, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
       fsyncSync(temporaryFd);

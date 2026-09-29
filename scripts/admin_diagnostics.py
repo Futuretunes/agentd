@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Return a bounded, normalized AgentD diagnostic snapshot; never raw config or logs."""
-import json,re,shutil,subprocess,sys
+import json,os,pwd,re,shutil,subprocess,sys
 from datetime import datetime,timezone
 from pathlib import Path
 sys.dont_write_bytecode=True
@@ -20,6 +20,15 @@ def service(unit):
     restarts=values.get('NRestarts','0')
     return {'state':active,'detail':sub,'restarts':int(restarts) if restarts.isdigit() else None,'since':values.get('ExecMainStartTimestamp') or None}
 
+def gateway_config_readable(c):
+    # The gateway reads this at start; if its user cannot, the next restart fails.
+    paths=[p for p in c.get('configFiles',[]) if p.endswith('mobile.json')]
+    if not paths:return None
+    try:
+        info=os.stat(paths[0]);account=pwd.getpwnam(c.get('gatewayUser') or c['user'])
+    except (OSError,KeyError):return False
+    return bool(info.st_uid==account.pw_uid and info.st_mode&0o400 or info.st_gid==account.pw_gid and info.st_mode&0o040 or info.st_mode&0o004)
+
 def snapshot():
     c=update.config(CONFIG);installed=json.loads((DEPLOYMENT/'installed.json').read_text())
     pending=sorted(p.name for p in DEPLOYMENT.glob('*pending.json'))
@@ -36,7 +45,7 @@ def snapshot():
       'format':1,
       'generatedAt':datetime.now(timezone.utc).isoformat(),
       'release':{'version':str(release.get('version','unknown'))[:32],'revision':revision[:12] or None,'taskSchemaVersion':release.get('taskSchemaVersion') if isinstance(release.get('taskSchemaVersion'),int) else None},
-      'configuration':{'state':configuration,'recoveryPending':bool(pending),'resourceProfile':c.get('resourceProfile')=='standard-v1','gatewayHardening':c.get('gatewayHardening')=='gateway-hardening-v1','separateGateway':bool(c.get('gatewayUser')),'administrationHelper':bool(c.get('adminUnit'))},
+      'configuration':{'state':configuration,'recoveryPending':bool(pending),'gatewayConfigReadable':gateway_config_readable(c),'resourceProfile':c.get('resourceProfile')=='standard-v1','gatewayHardening':c.get('gatewayHardening')=='gateway-hardening-v1','separateGateway':bool(c.get('gatewayUser')),'administrationHelper':bool(c.get('adminUnit'))},
       'services':{name:service(unit) for name,unit in units.items()},
       'storage':{'freeBytes':usage.free,'totalBytes':usage.total},
     }

@@ -7,7 +7,7 @@ Candidate 0.21.0 introduces a tracked source-release builder and administrator-o
 From a reviewed checkout, use the **full commit SHA**, not a moving branch name:
 
 ```sh
-python3 scripts/release.py build --revision FULL_COMMIT_SHA --output /tmp/agentd-release.tar.gz
+python3 -B scripts/release.py build --revision FULL_COMMIT_SHA --output /tmp/agentd-release.tar.gz
 ```
 
 Record the printed SHA-256 separately. Same commit produces identical archive bytes: sorted regular files, fixed ownership/modes/timestamps, no gzip timestamp. The allowlist includes source, public assets, tests, deployment templates, documentation and package metadata. Untracked/dirty files, `.git`, dependencies and runtime data are excluded. Git symlinks/submodules in selected paths are refused.
@@ -15,7 +15,7 @@ Record the printed SHA-256 separately. Same commit produces identical archive by
 SHA-256 detects corruption/substitution against the independently recorded value; it is **not a publisher signature**. Review/trust the source revision and the Python updater before executing them as administrator. A public repository or a passing CI result is not release approval.
 
 ```sh
-python3 scripts/release.py verify /tmp/agentd-release.tar.gz --sha256 RECORDED_SHA256 --extract /tmp/agentd-release
+python3 -B scripts/release.py verify /tmp/agentd-release.tar.gz --sha256 RECORDED_SHA256 --extract /tmp/agentd-release
 ```
 
 Extraction requires a new directory, rejects duplicate paths, traversal, links, unexpected members, incomplete files and overlarge archives. The manifest binds each file, package version, task schema and Git revision.
@@ -27,10 +27,10 @@ Copy `deploy/update.example.json` to a root-owned, mode-600 file outside the che
 The first managed update needs `--adopt-existing`: this explicitly records the existing configuration after enforcing the supported service security floor. Subsequent updates compare it with the recorded baseline and stop on drift. They never replace units or configuration with release templates. An intentional configuration change needs administrator review and reconciliation of the baseline; do not bypass a drift failure by deleting the record without review.
 
 ```sh
-sudo python3 /tmp/agentd-release/scripts/update.py plan \
+sudo python3 -B /tmp/agentd-release/scripts/update.py plan \
   --config /etc/agentd/update.json --archive /tmp/agentd-release.tar.gz \
   --sha256 RECORDED_SHA256 --adopt-existing
-sudo python3 /tmp/agentd-release/scripts/update.py install \
+sudo python3 -B /tmp/agentd-release/scripts/update.py install \
   --config /etc/agentd/update.json --archive /tmp/agentd-release.tar.gz \
   --sha256 RECORDED_SHA256 --adopt-existing
 ```
@@ -38,6 +38,24 @@ sudo python3 /tmp/agentd-release/scripts/update.py install \
 The plan verifies compatibility and configuration without changing services/application/state; it creates a private management directory/lock if needed. The install downloads locked npm development dependencies with lifecycle scripts disabled, then runs typecheck and the mandatory Linux isolation suite under an unprivileged service boundary in a disposable profile. It does not skip tests to accommodate an incompatible host. Candidate tests cannot access the configured state parent, service home, control-socket directory or listed configuration files. No account/native-model acceptance test runs during this update.
 
 The updater verifies files again, excludes concurrent updates, refuses active tasks/account changes, stops the gateway, rechecks idleness, stops the runner and backs up state. It swaps the application, verifies the reported release **and task-schema version**, then starts the gateway. Application files become root-owned; native credential profiles and the renewal journal outside task state are untouched. Project Git checkouts are deliberately not advanced by an application update; import/pull and review remain separate.
+
+## Configuration fingerprints and reconciliation
+
+Tracked configuration files are fingerprinted by content, owner, group and mode (format v2, since 0.62.2). A permission change is drift, like a content change. The value of `accessHash` is masked while it is a valid 64-character digest, so a supported access-key rotation from Settings is not drift. Any other edit, or an invalid digest, still is.
+
+Always run the scripts with `python3 -B`: root must not write `__pycache__` into the application or staging directories.
+
+After a reviewed, explained change to a tracked configuration file (or once when moving from v1 to v2 fingerprints), re-record the baseline with `scripts/reconcile_configuration.py`. It:
+
+- refuses unit, drop-in and service-property differences;
+- accepts files whose bytes still match the recorded digest;
+- requires every file whose content changed to be named with `--accept`;
+- plans by default, and keeps the previous baseline as `installed.json.<time>.bak` when run with `--apply`.
+
+```sh
+sudo python3 -B /tmp/agentd-release/scripts/reconcile_configuration.py --config /etc/agentd/update.json
+sudo python3 -B /tmp/agentd-release/scripts/reconcile_configuration.py --config /etc/agentd/update.json --accept /etc/agentd-web/mobile.json --apply
+```
 
 ## Database compatibility
 
