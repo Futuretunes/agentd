@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.41.0 — provider usage and credits
 
-[Handover](handovers/2026-09-29-provider-usage.md): Operations reads Codex quota windows and optional provider credits through a bounded, isolated native metadata probe. Claude/Cursor have explicit unavailable states and provider links. Exact validation pending; no deployment or live model call.
+[Handover](handovers/2026-09-29-provider-usage.md): Operations reads Codex quota windows and optional provider credits through a bounded, isolated native metadata probe. Claude/Cursor have explicit unavailable states and provider links. Exact archive `7079ed2` passed 169/169 Linux tests with zero skips, formatting, typecheck and CI; draft #45 is open. Cumulative 0.41.0 is staged but not installed; live native account acceptance pending.
 
 ## Candidate 0.40.0 — task execution ownership
 

@@ -1,7 +1,7 @@
 # 2026-09-29 — Provider credit and quota reporting
 
 - Author: Codex; explicitly prioritized by the operator over remaining stabilization work.
-- Status: implemented; exact validation pending; not installed.
+- Status: implemented; exact Linux and CI passed; not installed.
 - Release: cumulative 0.41.0, task schema 2.
 - Branch/base: `feat/provider-usage` from `refactor/task-execution-owner` at `19cf02c`.
 
@@ -13,11 +13,11 @@ Operations now renders Codex quota windows, remaining percentage/reset times, op
 
 ## Validation
 
-Fixture coverage includes RPC allowlist, server tool-request rejection, oversized output, cancellation, missing/hostile fields, multi-bucket precedence, stale/reset handling, refresh throttling, sign-out clearing, shutdown settlement and safe UI labels/links. The synthetic browser preview exposes correctly named progress indicators. A required Linux fixture covers the full isolated probe with synthetic credentials and verifies absent refresh grants, empty read-only workspace, hidden private state and cleanup. Initial full-suite validation caught a shutdown ordering regression: awaiting usage before signalling publication cancellation could let queued transport start. Shutdown now signals publication cancellation before that await; existing regression coverage is retained. Final exact archive and CI results pending. No live provider quota query or model request was run; the service account's native files are private to that account, and no privileged access was requested merely for validation.
+Fixture coverage includes RPC allowlist, server tool-request rejection, oversized output, cancellation, missing/hostile fields, multi-bucket precedence, stale/reset handling, refresh throttling, sign-out clearing, shutdown settlement and safe UI labels/links. The synthetic browser preview exposes correctly named progress indicators. A required Linux fixture covers the full isolated probe with synthetic credentials and verifies absent refresh grants, empty read-only workspace, hidden private state and cleanup. Initial full-suite validation caught a shutdown ordering regression: awaiting usage before signalling publication cancellation could let queued transport start. Shutdown now signals publication cancellation before that await; existing regression coverage is retained. Final exact archive `7079ed27fad62d92f47490b2e4cecc50f984e71a` passed 169/169 required Linux tests with zero skips, formatting and typecheck. SHA-256: `f4cfec6690f3d7351577a81c5dd51d3b5a3b03cce0f03ca1a46c3c124def8d7a`. CI runs 36523378862 and 36523381837 passed; draft PR #45 is open. No live provider quota query or model request was run; the service account's native files are private to that account, and no privileged access was requested merely for validation.
 
 ## Deployment and rollback
 
-Production remains 0.22.0/task schema 1. Keep the prior validated cumulative installer until this candidate passes. Task schema stays 2; rollback needs matching application/task state, preserving native profiles separately. After install, open Operations and Refresh accounts and usage. Use the tracked usage preflight only as the service user if needed; it prints metadata success/failure rather than identities or balances. Native acceptance remains pending.
+Production remains 0.22.0/task schema 1. The single private cumulative installer now targets this validated 0.41.0 archive; syntax and staged hashes are checked, and it remains unexecuted. Task schema stays 2; rollback needs matching application/task state, preserving native profiles separately. After install, open Operations and Refresh accounts and usage. Use the tracked usage preflight only as the service user if needed; it prints metadata success/failure rather than identities or balances. Native acceptance remains pending.
 
 ## Remaining work
 
