@@ -9,7 +9,12 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 The first operator install subsequently completed the 0.62.0 application swap and
 all 211 zero-skip Ubuntu tests, then exposed a helper-socket startup race in the
 one-time migration. Candidate 0.62.1 adds bounded readiness waits to both helper
-migrations. Its replacement archive and exact validation details are pending.
+migrations. Exact source `15df341` passed 212 portable tests with 9 expected
+Linux-only skips, typecheck, formatting and all Node 24/26/Ubuntu isolation CI.
+The replacement archive, rollback verifier and launcher are staged but
+unexecuted. Production runs the healthy 0.62.0 application with runner/gateway
+active; the helper is absent after a complete rollback. Private recovery state
+and hashes are in the VM operator handover.
 
 ## Candidate 0.61.0 — GUI access-key rotation
 

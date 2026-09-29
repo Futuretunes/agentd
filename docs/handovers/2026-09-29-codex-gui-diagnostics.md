@@ -16,6 +16,22 @@ re-verifies the complete rollback before removing only the stale journal, retain
 the backup, installs 0.62.1 and then installs or upgrades the helper according to
 managed configuration.
 
+Validation for exact source
+`15df341c7e41cdf51f29e0cbab8e144efc9cb487`:
+
+- focused migration tests reproduce a first-attempt missing socket and prove both
+  probes retry successfully;
+- portable suite: 212 total, 203 passed, 9 expected Linux-only skips;
+- formatting and typecheck pass;
+- Node 24, Node 26 and required Ubuntu isolation CI pass.
+
+The exact 0.62.1 archive, recovery verifier and replacement launcher are staged
+in the private operator environment. They are unexecuted at this handover point.
+Production application health is 0.62.0; the runner and gateway are active, the
+optional administration helper is absent, and the fully rolled-back migration's
+recovery journal remains until the verifier removes it. Private paths and hashes
+are in the VM operator handover only.
+
 ## Scope
 
 Candidate 0.62.0 implements the second GUI administration slice through the
@@ -64,7 +80,9 @@ the VM operator handover.
 
 ## Next item
 
-Implement reviewed in-app update planning and installation. Keep release
+First confirm the staged 0.62.1 installer completes, reports all 212 Ubuntu tests
+with zero skips and activates all three services. Then implement reviewed in-app
+update planning and installation. Keep release
 selection rooted in administrator-approved immutable artifacts; expose no archive
 path or command parameter to the browser, bind approval to the exact plan, and
 preserve drift, idle, backup, readiness and rollback safeguards.
