@@ -38,10 +38,11 @@ def canonical(value):
 def config(path):
     c = json.loads(Path(path).read_text())
     required = {'app','state','deployment','user','runnerUnit','mobileUnit','node','npm','healthUrl','configFiles','controlSocket'}
-    optional={'gatewayUser','gatewaySocket','resourceProfile','gatewayHardening','adminUnit','adminSocket'}
+    optional={'gatewayUser','gatewaySocket','resourceProfile','gatewayHardening','adminUnit','adminSocket','updateUnit'}
     if (set(c)-optional) != required or bool(c.get('gatewayUser')) != bool(c.get('gatewaySocket')): raise ValueError('Unexpected or missing configuration field')
     if c.get('resourceProfile') not in (None,'standard-v1'): raise ValueError('Unknown resource profile')
     if c.get('gatewayHardening') not in (None,'gateway-hardening-v1'): raise ValueError('Unknown gateway hardening profile')
+    if c.get('updateUnit') not in (None,'agentd-update@.service'): raise ValueError('Unknown update unit')
     paths = [canonical(c[k]) for k in ('app','state','deployment')]
     for i, a in enumerate(paths):
         if any(a == b or a in b.parents or b in a.parents for b in paths[i+1:]): raise ValueError('Application, state and deployment paths must be disjoint')
@@ -63,6 +64,20 @@ def config(path):
     if c['runnerUnit'] == c['mobileUnit']: raise ValueError('Separate units required')
     if not re.fullmatch(r'http://127\.0\.0\.1:[0-9]+/healthz',c['healthUrl']): raise ValueError('Loopback health URL required')
     return c
+
+def config_fingerprint(name):
+    # Bind content, owner, group and mode: a permission change is drift too.
+    # A supported access-key rotation only replaces "accessHash" with another valid
+    # digest, so that single value is masked; any other edit (or an invalid digest)
+    # still changes the fingerprint.
+    path=Path(name); info=path.stat(); data=path.read_bytes()
+    try:
+        value=json.loads(data)
+        if isinstance(value,dict) and re.fullmatch(r'[a-f0-9]{64}',str(value.get('accessHash',''))):
+            data=json.dumps(dict(value,accessHash='<rotatable>'),sort_keys=True,separators=(',',':')).encode()
+    except ValueError: pass
+    digest=hashlib.sha256(b'agentd-config-v2\0'+data).hexdigest()
+    return {'sha256':digest,'uid':info.st_uid,'gid':info.st_gid,'mode':oct(info.st_mode & 0o7777)}
 
 def inventory(c):
     result = {}
@@ -143,7 +158,7 @@ def inventory(c):
         hashes={str(canonical(name)):hashlib.sha256(canonical(name).read_bytes()).hexdigest() for name in files if name}
         properties['ExecStart']=properties['ExecStart'].split(' ; start_time=',1)[0]
         result[c['adminUnit']]={'properties':hashlib.sha256(json.dumps(properties,sort_keys=True).encode()).hexdigest(),'files':hashes}
-    result['configuration'] = {name:hashlib.sha256(Path(name).read_bytes()).hexdigest() for name in c['configFiles']}
+    result['configuration'] = {name:config_fingerprint(name) for name in c['configFiles']}
     return result
 
 def idle(state, maximum):

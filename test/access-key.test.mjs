@@ -58,7 +58,13 @@ test("fixed-purpose helper atomically replaces only the root-owned access digest
     );
     const owner = process.getuid();
     assert.throws(() => rotateAccessFile(path, "wrong", accessKeyHash(newKey), owner));
-    rotateAccessFile(path, oldKey, accessKeyHash(newKey), owner);
+    // Rotate under the helper's own umask: the original mode must survive.
+    const previousUmask = process.umask(0o077);
+    try {
+      rotateAccessFile(path, oldKey, accessKeyHash(newKey), owner);
+    } finally {
+      process.umask(previousUmask);
+    }
     const value = JSON.parse(readFileSync(path, "utf8"));
     assert.equal(value.accessHash, accessKeyHash(newKey));
     assert.equal(value.origin, "https://fixture");

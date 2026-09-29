@@ -6,7 +6,12 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { readDiagnostics, rotateAccessKey } from "./admin-client.ts";
+import {
+  readDiagnostics,
+  readUpdates,
+  rotateAccessKey,
+  startUpdate,
+} from "./admin-client.ts";
 
 const version: string = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
@@ -64,6 +69,12 @@ export function start(options: Options) {
       ? runner({
           adminDiagnostics: process.env.AGENTD_ADMIN_SOCKET
             ? () => readDiagnostics(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          adminUpdates: process.env.AGENTD_ADMIN_SOCKET
+            ? () => readUpdates(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          startUpdate: process.env.AGENTD_ADMIN_SOCKET
+            ? (version) => startUpdate(process.env.AGENTD_ADMIN_SOCKET!, version)
             : undefined,
           rotateAccess: process.env.AGENTD_ADMIN_SOCKET
             ? (currentKey, newHash) =>

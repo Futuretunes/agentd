@@ -1,12 +1,12 @@
 import { createConnection } from "node:net";
 
-function request(socket: string, input: object): Promise<unknown> {
+function request(socket: string, input: object, timeout = 5000): Promise<unknown> {
   if (!socket.startsWith("/"))
     return Promise.reject(Error("Administration is unavailable."));
   return new Promise((resolve, reject) => {
     const connection = createConnection(socket);
     let response = "";
-    connection.setTimeout(5000, () =>
+    connection.setTimeout(timeout, () =>
       connection.destroy(Error("Admin helper timed out")),
     );
     connection.on("connect", () => connection.end(JSON.stringify(input) + "\n"));
@@ -55,4 +55,30 @@ export async function readDiagnostics(socket: string): Promise<any> {
   )
     throw Error("Diagnostics response is invalid.");
   return value;
+}
+
+const releaseVersion = /^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$/;
+
+export async function readUpdates(socket: string): Promise<any> {
+  const value: any = await request(socket, { op: "updates" }, 15000);
+  if (
+    value?.format !== 1 ||
+    !value.installed ||
+    typeof value.installed.version !== "string" ||
+    !["ok", "drift", "recovery_required"].includes(value.configuration) ||
+    typeof value.running !== "boolean" ||
+    !Array.isArray(value.candidates)
+  )
+    throw Error("Updates response is invalid.");
+  return value;
+}
+
+export async function startUpdate(
+  socket: string,
+  version: string,
+): Promise<{ started: true; version: string }> {
+  if (typeof version !== "string" || !releaseVersion.test(version))
+    throw Error("Update request is invalid.");
+  await request(socket, { op: "update-start", version }, 15000);
+  return { started: true, version };
 }
