@@ -1,10 +1,18 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-claude-in-app-updates.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-claude-0.64.1.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Approved 0.64.1 — reload_required, single restart (Claude)
+
+Unloaded unit files (often another program's) are reported as `reload_required` with the exact fix, not as drift. Updates restart services once, and new job units install automatically. 0.64.0 is installed and the rollback unit is present. See [handover](handovers/2026-09-29-claude-0.64.1.md).
+
+## Installed 0.64.0 — in-app rollback (Claude)
+
+Settings > Updates can roll back to the newest compatible older version and its task data, saving what was running first. See [handover](handovers/2026-09-29-claude-in-app-rollback.md). Installed from Settings > Updates on 2026-09-29; live rollback acceptance follows after 0.64.1.
 
 ## Candidate 0.63.0 — in-app updates (Claude)
 
@@ -331,6 +339,7 @@ This review-response update records findings and bounded diagnostic evidence; it
 
 ## History and maintenance
 
+- [2026-09-29 — In-app rollback (Claude)](handovers/2026-09-29-claude-in-app-rollback.md)
 - [2026-09-29 — In-app updates (Claude)](handovers/2026-09-29-claude-in-app-updates.md)
 - [2026-09-29 — 0.62.2 fixes (Claude)](handovers/2026-09-29-claude-0.62.2.md)
 - [2026-09-29 — Claude review of 0.22–0.59 and fixes](handovers/2026-09-29-claude-review-fixes.md)

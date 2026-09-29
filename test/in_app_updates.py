@@ -67,6 +67,26 @@ class InAppUpdateTests(unittest.TestCase):
         self.assertEqual(oct((self.deployment/job.STATUS).stat().st_mode&0o777),'0o600')
         self.assertFalse(any(p.name.startswith('agentd-update-') and p.is_dir() for p in self.deployment.iterdir()))
 
+    def test_job_installs_new_job_units_when_the_release_provides_the_migration(self):
+        archive,sha=build(self.root,'0.63.0');approval.approve(archive,sha,'',self.releases,OWNER)
+        scripts=self.root/'app'/'scripts';scripts.mkdir(parents=True);(scripts/'apply_updates.py').write_text('')
+        calls=self.run_job('0.63.0')
+        self.assertEqual([c[-1] if len(c)>1 else c[0] for c in calls][-2:],['apply_diagnostics.py','apply_updates.py'])
+
+    def test_unloaded_unit_files_are_reported_separately_from_drift(self):
+        c={'deployment':str(self.deployment)}
+        def reload(c):raise update.ReloadRequired('reload')
+        with patch.object(update,'inventory',side_effect=reload):
+            self.assertEqual(update.configuration_state(c,{'same':True},self.deployment),'reload_required')
+        with patch.object(update,'inventory',side_effect=ValueError('other')):
+            self.assertEqual(update.configuration_state(c,{'same':True},self.deployment),'drift')
+        with patch.object(update,'inventory',return_value={'same':False}):
+            self.assertEqual(update.configuration_state(c,{'same':True},self.deployment),'drift')
+        with patch.object(update,'inventory',return_value={'same':True}):
+            self.assertEqual(update.configuration_state(c,{'same':True},self.deployment),'ok')
+            (self.deployment/'updates-pending.json').write_text('{}')
+            self.assertEqual(update.configuration_state(c,{'same':True},self.deployment),'recovery_required')
+
     def test_job_refuses_older_or_equal_releases_and_records_failed_stage(self):
         archive,sha=build(self.root,'0.62.3');approval.approve(archive,sha,'',self.releases,OWNER)
         with self.assertRaisesRegex(ValueError,'newer'):self.run_job('0.62.3')

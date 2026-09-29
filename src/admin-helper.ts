@@ -135,6 +135,30 @@ export function startUpdate(
   return { started: true as const, version };
 }
 
+// Rollback targets exactly the release the listing offers: the newest older version
+// with a compatible completed backup. The job re-derives and re-checks it.
+export function startRollback(
+  version: unknown,
+  list: () => any = updates,
+  start: (unit: string) => void = (unit) => {
+    execFileSync("/usr/bin/systemctl", ["start", "--no-block", unit], {
+      timeout: 10000,
+      stdio: "ignore",
+      env: { PATH: "/usr/bin:/bin", LANG: "C" },
+    });
+  },
+) {
+  if (typeof version !== "string" || !releaseVersion.test(version))
+    throw Error("Invalid rollback request");
+  const value = list();
+  if (value.running) throw Error("An update or rollback is already running");
+  if (value.configuration !== "ok") throw Error("Configuration needs review first");
+  if (!value.rollback?.available || value.rollback.version !== version)
+    throw Error("Rollback target is not available");
+  start(`agentd-rollback@${version}.service`);
+  return { started: true as const, version };
+}
+
 export function handleAdminRequest(
   input: any,
   config: {
@@ -154,6 +178,11 @@ export function handleAdminRequest(
     return (config.diagnostics ?? diagnostics)();
   if (input?.op === "updates" && Object.keys(input).join(" ") === "op")
     return (config.updates ?? updates)();
+  if (input?.op === "rollback-start") {
+    if (Object.keys(input).sort().join(" ") !== "op version")
+      throw Error("Unsupported admin operation");
+    return startRollback(input.version, config.updates ?? updates, config.startUnit);
+  }
   if (input?.op === "update-start") {
     if (Object.keys(input).sort().join(" ") !== "op version")
       throw Error("Unsupported admin operation");

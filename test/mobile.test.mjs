@@ -60,6 +60,13 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
                               newer: false,
                             },
                           ],
+                          rollback: {
+                            available: true,
+                            version: "0.62.2",
+                            revision: "old",
+                            completedAt: "2026-09-29T12:00:00+00:00",
+                            schemaChange: false,
+                          },
                         }
                       : [],
           }) + "\n",
@@ -669,6 +676,37 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
     assert.equal(calls.at(-1).version, "0.63.0");
     assert.match(calls.at(-1).owner, /^[a-f0-9]{64}$/);
     assert.equal((await install({})).status, 400);
+    // Rollback uses its own preview; an update preview cannot approve it.
+    assert.equal(
+      (
+        await update({
+          action: "rollback",
+          version: "0.63.0",
+          fingerprint: updatePreview.fingerprint,
+          currentKey: newKey,
+          confirmed: true,
+        })
+      ).status,
+      400,
+    );
+    const rollbackPreview = JSON.parse(
+      (await update({ action: "rollback-preview", currentKey: newKey })).body,
+    );
+    assert.equal(rollbackPreview.rollback.version, "0.62.2");
+    const rollbackRequest = (confirmed) =>
+      update({
+        action: "rollback",
+        version: "0.62.2",
+        fingerprint: rollbackPreview.fingerprint,
+        currentKey: newKey,
+        confirmed,
+      });
+    // (Unconfirmed approval is covered by the update flow above; the shared
+    // limit allows 10 update/rollback requests per minute from one address.)
+    const rolled = await rollbackRequest(true);
+    assert.equal(rolled.status, 202);
+    assert.equal(calls.at(-1).op, "admin-rollback-start");
+    assert.equal(calls.at(-1).version, "0.62.2");
     assert.equal(
       (
         await req(
