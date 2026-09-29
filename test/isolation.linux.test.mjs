@@ -384,3 +384,51 @@ test(
     }
   },
 );
+
+import { probeUsage } from "../src/usage-probe.ts";
+import { readdirSync } from "node:fs";
+test(
+  "usage probe has an empty read-only workspace, access-only credentials and private state stays hidden",
+  { skip: process.env.AGENTD_TEST_ISOLATION !== "1" },
+  async () => {
+    const root = mkdtempSync(join(tmpdir(), "usage-isolation-")),
+      home = join(root, "home"),
+      state = join(root, "state"),
+      bin = join(root, "codex"),
+      priorHome = process.env.HOME,
+      priorBin = process.env.AGENTD_CODEX_BIN;
+    mkdirSync(join(home, ".codex"), { recursive: true });
+    mkdirSync(state);
+    const credentials = JSON.stringify({
+      tokens: {
+        access_token: "synthetic-access",
+        refresh_token: "PRIVATE_REFRESH",
+        id_token: "synthetic-id",
+        account_id: "synthetic-account",
+      },
+    });
+    writeFileSync(join(home, ".codex/auth.json"), credentials);
+    writeFileSync(join(state, "private"), "hidden");
+    writeFileSync(
+      bin,
+      `#!${process.execPath}\nconst fs=require('fs'),assert=require('assert');if(process.argv.includes('--version')){console.log('codex-cli 0.157.1');process.exit(0)}
+ const auth=JSON.parse(fs.readFileSync(process.env.HOME+'/.codex/auth.json','utf8'));assert.equal(auth.tokens.refresh_token,'');assert.equal(auth.tokens.access_token,'synthetic-access');assert.equal(fs.existsSync(${JSON.stringify(join(state, "private"))}),false);assert.deepEqual(fs.readdirSync('.'),[]);assert.throws(()=>fs.writeFileSync('forbidden','bad'));
+ const rl=require('readline').createInterface({input:process.stdin});rl.on('line',line=>{const m=JSON.parse(line);if(m.method==='initialized')return;let result;if(m.method==='initialize')result={};else if(m.method==='account/read'){assert.equal(m.params.refreshToken,false);result={account:{type:'chatgpt'}}}else if(m.method==='account/rateLimits/read')result={rateLimits:{primary:{usedPercent:5,windowDurationMins:300}}};else throw Error('Forbidden request');console.log(JSON.stringify({id:m.id,result}));});`,
+      { mode: 0o700 },
+    );
+    process.env.HOME = home;
+    process.env.AGENTD_CODEX_BIN = bin;
+    try {
+      const result = await probeUsage(state, new AbortController().signal);
+      assert.equal(result.rateLimitsByLimitId.codex.primary.usedPercent, 5);
+      assert.equal(readFileSync(join(home, ".codex/auth.json"), "utf8"), credentials);
+      assert.deepEqual(readdirSync(state), ["private"]);
+    } finally {
+      if (priorHome === undefined) delete process.env.HOME;
+      else process.env.HOME = priorHome;
+      if (priorBin === undefined) delete process.env.AGENTD_CODEX_BIN;
+      else process.env.AGENTD_CODEX_BIN = priorBin;
+      rmSync(root, { recursive: true, force: true });
+    }
+  },
+);

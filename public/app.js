@@ -1,5 +1,5 @@
 import { stageCreation, completeCreation } from "./request-id.js";
-import { renderMarkdown, renderDiff, diffStats, setupShell } from "./ui.js";
+import { renderMarkdown, renderDiff, diffStats, setupShell, renderUsage } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
   composerPolicy = null;
@@ -415,6 +415,7 @@ function accountsSection(data) {
           ),
         );
     }
+    card.append(renderUsage(value.id, value.usage));
     const actions = node("div", undefined, "actions");
     if (value.id === "cursor" && value.installed)
       card.append(
@@ -477,10 +478,12 @@ function accountsSection(data) {
   agents.append(
     node(
       "p",
-      "Usage limits are not shown: the native CLIs do not report them reliably.",
+      "Usage refreshes while idle, at most once per minute. Credit balances and subscription allowance are separate; unknown values are never treated as zero.",
       "muted",
     ),
-    button("Refresh account status", () => api("/api/account", { action: "refresh" })),
+    button("Refresh accounts and usage", () =>
+      api("/api/account", { action: "refresh" }),
+    ),
   );
   if (data.service.renewing)
     agents.append(

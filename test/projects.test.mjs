@@ -377,3 +377,97 @@ test("history search is literal and paginated; older turns retain chronology wit
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("Operations usage is normalized, throttled and cleared after signed-out status", async () => {
+  const root = mkdtempSync(join(tmpdir(), "usage-operations-"));
+  let signedIn = true,
+    calls = 0;
+  const app = runner({
+    stateDir: join(root, "state"),
+    repo: repo(root, "repo"),
+    worktrees: join(root, "trees"),
+    logs: join(root, "logs"),
+    command: () => [process.execPath, ["-e", ""]],
+    accountStatus: async () => ({
+      state: signedIn ? "signed_in" : "signed_out",
+      method: null,
+      checkedAt: null,
+      message: "fixture",
+    }),
+    usageProbe: async () => {
+      calls++;
+      return {
+        rateLimits: {
+          primary: { usedPercent: 30, windowDurationMins: 300, resetsAt: 2000000000 },
+        },
+        secret: "DO_NOT_EXPOSE",
+      };
+    },
+  });
+  await once(app.server, "listening");
+  const usage = () =>
+    app.request({ op: "operations" }).adapters.find((a) => a.id === "codex").usage;
+  try {
+    for (let i = 0; i < 100 && usage().state !== "available"; i++) await sleep(10);
+    assert.equal(usage().windows[0].remainingPercent, 70);
+    assert.equal(calls, 1);
+    assert.doesNotMatch(JSON.stringify(usage()), /DO_NOT_EXPOSE/);
+    app.request({ op: "account-refresh" });
+    await sleep(30);
+    assert.equal(calls, 1);
+    signedIn = false;
+    app.request({ op: "account-refresh" });
+    await sleep(30);
+    assert.equal(usage().state, "unavailable");
+    assert.deepEqual(usage().windows, []);
+  } finally {
+    await app.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+test("shutdown aborts an active usage probe and waits for its settlement", async () => {
+  const root = mkdtempSync(join(tmpdir(), "usage-close-"));
+  let entered, finish, signal;
+  const started = new Promise((r) => {
+      entered = r;
+    }),
+    gate = new Promise((r) => {
+      finish = r;
+    });
+  const app = runner({
+    stateDir: join(root, "state"),
+    repo: repo(root, "repo"),
+    worktrees: join(root, "trees"),
+    logs: join(root, "logs"),
+    command: () => [process.execPath, []],
+    accountStatus: async () => ({
+      state: "signed_in",
+      method: null,
+      checkedAt: null,
+      message: "fixture",
+    }),
+    usageProbe: async (_root, s) => {
+      signal = s;
+      entered();
+      await gate;
+      throw Error("aborted");
+    },
+  });
+  await once(app.server, "listening");
+  await started;
+  let closed = false;
+  const closing = app.close().then(() => {
+    closed = true;
+  });
+  try {
+    await sleep(10);
+    assert.equal(signal.aborted, true);
+    assert.equal(closed, false);
+    finish();
+    await closing;
+  } finally {
+    finish();
+    await closing;
+    rmSync(root, { recursive: true, force: true });
+  }
+});

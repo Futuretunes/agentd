@@ -10,6 +10,6 @@ export function nativeLimits(id: string) {
     maxTurns: id === "claude" ? claudeMaxTurns : null,
     protocolOutputBytes: ["codex", "cursor"].includes(id) ? 2_000_000 : null,
     protocolTimeoutSeconds: id === "cursor" ? 900 : null,
-    usage: "Provider-managed; not available from this integration",
+    usage: "Account quota availability is shown in Operations",
   };
 }

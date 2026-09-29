@@ -192,3 +192,7 @@ Check process, output/resource limits, cleanup and terminal-state handling move 
 ## R2 task execution — candidate 0.40.0
 
 Task execution moves to `task-execution.ts`; a stable handle covers asynchronous checkout through process cleanup. Queue selection, approval/renewal and the single task/check slot remain in the runner. Immediate cancellation skips preparation and command construction. Exact archive passed 161/161 Linux tests, zero skips, formatting, typecheck and CI; draft #44; not installed. Runner request routing/review decomposition, remaining asynchronous Git paths and retention reconciliation remain open.
+
+## Operator priority: provider credits — candidate 0.41.0
+
+The operator explicitly advanced provider credit reporting. Implemented Codex native `account/rateLimits/read` with remaining percentages, reset times, optional credit balance/reset counts, freshness and low-allowance guidance in Operations. Empty provider-only sandbox, access-only snapshot, fixed read-only protocol; no model, reset or purchase requests. Claude/Cursor remain unavailable with direct provider usage links; no undocumented credential endpoint scraping. Exact validation pending; not installed. Live installed-account acceptance remains distinct from fixture validation. Other stabilization items remain queued.

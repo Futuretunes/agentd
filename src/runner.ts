@@ -1,3 +1,5 @@
+import { usageCache } from "./provider-usage.ts";
+import { probeUsage } from "./usage-probe.ts";
 import { executeTask, type TaskExecution } from "./task-execution.ts";
 import { executeChecks } from "./check-execution.ts";
 import { removeDependencyStage } from "./dependency-recovery.ts";
@@ -60,6 +62,7 @@ import { join, isAbsolute } from "node:path";
 import { createServer } from "node:net";
 
 type Config = {
+  usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
   nativeVersion?: typeof probeNativeVersion;
   resources?: Limits;
@@ -508,6 +511,9 @@ export function runner(c: Config) {
     : undefined;
   const accountBusy = () =>
     accountManager.busy() || !!renewalManager?.busy() || !!preparing;
+  const usage = usageCache();
+  const usageAbort = new AbortController();
+  let usageWork: Promise<void> | undefined;
   const versionCache = new Map<string, NativeVersion>();
   let checkingAccounts = false;
   let accountsCheckedAt = 0;
@@ -541,6 +547,21 @@ export function runner(c: Config) {
           });
         }
         await versionCheck;
+        if (id === "codex") {
+          if (accountCache.get(id)?.state !== "signed_in") usage.clear();
+          else if (
+            !closing &&
+            usage.due() &&
+            (c.usageProbe || (!c.command && c.strictWorkers))
+          ) {
+            usage.begin();
+            usageWork = (c.usageProbe ?? probeUsage)(c.stateDir, usageAbort.signal)
+              .then((value) => usage.save(value))
+              .catch(() => usage.fail());
+            await usageWork;
+            usageWork = undefined;
+          }
+        }
       }),
     ).finally(() => {
       accountsCheckedAt = Date.now();
@@ -551,6 +572,7 @@ export function runner(c: Config) {
   const accountManager = accounts({
     root: join(c.stateDir, "account-sessions"),
     changed: () => {
+      usage.clear();
       catalog.invalidate();
       renewalManager?.reconcile?.();
       accountsCheckedAt = 0;
@@ -920,6 +942,7 @@ export function runner(c: Config) {
           "Wait for current work or account checks to finish before changing accounts.",
         );
       const result = accountManager.start(input.owner, input.adapter, input.action);
+      if (input.adapter === "codex") usage.clear();
       audit("account-" + input.action, null, { adapter: input.adapter });
       return result;
     }
@@ -1008,10 +1031,7 @@ export function runner(c: Config) {
           checkedAt: null,
         },
         ...(renewalManager ? { renewal: renewalManager.view(value.id) } : {}),
-        usage: {
-          state: "unavailable",
-          message: "Usage limits are not reported by this native CLI",
-        },
+        usage: usage.view(value.id),
       }));
       return {
         resources: {
@@ -1752,6 +1772,8 @@ export function runner(c: Config) {
     gateway,
     async close() {
       closing = true;
+      usageAbort.abort();
+      await usageWork;
       await publicationManager.close();
       await dependencyManager.close();
       await repositoryManager.close();

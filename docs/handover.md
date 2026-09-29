@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-task-owner.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-provider-usage.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.41.0 — provider usage and credits
+
+[Handover](handovers/2026-09-29-provider-usage.md): Operations reads Codex quota windows and optional provider credits through a bounded, isolated native metadata probe. Claude/Cursor have explicit unavailable states and provider links. Exact validation pending; no deployment or live model call.
 
 ## Candidate 0.40.0 — task execution ownership
 

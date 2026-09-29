@@ -367,3 +367,88 @@ export function setupShell() {
   window.addEventListener("resize", viewport);
   viewport();
 }
+
+/** Provider percentages are account quotas, not token-cost estimates or model prices. */
+export function renderUsage(id, usage = {}) {
+  const section = document.createElement("section");
+  section.className = "provider-usage";
+  const add = (tag, text, cls) => {
+    const el = document.createElement(tag);
+    el.textContent = text;
+    if (cls) el.className = cls;
+    section.append(el);
+    return el;
+  };
+  add("h4", "Credits and usage");
+  const fresh = usage.state === "available";
+  add("p", usage.message || "Usage is unavailable.", fresh ? "muted" : "attention");
+  for (const w of usage.windows ?? []) {
+    const minutes = w.durationMins;
+    const period =
+      minutes && minutes % 1440 === 0
+        ? minutes / 1440 + " day"
+        : minutes && minutes % 60 === 0
+          ? minutes / 60 + " hour"
+          : minutes
+            ? minutes + " minute"
+            : w.period;
+    const label = w.bucket + " · " + period + " window";
+    add(
+      "p",
+      label +
+        ": " +
+        Math.round(w.remainingPercent * 10) / 10 +
+        "% remaining" +
+        (fresh ? "" : " (last known)"),
+    );
+    const bar = add("progress", "");
+    bar.max = 100;
+    bar.value = w.remainingPercent;
+    bar.setAttribute("aria-label", label + " remaining allowance");
+    if (w.resetsAt)
+      add("p", "Provider reset time: " + new Date(w.resetsAt).toLocaleString(), "muted");
+    if (fresh && w.remainingPercent <= 10)
+      add(
+        "p",
+        w.remainingPercent === 0
+          ? "This usage window is exhausted. Check provider limits before starting more work."
+          : "This usage window is nearly exhausted.",
+        "attention",
+      );
+  }
+  for (const c of usage.credits ?? [])
+    add(
+      "p",
+      c.bucket +
+        " credits: " +
+        (c.unlimited === true
+          ? "unlimited reported by provider"
+          : c.balance !== null
+            ? c.balance + " provider credits"
+            : c.hasCredits === false
+              ? "none available"
+              : "balance unavailable") +
+        (fresh ? "" : " (last known)"),
+    );
+  if (usage.resetCredits !== null && usage.resetCredits !== undefined)
+    add(
+      "p",
+      "Available rate-limit resets: " +
+        usage.resetCredits +
+        (fresh ? "" : " (last known)"),
+    );
+  if (usage.checkedAt)
+    add("p", "Checked " + new Date(usage.checkedAt).toLocaleString(), "muted");
+  const urls = {
+    codex: "https://chatgpt.com/codex/settings/usage",
+    claude: "https://claude.ai/settings/usage",
+    cursor: "https://cursor.com/dashboard",
+  };
+  if (urls[id]) {
+    const a = add("a", "Open provider usage page");
+    a.href = urls[id];
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+  }
+  return section;
+}
