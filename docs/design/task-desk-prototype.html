@@ -1,0 +1,537 @@
+<meta charset="utf-8">
+<title>agentd Task Desk</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Design prototype for docs/reviews/2026-09-28-claude-ux-review.md.
+   Contrast revised after Codex's assessment: body/secondary text and buttons meet WCAG AA (4.5:1) in both themes.
+   In the product, fonts must be vendored (CSP forbids Google Fonts); all three families are OFL. */
+:root{
+  color-scheme:light;
+  --font-sans:"Geist",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-serif:"Source Serif 4",ui-serif,Georgia,serif;
+  --font-mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --text-xs:12px;--text-sm:13px;--text-md:15px;--text-lg:17px;--text-xl:22px;
+  --r-sm:8px;--r-md:12px;--r-lg:20px;--r-full:999px;
+  --bg:#f7f6f3;--surface:#ffffff;--surface-2:#efeee9;--surface-3:#e7e5df;--border:#e2e0d9;--border-strong:#cfccc4;
+  --text:#1c1b19;--text-2:#5e5c57;--text-3:#6b6963;
+  --accent:#a94f2d;--accent-hover:#963f22;--accent-fg:#ffffff;--accent-soft:#f6e6de;
+  --ok:#276a43;--ok-soft:#e3f1e7;--warn:#855500;--warn-soft:#f7ecd6;--danger:#b42318;
+  --add:#e6f4ea;--add-strong:#b7e0c3;--del:#fbe9e6;--del-strong:#f3c2ba;
+  --shadow-1:0 1px 2px rgb(28 27 25 / .06);--shadow-2:0 12px 32px rgb(28 27 25 / .12),0 2px 6px rgb(28 27 25 / .06);
+  --focus:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#1b1a18;--surface:#242320;--surface-2:#2d2c29;--surface-3:#35342f;--border:#393834;--border-strong:#4a4944;
+  --text:#edece8;--text-2:#b3b1ab;--text-3:#9a9892;
+  --accent:#dc7a58;--accent-hover:#e68b6b;--accent-fg:#1b1a18;--accent-soft:#3a2a22;
+  --ok:#6cc08f;--ok-soft:#1f3327;--warn:#e0a948;--warn-soft:#3a2f1a;--danger:#f08a7e;
+  --add:#1d3326;--add-strong:#2b4d38;--del:#3d221e;--del-strong:#5c2f28;
+  --shadow-1:0 1px 2px rgb(0 0 0 / .3);--shadow-2:0 16px 40px rgb(0 0 0 / .45),0 2px 6px rgb(0 0 0 / .3);
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#1b1a18;--surface:#242320;--surface-2:#2d2c29;--surface-3:#35342f;--border:#393834;--border-strong:#4a4944;
+  --text:#edece8;--text-2:#b3b1ab;--text-3:#9a9892;
+  --accent:#dc7a58;--accent-hover:#e68b6b;--accent-fg:#1b1a18;--accent-soft:#3a2a22;
+  --ok:#6cc08f;--ok-soft:#1f3327;--warn:#e0a948;--warn-soft:#3a2f1a;--danger:#f08a7e;
+  --add:#1d3326;--add-strong:#2b4d38;--del:#3d221e;--del-strong:#5c2f28;
+  --shadow-1:0 1px 2px rgb(0 0 0 / .3);--shadow-2:0 16px 40px rgb(0 0 0 / .45),0 2px 6px rgb(0 0 0 / .3);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:400 var(--text-md)/1.5 var(--font-sans);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;overflow:hidden}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+:focus-visible{outline:none;box-shadow:var(--focus);border-radius:var(--r-sm)}
+svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* prototype banner (not part of the product) */
+.proto{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--surface-2);border-bottom:1px dashed var(--border-strong);font-size:var(--text-xs);color:var(--text-2);overflow-x:auto;white-space:nowrap;flex:none}
+.proto b{font-weight:600;color:var(--text)}
+.seg{display:inline-flex;gap:2px;padding:2px;background:var(--surface-3);border-radius:var(--r-full)}
+.seg button{padding:4px 10px;border-radius:var(--r-full);font-size:var(--text-xs);color:var(--text-2)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:var(--shadow-1);font-weight:500}
+
+.app{flex:1;display:grid;grid-template-columns:272px 1fr auto;min-height:0}
+
+/* sidebar */
+.side{display:flex;flex-direction:column;gap:12px;padding:12px;border-right:1px solid var(--border);background:var(--bg);min-height:0}
+.brand{display:flex;align-items:center;gap:8px;padding:6px 8px;font-weight:600;letter-spacing:-.01em}
+.brand svg{width:22px;height:22px}
+.brand .sp{flex:1}
+.iconbtn{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:var(--r-sm);color:var(--text-2)}
+.iconbtn:hover{background:var(--surface-2);color:var(--text)}
+.newchat{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-1);font-weight:500}
+.newchat:hover{border-color:var(--border-strong)}
+.newchat kbd{margin-left:auto;font:500 var(--text-xs) var(--font-mono);color:var(--text-3)}
+.search{display:flex;align-items:center;gap:8px;padding:0 10px;height:36px;border-radius:var(--r-sm);color:var(--text-3)}
+.search input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:var(--text-sm)}
+.search:focus-within{background:var(--surface-2)}
+.tree{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin:0 -4px;padding:0 4px}
+.label{padding:12px 8px 4px;font-size:var(--text-xs);font-weight:500;color:var(--text-3);letter-spacing:.02em}
+.proj{display:flex;align-items:center;gap:6px;width:100%;padding:6px 8px;border-radius:var(--r-sm);font-size:var(--text-sm);font-weight:500;text-align:left}
+.proj:hover{background:var(--surface-2)}
+.proj .chev{width:14px;height:14px;color:var(--text-3);transition:transform .15s}
+.proj[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+.proj .n{margin-left:auto;font-size:var(--text-xs);color:var(--text-3);font-weight:400}
+.convs{display:flex;flex-direction:column;gap:1px;padding-left:20px}
+.proj[aria-expanded="false"]+.convs{display:none}
+.conv{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r-sm);font-size:var(--text-sm);color:var(--text-2);text-align:left;width:100%}
+.conv:hover{background:var(--surface-2);color:var(--text)}
+.conv[aria-current="page"]{background:var(--surface-3);color:var(--text);font-weight:500}
+.conv span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;flex:none}
+.dot.warn{background:var(--warn)}.dot.run{background:var(--accent);animation:pulse 1.4s ease-in-out infinite}.dot.ok{background:var(--ok)}
+@keyframes pulse{50%{opacity:.35}}
+.foot{display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--border);padding-top:8px}
+.nav{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);font-size:var(--text-sm);color:var(--text-2);width:100%}
+.nav:hover{background:var(--surface-2);color:var(--text)}
+.badge{margin-left:auto;min-width:20px;padding:0 6px;border-radius:var(--r-full);background:var(--warn-soft);color:var(--warn);font-size:var(--text-xs);font-weight:600;text-align:center}
+.server{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:var(--text-xs);color:var(--text-3)}
+
+/* main */
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg)}
+.top{display:flex;align-items:center;gap:8px;height:56px;padding:0 16px;flex:none}
+.top .menu{display:none}
+.crumb{display:flex;align-items:center;gap:6px;min-width:0;font-size:var(--text-sm);color:var(--text-3)}
+.crumb strong{color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:var(--r-full);font-size:var(--text-xs);font-weight:500;white-space:nowrap}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.run{background:var(--accent-soft);color:var(--accent)}.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.muted{background:var(--surface-2);color:var(--text-2)}
+.top .sp{flex:1}
+.scroll{flex:1;overflow-y:auto;padding:8px 24px 24px;scroll-padding-bottom:160px}
+.thread{max-width:740px;margin:0 auto;display:flex;flex-direction:column;gap:28px;padding-bottom:24px}
+.you{align-self:flex-end;max-width:min(560px,85%);padding:10px 16px;border-radius:var(--r-lg) var(--r-lg) 6px var(--r-lg);background:var(--surface-2);font-size:var(--text-md)}
+.turn{display:flex;flex-direction:column;gap:10px}
+.who{display:flex;align-items:center;gap:8px;font-size:var(--text-xs);color:var(--text-3)}
+.who .mark{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--accent-soft);color:var(--accent)}
+.who .mark svg{width:14px;height:14px}
+.who b{color:var(--text-2);font-weight:500}
+.prose{font:400 var(--text-lg)/1.65 var(--font-serif);color:var(--text)}
+.prose h3{font:600 var(--text-md)/1.4 var(--font-sans);margin:18px 0 6px}
+.prose p{margin:0 0 10px}.prose ul,.prose ol{margin:0 0 10px;padding-left:22px}.prose li{margin:3px 0}
+.prose code{font:500 .82em var(--font-mono);background:var(--surface-2);padding:2px 5px;border-radius:5px}
+.tools{display:flex;align-items:center;gap:2px;color:var(--text-3)}
+.tools .iconbtn{width:30px;height:30px}
+.details{font-size:var(--text-xs);color:var(--text-3);margin-left:6px}
+.details summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border-radius:6px}
+.details summary::-webkit-details-marker{display:none}
+.details summary:hover{background:var(--surface-2);color:var(--text-2)}
+.details[open] summary .chev{transform:rotate(90deg)}
+.details .chev{width:12px;height:12px;transition:transform .15s}
+.details dl{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;margin:8px 0 0;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);color:var(--text-2)}
+.details dt{color:var(--text-3)}.details dd{margin:0}
+
+/* cards */
+.card{border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-1);overflow:hidden}
+.card-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.card-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.card-title{font-weight:600;font-size:var(--text-md)}
+.card-sub{font-size:var(--text-sm);color:var(--text-2)}
+.card-foot{display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid var(--border);background:var(--surface-2);flex-wrap:wrap}
+.card-foot .sp{flex:1}
+.facts{display:flex;flex-wrap:wrap;gap:6px}
+.fact{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--r-full);background:var(--surface-2);font-size:var(--text-xs);color:var(--text-2)}
+.fact svg{width:13px;height:13px}
+.files{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--r-sm)}
+.file{display:flex;align-items:center;gap:10px;padding:8px 12px;font:500 var(--text-sm) var(--font-mono)}
+.file+.file{border-top:1px solid var(--border)}
+.file .tag{font:500 var(--text-xs) var(--font-sans);color:var(--text-3)}
+.num{margin-left:auto;font:500 var(--text-xs) var(--font-mono);font-variant-numeric:tabular-nums}
+.plus{color:var(--ok)}.minus{color:var(--danger)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:var(--r-sm);font-size:var(--text-sm);font-weight:500;white-space:nowrap;transition:background .12s,border-color .12s}
+.btn.primary{background:var(--accent);color:var(--accent-fg)}
+.btn.primary:hover{background:var(--accent-hover)}
+.btn.secondary{background:var(--surface);border:1px solid var(--border-strong)}
+.btn.secondary:hover{background:var(--surface-2)}
+.btn.ghost{color:var(--text-2)}.btn.ghost:hover{background:var(--surface-3);color:var(--text)}
+.btn.danger{color:var(--danger)}.btn.danger:hover{background:var(--del)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn svg{width:16px;height:16px}
+.working{display:flex;align-items:center;gap:10px;font-size:var(--text-sm);color:var(--text-2)}
+.dots{display:inline-flex;gap:4px}.dots i{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:bounce 1.2s infinite ease-in-out}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+.log{margin:0;padding:12px 14px;border-radius:var(--r-sm);background:var(--surface-2);font:400 var(--text-xs)/1.6 var(--font-mono);color:var(--text-2);max-height:120px;overflow:auto}
+
+/* composer */
+.composer{flex:none;padding:0 24px calc(16px + env(safe-area-inset-bottom,0px));background:linear-gradient(to bottom,transparent,var(--bg) 24px)}
+.box{max-width:740px;margin:0 auto;border:1px solid var(--border-strong);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow-2);padding:12px 12px 10px 16px;display:flex;flex-direction:column;gap:8px;position:relative}
+.box:focus-within{border-color:color-mix(in srgb,var(--accent) 55%,var(--border-strong))}
+.box textarea{border:0;outline:none;background:none;resize:none;min-height:26px;max-height:200px;font-size:var(--text-md);line-height:1.5}
+.box textarea::placeholder{color:var(--text-3)}
+.box textarea:disabled{opacity:.6}
+.bar{display:flex;align-items:center;gap:6px}
+.bar .sp{flex:1}
+.picker{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:var(--r-full);font-size:var(--text-sm);color:var(--text-2);border:1px solid transparent}
+.picker:hover,.picker[aria-expanded="true"]{background:var(--surface-2);color:var(--text)}
+.picker .chev{width:14px;height:14px}
+.picker .mode{padding:1px 8px;border-radius:var(--r-full);background:var(--accent-soft);color:var(--accent);font-size:var(--text-xs);font-weight:600}
+.send{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--accent-fg)}
+.send:hover{background:var(--accent-hover)}
+.send[disabled]{background:var(--surface-3);color:var(--text-3);cursor:not-allowed}
+.send.stop{background:var(--text);color:var(--bg)}
+.hint{max-width:740px;margin:8px auto 0;text-align:center;font-size:var(--text-xs);color:var(--text-3)}
+
+/* popover */
+.pop{position:absolute;bottom:calc(100% + 8px);left:40px;width:340px;max-width:calc(100vw - 32px);border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-2);padding:8px;display:flex;flex-direction:column;gap:4px;z-index:20}
+.pop h4{margin:6px 8px 2px;font-size:var(--text-xs);font-weight:500;color:var(--text-3)}
+.opt{display:flex;align-items:center;gap:10px;width:100%;padding:8px;border-radius:var(--r-sm);text-align:left;font-size:var(--text-sm)}
+.opt:hover:not([aria-disabled="true"]){background:var(--surface-2)}
+.opt small{display:block;color:var(--text-3);font-size:var(--text-xs)}
+.opt .ck{margin-left:auto;color:var(--accent);visibility:hidden}.opt[aria-checked="true"] .ck{visibility:visible}
+.opt[aria-disabled="true"]{opacity:.55;cursor:default}
+.pop .seg{margin:2px 8px 6px;display:flex}.pop .seg button{flex:1;padding:6px}
+.pop hr{border:0;border-top:1px solid var(--border);margin:4px 0}
+
+/* review panel */
+.review{width:0;overflow:hidden;border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;transition:width .24s ease-out;min-height:0}
+.app.reviewing .review{width:min(620px,52vw)}
+.rv-head{display:flex;align-items:center;gap:10px;padding:14px 16px 12px 20px;border-bottom:1px solid var(--border);flex:none}
+.rv-head h2{margin:0;font-size:var(--text-lg);font-weight:600;letter-spacing:-.01em}
+.rv-head .sp{flex:1}
+.steps{display:flex;gap:6px;padding:12px 20px;border-bottom:1px solid var(--border);flex:none;font-size:var(--text-xs);color:var(--text-3)}
+.step{flex:1;display:flex;flex-direction:column;gap:6px}
+.step i{display:block;height:3px;border-radius:2px;background:var(--surface-3)}
+.step.done i{background:var(--ok)}.step.now i{background:var(--accent)}
+.step.done,.step.now{color:var(--text-2);font-weight:500}
+.rv-body{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:16px}
+.rv-sum{display:flex;align-items:center;gap:10px;font-size:var(--text-sm);color:var(--text-2);flex-wrap:wrap}
+.diff{border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden}
+.diff summary{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-2);cursor:pointer;list-style:none;font:500 var(--text-sm) var(--font-mono)}
+.diff summary::-webkit-details-marker{display:none}
+.diff summary .chev{width:14px;height:14px;color:var(--text-3);transition:transform .15s}
+.diff[open] summary .chev{transform:rotate(90deg)}
+.diff .new{font:500 var(--text-xs) var(--font-sans);padding:1px 8px;border-radius:var(--r-full);background:var(--ok-soft);color:var(--ok)}
+.code{overflow-x:auto}
+.code table{border-collapse:collapse;width:100%;font:400 var(--text-xs)/1.7 var(--font-mono)}
+.code td{padding:0 12px;white-space:pre}
+.code td.ln{width:1%;color:var(--text-3);text-align:right;user-select:none;padding-right:8px;font-variant-numeric:tabular-nums}
+.code tr.add{background:var(--add)}.code tr.add td.ln{background:var(--add-strong);color:var(--ok)}
+.code tr.del{background:var(--del)}.code tr.del td.ln{background:var(--del-strong)}
+.code tr.hunk td{color:var(--text-3);background:var(--surface-2);padding-block:2px}
+.checks{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-md);font-size:var(--text-sm)}
+.checks .ico{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--surface-2);color:var(--text-3)}
+.checks.passed .ico{background:var(--ok-soft);color:var(--ok)}
+.checks.running .ico{background:var(--accent-soft);color:var(--accent)}
+.checks small{display:block;color:var(--text-3);font-size:var(--text-xs)}
+.field{display:flex;flex-direction:column;gap:6px;font-size:var(--text-sm);font-weight:500}
+.field input{height:38px;padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--border-strong);background:var(--surface);font-weight:400;outline:none}
+.field input:focus{box-shadow:var(--focus);border-color:var(--accent)}
+.rv-foot{display:flex;align-items:center;gap:8px;padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border);flex:none;flex-wrap:wrap}
+.rv-foot .sp{flex:1}
+.rv-foot .why{width:100%;font-size:var(--text-xs);color:var(--text-3)}
+.scrim{display:none}
+
+/* phone */
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  .side{position:fixed;inset:0 auto 0 0;width:min(86vw,320px);z-index:40;transform:translateX(-102%);transition:transform .24s ease-out;box-shadow:var(--shadow-2);padding-top:calc(12px + env(safe-area-inset-top,0px))}
+  .app.drawer .side{transform:none}
+  .top .menu{display:inline-grid}
+  .top{height:52px;padding:0 8px}
+  .scroll{padding:4px 16px 16px}
+  .composer{padding:0 12px calc(12px + env(safe-area-inset-bottom,0px))}
+  .review{position:fixed;inset:0;z-index:50;width:100%!important;transform:translateY(102%);transition:transform .26s ease-out;border:0}
+  .app.reviewing .review{transform:none}
+  .scrim{position:fixed;inset:0;background:rgb(0 0 0 / .35);z-index:30}
+  .app.drawer .scrim{display:block}
+  .box textarea{font-size:16px}
+  .pop{left:0}
+  .crumb .proj-name,.crumb .sep{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7L14 4a3.3 3.3 0 0 1 4.7 4.7L10 17.4a1.7 1.7 0 0 1-2.4-2.4l8-8"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.5M20 4v4.5h-4.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10c0 4-6 3-12 7"/></symbol>
+  <symbol id="i-gh" viewBox="0 0 24 24"><path d="M9 19c-4 1.5-4-2-6-2.5m12 5v-3.5a3 3 0 0 0-.9-2.4c3-.3 6.2-1.5 6.2-6.6A5.2 5.2 0 0 0 18.9 5 4.8 4.8 0 0 0 18.8 1.5S17.6 1.2 15 3a13.4 13.4 0 0 0-7 0C5.4 1.2 4.2 1.5 4.2 1.5A4.8 4.8 0 0 0 4.1 5a5.2 5.2 0 0 0-1.4 3.6c0 5 3.2 6.3 6.2 6.6a3 3 0 0 0-.9 2.3V22"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></symbol>
+</svg>
+
+<div class="proto" role="region" aria-label="Prototype controls">
+  <b>Design prototype</b><span>Static mock-up for the UX review · not connected to agentd</span>
+  <span>Latest turn:</span>
+  <div class="seg" id="states">
+    <button type="button" data-state="approve" aria-pressed="false">Ready to run</button>
+    <button type="button" data-state="running" aria-pressed="false">Running</button>
+    <button type="button" data-state="review" aria-pressed="true">Needs review</button>
+    <button type="button" data-state="committed" aria-pressed="false">Committed</button>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <div class="scrim" id="scrim"></div>
+  <aside class="side" aria-label="Workspace">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 21.5 12 12 21.5 2.5 12z" fill="var(--accent)"/><path d="M12 7.5 16.5 12 12 16.5 7.5 12z" fill="var(--surface)"/></svg>
+      agentd<span class="sp"></span>
+      <button class="iconbtn" type="button" aria-label="Close sidebar" id="drawer-close" hidden><svg class="i"><use href="#i-x"/></svg></button>
+    </div>
+    <button class="newchat" type="button"><svg class="i"><use href="#i-plus"/></svg>New chat<kbd>⇧⌘O</kbd></button>
+    <label class="search"><svg class="i"><use href="#i-search"/></svg><span class="sr">Search conversations</span><input id="search" placeholder="Search"></label>
+    <nav class="tree" aria-label="Projects and conversations">
+      <div class="label">Projects</div>
+      <button class="proj" type="button" aria-expanded="true"><svg class="i chev"><use href="#i-down"/></svg>Demo project<span class="n">2</span></button>
+      <div class="convs">
+        <button class="conv" type="button" aria-current="page"><span>Greeting helper</span><i class="dot warn" id="side-dot" title="Needs review"></i></button>
+        <button class="conv" type="button"><span>Explain this project</span></button>
+      </div>
+      <button class="proj" type="button" aria-expanded="false"><svg class="i chev"><use href="#i-down"/></svg>agentd<span class="n">14</span></button>
+      <div class="convs">
+        <button class="conv" type="button"><span>Scoped settings follow-up</span></button>
+      </div>
+      <button class="proj" type="button" aria-expanded="false"><svg class="i chev"><use href="#i-down"/></svg>futuretunes.nl<span class="n">3</span></button>
+      <div class="convs">
+        <button class="conv" type="button"><span>Footer links</span></button>
+      </div>
+    </nav>
+    <div class="foot">
+      <button class="nav" type="button"><svg class="i"><use href="#i-pulse"/></svg>Activity<span class="badge" id="act-badge">1</span></button>
+      <button class="nav" type="button"><svg class="i"><use href="#i-gear"/></svg>Settings</button>
+      <div class="server"><i class="dot ok"></i>Home server · Claude signed in</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <button class="iconbtn menu" type="button" aria-label="Open sidebar" id="drawer-open"><svg class="i"><use href="#i-menu"/></svg></button>
+      <div class="crumb"><span class="proj-name">Demo project</span><span class="sep">/</span><strong>Greeting helper</strong></div>
+      <span class="pill warn" id="top-pill"><i class="dot warn"></i>Needs review</span>
+      <span class="sp"></span>
+      <button class="iconbtn" type="button" aria-label="Conversation options"><svg class="i"><use href="#i-more"/></svg></button>
+    </header>
+
+    <div class="scroll" id="scroll">
+      <div class="thread">
+        <div class="you">Explain this project</div>
+        <div class="turn">
+          <div class="who"><span class="mark"><svg class="i"><use href="#i-spark"/></svg></span><b>Claude</b>Sonnet · Ask · 3 s</div>
+          <div class="prose">
+            <p>This is a small starter repository with a single README and no source code yet.</p>
+            <h3>Structure</h3>
+            <ul><li><code>README.md</code> describes the project in two lines.</li><li>There are no source files, tests or dependencies.</li></ul>
+            <h3>Suggested next steps</h3>
+            <ol><li>Add a <code>package.json</code> with a test script so changes can be checked.</li><li>Create a first module.</li><li>Switch to <strong>Edit</strong> when you want me to change files.</li></ol>
+          </div>
+          <div class="tools">
+            <button class="iconbtn" type="button" aria-label="Copy answer"><svg class="i"><use href="#i-copy"/></svg></button>
+            <button class="iconbtn" type="button" aria-label="Run again"><svg class="i"><use href="#i-redo"/></svg></button>
+            <details class="details"><summary><svg class="i chev"><use href="#i-chev"/></svg>Details</summary>
+              <dl><dt>Access</dt><dd>Read-only copy of the project</dd><dt>Network</dt><dd>Anthropic only</dd><dt>Model</dt><dd>Sonnet (requested) · effort default</dd><dt>Time limit</dt><dd>2 min · finished in 3 s</dd><dt>Based on</dt><dd><code>main</code> · 61923aa</dd></dl>
+            </details>
+          </div>
+        </div>
+
+        <div class="you">Add a small greeting helper and document how to run the tests</div>
+        <div class="turn" id="latest"></div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <form class="box" id="compose" autocomplete="off">
+        <label class="sr" for="prompt">Message Claude</label>
+        <textarea id="prompt" rows="1" placeholder="Reply to Claude…"></textarea>
+        <div class="bar">
+          <button class="iconbtn" type="button" aria-label="Attach images"><svg class="i"><use href="#i-clip"/></svg></button>
+          <button class="picker" type="button" id="picker" aria-haspopup="dialog" aria-expanded="false">Claude · Sonnet <span class="mode" id="mode-tag">Edit</span><svg class="i chev"><use href="#i-down"/></svg></button>
+          <span class="sp"></span>
+          <button class="send" type="submit" id="send" aria-label="Send"><svg class="i"><use href="#i-up"/></svg></button>
+        </div>
+        <div class="pop" id="pop" role="dialog" aria-label="Agent and model" hidden>
+          <h4>Mode</h4>
+          <div class="seg" id="modes"><button type="button" data-mode="Ask" aria-pressed="false">Ask · read only</button><button type="button" data-mode="Edit" aria-pressed="true">Edit · change files</button></div>
+          <hr>
+          <h4>Agent</h4>
+          <button class="opt" type="button" role="menuitemradio" aria-checked="true"><span>Claude<small>Signed in · Claude subscription</small></span><svg class="i ck"><use href="#i-check"/></svg></button>
+          <button class="opt" type="button" role="menuitemradio" aria-checked="false" aria-disabled="true"><span>Cursor<small>Sign in from Settings to use Cursor</small></span><svg class="i ck"><use href="#i-check"/></svg></button>
+          <button class="opt" type="button" role="menuitemradio" aria-checked="false" aria-disabled="true"><span>Codex<small>Chat only on this server · no project access</small></span><svg class="i ck"><use href="#i-check"/></svg></button>
+          <hr>
+          <h4>Model</h4>
+          <button class="opt" type="button" role="menuitemradio" aria-checked="false"><span>Auto<small>Picks the lightest model that fits the task</small></span><svg class="i ck"><use href="#i-check"/></svg></button>
+          <button class="opt" type="button" role="menuitemradio" aria-checked="true"><span>Sonnet<small>Balanced · effort medium</small></span><svg class="i ck"><use href="#i-check"/></svg></button>
+          <button class="opt" type="button" role="menuitemradio" aria-checked="false"><span>Opus<small>Deepest reasoning · slower</small></span><svg class="i ck"><use href="#i-check"/></svg></button>
+        </div>
+      </form>
+      <p class="hint" id="hint">Review, commit or discard these changes before the next edit.</p>
+    </div>
+  </main>
+
+  <aside class="review" id="review" aria-label="Review changes">
+    <div class="rv-head">
+      <h2>Review changes</h2><span class="pill muted">2 files · <span class="plus">+7</span> <span class="minus">−0</span></span>
+      <span class="sp"></span>
+      <button class="iconbtn" type="button" aria-label="Close review" id="rv-close"><svg class="i"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="steps" aria-label="Progress">
+      <div class="step now" id="st-checks"><i></i>Checks</div>
+      <div class="step" id="st-commit"><i></i>Commit</div>
+      <div class="step" id="st-publish"><i></i>Publish</div>
+    </div>
+    <div class="rv-body">
+      <div class="rv-sum"><svg class="i"><use href="#i-branch"/></svg>Based on <code>main</code> · 61923aa<span>·</span>Edited by Claude in an isolated copy</div>
+      <div class="checks" id="checks"><span class="ico"><svg class="i"><use href="#i-shield"/></svg></span><div id="checks-text">Checks not run yet<small>Runs <code>npm test</code> offline in a sandbox, on exactly these changes</small></div></div>
+      <div class="field" id="commit-field" hidden><label for="commit-msg">Commit message</label><input id="commit-msg" value="Add greeting helper and test instructions"></div>
+
+      <details class="diff" open>
+        <summary><svg class="i chev"><use href="#i-chev"/></svg>README.md<span class="num"><span class="plus">+4</span> <span class="minus">−0</span></span></summary>
+        <div class="code"><table>
+          <tr class="hunk"><td class="ln"></td><td class="ln"></td><td>Lines 1–3</td></tr>
+          <tr><td class="ln">1</td><td class="ln">1</td><td># Demo project</td></tr>
+          <tr><td class="ln">2</td><td class="ln">2</td><td></td></tr>
+          <tr><td class="ln">3</td><td class="ln">3</td><td>A sample repository for the UI review.</td></tr>
+          <tr class="add"><td class="ln"></td><td class="ln">4</td><td></td></tr>
+          <tr class="add"><td class="ln"></td><td class="ln">5</td><td>## Usage</td></tr>
+          <tr class="add"><td class="ln"></td><td class="ln">6</td><td></td></tr>
+          <tr class="add"><td class="ln"></td><td class="ln">7</td><td>Run `npm test` to verify the greeting helper.</td></tr>
+        </table></div>
+      </details>
+      <details class="diff" open>
+        <summary><svg class="i chev"><use href="#i-chev"/></svg>greeting.js<span class="new">New</span><span class="num"><span class="plus">+3</span> <span class="minus">−0</span></span></summary>
+        <div class="code"><table>
+          <tr class="add"><td class="ln"></td><td class="ln">1</td><td>// Returns a friendly greeting for the given name.</td></tr>
+          <tr class="add"><td class="ln"></td><td class="ln">2</td><td></td></tr>
+          <tr class="add"><td class="ln"></td><td class="ln">3</td><td>export const greet = (name) =&gt; `Hello, ${name}!`;</td></tr>
+        </table></div>
+      </details>
+    </div>
+    <div class="rv-foot" id="rv-foot"></div>
+  </aside>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const app=$('app');
+const icon=name=>`<svg class="i"><use href="#i-${name}"/></svg>`;
+let reviewStep='checks';
+
+const turns={
+  approve:`
+    <div class="card">
+      <div class="card-body">
+        <div class="card-row"><span class="card-title">Ready to run</span><span class="pill muted">Waiting for you</span></div>
+        <div class="card-sub">Claude will edit files in an isolated copy of <strong>Demo project</strong>. Nothing reaches your branch until you review and commit.</div>
+        <div class="facts">
+          <span class="fact">${icon('spark')}Sonnet · effort medium</span>
+          <span class="fact">${icon('file')}Can edit files</span>
+          <span class="fact">${icon('shield')}Anthropic only · no shell</span>
+          <span class="fact">${icon('clock')}Up to 10 min</span>
+        </div>
+      </div>
+      <div class="card-foot"><button class="btn primary" type="button" data-go="running">Run</button><button class="btn ghost" type="button">Change settings</button><span class="sp"></span><button class="btn ghost" type="button">Cancel</button></div>
+    </div>`,
+  running:`
+    <div class="who"><span class="mark">${icon('spark')}</span><b>Claude</b>Sonnet · Edit</div>
+    <div class="working"><span class="dots"><i></i><i></i><i></i></span>Working · <span id="elapsed">0:12</span></div>
+    <pre class="log">Reading README.md
+Planning a small helper module
+Writing greeting.js
+Updating README.md usage section</pre>`,
+  review:`
+    <div class="who"><span class="mark">${icon('spark')}</span><b>Claude</b>Sonnet · Edit · 41 s</div>
+    <div class="prose"><p>I added a small <code>greet</code> helper and a <strong>Usage</strong> section to the README that explains how to run the tests.</p></div>
+    <div class="card">
+      <div class="card-body">
+        <div class="card-row"><span class="card-title">2 files changed</span><span class="num"><span class="plus">+7</span> <span class="minus">−0</span></span></div>
+        <div class="files">
+          <div class="file">greeting.js <span class="tag">new</span><span class="num"><span class="plus">+3</span></span></div>
+          <div class="file">README.md<span class="num"><span class="plus">+4</span></span></div>
+        </div>
+      </div>
+      <div class="card-foot"><button class="btn primary" type="button" data-open-review>Review changes</button><button class="btn ghost" type="button">Ask for changes</button><span class="sp"></span><button class="btn danger" type="button">Discard</button></div>
+    </div>`,
+  committed:`
+    <div class="who"><span class="mark">${icon('spark')}</span><b>Claude</b>Sonnet · Edit · 41 s</div>
+    <div class="prose"><p>I added a small <code>greet</code> helper and a <strong>Usage</strong> section to the README that explains how to run the tests.</p></div>
+    <div class="card">
+      <div class="card-body">
+        <div class="card-row"><span class="pill ok">${icon('check')}Committed</span><span class="card-title">Add greeting helper and test instructions</span></div>
+        <div class="card-sub">Branch <code>agentd/greeting-helper</code> · 3f2a9c1 · checks passed</div>
+      </div>
+      <div class="card-foot"><button class="btn primary" type="button">${icon('gh')}Publish to GitHub…</button><button class="btn ghost" type="button" data-open-review>View changes</button></div>
+    </div>`
+};
+const meta={
+  approve:{pill:['muted','Waiting for you'],dot:'',hint:'Nothing runs until you press Run.',send:'disabled',badge:'1'},
+  running:{pill:['run','Working'],dot:'run',hint:'Claude is working in an isolated copy. You can stop at any time.',send:'stop',badge:''},
+  review:{pill:['warn','Needs review'],dot:'warn',hint:'Review, commit or discard these changes before the next edit.',send:'disabled',badge:'1'},
+  committed:{pill:['ok','Committed'],dot:'ok',hint:'Committed locally. Publish when you are ready.',send:'ready',badge:''}
+};
+function setState(s){
+  document.querySelectorAll('#states button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.state===s)));
+  $('latest').innerHTML=turns[s];
+  const m=meta[s];
+  $('top-pill').className='pill '+m.pill[0];$('top-pill').innerHTML=(m.dot?`<i class="dot ${m.dot}"></i>`:'')+m.pill[1];
+  $('side-dot').className='dot '+m.dot;$('side-dot').hidden=!m.dot;
+  $('hint').textContent=m.hint;
+  $('act-badge').textContent=m.badge;$('act-badge').hidden=!m.badge;
+  const send=$('send');send.disabled=m.send==='disabled';send.classList.toggle('stop',m.send==='stop');
+  send.innerHTML=icon(m.send==='stop'?'stop':'up');send.setAttribute('aria-label',m.send==='stop'?'Stop':'Send');
+  $('prompt').disabled=m.send==='disabled'&&s==='review';
+  if(s==='committed'){reviewStep='publish';}else if(s==='review'&&reviewStep==='publish'){reviewStep='checks';}
+  if(s!=='review'&&s!=='committed')closeReview();
+  renderReview();
+  $('scroll').scrollTop=$('scroll').scrollHeight;
+}
+function renderReview(){
+  const foot=$('rv-foot'),chk=$('checks'),txt=$('checks-text');
+  const steps={checks:['now','',''],commit:['done','now',''],publish:['done','done','now']}[reviewStep==='running'?'checks':reviewStep];
+  ['st-checks','st-commit','st-publish'].forEach((id,i)=>$(id).className='step '+steps[i]);
+  $('commit-field').hidden=reviewStep!=='commit';
+  chk.className='checks'+(reviewStep==='running'?' running':reviewStep==='checks'?'':' passed');
+  if(reviewStep==='checks'){txt.innerHTML='Checks not run yet<small>Runs <code>npm test</code> offline in a sandbox, on exactly these changes</small>';
+    foot.innerHTML=`<button class="btn primary" type="button" id="rv-run">Run checks</button><button class="btn ghost" type="button">Ask for changes</button><span class="sp"></span><button class="btn danger" type="button">Discard</button>`;}
+  else if(reviewStep==='running'){txt.innerHTML='Running <code>npm test</code>…<small>Offline sandbox · usually under a minute</small>';
+    foot.innerHTML=`<button class="btn primary" type="button" disabled>Running checks…</button><span class="sp"></span><button class="btn ghost" type="button">Stop</button>`;}
+  else if(reviewStep==='commit'){txt.innerHTML='Checks passed<small><code>npm test</code> · 4 tests · 1.2 s · on exactly these changes</small>';
+    foot.innerHTML=`<button class="btn primary" type="button" id="rv-commit">Commit</button><button class="btn ghost" type="button">Ask for changes</button><span class="sp"></span><button class="btn danger" type="button">Discard</button><p class="why">Commits to a new local branch. Nothing is pushed.</p>`;}
+  else {txt.innerHTML='Checks passed · committed<small>Branch <code>agentd/greeting-helper</code> · 3f2a9c1</small>';
+    foot.innerHTML=`<button class="btn primary" type="button">${icon('gh')}Publish to GitHub…</button><span class="sp"></span><button class="btn ghost" type="button" id="rv-done">Done</button><p class="why">You'll see exactly what will be pushed before anything leaves this server.</p>`;}
+}
+function openReview(){app.classList.add('reviewing');app.classList.remove('drawer');setTimeout(()=>$('rv-close').focus(),260);}
+function closeReview(){app.classList.remove('reviewing');}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.state)setState(t.dataset.state);
+  if(t.dataset.go)setState(t.dataset.go);
+  if(t.hasAttribute('data-open-review'))openReview();
+  if(t.id==='rv-close'||t.id==='rv-done')closeReview();
+  if(t.id==='rv-run'){reviewStep='running';renderReview();setTimeout(()=>{reviewStep='commit';renderReview();$('commit-msg').focus();},1400);}
+  if(t.id==='rv-commit'){reviewStep='publish';renderReview();setState('committed');openReview();}
+  if(t.classList.contains('proj')){t.setAttribute('aria-expanded',String(t.getAttribute('aria-expanded')!=='true'));}
+  if(t.id==='picker'){const open=$('pop').hidden;$('pop').hidden=!open;t.setAttribute('aria-expanded',String(open));}
+  else if(!t.closest('#pop')&&!$('pop').hidden){$('pop').hidden=true;$('picker').setAttribute('aria-expanded','false');}
+  if(t.dataset.mode){document.querySelectorAll('#modes button').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));$('mode-tag').textContent=t.dataset.mode;}
+  if(t.id==='drawer-open'){app.classList.add('drawer');$('drawer-close').hidden=false;}
+  if(t.id==='drawer-close'){app.classList.remove('drawer');}
+});
+$('scrim').addEventListener('click',()=>app.classList.remove('drawer'));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('pop').hidden){$('pop').hidden=true;$('picker').setAttribute('aria-expanded','false');}else if(app.classList.contains('reviewing'))closeReview();else app.classList.remove('drawer');}});
+$('compose').addEventListener('submit',e=>{e.preventDefault();});
+$('prompt').addEventListener('input',e=>{e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,200)+'px';});
+let secs=12;setInterval(()=>{const el=$('elapsed');if(el){secs++;el.textContent=Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0');}},1000);
+setState('review');
+</script>

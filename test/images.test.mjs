@@ -1,5 +1,87 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {execFileSync} from 'node:child_process';import {once} from 'node:events';import {randomUUID} from 'node:crypto';import {runner} from '../src/runner.ts';
-test('image attachment validation and explicit follow-up context',async()=>{
-const root=mkdtempSync(join(tmpdir(),'input-test-')),repo=join(root,'repo'),attachments=join(root,'images');mkdirSync(repo);mkdirSync(attachments);const git=(...args)=>execFileSync('git',['-C',repo,...args],{stdio:'pipe'});git('init','-b','main');writeFileSync(join(repo,'README.md'),'fixture');git('add','.');git('-c','user.name=test','-c','user.email=test@localhost','commit','-m','test');const image=randomUUID();writeFileSync(join(attachments,image+'.json'),JSON.stringify({id:image,name:'fixture.png',ext:'.png'}));writeFileSync(join(attachments,image+'.png'),'image fixture');const prompts=[];const app=runner({stateDir:join(root,'state'),repo,worktrees:join(root,'trees'),logs:join(root,'logs'),attachments,command:(_,prompt)=>{prompts.push(prompt);return[process.execPath,['-e','console.log("test output")']];}});await once(app.server,'listening');const wait=async id=>{for(let i=0;i<100;i++){const row=app.request({op:'show',id}).task;if(row.status==='succeeded')return row;await new Promise(r=>setTimeout(r,10));}throw Error('Timeout');};
-try{assert.throws(()=>app.request({op:'create',adapter:'claude',prompt:'x',attachments:['../../passwd']}));const t=app.request({op:'create',adapter:'claude',prompt:'Inspect image',attachments:[image]});app.request({op:'approve',id:t.id});const done=await wait(t.id);assert.equal(readFileSync(join(done.worktree,'.agentd-input',image+'.png'),'utf8'),'image fixture');assert.match(prompts[0],/User attached images/);const reply=app.request({op:'create',adapter:'codex',prompt:'Explain more',parent:t.id});assert.equal(reply.status,'waiting_for_approval');app.request({op:'approve',id:reply.id});await wait(reply.id);assert.match(prompts[1],/Inspect image/);assert.match(prompts[1],/test output/);assert.match(prompts[1],/Explain more/);assert.equal(app.request({op:'show',id:t.id}).images[0].id,image);}finally{await app.close();rmSync(root,{recursive:true,force:true});}
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execFileSync } from "node:child_process";
+import { once } from "node:events";
+import { randomUUID } from "node:crypto";
+import { runner } from "../src/runner.ts";
+test("image attachment validation and explicit follow-up context", async () => {
+  const root = mkdtempSync(join(tmpdir(), "input-test-")),
+    repo = join(root, "repo"),
+    attachments = join(root, "images");
+  mkdirSync(repo);
+  mkdirSync(attachments);
+  const git = (...args) => execFileSync("git", ["-C", repo, ...args], { stdio: "pipe" });
+  git("init", "-b", "main");
+  writeFileSync(join(repo, "README.md"), "fixture");
+  git("add", ".");
+  git("-c", "user.name=test", "-c", "user.email=test@localhost", "commit", "-m", "test");
+  const image = randomUUID();
+  writeFileSync(
+    join(attachments, image + ".json"),
+    JSON.stringify({ id: image, name: "fixture.png", ext: ".png" }),
+  );
+  writeFileSync(join(attachments, image + ".png"), "image fixture");
+  const prompts = [];
+  const app = runner({
+    stateDir: join(root, "state"),
+    repo,
+    worktrees: join(root, "trees"),
+    logs: join(root, "logs"),
+    attachments,
+    command: (_, prompt) => {
+      prompts.push(prompt);
+      return [process.execPath, ["-e", 'console.log("test output")']];
+    },
+  });
+  await once(app.server, "listening");
+  const wait = async (id) => {
+    for (let i = 0; i < 100; i++) {
+      const row = app.request({ op: "show", id }).task;
+      if (row.status === "succeeded") return row;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    throw Error("Timeout");
+  };
+  try {
+    assert.throws(() =>
+      app.request({
+        op: "create",
+        adapter: "claude",
+        prompt: "x",
+        attachments: ["../../passwd"],
+      }),
+    );
+    const t = app.request({
+      op: "create",
+      adapter: "claude",
+      prompt: "Inspect image",
+      attachments: [image],
+    });
+    app.request({ op: "approve", id: t.id });
+    const done = await wait(t.id);
+    assert.equal(
+      readFileSync(join(done.worktree, ".agentd-input", image + ".png"), "utf8"),
+      "image fixture",
+    );
+    assert.match(prompts[0], /User attached images/);
+    const reply = app.request({
+      op: "create",
+      adapter: "codex",
+      prompt: "Explain more",
+      parent: t.id,
+    });
+    assert.equal(reply.status, "waiting_for_approval");
+    app.request({ op: "approve", id: reply.id });
+    await wait(reply.id);
+    assert.match(prompts[1], /Inspect image/);
+    assert.match(prompts[1], /test output/);
+    assert.match(prompts[1], /Explain more/);
+    assert.equal(app.request({ op: "show", id: t.id }).images[0].id, image);
+  } finally {
+    await app.close();
+    rmSync(root, { recursive: true, force: true });
+  }
 });

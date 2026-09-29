@@ -6,6 +6,8 @@ Run under a dedicated account without sudo. Treat prompts, repository files, att
 
 The mobile gateway uses TLS, hashed access keys, in-memory sessions, same-origin POST checks and login throttling. Restarting it invalidates sessions. Uploaded images have size and signature checks, but are not fully decoded or sanitized. Task logs can contain sensitive data. Protect and back up the state directory accordingly.
 
+GitHub publishing is a separate human-approved action performed by the trusted daemon. The preview binds repository, base/head commits and PR metadata; workers never receive GitHub credentials. Remote operations are not atomic: an interrupted write may require reconciliation. See [publishing boundaries](docs/publishing.md).
+
 Do not commit credentials, login caches, private keys, access keys, task databases or real user logs. The repository contains no installation-specific credentials or TLS material.
 
 The daemon only checks process exit status. Review outputs before trusting results. Checks run without provider credentials or network access. They execute project code, which may itself be wrong or manipulated; passing checks are evidence, not a correctness guarantee. Internet exposure and multiple users require further security design.

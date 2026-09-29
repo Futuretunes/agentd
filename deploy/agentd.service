@@ -8,6 +8,7 @@ StartLimitBurst=3
 Type=simple
 User=agentd
 Group=agentd
+SupplementaryGroups=agentd-web
 WorkingDirectory=/opt/agentd
 ExecStart=/usr/local/bin/node /opt/agentd/src/server.ts
 Environment=AGENTD_STATE_DIR=/srv/agentd/state
@@ -15,7 +16,9 @@ Environment=AGENTD_PORT=8787
 Environment=AGENTD_RUNNER=1
 EnvironmentFile=/etc/agentd/agentd.env
 Environment=AGENTD_CONTROL_SOCKET=/run/agentd/control.sock
-RuntimeDirectory=agentd
+Environment=AGENTD_GATEWAY_SOCKET=/run/agentd-web/gateway.sock
+# Set AGENTD_GATEWAY_GID to the dedicated agentd-web group ID when provisioning.
+RuntimeDirectory=agentd agentd-web
 RuntimeDirectoryMode=0700
 Restart=on-failure
 RestartSec=5
@@ -38,6 +41,17 @@ CapabilityBoundingSet=
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 StandardOutput=journal
 StandardError=journal
+
+# Limits apply to the whole service, including workers and checks.
+MemoryHigh=3221225472
+MemoryMax=4294967296
+MemorySwapMax=0
+TasksMax=256
+CPUQuota=200%
+LimitNOFILE=4096
+LimitCORE=0
+OOMPolicy=kill
+KillMode=control-group
 
 [Install]
 WantedBy=multi-user.target

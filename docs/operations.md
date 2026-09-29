@@ -1,6 +1,6 @@
 # Operations Center
 
-The Operations Center is the first terminal-free administration surface. It is read-only: it observes tasks, service state, adapter policy and native account status without changing credentials, retrying work, or invoking models.
+The Operations Center summarizes tasks, service state, adapter policy and native account status without invoking models. Its status endpoint is read-only. Since v0.8.0, separate authenticated account actions provide [guided sign-in and reconnect](accounts.md).
 
 ## Data shown
 
@@ -20,4 +20,4 @@ Neither native CLI currently provides agentd with a stable, non-interactive usag
 
 ## Scope
 
-This release provides visibility and navigation back to the relevant conversation. Guided login, safe retry/resume, service updates, backups and other administrative mutations remain separate milestones because they require a narrowly scoped management boundary and additional approval design.
+This release provides visibility, navigation back to the relevant conversation, and guided native account sign-in/sign-out. Since v0.9.0, **Open & recover** leads to [safe task retry](task-recovery.md). Native session resume, service updates, backups and other administrative mutations remain separate milestones.

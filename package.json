@@ -1,6 +1,6 @@
 {
   "name": "agentd",
-  "version": "0.7.0",
+  "version": "0.55.0",
   "private": true,
   "description": "Self-hosted, approval-driven orchestration for native coding agents",
   "type": "module",
@@ -12,15 +12,23 @@
     "mobile": "node src/mobile.ts",
     "agentctl": "node src/control.ts",
     "test": "node --test test/*.test.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.ts\" \"public/**/*.js\" \"test/**/*.mjs\" \"scripts/**/*.mjs\" package.json tsconfig.json",
+    "format:check": "prettier --check \"src/**/*.ts\" \"public/**/*.js\" \"test/**/*.mjs\" \"scripts/**/*.mjs\" package.json tsconfig.json"
   },
   "devDependencies": {
     "@types/node": "24.19.0",
+    "linkedom": "0.18.12",
+    "prettier": "3.9.9",
     "typescript": "7.0.2"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/Futuretunes/agentd.git"
+  },
+  "prettier": {
+    "trailingComma": "all",
+    "printWidth": 90
   }
 }
