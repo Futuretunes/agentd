@@ -61,6 +61,9 @@ test("workspace has unique controls, keyboard-accessible attachment input and na
     "preferences-menu",
     "run-options",
     "project-menu",
+    "diagnostics-settings",
+    "diagnostics-dialog",
+    "diagnostics-content",
   ])
     assert.ok(document.getElementById(id), id);
   assert.equal(document.getElementById("files").hasAttribute("hidden"), false);
