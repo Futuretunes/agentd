@@ -30,6 +30,9 @@ const fields: Record<string, string> = {
   "revision-start": "id tree prompt overrides owner",
   "revision-job": "job owner",
   "revision-cancel": "job owner",
+  "restart-start": "id owner",
+  "restart-job": "job owner",
+  "restart-cancel": "job owner",
   "task-output": "id",
   create:
     "adapter prompt mode attachments parent conversation project overrides requestId",
@@ -86,6 +89,8 @@ export const gatewayMutations = new Set([
   "commit-cancel",
   "revision-start",
   "revision-cancel",
+  "restart-start",
+  "restart-cancel",
   "create",
   "retry",
   "restart-settings",

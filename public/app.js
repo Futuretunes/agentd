@@ -1103,23 +1103,46 @@ function renderThread(data) {
       !archivedView &&
       t.id === data.messages.at(-1)?.id &&
       ["failed", "timed_out", "interrupted", "cancelled"].includes(t.status)
-    )
-      actions.append(
-        button("Restart with current settings", async () => {
-          if (
-            !confirm(
-              "Create a new attempt using current settings? Partial edits will be preserved and the new attempt requires approval.",
-            )
+    ) {
+      const restartButton = button("Restart with current settings", async () => {
+        if (
+          !confirm(
+            "Create a new attempt using current settings? Partial edits will be preserved and the new attempt requires approval.",
           )
-            return;
-          const next = await api("/api/action", {
-            op: "restart-settings",
-            id: t.id,
+        )
+          return;
+        let job = await api("/api/restart-jobs", {
+          action: "start",
+          id: t.id,
+        });
+        restartButton.textContent = "Stop preparing restart";
+        restartButton.onclick = async () => {
+          job = await api("/api/restart-jobs", {
+            action: "cancel",
+            job: job.id,
           });
-          reset(next.conversation);
+        };
+        while (job.status === "preparing") {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          job = await api("/api/restart-jobs", {
+            action: "status",
+            job: job.id,
+          });
+        }
+        if (job.status === "cancelled") {
+          notice("Restart preparation stopped. The original edits are unchanged.");
           await refresh();
-        }),
-      );
+          return;
+        }
+        if (job.status !== "succeeded")
+          throw Error(
+            job.error || "Restart preparation failed. Review the changes and try again.",
+          );
+        reset(job.result.conversation);
+        await refresh();
+      });
+      actions.append(restartButton);
+    }
     if (t.mode === "edit") {
       const reviewState = {
         pending: "Changes are waiting for your review.",

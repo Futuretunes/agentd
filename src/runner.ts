@@ -249,6 +249,13 @@ export function runner(c: Config) {
     },
     "revision-preparation",
   );
+  const restartManager = reviewJobs(
+    c.reviewPrepare,
+    () => {
+      if (!closing) setImmediate(pump);
+    },
+    "restart-preparation",
+  );
   function blocked(operation: Operation) {
     const read = (state: BusyState): boolean => {
       switch (state) {
@@ -641,6 +648,7 @@ export function runner(c: Config) {
       validationManager.busy() ||
       commitManager.busy() ||
       revisionManager.busy() ||
+      restartManager.busy() ||
       blocked("dispatch")
     )
       return;
@@ -716,12 +724,14 @@ export function runner(c: Config) {
     ownValidation = false,
     ownCommit = false,
     ownRevision = false,
+    ownRestart = false,
   ) {
     if (
       previewManager.busy() ||
       (!ownValidation && validationManager.busy()) ||
       (!ownCommit && commitManager.busy()) ||
       (!ownRevision && revisionManager.busy()) ||
+      (!ownRestart && restartManager.busy()) ||
       blocked("review")
     )
       throw Error("Wait for the active worker before reviewing changes");
@@ -923,6 +933,92 @@ export function runner(c: Config) {
     }
     return get(id);
   }
+  function assertRestartable(row: any, ownPreparation = false) {
+    const preserving = row.mode === "edit" && row.worktree && row.review === "pending";
+    if (!["failed", "cancelled", "timed_out", "interrupted"].includes(String(row.status)))
+      throw Error("Stop the active run before restarting with new settings");
+    if (
+      db
+        .prepare(
+          "SELECT id FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 1",
+        )
+        .get(row.conversation)?.id !== row.id
+    )
+      throw Error("Only the latest run can restart");
+    if (
+      project(String(row.project)).archived ||
+      conversation(String(row.conversation)).archived ||
+      row.commit_sha
+    )
+      throw Error("Workspace is archived or the changes are already committed");
+    if (projectBusy(String(row.project)) || dependencyManager.busy() || active)
+      throw Error("Wait for active work before restarting");
+    if (preserving) available(row, false, false, false, ownPreparation);
+    return preserving;
+  }
+  function restartWithSettings(row: any, prepared?: any) {
+    const existing = db.prepare("SELECT * FROM tasks WHERE restart_of=?").get(row.id);
+    if (existing) return existing;
+    const preserving = assertRestartable(row, !!prepared);
+    let seed = row.seed_tree;
+    if (preserving) {
+      const value = prepared ?? review(row);
+      if (value.blocked.length || value.truncated)
+        throw Error("Review oversized or sensitive changes before restarting");
+      seed = value.tree;
+    }
+    const id = randomUUID(),
+      at = new Date().toISOString(),
+      repo = String(project(String(row.project)).repo),
+      ref = "refs/agentd/restarts/" + id;
+    if (seed) git(["update-ref", ref, String(seed)], repo);
+    db.exec("BEGIN");
+    try {
+      db.prepare(
+        "INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,seed_tree,restart_of,merge_parent,conflict_paths) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ).run(
+        id,
+        row.adapter,
+        row.prompt,
+        row.revision,
+        "waiting_for_approval",
+        at,
+        at,
+        row.project,
+        row.conversation,
+        row.attachments,
+        row.parent,
+        row.mode,
+        seed ?? null,
+        row.id,
+        row.merge_parent,
+        row.conflict_paths,
+      );
+      bindExecution(id);
+      if (row.review === "pending")
+        db.prepare("UPDATE tasks SET review='superseded' WHERE id=?").run(row.id);
+      db.prepare("INSERT INTO events(task,status,at) VALUES(?,?,?)").run(
+        id,
+        "waiting_for_approval",
+        at,
+      );
+      audit("restart-with-settings", id, {
+        original: row.id,
+        seed: seed ?? null,
+      });
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      if (seed)
+        try {
+          git(["update-ref", "-d", ref], repo);
+        } catch {
+          // A retained orphan ref is safer than masking the database failure.
+        }
+      throw error;
+    }
+    return get(id);
+  }
   function request(input: any) {
     return auditContext.run({ kind: "local" }, () => handleRequest(input));
   }
@@ -964,6 +1060,10 @@ export function runner(c: Config) {
       return revisionManager.view(input.owner ?? "local", input.job);
     if (input.op === "revision-cancel")
       return revisionManager.cancel(input.owner ?? "local", input.job);
+    if (input.op === "restart-job")
+      return restartManager.view(input.owner ?? "local", input.job);
+    if (input.op === "restart-cancel")
+      return restartManager.cancel(input.owner ?? "local", input.job);
     if (input.op === "review-start") {
       const row = get(input.id);
       if (!row) throw Error("Task not found");
@@ -1161,11 +1261,60 @@ export function runner(c: Config) {
         key,
       );
     }
+    if (input.op === "restart-start") {
+      const row = get(input.id);
+      if (!row) throw Error("Task not found");
+      const existing = db.prepare("SELECT * FROM tasks WHERE restart_of=?").get(row.id);
+      if (existing)
+        return {
+          id: createHash("sha256")
+            .update("restart\0" + row.id + "\0" + existing.id)
+            .digest("hex"),
+          task: row.id,
+          status: "succeeded",
+          result: existing,
+          error: null,
+        };
+      const preserving = row.mode === "edit" && row.worktree && row.review === "pending";
+      if (!preserving) {
+        const result = restartWithSettings(row);
+        if (!result) throw Error("Restart result unavailable");
+        return {
+          id: createHash("sha256")
+            .update("restart\0" + row.id + "\0" + result.id)
+            .digest("hex"),
+          task: row.id,
+          status: "succeeded",
+          result,
+          error: null,
+        };
+      }
+      if (!restartManager.busy()) {
+        assertRestartable(row);
+      }
+      return restartManager.start(
+        input.owner ?? "local",
+        input.id,
+        {
+          worktree: String(row.worktree),
+          revision: String(row.revision),
+          stateDir: c.stateDir,
+          mergeParent: row.merge_parent as string | null,
+          conflictPaths: JSON.parse(String(row.conflict_paths ?? "[]")),
+        },
+        (value) => {
+          const current = get(input.id);
+          if (!current) throw Error("Task not found");
+          return restartWithSettings(current, value);
+        },
+      );
+    }
     if (
       (previewManager.busy() ||
         validationManager.busy() ||
         commitManager.busy() ||
-        revisionManager.busy()) &&
+        revisionManager.busy() ||
+        restartManager.busy()) &&
       (gatewayMutations.has(input.op) ||
         ["project-register", "project-checks"].includes(input.op))
     )
@@ -1788,79 +1937,7 @@ export function runner(c: Config) {
       return revise(row, input);
     }
     if (input.op === "restart-settings") {
-      const existing = db.prepare("SELECT * FROM tasks WHERE restart_of=?").get(row.id);
-      if (existing) return existing;
-      if (
-        !["failed", "cancelled", "timed_out", "interrupted"].includes(String(row.status))
-      )
-        throw Error("Stop the active run before restarting with new settings");
-      if (
-        db
-          .prepare(
-            "SELECT id FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 1",
-          )
-          .get(row.conversation)?.id !== row.id
-      )
-        throw Error("Only the latest run can restart");
-      if (
-        project(String(row.project)).archived ||
-        conversation(String(row.conversation)).archived ||
-        row.commit_sha
-      )
-        throw Error("Workspace is archived or the changes are already committed");
-      if (projectBusy(String(row.project)) || dependencyManager.busy() || active)
-        throw Error("Wait for active work before restarting");
-      let seed = row.seed_tree;
-      if (row.mode === "edit" && row.worktree && row.review === "pending") {
-        const value = review(row);
-        if (value.blocked.length || value.truncated)
-          throw Error("Review oversized or sensitive changes before restarting");
-        seed = value.tree;
-      }
-      const id = randomUUID(),
-        at = new Date().toISOString();
-      if (seed)
-        git(
-          ["update-ref", "refs/agentd/restarts/" + id, String(seed)],
-          String(project(String(row.project)).repo),
-        );
-      db.exec("BEGIN");
-      try {
-        db.prepare(
-          "INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,seed_tree,restart_of,merge_parent,conflict_paths) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        ).run(
-          id,
-          row.adapter,
-          row.prompt,
-          row.revision,
-          "waiting_for_approval",
-          at,
-          at,
-          row.project,
-          row.conversation,
-          row.attachments,
-          row.parent,
-          row.mode,
-          seed ?? null,
-          row.id,
-          row.merge_parent,
-          row.conflict_paths,
-        );
-        bindExecution(id);
-        if (row.review === "pending")
-          db.prepare("UPDATE tasks SET review='superseded' WHERE id=?").run(row.id);
-        db.prepare("INSERT INTO events(task,status,at) VALUES(?,?,?)").run(
-          id,
-          "waiting_for_approval",
-          at,
-        );
-        audit("restart-with-settings", id, { original: row.id, seed: seed ?? null });
-        db.exec("COMMIT");
-      } catch (e) {
-        db.exec("ROLLBACK");
-        throw e;
-      }
-      return get(id);
+      return restartWithSettings(row);
     }
     if (input.op === "retry") {
       if (projectBusy(String(row.project)))
@@ -2058,8 +2135,15 @@ export function runner(c: Config) {
       const validationClosed = validationManager.close();
       const commitClosed = commitManager.close();
       const revisionClosed = revisionManager.close();
+      const restartClosed = restartManager.close();
       await publicationManager.close();
-      await Promise.all([previewClosed, validationClosed, commitClosed, revisionClosed]);
+      await Promise.all([
+        previewClosed,
+        validationClosed,
+        commitClosed,
+        revisionClosed,
+        restartClosed,
+      ]);
       await usageWork;
       await dependencyManager.close();
       await repositoryManager.close();

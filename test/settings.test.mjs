@@ -16,6 +16,7 @@ import { settings, resolveSettings } from "../src/execution-settings.ts";
 import { normalizeModels, parseCursorModels } from "../src/model-catalog.ts";
 import { selectionArguments, invocation } from "../src/adapters.ts";
 import { runner } from "../src/runner.ts";
+import { snapshot } from "../src/changes.ts";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const models = [
     { id: "haiku", name: "Haiku", efforts: [], tier: "light" },
@@ -316,6 +317,83 @@ test("running attempts retain settings; restart preserves partial edits and requ
     f.app.request({ op: "cancel", id: next.id });
     await wait(f, next.id, "cancelled");
   } finally {
+    await f.close();
+  }
+});
+test("background restart preparation is owner-bound, cancellable and recovers its exact result", async () => {
+  let release,
+    entered,
+    started = new Promise((resolve) => (entered = resolve));
+  const f = await fixture({
+    reviewPrepare: async (input, signal) => {
+      entered();
+      await new Promise((resolve) => (release = resolve));
+      if (signal.aborted) throw Error("Restart preparation stopped.");
+      return {
+        ...snapshot(input.worktree, input.revision, input.stateDir),
+        conflicts: [],
+      };
+    },
+  });
+  const waitJob = async (owner, id) => {
+    for (let i = 0; i < 200; i++) {
+      const job = f.app.request({ op: "restart-job", owner, job: id });
+      if (job.status !== "preparing") return job;
+      await sleep(10);
+    }
+    throw Error("Restart job timeout");
+  };
+  try {
+    const task = f.app.request({
+      op: "create",
+      adapter: "claude",
+      mode: "edit",
+      prompt: "hang",
+    });
+    f.app.request({ op: "approve", id: task.id });
+    const running = await wait(f, task.id, "running");
+    for (let i = 0; i < 400 && !existsSync(join(running.worktree, "partial.txt")); i++)
+      await sleep(10);
+    f.app.request({ op: "cancel", id: task.id });
+    await wait(f, task.id, "cancelled");
+
+    const cancelled = f.app.request({ op: "restart-start", owner: "a", id: task.id });
+    await started;
+    assert.equal(f.app.request({ op: "show", id: task.id }).task.status, "cancelled");
+    assert.equal(
+      f.app.request({ op: "restart-start", owner: "a", id: task.id }).id,
+      cancelled.id,
+    );
+    assert.throws(
+      () => f.app.request({ op: "restart-job", owner: "b", job: cancelled.id }),
+      /expired/,
+    );
+    assert.throws(() => f.app.request({ op: "discard", id: task.id }), /preview/);
+    f.app.request({ op: "restart-cancel", owner: "a", job: cancelled.id });
+    release();
+    assert.equal((await waitJob("a", cancelled.id)).status, "cancelled");
+    assert.equal(f.app.request({ op: "show", id: task.id }).task.review, "pending");
+
+    started = new Promise((resolve) => (entered = resolve));
+    const accepted = f.app.request({ op: "restart-start", owner: "a", id: task.id });
+    await started;
+    release();
+    const restarted = await waitJob("a", accepted.id);
+    assert.equal(restarted.status, "succeeded");
+    assert.equal(restarted.result.status, "waiting_for_approval");
+    assert.ok(restarted.result.seed_tree);
+    assert.equal(f.app.request({ op: "show", id: task.id }).task.review, "superseded");
+    assert.equal(
+      f.app.request({ op: "restart-start", owner: "a", id: task.id }).result.id,
+      restarted.result.id,
+    );
+    await f.restart();
+    assert.equal(
+      f.app.request({ op: "restart-start", owner: "a", id: task.id }).result.id,
+      restarted.result.id,
+    );
+  } finally {
+    release?.();
     await f.close();
   }
 });

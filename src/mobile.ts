@@ -524,6 +524,25 @@ export function mobile(c: Config) {
           );
           return;
         }
+        if (path === "/api/restart-jobs" && req.method === "POST") {
+          const input = await body(req);
+          if (!["start", "status", "cancel"].includes(input.action))
+            throw Error("Unsupported restart action");
+          send(
+            200,
+            await call({
+              op:
+                input.action === "start"
+                  ? "restart-start"
+                  : input.action === "status"
+                    ? "restart-job"
+                    : "restart-cancel",
+              owner: accountOwner,
+              ...(input.action === "start" ? { id: input.id } : { job: input.job }),
+            }),
+          );
+          return;
+        }
         const review = path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/review$/);
         if (review && req.method === "GET") {
           send(200, await call({ op: "review", id: review[1] }));
