@@ -26,3 +26,9 @@ The UI (Settings > Updates) shows the installed version, the last result (honest
 ## Not yet
 
 Rollback from the app (next item), CLI updates, backups page.
+
+## Follow-up — 0.63.0 installed, 0.63.1 fix
+
+- 0.63.0 (`44400ee`) was installed by the terminal procedure. The **first attempt stopped after the tests and before the recovery journal**: no service was stopped, the backup directory stayed empty, and 0.62.3 kept running. The retry succeeded.
+- Probable cause, reproduced in a unit test: `backup_retention.size()` (used by `admission()`, which runs again after the tests while services are live) called `lstat()` on entries the running runner had already atomically replaced, raising `FileNotFoundError`. Four clean suite runs left no stray files, which rules out candidate pollution.
+- **0.63.1:** `size()` skips entries that vanish while live state is measured. The real backup is still taken with services stopped, and special-file and budget checks are unchanged. Regression test in `test/resource_deployment.py`.
