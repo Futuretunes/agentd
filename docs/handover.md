@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.40.0 — task execution ownership
 
-[Handover](handovers/2026-09-29-task-owner.md): checkout, isolated agent execution, output/resource handling and cleanup have a separate lifecycle module and a stable ownership handle. Immediate cancellation skips checkout and command construction. Exact validation pending; not installed.
+[Handover](handovers/2026-09-29-task-owner.md): checkout, isolated agent execution, output/resource handling and cleanup have a separate lifecycle module and a stable ownership handle. Immediate cancellation skips checkout and command construction. Exact archive `87e8d2c` passed 161/161 Linux tests, zero skips, formatting, typecheck and CI; draft #44 is open. Cumulative 0.40.0 is staged but not installed.
 
 ## Candidate 0.39.0 — check execution ownership
 

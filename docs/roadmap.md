@@ -191,4 +191,4 @@ Check process, output/resource limits, cleanup and terminal-state handling move 
 
 ## R2 task execution — candidate 0.40.0
 
-Task execution moves to `task-execution.ts`; a stable handle covers asynchronous checkout through process cleanup. Queue selection, approval/renewal and the single task/check slot remain in the runner. Immediate cancellation skips preparation and command construction. Exact validation pending; not installed. Runner request routing/review decomposition, remaining asynchronous Git paths and retention reconciliation remain open.
+Task execution moves to `task-execution.ts`; a stable handle covers asynchronous checkout through process cleanup. Queue selection, approval/renewal and the single task/check slot remain in the runner. Immediate cancellation skips preparation and command construction. Exact archive passed 161/161 Linux tests, zero skips, formatting, typecheck and CI; draft #44; not installed. Runner request routing/review decomposition, remaining asynchronous Git paths and retention reconciliation remain open.

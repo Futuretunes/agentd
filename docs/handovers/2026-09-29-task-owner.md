@@ -1,7 +1,7 @@
 # 2026-09-29 — Stable task execution ownership
 
 - Author: Codex; authorized overnight R2 work.
-- Status: implemented; exact validation pending; not installed.
+- Status: implemented; exact Linux and CI passed; not installed.
 - Release: cumulative 0.40.0, task schema 2.
 - Branch/base: `refactor/task-execution-owner` from `refactor/check-execution-owner` at `4e8fbd7`.
 
@@ -13,11 +13,11 @@ Execution begins in a microtask after ownership is returned. Immediate cancellat
 
 ## Validation
 
-Existing runner, image, settings and checkout tests cover approval, renewal, policy, timeouts and cancellation. New domain regressions assert immediate cancellation invokes neither checkout nor command construction, the identical handle survives preparation and process shutdown with cleanup complete, and task path-write failure cannot launch preparation or a command. Exact full Linux archive and CI validation pending. No live native model/account/publication request, deployment or live retention deletion is used.
+Existing runner, image, settings and checkout tests cover approval, renewal, policy, timeouts and cancellation. New domain regressions assert immediate cancellation invokes neither checkout nor command construction, the identical handle survives preparation and process shutdown with cleanup complete, and task path-write failure cannot launch preparation or a command. Exact archive `87e8d2cd41fb01361187d77ea3ab4db5177a3376` passed 161/161 required Linux tests, zero skips, formatting and typecheck. SHA-256: `3d69b8b1e66c2e40eeda281e67ea92e6c5dcfe4e7b90730e39690ca9f720e5d1`. CI runs 36521813406 and 36521818787 passed; draft PR #44 is open. The added immediate-shutdown regression verifies interruption without checkout. No live native model/account/publication request, deployment or live retention deletion is used.
 
 ## Deployment and limits
 
-Production stays 0.22.0/task schema 1. The prior validated cumulative installer remains current until this archive passes. Candidate schema remains 2; rollback needs matched application/task state with native profiles separate. Unexpected persistence/cleanup exceptions retain fail-fast behavior; graceful recovery from such errors is not claimed. This does not make snapshots, reviews or integration application asynchronous. No host security settings changed.
+Production stays 0.22.0/task schema 1. The single private cumulative installer now targets this validated archive; syntax and staged hashes are checked, and it remains unexecuted. Candidate schema remains 2; rollback needs matched application/task state with native profiles separate. Unexpected persistence/cleanup exceptions retain fail-fast behavior; graceful recovery from such errors is not claimed. This does not make snapshots, reviews or integration application asynchronous. No host security settings changed.
 
 ## Next
 
