@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.48.0 — background integration preparation and application
 
-[Handover](handovers/2026-09-29-async-integration-preparation.md): base integration Git preflights and approved worktree materialization now run in the owned publication/feedback slot. Reads stay responsive; creation is cancellable and exact-tree/ref verification remains mandatory. Interrupted approved creation requires explicit same-preview reconciliation. Exact release validation, CI and staging evidence are updated in the handover; candidate is not installed. Installed baseline remains 0.43.0.
+[Handover](handovers/2026-09-29-async-integration-preparation.md): base integration Git preflights and approved worktree materialization now run in the owned publication/feedback slot. Reads stay responsive; creation is cancellable and exact-tree/ref verification remains mandatory. Interrupted approved creation requires explicit same-preview reconciliation. Exact source `4705736` passed 185/185 Linux tests with zero skips, formatting, typecheck and both CI runs. Draft #52 and the cumulative installer are staged but unexecuted. Installed baseline remains 0.43.0.
 
 ## Candidate 0.47.0 — background restart preparation
 

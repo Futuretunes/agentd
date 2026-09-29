@@ -2,9 +2,11 @@
 
 - Author/agent: Codex
 - Requested outcome: continue R10 by moving remaining base-integration Git preflights and approved worktree creation out of the request path
-- Status: implemented; validation in progress; not installed
+- Status: implemented and validated; staged, not installed
 - Release: 0.48.0, task schema 2
 - Branch and base: `feat/async-integration-application` from `feat/async-restart-preparation`
+- Implementation commit: `4705736cc1f764ee6debaf40e941faac8d297750`
+- PR: [draft #52](https://github.com/Futuretunes/agentd/pull/52)
 
 ## Changes and relevant files
 
@@ -21,12 +23,22 @@
   - formatting and typecheck passed.
   - all non-Linux tests passed in bounded groups; Linux-only isolation tests are intentionally validated in the exact Ubuntu release run.
   - focused GitHub integration, publication, gateway/mobile and recovery coverage passed.
-- Exact release archive, Ubuntu validation, CI and no-model browser evidence: pending.
+- Exact release archive:
+  - source: `4705736cc1f764ee6debaf40e941faac8d297750`
+  - SHA-256: `e83f32962608e03cc5a5c18142b5dea9e6a730ed630f9c65f59d4a3e8aa8708e`
+  - release verifier reported version 0.48.0, format 1 and task schema 2.
+- Ubuntu VM exact-release validation, without installation:
+  - clean dependency install with lifecycle scripts disabled, formatting and typecheck passed.
+  - `node scripts/test-isolation-ci.mjs`: 185/185 passed, 0 failed, 0 skipped, including all Linux isolation tests.
+  - private validation log: `/home/c0d3x/agentd-async-integration-preparation-tests.log`.
+- GitHub CI passed for both the branch push (`36547128271`) and draft PR (`36547137514`), including Node 24, Node 26 and required Linux isolation jobs.
+- Browser-facing behavior is covered by the owner-derived mobile API fixture and the manager's responsive-read/cancellation/recovery integration test. A live browser/phone acceptance pass remains separate; no provider account or model request was used.
 
 ## Deployment and rollback
 
 - No deployment occurred. Production remains the operator-reported 0.43.0/task schema 2 baseline.
-- The cumulative installer remains on the prior exact 0.47.0 candidate until 0.48.0 exact validation completes.
+- The exact archive and cumulative launcher are staged privately on the VM. Launcher SHA-256 is `b03e68c875438e4406b8d0f85574663336a2c1b07d8ece68e3a6cad8db5d1bd9`; it was syntax checked and not executed.
+- Production health was rechecked after staging and still reported 0.43.0/task schema 2.
 
 ## Constraints and known issues
 
@@ -37,5 +49,5 @@
 
 ## Next steps
 
-1. Complete exact Ubuntu release validation, CI, browser acceptance and cumulative private staging for 0.48.0.
-2. Continue R2 runner request-routing decomposition after the candidate is reviewable.
+1. Continue R2 runner request-routing decomposition.
+2. Keep live browser/phone acceptance and operator-controlled installation separate from implementation validation.
