@@ -99,6 +99,12 @@ type Config = {
     editing: boolean,
     editAdapters: string[],
   ) => Promise<any>;
+  adminRuntimeFlags?: () => Promise<any>;
+  applyRuntimeFlags?: (flags: {
+    strictWorkers: boolean;
+    credentialRenewal: boolean;
+    codexChat: boolean;
+  }) => Promise<any>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -1593,6 +1599,19 @@ export function runner(c: Config) {
           return result;
         });
     }
+    if (input.op === "admin-runtime-flags-apply") {
+      if (!c.applyRuntimeFlags) throw Error("Runtime flag changes are not installed.");
+      if (!input.flags || typeof input.flags !== "object")
+        throw Error("Runtime flags request is invalid.");
+      if (blocked("update"))
+        throw Error(
+          "Finish or stop current work, account changes and preparations before changing runtime flags.",
+        );
+      return c.applyRuntimeFlags(input.flags).then((result) => {
+        audit("runtime-flags-apply", null, { flags: input.flags });
+        return result;
+      });
+    }
     requireNoReviewPreparationMutation(input);
     if (typeof input.op === "string" && input.op.startsWith("feedback-"))
       return publicationManager.feedback(input);
@@ -1656,6 +1675,10 @@ export function runner(c: Config) {
     if (input.op === "admin-adapters") {
       if (!c.adminAdapters) throw Error("Adapter policy is not installed.");
       return c.adminAdapters();
+    }
+    if (input.op === "admin-runtime-flags") {
+      if (!c.adminRuntimeFlags) throw Error("Runtime flags are not installed.");
+      return c.adminRuntimeFlags();
     }
     if (input.op === "admin-configuration") {
       if (!c.adminConfiguration) throw Error("Configuration overview is not installed.");

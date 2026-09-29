@@ -3693,9 +3693,10 @@ async function openConfigurationSettings() {
   }
 }
 async function renderConfigurationSettings() {
-  const [report, adapters] = await Promise.all([
+  const [report, adapters, runtime] = await Promise.all([
       api("/api/configuration"),
       api("/api/adapters").catch(() => null),
+      api("/api/runtime-flags").catch(() => null),
     ]),
     flags = report.configuration,
     yesNo = (value) => (value ? "Yes" : "No"),
@@ -3780,11 +3781,37 @@ async function renderConfigurationSettings() {
   const guidance = node("section", undefined, "operation-section");
   guidance.append(node("h3", "Where to change things"));
   for (const note of Object.values(report.notes ?? {})) guidance.append(node("p", note));
+  const runtimeSection = node("section", undefined, "operation-section");
+  runtimeSection.append(node("h3", "Runtime flags"));
+  if (!runtime) {
+    runtimeSection.append(
+      node("p", "Runtime flag changes are not available on this install yet.", "muted"),
+    );
+  } else {
+    const flags = runtime.flags ?? {};
+    runtimeSection.append(
+      node(
+        "p",
+        `Hardened workers: ${flags.strictWorkers ? "on" : "off"}; credential renewal: ${
+          flags.credentialRenewal ? "on" : "off"
+        }; Codex chat: ${flags.codexChat ? "on" : "off"}.`,
+      ),
+    );
+    runtimeSection.append(
+      node(
+        "p",
+        "Credential renewal and Codex chat require hardened workers. Restart the task runner after changes.",
+        "muted",
+      ),
+    );
+  }
   const actions = [];
   if (adapters)
     actions.push(
       button("Change agent adapters", () => renderAdapterPolicyForm(adapters)),
     );
+  if (runtime)
+    actions.push(button("Change runtime flags", () => renderRuntimeFlagsForm(runtime)));
   if (adapters) {
     const liveEnabled = (policy.enabledAdapters ?? []).slice().sort().join(", "),
       managedEnabled = (adapters.enabled ?? []).slice().sort().join(", "),
@@ -3815,6 +3842,7 @@ async function renderConfigurationSettings() {
     overview,
     tls,
     policySection,
+    runtimeSection,
     guidance,
     ...actions,
     node(
@@ -3823,6 +3851,125 @@ async function renderConfigurationSettings() {
       "muted",
     ),
   );
+}
+function renderRuntimeFlagsForm(current) {
+  const form = node("form"),
+    flags = current.flags ?? {},
+    boxes = {
+      strictWorkers: node("input"),
+      credentialRenewal: node("input"),
+      codexChat: node("input"),
+    },
+    currentLabel = node("label", "Current access key"),
+    currentKey = node("input"),
+    submit = node("button", "Review runtime flags", "primary"),
+    section = node("section", undefined, "operation-section");
+  section.append(node("h3", "Managed runtime flags"));
+  for (const [key, label] of [
+    ["strictWorkers", "Hardened workers (required for renewal and Codex chat)"],
+    ["credentialRenewal", "Credential renewal before dispatch"],
+    ["codexChat", "Codex chat mode"],
+  ]) {
+    const row = node("label", label);
+    boxes[key].type = "checkbox";
+    boxes[key].checked = !!flags[key];
+    row.prepend(boxes[key]);
+    section.append(row);
+  }
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  form.append(
+    section,
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const next = {
+        strictWorkers: boxes.strictWorkers.checked,
+        credentialRenewal: boxes.credentialRenewal.checked,
+        codexChat: boxes.codexChat.checked,
+      };
+      if ((next.credentialRenewal || next.codexChat) && !next.strictWorkers)
+        throw Error("Turn on hardened workers before credential renewal or Codex chat.");
+      const plan = await api("/api/runtime-flags", {
+        action: "preview",
+        currentKey: currentKey.value,
+        flags: next,
+      });
+      currentKey.value = "";
+      renderRuntimeFlagsApproval(plan);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
+}
+function renderRuntimeFlagsApproval(plan) {
+  const form = node("form"),
+    confirm = node("input"),
+    idle = node("input"),
+    submit = node("button", "Apply runtime flags", "primary"),
+    confirmLabel = node("label", "I understand the task runner must be restarted"),
+    idleLabel = node(
+      "label",
+      "Current work, account changes and preparations are stopped",
+    ),
+    flags = plan.flags ?? {};
+  confirm.type = "checkbox";
+  confirm.required = true;
+  confirmLabel.prepend(confirm);
+  idle.type = "checkbox";
+  if (plan.requiresIdle) {
+    idle.required = true;
+    idleLabel.prepend(idle);
+  }
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      `Apply hardened workers ${flags.strictWorkers ? "on" : "off"}, credential renewal ${
+        flags.credentialRenewal ? "on" : "off"
+      }, Codex chat ${flags.codexChat ? "on" : "off"}.`,
+      "attention",
+    ),
+    confirmLabel,
+    ...(plan.requiresIdle ? [idleLabel] : []),
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      await api("/api/runtime-flags", {
+        action: "apply",
+        fingerprint: plan.fingerprint,
+        flags: plan.flags,
+        confirmed: true,
+        ...(plan.requiresIdle ? { confirmedIdle: true } : {}),
+      });
+      notice("Runtime flags saved. Restart the task runner to apply them.");
+      configurationContent.replaceChildren(
+        node("p", "Runtime flags were written to the managed environment.", "good"),
+        button("Restart task runner now", () =>
+          openConfigurationServiceRestart("runner", "Task runner"),
+        ),
+        button("Back to configuration", () => void renderConfigurationSettings()),
+      );
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
 }
 function renderAdapterPolicyForm(current) {
   const form = node("form"),

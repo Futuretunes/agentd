@@ -59,7 +59,7 @@ def snapshot():
             'agents':'Change enabled agents and edit permissions from this Configuration page (adapter policy). Account login stays under Agents & accounts.',
             'github':'Manage the GitHub connection from Settings > GitHub.',
             'notifications':'Mobile notifications (ntfy) are not configured in-app yet.',
-            'mutations':'Resource profile, hardening and TLS replacement remain future work. Adapter policy can be changed here; restart the task runner afterward.',
+            'mutations':'Resource profile, hardening and TLS replacement remain future work. Adapter policy and runtime flags can be changed here; restart the task runner afterward.',
         },
     }
 

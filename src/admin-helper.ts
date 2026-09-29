@@ -281,6 +281,68 @@ export function applyAdapterPolicy(
   return value;
 }
 
+function normalizeRuntimeFlags(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw Error("Invalid runtime flags");
+  const flags = value as Record<string, unknown>;
+  const normalized = {
+    strictWorkers: flags.strictWorkers === true,
+    credentialRenewal: flags.credentialRenewal === true,
+    codexChat: flags.codexChat === true,
+  };
+  if ((normalized.credentialRenewal || normalized.codexChat) && !normalized.strictWorkers)
+    throw Error("Invalid runtime flags");
+  return normalized;
+}
+
+export function runtimeFlags(command = "/opt/agentd/scripts/admin_runtime_flags.py") {
+  const output = execFileSync("/usr/bin/python3", ["-B", command], {
+    cwd: "/opt/agentd",
+    encoding: "utf8",
+    timeout: 10000,
+    maxBuffer: 8192,
+    env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const value = JSON.parse(output);
+  if (
+    value?.format !== 1 ||
+    !value.flags ||
+    typeof value.fingerprint !== "string" ||
+    value.error
+  )
+    throw Error("Runtime flags unavailable");
+  return value;
+}
+
+export function applyRuntimeFlags(
+  flags: unknown,
+  command = "/opt/agentd/scripts/admin_runtime_flags.py",
+) {
+  const request = { flags: normalizeRuntimeFlags(flags) };
+  const output = execFileSync(
+    "/usr/bin/python3",
+    ["-B", command, JSON.stringify(request)],
+    {
+      cwd: "/opt/agentd",
+      encoding: "utf8",
+      timeout: 10000,
+      maxBuffer: 8192,
+      env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  );
+  const value = JSON.parse(output);
+  if (
+    value?.format !== 1 ||
+    !value.flags ||
+    typeof value.fingerprint !== "string" ||
+    value.error
+  )
+    throw Error("Runtime flags change refused");
+  return value;
+}
+
 export function startRollback(
   version: unknown,
   list: () => any = updates,
@@ -320,6 +382,8 @@ export function handleAdminRequest(
       editing: unknown,
       editAdapters: unknown,
     ) => unknown;
+    runtimeFlags?: () => unknown;
+    applyRuntimeFlags?: (flags: unknown) => unknown;
   },
 ) {
   if (input?.op === "rotate-access-key") {
@@ -366,6 +430,13 @@ export function handleAdminRequest(
       input.editing,
       input.editAdapters,
     );
+  }
+  if (input?.op === "runtime-flags" && Object.keys(input).join(" ") === "op")
+    return (config.runtimeFlags ?? runtimeFlags)();
+  if (input?.op === "runtime-flags-apply") {
+    if (Object.keys(input).sort().join(" ") !== "flags op")
+      throw Error("Unsupported admin operation");
+    return (config.applyRuntimeFlags ?? applyRuntimeFlags)(input.flags);
   }
   throw Error("Unsupported admin operation");
 }
