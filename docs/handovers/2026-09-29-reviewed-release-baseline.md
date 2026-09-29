@@ -12,7 +12,7 @@
 
 `src/request-routing.ts` adds a startup-built operation table with explicit route ownership. Duplicate operation claims fail before the service accepts requests. `src/runner.ts` now routes the fifteen review, check, commit, revision and restart preparation operations through a dedicated handler; the remaining request path stays behind the core handler. Closing-state rejection and browser/local audit context still wrap dispatch, while the existing approval, admission, ownership, exact-tree and cancellation checks remain in their original domain code. `test/request-routing.test.mjs` verifies complete preparation-domain routing, duplicate refusal and fail-closed fallback validation.
 
-The release branch is the single cumulative review surface for the formerly linear #8–#52 stack. PR #53 targets `main`, documents that it supersedes the stack and retains all Git history. No squash, rebase, merge or default-branch update occurred. Older stacked PRs may be closed as superseded only after this handover lands; their commits and discussion remain available.
+The release branch is the single cumulative review surface for the formerly linear #8–#52 stack. PR #53 targets `main`, documents that it supersedes the stack and retains all Git history. After this handover first landed, #8–#52 were closed with links to #53; their commits and discussion remain available. No squash, rebase, merge or default-branch update occurred.
 
 ## Validation evidence
 
