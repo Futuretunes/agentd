@@ -113,6 +113,9 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
     const expectedOwner = createHash("sha256")
       .update(cookie.split(";")[0].slice(15))
       .digest("hex");
+    const diagnostics = await req("/api/diagnostics", null, cookie);
+    assert.equal(diagnostics.status, 200);
+    assert.equal(calls.at(-1).op, "admin-diagnostics");
     for (const [action, op] of [
       ["start", "review-start"],
       ["status", "review-job"],

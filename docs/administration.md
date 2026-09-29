@@ -1,6 +1,9 @@
 # Administration section — requirements (backlog)
 
-Status: access-key rotation is implemented in candidate 0.61.0; the remaining sections are not implemented. This expands roadmap item 6 ("GUI administration") and the core requirement of [terminal-free operation](roadmap.md#core-product-requirement-terminal-free-operation).
+Status: access-key rotation is implemented in candidate 0.61.0 and read-only
+diagnostics in candidate 0.62.0; the remaining sections are not implemented. This
+expands roadmap item 6 ("GUI administration") and the core requirement of
+[terminal-free operation](roadmap.md#core-product-requirement-terminal-free-operation).
 
 ## What the operator asked for
 
@@ -87,5 +90,24 @@ atomically replaces only `accessHash`. It has no network and can write only
 approving browser session, closes all other sessions and audits no key material.
 
 The helper is installed by an explicit one-time privileged migration after the
-managed application update. Diagnostics, reviewed updates/rollback, CLI updates,
-backups and configuration editing remain future slices.
+managed application update. Reviewed updates/rollback, CLI updates, backups and
+configuration editing remain future slices.
+
+## Candidate 0.62.0: safe diagnostics
+
+Settings now shows a read-only server report with the installed release, managed
+configuration state, fixed AgentD unit states and restart counts, service uptime,
+storage capacity and up to ten recent failed or interrupted runs. Failed-run
+details pass through the existing public error sanitizer.
+
+The root helper runs one fixed Python probe with no browser-supplied arguments.
+It reads only the managed installer inventory, fixed systemd unit properties and
+filesystem capacity. It cannot access task state, project worktrees or native
+account profiles, and it returns no journals, prompts, raw logs, environment,
+configuration contents, credentials or private paths. The unprivileged runner
+adds only task IDs, state, update time and sanitized error summaries. The GUI can
+download the same bounded JSON report it displays.
+
+Read-only diagnostics do not restart or change anything and therefore require a
+signed-in workspace session without a second key prompt. Service restart and all
+other administrative mutations retain the preview, step-up and audit requirement.

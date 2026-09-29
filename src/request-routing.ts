@@ -58,7 +58,12 @@ export const managedOperationOperations = [
   "account-refresh",
 ] as const;
 
-export const serviceReadOperations = ["capabilities", "operations", "audit"] as const;
+export const serviceReadOperations = [
+  "capabilities",
+  "operations",
+  "audit",
+  "admin-diagnostics",
+] as const;
 
 export const workspaceReadOperations = [
   "projects",

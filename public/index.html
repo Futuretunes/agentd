@@ -185,6 +185,14 @@
         </p>
         <button id="access-key-settings">Change access key</button>
       </section>
+      <section class="settings-section" aria-labelledby="settings-diagnostics-heading">
+        <h3 id="settings-diagnostics-heading">Diagnostics</h3>
+        <p class="muted">
+          Check this server's health and download a safe report for support. Prompts,
+          logs, credentials and private paths are excluded.
+        </p>
+        <button id="diagnostics-settings">View diagnostics</button>
+      </section>
       <section class="settings-section">
         <button id="logout" class="danger">Sign out of workspace</button>
       </section>
@@ -195,6 +203,13 @@
         <button id="access-key-close" aria-label="Close access key settings">×</button>
       </div>
       <div id="access-key-content"></div>
+    </dialog>
+    <dialog id="diagnostics-dialog" aria-labelledby="diagnostics-heading">
+      <div class="review-head">
+        <h2 id="diagnostics-heading">Server diagnostics</h2>
+        <button id="diagnostics-close" aria-label="Close diagnostics">×</button>
+      </div>
+      <div id="diagnostics-content" aria-live="polite"></div>
     </dialog>
     <dialog
       id="project-settings-dialog"

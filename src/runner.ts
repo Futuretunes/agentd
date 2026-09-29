@@ -82,6 +82,7 @@ import { join, isAbsolute } from "node:path";
 import { createServer } from "node:net";
 
 type Config = {
+  adminDiagnostics?: () => Promise<any>;
   rotateAccess?: (currentKey: string, newHash: string) => Promise<{ rotated: true }>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
@@ -1546,6 +1547,28 @@ export function runner(c: Config) {
     throw Error("Unknown managed operation");
   }
   function handleServiceReadRequest(input: any) {
+    if (input.op === "admin-diagnostics") {
+      if (!c.adminDiagnostics) throw Error("Diagnostics are not installed.");
+      return c.adminDiagnostics().then((system) => ({
+        ...system,
+        runner: {
+          uptimeSeconds: Math.max(0, Math.floor(process.uptime())),
+          recentFailures: db
+            .prepare(
+              `SELECT id,status,updated,error FROM tasks
+               WHERE status IN ('failed','timed_out','interrupted')
+               ORDER BY updated DESC,rowid DESC LIMIT 10`,
+            )
+            .all()
+            .map((row: any) => ({
+              id: row.id,
+              status: row.status,
+              updated: row.updated,
+              error: operationError(row.error),
+            })),
+        },
+      }));
+    }
     if (input.op === "capabilities") {
       const adapters = capabilities();
       return {

@@ -15,6 +15,7 @@ import {
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { execFileSync } from "node:child_process";
 
 export function rotateAccessFile(
   path: string,
@@ -75,7 +76,43 @@ export function rotateAccessFile(
   return { rotated: true as const };
 }
 
-export function adminHelper(config: { socket: string; mobileConfig: string }) {
+export function diagnostics(command = "/opt/agentd/scripts/admin_diagnostics.py") {
+  const output = execFileSync("/usr/bin/python3", ["-B", command], {
+    cwd: "/opt/agentd",
+    encoding: "utf8",
+    timeout: 10000,
+    maxBuffer: 32768,
+    env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const value = JSON.parse(output);
+  if (value?.format !== 1 || value.error) throw Error("Diagnostics unavailable");
+  return value;
+}
+
+export function handleAdminRequest(
+  input: any,
+  config: {
+    mobileConfig: string;
+    diagnostics?: () => unknown;
+  },
+) {
+  if (input?.op === "rotate-access-key") {
+    if (Object.keys(input).sort().join(" ") !== "currentKey newHash op")
+      throw Error("Unsupported admin operation");
+    rotateAccessFile(config.mobileConfig, input.currentKey, input.newHash);
+    return { rotated: true };
+  }
+  if (input?.op === "diagnostics" && Object.keys(input).join(" ") === "op")
+    return (config.diagnostics ?? diagnostics)();
+  throw Error("Unsupported admin operation");
+}
+
+export function adminHelper(config: {
+  socket: string;
+  mobileConfig: string;
+  diagnostics?: () => unknown;
+}) {
   if (process.getuid?.() !== 0) throw Error("Admin helper must run as root");
   const directory = lstatSync(dirname(config.socket));
   if (
@@ -99,13 +136,8 @@ export function adminHelper(config: { socket: string; mobileConfig: string }) {
           end = bytes.indexOf(10);
         if (end !== bytes.length - 1) throw Error("One request required");
         const input = JSON.parse(bytes.subarray(0, end).toString("utf8"));
-        if (
-          input.op !== "rotate-access-key" ||
-          Object.keys(input).sort().join(" ") !== "currentKey newHash op"
-        )
-          throw Error("Unsupported admin operation");
-        rotateAccessFile(config.mobileConfig, input.currentKey, input.newHash);
-        connection.end('{"ok":true}\n');
+        const result = handleAdminRequest(input, config);
+        connection.end(JSON.stringify({ ok: true, result }) + "\n");
       } catch {
         connection.end('{"ok":false}\n');
       }

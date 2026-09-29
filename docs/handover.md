@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-codex-access-key-rotation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-codex-gui-diagnostics.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.62.0 — safe GUI diagnostics
+
+[Latest handover](handovers/2026-09-29-codex-gui-diagnostics.md): Settings now shows and downloads a bounded report of release, managed drift/recovery, fixed service status, storage, uptime and recent sanitized failures. A fixed no-argument root probe cannot read task state, worktrees or account profiles and returns no raw journals, logs, prompts, paths, config contents or credentials. Managed updates restart the helper after an application swap. Portable validation passed 211 tests with 9 expected Linux-only skips; exact Ubuntu validation and release staging remain.
 
 ## Candidate 0.61.0 — GUI access-key rotation
 

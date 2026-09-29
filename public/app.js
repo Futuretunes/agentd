@@ -3672,6 +3672,87 @@ $("access-key-settings").onclick = () => {
   renderAccessKeyForm();
   accessKeyDialog.showModal();
 };
+const diagnosticsDialog = $("diagnostics-dialog"),
+  diagnosticsContent = $("diagnostics-content");
+$("diagnostics-close").onclick = () => diagnosticsDialog.close();
+$("diagnostics-settings").onclick = async () => {
+  $("preferences-dialog").close();
+  diagnosticsContent.replaceChildren(node("p", "Checking server health…", "muted"));
+  diagnosticsDialog.showModal();
+  try {
+    const report = await api("/api/diagnostics"),
+      bytes = (value) =>
+        value >= 1024 ** 3
+          ? (value / 1024 ** 3).toFixed(1) + " GiB"
+          : (value / 1024 ** 2).toFixed(1) + " MiB";
+    const configuration = report.configuration.state,
+      summary = node("p", undefined, configuration === "ok" ? "good" : "attention");
+    summary.textContent =
+      configuration === "ok"
+        ? "Configuration matches the installed release."
+        : configuration === "recovery_required"
+          ? "An interrupted update needs administrator recovery."
+          : "Configuration changed outside the managed installer and needs review.";
+    const services = node("section", undefined, "operation-section");
+    services.append(node("h3", "Services"));
+    for (const [name, service] of Object.entries(report.services))
+      services.append(
+        node(
+          "p",
+          `${name[0].toUpperCase() + name.slice(1)} · ${service.state} (${service.detail}) · ${service.restarts ?? "unknown"} restarts`,
+          service.state === "active" ? "good" : "attention",
+        ),
+      );
+    const failures = node("section", undefined, "operation-section");
+    failures.append(node("h3", "Recent failed runs"));
+    if (!report.runner.recentFailures.length)
+      failures.append(
+        node("p", "No recent failed, timed-out or interrupted runs.", "muted"),
+      );
+    for (const failure of report.runner.recentFailures)
+      failures.append(
+        node(
+          "p",
+          `${failure.id.slice(0, 8)} · ${failure.status} · ${failure.error ?? "No safe error summary available."}`,
+        ),
+      );
+    const download = button("Download safe report", () => {
+      const blob = new Blob([JSON.stringify(report, null, 2) + "\n"], {
+          type: "application/json",
+        }),
+        url = URL.createObjectURL(blob),
+        link = document.createElement("a");
+      link.href = url;
+      link.download = `agentd-diagnostics-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+    diagnosticsContent.replaceChildren(
+      summary,
+      node(
+        "p",
+        `AgentD ${report.release.version} · revision ${report.release.revision ?? "unknown"} · ${Math.floor(report.runner.uptimeSeconds / 60)} minutes uptime`,
+      ),
+      node(
+        "p",
+        `${bytes(report.storage.freeBytes)} free of ${bytes(report.storage.totalBytes)}`,
+        "muted",
+      ),
+      services,
+      failures,
+      download,
+      node(
+        "p",
+        `Generated ${new Date(report.generatedAt).toLocaleString()}. This report excludes prompts, raw logs, credentials, configuration contents and private paths.`,
+        "muted",
+      ),
+    );
+  } catch (error) {
+    diagnosticsContent.replaceChildren(
+      node("p", error.message || "Diagnostics are unavailable.", "error"),
+    );
+  }
+};
 function renderAccessKeyForm() {
   const form = node("form"),
     currentLabel = node("label", "Current access key"),

@@ -471,6 +471,10 @@ export function mobile(c: Config) {
           send(200, await call({ op: "operations" }));
           return;
         }
+        if (path === "/api/diagnostics" && req.method === "GET") {
+          send(200, await call({ op: "admin-diagnostics" }));
+          return;
+        }
         const parameters = new URL(req.url ?? "/", c.origin).searchParams;
         if (path === "/api/history" && req.method === "GET") {
           send(

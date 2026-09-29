@@ -273,7 +273,7 @@ def copy_state(source, destination):
 
 def apply(c, manifest, stage, previous, current, backup):
     app,state=Path(c['app']),Path(c['state'])
-    runner,mobile=c['runnerUnit'],c['mobileUnit']
+    runner,mobile,admin=c['runnerUnit'],c['mobileUnit'],c.get('adminUnit')
     swapped=False
     control_idle(c)
     try:
@@ -282,6 +282,7 @@ def apply(c, manifest, stage, previous, current, backup):
         idle(state,manifest['taskSchemaVersion'])
         # Stop the daemon to close all writers, then recheck durable jobs.
         run(['systemctl','stop',runner])
+        if admin: run(['systemctl','stop',admin])
         idle(state,manifest['taskSchemaVersion'])
         if inventory(c) != current: raise ValueError('Configuration changed while preparing update')
         copy_state(state,backup/'state')
@@ -289,19 +290,21 @@ def apply(c, manifest, stage, previous, current, backup):
         try: stage.rename(app)
         except BaseException: (backup/'app').rename(app); raise
         swapped=True
+        if admin: run(['systemctl','start',admin])
         run(['systemctl','start',runner]); ready(c,manifest)
         run(['systemctl','start',mobile]); run(['systemctl','is-active','--quiet',runner,mobile])
+        if admin: run(['systemctl','is-active','--quiet',admin])
         record={'release':manifest,'configuration':current}
         if inventory(c) != current: raise ValueError('Configuration changed during service restart')
         target=Path(c['deployment'])/'installed.json'
         temporary=target.with_suffix('.tmp'); temporary.write_text(json.dumps(record,sort_keys=True,indent=2)+'\n'); temporary.chmod(0o600); temporary.replace(target)
     except BaseException:
         if swapped:
-            run(['systemctl','stop',mobile,runner])
+            run(['systemctl','stop',mobile,runner,*([admin] if admin else [])])
             app.rename(backup/'failed-app'); (backup/'app').rename(app)
             state.rename(backup/'failed-state'); copy_state(backup/'state',state)
         # Old app and matching state, with native profiles/journals outside state untouched.
-        run(['systemctl','start',runner,mobile])
+        run(['systemctl','start',*([admin] if admin else []),runner,mobile])
         raise
 
 if __name__ == '__main__':
