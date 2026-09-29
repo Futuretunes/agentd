@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-durable-large-review-acknowledgements.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-paginated-large-review.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.58.0 — bounded paginated large-file review
+
+[Latest handover](handovers/2026-09-29-paginated-large-review.md): one individually oversized safe text diff is split into stable UTF-8 pages capped at 64 KiB, with exact whole-file and page fingerprints plus durable audited per-page coverage. Loading a page never marks it reviewed. Complete coverage remains evidence only; commit/revision/restart stay blocked for truncated reviews. Exact source `f132af0` passed 200/200 required Linux tests with zero skips, typecheck and formatting. The cumulative archive and launcher are staged but unexecuted. Production remains 0.55.0.
 
 ## Candidate 0.57.0 — durable exact-tree large-review acknowledgements
 
