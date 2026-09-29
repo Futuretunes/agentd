@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-support-routing.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-routing-baseline.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.55.0 — consolidated request-routing baseline
+
+[Latest handover](handovers/2026-09-29-routing-baseline.md): the complete 0.49–0.55 stack is consolidated into main-targeted draft PR #60. Every supported request operation has one startup-validated owner; unknown input remains fail-closed. Exact implementation `1a6d7dc` passed 194/194 required Linux tests with zero skips, typecheck and formatting. Consolidated CI and independent review remain pending. The exact archive is staged but unexecuted. Production remains 0.43.0.
 
 ## Candidate 0.55.0 — complete explicit request routing
 

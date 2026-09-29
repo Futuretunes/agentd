@@ -252,3 +252,7 @@ Task creation, compatibility revision/restart, retry, detail/output, review/vali
 ## R2 complete explicit request routing — candidate 0.55.0
 
 Attachment transfer, settings/model refresh and storage review/cleanup now dispatch through one support route. Every supported request operation has one startup-validated owner, while malformed and unknown input retains the existing fail-closed fallback. Storage approval, settings capability ceilings and mutation admission are unchanged. Exact source `1a6d7dc` passed 194/194 required Ubuntu tests with zero skips, typecheck and formatting. PR #59 is ready for review against #58's branch; Node 24/26 and Linux CI passed; cumulative archive staged, not installed. Next: review/consolidate the 0.49–0.55 routing stack before larger product backlog work.
+
+## R1/R2 consolidated routing baseline — candidate 0.55.0
+
+The validated 0.49–0.55 linear stack is consolidated in main-targeted draft PR #60 as the intended merge candidate. Bounded #53–#59 retain review history and will be closed as superseded after consolidated CI. Exact implementation `1a6d7dc` and archive `bcfd941d` passed 194/194 required Ubuntu tests with zero skips, typecheck and formatting. Consolidated CI, independent review and an explicit merge/tag decision remain; production stays 0.43.0.
