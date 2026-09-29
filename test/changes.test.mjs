@@ -706,3 +706,156 @@ test("background commit preparation preserves approval, exact content and owner 
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+test("background revision preparation preserves exact edits and recovers after restart", async () => {
+  const f = setup();
+  let release,
+    entered,
+    waiting = true;
+  const started = () =>
+    new Promise((resolve) => {
+      entered = resolve;
+    });
+  let prepared = started();
+  const config = {
+    repo: f.repo,
+    stateDir: join(f.root, "state"),
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    editing: true,
+    editAdapters: ["codex"],
+    command: () => [
+      process.execPath,
+      ["-e", "require('fs').writeFileSync('README.md','edited\\n')"],
+    ],
+    isolate: (_tree, _state, command, args) => ({ command, args, cleanup() {} }),
+    reviewPrepare: async (input, signal) => {
+      entered();
+      if (waiting) await new Promise((resolve) => (release = resolve));
+      if (signal.aborted) throw Error("Revision preparation stopped.");
+      return {
+        ...snapshot(input.worktree, input.revision, input.stateDir),
+        conflicts: [],
+      };
+    },
+  };
+  let app = runner(config);
+  const waitJob = async (owner, id) => {
+    for (let i = 0; i < 200; i++) {
+      const job = app.request({ op: "revision-job", owner, job: id });
+      if (job.status !== "preparing") return job;
+      await sleep(10);
+    }
+    throw Error("Revision job timeout");
+  };
+  await once(app.server, "listening");
+  try {
+    const task = app.request({
+      op: "create",
+      adapter: "codex",
+      prompt: "edit",
+      mode: "edit",
+    });
+    app.request({ op: "approve", id: task.id });
+    const done = await finished(app, task.id);
+    let view = app.request({ op: "review", id: task.id });
+
+    const cancelled = app.request({
+      op: "revision-start",
+      owner: "a",
+      id: task.id,
+      tree: view.tree,
+      prompt: "Refine it",
+    });
+    await prepared;
+    assert.equal(
+      app.request({
+        op: "revision-start",
+        owner: "a",
+        id: task.id,
+        tree: view.tree,
+        prompt: "Refine it",
+      }).id,
+      cancelled.id,
+    );
+    assert.throws(
+      () => app.request({ op: "revision-job", owner: "b", job: cancelled.id }),
+      /expired/,
+    );
+    app.request({ op: "revision-cancel", owner: "a", job: cancelled.id });
+    release();
+    assert.equal((await waitJob("a", cancelled.id)).status, "cancelled");
+    assert.equal(app.request({ op: "show", id: task.id }).task.review, "pending");
+
+    prepared = started();
+    const stale = app.request({
+      op: "revision-start",
+      owner: "a",
+      id: task.id,
+      tree: view.tree,
+      prompt: "Refine it",
+    });
+    await prepared;
+    for (const op of ["discard", "validate", "commit", "project-register"])
+      assert.throws(() => app.request({ op, id: task.id }), /preview/);
+    writeFileSync(join(done.worktree, "README.md"), "changed during revision\n");
+    release();
+    const failed = await waitJob("a", stale.id);
+    assert.equal(failed.status, "failed");
+    assert.match(failed.error, /changed/i);
+    assert.equal(app.request({ op: "show", id: task.id }).task.review, "pending");
+
+    view = app.request({ op: "review", id: task.id });
+    waiting = false;
+    const accepted = app.request({
+      op: "revision-start",
+      owner: "a",
+      id: task.id,
+      tree: view.tree,
+      prompt: "Refine it",
+    });
+    const revised = await waitJob("a", accepted.id);
+    assert.equal(revised.status, "succeeded");
+    assert.equal(revised.result.seed_tree, view.tree);
+    assert.equal(revised.result.status, "waiting_for_approval");
+    assert.equal(app.request({ op: "show", id: task.id }).task.review, "superseded");
+    assert.equal(
+      app.request({
+        op: "revision-start",
+        owner: "a",
+        id: task.id,
+        tree: view.tree,
+        prompt: "Refine it",
+      }).result.id,
+      revised.result.id,
+    );
+    assert.throws(
+      () =>
+        app.request({
+          op: "revision-start",
+          owner: "a",
+          id: task.id,
+          tree: view.tree,
+          prompt: "Different request",
+        }),
+      /different revision/,
+    );
+    await app.close();
+    app = runner(config);
+    await once(app.server, "listening");
+    assert.equal(
+      app.request({
+        op: "revision-start",
+        owner: "a",
+        id: task.id,
+        tree: view.tree,
+        prompt: "Refine it",
+      }).result.id,
+      revised.result.id,
+    );
+  } finally {
+    release?.();
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});

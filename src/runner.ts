@@ -242,6 +242,13 @@ export function runner(c: Config) {
     },
     "commit-preparation",
   );
+  const revisionManager = reviewJobs(
+    c.reviewPrepare,
+    () => {
+      if (!closing) setImmediate(pump);
+    },
+    "revision-preparation",
+  );
   function blocked(operation: Operation) {
     const read = (state: BusyState): boolean => {
       switch (state) {
@@ -633,6 +640,7 @@ export function runner(c: Config) {
       previewManager.busy() ||
       validationManager.busy() ||
       commitManager.busy() ||
+      revisionManager.busy() ||
       blocked("dispatch")
     )
       return;
@@ -703,11 +711,17 @@ export function runner(c: Config) {
       row,
     );
   }
-  function available(row: any, ownValidation = false, ownCommit = false) {
+  function available(
+    row: any,
+    ownValidation = false,
+    ownCommit = false,
+    ownRevision = false,
+  ) {
     if (
       previewManager.busy() ||
       (!ownValidation && validationManager.busy()) ||
       (!ownCommit && commitManager.busy()) ||
+      (!ownRevision && revisionManager.busy()) ||
       blocked("review")
     )
       throw Error("Wait for the active worker before reviewing changes");
@@ -822,6 +836,93 @@ export function runner(c: Config) {
     ).run(sha, branch, row.id);
     return get(input.id);
   }
+  function revise(row: any, input: any, prepared?: any) {
+    const existing = db.prepare("SELECT * FROM tasks WHERE revision_of=?").get(row.id);
+    if (existing) {
+      if (existing.prompt !== input.prompt || existing.seed_tree !== input.tree)
+        throw Error("A different revision request already exists. Open the latest turn.");
+      return existing;
+    }
+    available(row, false, false, !!prepared);
+    if (row.review !== "pending") throw Error("Only unresolved changes can be revised");
+    if (dependencyManager.busy() || projectBusy(String(row.project)))
+      throw Error("Wait for dependency or repository work.");
+    if (
+      conversation(String(row.conversation)).archived ||
+      project(String(row.project)).archived
+    )
+      throw Error("Workspace is archived");
+    if (
+      db
+        .prepare(
+          "SELECT id FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 1",
+        )
+        .get(row.conversation)?.id !== row.id
+    )
+      throw Error("Only the latest changes can be revised");
+    requireAdapter(String(row.adapter), "edit");
+    if (
+      typeof input.prompt !== "string" ||
+      !input.prompt.trim() ||
+      input.prompt.length > 16000
+    )
+      throw Error("Describe the revision in 1 to 16000 characters");
+    const value = prepared ?? review(row);
+    if (value.tree !== input.tree) throw Error("Changes have changed. Review again.");
+    if (value.truncated || value.blocked.length)
+      throw Error(
+        "Resolve oversized changes or sensitive files or credential content before requesting revisions",
+      );
+    const id = randomUUID(),
+      at = new Date().toISOString();
+    // Retain the snapshot against Git garbage collection without creating a commit.
+    git(
+      ["update-ref", "refs/agentd/revisions/" + id, value.tree],
+      String(project(String(row.project)).repo),
+    );
+    db.exec("BEGIN");
+    try {
+      db.prepare(
+        "INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,revision_of,seed_tree) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ).run(
+        id,
+        row.adapter,
+        input.prompt,
+        row.revision,
+        "waiting_for_approval",
+        at,
+        at,
+        row.project,
+        row.conversation,
+        row.attachments,
+        row.id,
+        "edit",
+        row.id,
+        value.tree,
+      );
+      db.prepare(
+        "UPDATE tasks SET merge_parent=?,conflict_paths=?,run_overrides=? WHERE id=?",
+      ).run(
+        row.merge_parent,
+        row.conflict_paths,
+        JSON.stringify(settings(input.overrides ?? {}, String(row.adapter), true)),
+        id,
+      );
+      bindExecution(id);
+      db.prepare("UPDATE tasks SET review='superseded' WHERE id=?").run(row.id);
+      db.prepare("INSERT INTO events(task,status,at) VALUES(?,?,?)").run(
+        id,
+        "waiting_for_approval",
+        at,
+      );
+      audit("request-revision", id, { revisionOf: row.id, tree: value.tree });
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+    return get(id);
+  }
   function request(input: any) {
     return auditContext.run({ kind: "local" }, () => handleRequest(input));
   }
@@ -859,6 +960,10 @@ export function runner(c: Config) {
       return commitManager.view(input.owner ?? "local", input.job);
     if (input.op === "commit-cancel")
       return commitManager.cancel(input.owner ?? "local", input.job);
+    if (input.op === "revision-job")
+      return revisionManager.view(input.owner ?? "local", input.job);
+    if (input.op === "revision-cancel")
+      return revisionManager.cancel(input.owner ?? "local", input.job);
     if (input.op === "review-start") {
       const row = get(input.id);
       if (!row) throw Error("Task not found");
@@ -989,8 +1094,78 @@ export function runner(c: Config) {
         key,
       );
     }
+    if (input.op === "revision-start") {
+      const row = get(input.id);
+      if (!row) throw Error("Task not found");
+      const existing = db.prepare("SELECT * FROM tasks WHERE revision_of=?").get(row.id);
+      if (existing) {
+        if (existing.prompt !== input.prompt || existing.seed_tree !== input.tree)
+          throw Error(
+            "A different revision request already exists. Open the latest turn.",
+          );
+        return {
+          id: createHash("sha256")
+            .update("revision\0" + row.id + "\0" + existing.id)
+            .digest("hex"),
+          task: row.id,
+          status: "succeeded",
+          result: existing,
+          error: null,
+        };
+      }
+      if (!revisionManager.busy()) {
+        available(row);
+        if (row.review !== "pending")
+          throw Error("Only unresolved changes can be revised");
+        if (dependencyManager.busy() || projectBusy(String(row.project)))
+          throw Error("Wait for dependency or repository work.");
+        if (
+          conversation(String(row.conversation)).archived ||
+          project(String(row.project)).archived
+        )
+          throw Error("Workspace is archived");
+        if (
+          db
+            .prepare(
+              "SELECT id FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 1",
+            )
+            .get(row.conversation)?.id !== row.id
+        )
+          throw Error("Only the latest changes can be revised");
+        requireAdapter(String(row.adapter), "edit");
+        if (
+          typeof input.prompt !== "string" ||
+          !input.prompt.trim() ||
+          input.prompt.length > 16000
+        )
+          throw Error("Describe the revision in 1 to 16000 characters");
+      }
+      const key = createHash("sha256")
+        .update(input.id + "\0" + input.tree + "\0" + input.prompt)
+        .digest("hex");
+      return revisionManager.start(
+        input.owner ?? "local",
+        input.id,
+        {
+          worktree: String(row.worktree),
+          revision: String(row.revision),
+          stateDir: c.stateDir,
+          mergeParent: row.merge_parent as string | null,
+          conflictPaths: JSON.parse(String(row.conflict_paths ?? "[]")),
+        },
+        (value) => {
+          const current = get(input.id);
+          if (!current) throw Error("Task not found");
+          return revise(current, input, value);
+        },
+        key,
+      );
+    }
     if (
-      (previewManager.busy() || validationManager.busy() || commitManager.busy()) &&
+      (previewManager.busy() ||
+        validationManager.busy() ||
+        commitManager.busy() ||
+        revisionManager.busy()) &&
       (gatewayMutations.has(input.op) ||
         ["project-register", "project-checks"].includes(input.op))
     )
@@ -1610,93 +1785,7 @@ export function runner(c: Config) {
     const row = get(input.id);
     if (!row) throw new Error("Task not found");
     if (input.op === "revise") {
-      const existing = db.prepare("SELECT * FROM tasks WHERE revision_of=?").get(row.id);
-      if (existing) {
-        if (existing.prompt !== input.prompt || existing.seed_tree !== input.tree)
-          throw Error(
-            "A different revision request already exists. Open the latest turn.",
-          );
-        return existing;
-      }
-      available(row);
-      if (row.review !== "pending") throw Error("Only unresolved changes can be revised");
-      if (dependencyManager.busy() || projectBusy(String(row.project)))
-        throw Error("Wait for dependency or repository work.");
-      if (
-        conversation(String(row.conversation)).archived ||
-        project(String(row.project)).archived
-      )
-        throw Error("Workspace is archived");
-      if (
-        db
-          .prepare(
-            "SELECT id FROM tasks WHERE conversation=? ORDER BY created DESC,rowid DESC LIMIT 1",
-          )
-          .get(row.conversation)?.id !== row.id
-      )
-        throw Error("Only the latest changes can be revised");
-      requireAdapter(String(row.adapter), "edit");
-      if (
-        typeof input.prompt !== "string" ||
-        !input.prompt.trim() ||
-        input.prompt.length > 16000
-      )
-        throw Error("Describe the revision in 1 to 16000 characters");
-      const value = review(row);
-      if (value.tree !== input.tree) throw Error("Changes have changed. Review again.");
-      if (value.truncated || value.blocked.length)
-        throw Error(
-          "Resolve oversized changes or sensitive files or credential content before requesting revisions",
-        );
-      const id = randomUUID(),
-        at = new Date().toISOString();
-      // Retain the snapshot against Git garbage collection without creating a commit.
-      git(
-        ["update-ref", "refs/agentd/revisions/" + id, value.tree],
-        String(project(String(row.project)).repo),
-      );
-      db.exec("BEGIN");
-      try {
-        db.prepare(
-          "INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,revision_of,seed_tree) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        ).run(
-          id,
-          row.adapter,
-          input.prompt,
-          row.revision,
-          "waiting_for_approval",
-          at,
-          at,
-          row.project,
-          row.conversation,
-          row.attachments,
-          row.id,
-          "edit",
-          row.id,
-          value.tree,
-        );
-        db.prepare(
-          "UPDATE tasks SET merge_parent=?,conflict_paths=?,run_overrides=? WHERE id=?",
-        ).run(
-          row.merge_parent,
-          row.conflict_paths,
-          JSON.stringify(settings(input.overrides ?? {}, String(row.adapter), true)),
-          id,
-        );
-        bindExecution(id);
-        db.prepare("UPDATE tasks SET review='superseded' WHERE id=?").run(row.id);
-        db.prepare("INSERT INTO events(task,status,at) VALUES(?,?,?)").run(
-          id,
-          "waiting_for_approval",
-          at,
-        );
-        audit("request-revision", id, { revisionOf: row.id, tree: value.tree });
-        db.exec("COMMIT");
-      } catch (error) {
-        db.exec("ROLLBACK");
-        throw error;
-      }
-      return get(id);
+      return revise(row, input);
     }
     if (input.op === "restart-settings") {
       const existing = db.prepare("SELECT * FROM tasks WHERE restart_of=?").get(row.id);
@@ -1968,8 +2057,9 @@ export function runner(c: Config) {
       const previewClosed = previewManager.close();
       const validationClosed = validationManager.close();
       const commitClosed = commitManager.close();
+      const revisionClosed = revisionManager.close();
       await publicationManager.close();
-      await Promise.all([previewClosed, validationClosed, commitClosed]);
+      await Promise.all([previewClosed, validationClosed, commitClosed, revisionClosed]);
       await usageWork;
       await dependencyManager.close();
       await repositoryManager.close();

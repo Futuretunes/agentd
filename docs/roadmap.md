@@ -212,3 +212,7 @@ Operator confirmed 0.43.0 installed with 179 passing tests, task schema 2 and ex
 ## R10 background commit preparation — candidate 0.45.0
 
 GUI commit approval now moves exact snapshot/conflict/sensitive-content admission into an owner-bound cancellable background job. Reads remain responsive while dispatch and mutations wait. Final admission still requires passing checks for the exact tree and creates only the local reviewed branch. Exact branch/ref/tree/parent/message verification recovers same-content requests after response loss or service restart; changed requests fail closed. Exact source `05ab5ca` passed 181/181 required Linux tests with zero skips, formatting, typecheck, CI and browser cancellation/success acceptance; draft #49 is open and staged, not installed. Revision/restart/integration mutation preflights and broader runner request-routing decomposition remain open.
+
+## R10 background revision preparation — candidate 0.46.0
+
+Request revisions now moves the exact snapshot and sensitive-content preflight into an owner-bound cancellable background job. Reads remain responsive while dispatch and mutations wait. The retained seed tree still requires separate run, checks and commit approvals. Existing revision identity recovers same-content requests after response loss or restart; different requests fail closed. The local suite passed 182 tests with nine expected Linux-only skips; exact Linux, CI and browser validation remain pending. Restart/integration mutation preflights and broader runner request-routing decomposition remain open.

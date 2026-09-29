@@ -27,6 +27,9 @@ const fields: Record<string, string> = {
   "commit-start": "id tree message owner",
   "commit-job": "job owner",
   "commit-cancel": "job owner",
+  "revision-start": "id tree prompt overrides owner",
+  "revision-job": "job owner",
+  "revision-cancel": "job owner",
   "task-output": "id",
   create:
     "adapter prompt mode attachments parent conversation project overrides requestId",
@@ -81,6 +84,8 @@ export const gatewayMutations = new Set([
   "validation-cancel",
   "commit-start",
   "commit-cancel",
+  "revision-start",
+  "revision-cancel",
   "create",
   "retry",
   "restart-settings",
@@ -149,6 +154,11 @@ export function gatewayRequest(value: unknown): Record<string, any> {
     (typeof input.tree !== "string" || !/^[a-f0-9]{40}$/.test(input.tree))
   )
     throw Error("Refresh the change preview before committing.");
+  if (
+    input.op === "revision-start" &&
+    (typeof input.tree !== "string" || !/^[a-f0-9]{40}$/.test(input.tree))
+  )
+    throw Error("Refresh the change preview before requesting revisions.");
   if (
     ["create", "project-create"].includes(input.op) &&
     (typeof input.requestId !== "string" ||

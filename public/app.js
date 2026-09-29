@@ -1723,7 +1723,10 @@ async function openReview(id) {
     const checksReady = !!setup?.plan?.ready;
     const revise = button("Request revisions", () => {
       revisionTarget = { id, tree: value.tree };
+      revisionJob = null;
       $("revision-prompt").value = "";
+      $("revision-status").textContent = "";
+      $("revision-close").textContent = "Cancel";
       $("revision-dialog").showModal();
     });
     revise.disabled = value.truncated || !!value.blocked.length;
@@ -2630,17 +2633,47 @@ setInterval(() => {
 }, 1500);
 
 let revisionTarget = null;
-$("revision-close").onclick = () => $("revision-dialog").close();
+let revisionJob = null;
+$("revision-close").onclick = async () => {
+  if (revisionJob) {
+    revisionJob = await api("/api/revision-jobs", {
+      action: "cancel",
+      job: revisionJob.id,
+    });
+    $("revision-status").textContent = "Stopping revision preparation…";
+    return;
+  }
+  $("revision-dialog").close();
+};
 $("revision-form").onsubmit = async (e) => {
   e.preventDefault();
   const b = e.submitter;
   b.disabled = true;
   try {
-    const task = await api("/api/action", {
-      op: "revise",
+    revisionJob = await api("/api/revision-jobs", {
+      action: "start",
       ...revisionTarget,
       prompt: $("revision-prompt").value,
     });
+    $("revision-close").textContent = "Stop preparing";
+    $("revision-status").textContent = "Preparing the exact current edits…";
+    while (revisionJob.status === "preparing") {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      revisionJob = await api("/api/revision-jobs", {
+        action: "status",
+        job: revisionJob.id,
+      });
+    }
+    if (revisionJob.status === "cancelled") {
+      $("revision-status").textContent = "Revision preparation stopped.";
+      return;
+    }
+    if (revisionJob.status !== "succeeded")
+      throw Error(
+        revisionJob.error ||
+          "Revision preparation failed. Review the changes and try again.",
+      );
+    const task = revisionJob.result;
     $("revision-dialog").close();
     $("review-dialog").close();
     reviewTask = null;
@@ -2652,6 +2685,9 @@ $("revision-form").onsubmit = async (e) => {
   } catch (e) {
     notice(e.message);
   } finally {
+    revisionJob = null;
+    $("revision-close").textContent = "Cancel";
+    $("revision-status").textContent = "";
     b.disabled = false;
   }
 };
