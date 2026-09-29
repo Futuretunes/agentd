@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-workspace-mutation-routing.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-task-routing.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.54.0 — explicit task-lifecycle routing
+
+[Latest handover](handovers/2026-09-29-task-routing.md): task creation, retry, detail/output, review/validation, commit/discard, approval and cancellation now have one explicit route owner. Existing receipts, approvals, exact-content checks, audit and cancellation semantics are unchanged. Exact source `5c48c82` passed 193/193 required Linux tests with zero skips, typecheck and formatting. Draft PR #58 targets PR #57's branch; final CI is pending. The cumulative archive is staged but unexecuted. Production remains 0.43.0.
 
 ## Candidate 0.53.0 — explicit workspace-mutation routing
 

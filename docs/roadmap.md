@@ -244,3 +244,7 @@ Project lists, archived projects, history/search, project conversations, paginat
 ## R2 workspace-mutation routing — candidate 0.53.0
 
 Project check setup, local creation/registration, project lifecycle and conversation lifecycle operations now dispatch through one explicit mutation route. Existing busy-state admission, archive checks, audit transactions and durable project-creation receipts are preserved. Task creation/actions remain separate. Exact source `100b5fa` passed 192/192 required Ubuntu tests with zero skips, typecheck and formatting. PR #57 is ready for review against #56's branch; Node 24/26 and Linux CI passed; cumulative archive staged, not installed. Next bounded slice: task reads/actions, then attachments/settings/storage separately.
+
+## R2 task-lifecycle routing — candidate 0.54.0
+
+Task creation, compatibility revision/restart, retry, detail/output, review/validation, commit/discard, approval and cancellation now dispatch through one explicit route owner. Existing durable receipts, exact-content approval, adapter policy, audit and cancellation behavior are preserved. Exact source `5c48c82` passed 193/193 required Ubuntu tests with zero skips, typecheck and formatting. Draft #58 targets #57's branch and awaits final CI; cumulative archive staged, not installed. Next bounded slice: attachment/settings/storage routing, then reassess the fail-closed fallback.
