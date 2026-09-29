@@ -5,7 +5,7 @@
 - Status: implemented; not installed
 - Release: 0.65.0
 - Branch and base: `feat/gui-service-restart` on `fix/reload-required`
-- PR: (open after push)
+- PR: #73 (base `fix/reload-required`)
 
 ## Changes and relevant files
 
