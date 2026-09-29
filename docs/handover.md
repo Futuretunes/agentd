@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.53.0 — explicit workspace-mutation routing
 
-[Latest handover](handovers/2026-09-29-workspace-mutation-routing.md): project setup/lifecycle and conversation lifecycle mutations now have a disjoint explicit route. Existing admission, audit and durable creation-receipt behavior is unchanged. Exact source `100b5fa` passed 192/192 required Linux tests with zero skips, typecheck and formatting. Draft PR #57 targets PR #56's branch; final CI is pending. The cumulative archive is staged but unexecuted. Production remains 0.43.0.
+[Latest handover](handovers/2026-09-29-workspace-mutation-routing.md): project setup/lifecycle and conversation lifecycle mutations now have a disjoint explicit route. Existing admission, audit and durable creation-receipt behavior is unchanged. Exact source `100b5fa` passed 192/192 required Linux tests with zero skips, typecheck and formatting. PR #57 is ready for review and targets PR #56's branch; Node 24/26 and Linux CI passed. The cumulative archive is staged but unexecuted. Production remains 0.43.0.
 
 ## Candidate 0.52.0 — explicit workspace-read routing
 
