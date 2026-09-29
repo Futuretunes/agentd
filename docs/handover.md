@@ -2,7 +2,7 @@
 
 Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-claude-review-fixes.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
-## Candidate 0.59.1 — Claude review of 0.22–0.59 with two fixes
+## Installed 0.59.1 — Claude review fixes plus gateway hardening (12:33 UTC; `main` = PR #60, protected)
 
 [Review](reviews/2026-09-29-claude-review-0.22-0.59.md), [handover](handovers/2026-09-29-claude-review-fixes.md), branch `fix/codex-review-2026-09-29`.
 
@@ -11,7 +11,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 - Linux: 201/201, 0 skipped.
 - Gateway separation, limits, sandbox flags and storage cleanup were verified live or in code.
 
-**Do not install 0.59.0 without F1.** Production remains 0.55.0.
+Production now runs 0.59.1, with the gateway hardening applied and recorded. `main` is protected: PRs plus the three required checks. PR #61 now targets `main`; this work is PR #65.
 
 ## Candidate 0.59.0 — exact-coverage large-review commit gate
 

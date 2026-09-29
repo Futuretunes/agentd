@@ -57,3 +57,18 @@ The operator asked Claude to merge PR #60 and protect `main`, install 0.59.1, an
   - rolls back fully on failure.
 
   `update.py` accepts only the `gateway-hardening-v1` profile. `deploy/agentd-mobile.service` carries the same settings for fresh installs. Tests: `test/gateway_hardening.py`. Linux suite: 202/202, 0 skipped.
+
+## Follow-up — deployed 2026-09-29 12:33 UTC
+
+- The operator had installed 0.59.0 from Codex's staged launcher at 12:07 UTC, during the review. 0.59.1 replaced it, which also removed F1 from production.
+- Release commit `d23148c84652b1ed0eeed5f190151891915b27a9`, archive SHA-256 `fc5544a9137fe09e03e6f3ab6673baa8e7458c7f0697a1a2680fffb8eb73b639` (deterministic). GitHub CI was green at `d23148c`.
+- `update.py plan`: configuration unchanged. `install` re-ran 202 tests under the service boundary; backup in a root-only `agentd-backup-*` directory. `apply_resources.py`: already verified.
+- `apply_gateway_hardening.py`: settings, TLS page and sign-in path verified; baseline recorded. Only the gateway restarted. The systemd exposure score for `agentd-mobile` went from 4.3 to 1.4.
+- Independent checks after deployment:
+  - health reports 0.59.1 / task schema 2;
+  - the gateway runs as `agentd-web` with Seccomp mode 2 and NoNewPrivs;
+  - the page returns 200 and the new frontend is served;
+  - `capabilities` works through the gateway socket and `audit` is refused;
+  - no warnings;
+  - a re-run `plan` reports configuration unchanged;
+  - installed `src`, `public`, `scripts`, `test`, `deploy` and `package.json` are byte-identical to `d23148c`.
