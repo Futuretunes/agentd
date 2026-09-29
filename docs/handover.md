@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.44.0 — background check preparation
 
-[Handover](handovers/2026-09-29-async-check-preparation.md): the GUI now prepares exact check snapshots in an owner-bound, cancellable background job before launching the existing isolated check execution. State-changing operations and task dispatch wait, reads remain responsive, and changed content fails before checks start. Focused validation passed; exact Linux release and CI are pending. Installed baseline remains 0.43.0.
+[Handover](handovers/2026-09-29-async-check-preparation.md): the GUI now prepares exact check snapshots in an owner-bound, cancellable background job before launching the existing isolated check execution. State-changing operations and task dispatch wait, reads remain responsive, and changed content fails before checks start. Exact source `6b11638` passed 180/180 required Linux tests with zero skips, formatting, typecheck, both CI runs and the browser cancellation/success flow. Draft #48 is open and the cumulative installer is staged but unexecuted. Installed baseline remains 0.43.0.
 
 ## Installed baseline — 0.43.0
 

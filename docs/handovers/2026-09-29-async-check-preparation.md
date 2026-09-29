@@ -2,7 +2,7 @@
 
 - Author: Codex.
 - Requested outcome: continue the backlog continuously after installed 0.43.0, with shared Claude handovers.
-- Status: implemented; focused validation passed; exact release validation pending; not installed.
+- Status: implemented and fully validated; cumulative installer staged but not executed.
 - Release: cumulative 0.44.0, task schema 2 unchanged.
 - Branch/base: `feat/async-check-preparation` from `feat/async-review-preview` at `e518038`.
 
@@ -18,11 +18,13 @@ Cheap admission runs before starting the helper and all authoritative admission 
 
 ## Validation evidence
 
-Formatting and typecheck passed. Fourteen focused review/check/gateway fixtures passed. New coverage proves cancellation before checks, owner isolation, active retry reuse, responsive status reads, mutation exclusion, changed-content rejection, successful exact-tree checks, cookie/CSRF binding and invalid-tree refusal. Existing full edit/check/commit, revision, raw gateway, separate socket, attachment and helper shutdown tests also passed. Exact Linux archive, required zero-skip isolation suite, CI and browser fixture are pending. No live model, consent, cleanup, publication or deployment calls were made.
+Formatting and typecheck passed. Fourteen focused review/check/gateway fixtures passed. New coverage proves cancellation before checks, owner isolation, active retry reuse, responsive status reads, mutation exclusion, changed-content rejection, successful exact-tree checks, cookie/CSRF binding and invalid-tree refusal. Existing full edit/check/commit, revision, raw gateway, separate socket, attachment and helper shutdown tests also passed.
+
+The exact source `6b116380f0e55864b21bb8066c4767cfd2f41d90` was archived with SHA-256 `dbcb77c7a3b7911b936d7d65fc8952357a423c49ee3f9f12e726433204fe9268`. That archive passed all 180 required Linux tests with zero skips, formatting and typecheck. GitHub push run `36529217591` and pull-request run `36529285282` both passed. A local no-model browser fixture visibly verified preparation progress, cancellation back to an unchanged review, a fresh retry and a passed check with commit enabled. Draft PR #48 records the review boundary. No live model, consent, cleanup, publication or deployment calls were made.
 
 ## Deployment and rollback
 
-The operator reported 0.43.0 installed successfully: 179 tests passed, task schema 2, starts 38, resource limits already verified, and a managed application backup created. Candidate 0.44.0 is not installed and has not replaced the current staged installer yet. After exact validation, stage one cumulative installer without executing it. Rollback must keep application/task state paired; native account profiles remain separately preserved.
+The operator reported 0.43.0 installed successfully: 179 tests passed, task schema 2, starts 38, resource limits already verified, and a managed application backup created. Candidate 0.44.0 is not installed. One cumulative installer targets the exact validated archive and remains unexecuted. Rollback must keep application/task state paired; native account profiles remain separately preserved.
 
 ## Constraints and known issues
 
@@ -30,4 +32,4 @@ This removes the expensive `git add -A` snapshot/conflict preflight from the GUI
 
 ## Next steps
 
-Finish exact Linux/CI/browser validation, open the draft PR, and stage one cumulative installer. Then move commit/revision/restart/integration mutation preflights behind durable owner-bound jobs, beginning with commit preparation because it still performs a full synchronous review snapshot before changing refs. Preserve checks bound to the exact tree, commit/publication approvals, cancellation, mutation exclusion and safe response-loss recovery. Continue runner request-routing decomposition alongside these bounded slices. Claude review/consolidation and a deliberate main/tag decision remain pending; no merge is authorized.
+Move commit/revision/restart/integration mutation preflights behind durable owner-bound jobs, beginning with commit preparation because it still performs a full synchronous review snapshot before changing refs. Preserve checks bound to the exact tree, commit/publication approvals, cancellation, mutation exclusion and safe response-loss recovery. Continue runner request-routing decomposition alongside these bounded slices. Claude review/consolidation and a deliberate main/tag decision remain pending; no merge is authorized.
