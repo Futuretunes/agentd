@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-async-revision-preparation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-async-restart-preparation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.47.0 — background restart preparation
+
+[Handover](handovers/2026-09-29-async-restart-preparation.md): Restart with current settings now preserves unresolved edits through an owner-bound cancellable background snapshot, then creates a separate approval-bound run. Reads stay responsive and competing mutation/dispatch waits. Exact source `b856bb7` passed 183/183 Linux tests with zero skips, formatting, typecheck and no-model browser success acceptance. CI/draft PR and final cumulative staging remain to be completed. Installed baseline remains 0.43.0.
 
 ## Candidate 0.46.0 — background revision preparation
 
