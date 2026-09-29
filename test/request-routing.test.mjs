@@ -4,6 +4,7 @@ import {
   managedOperationOperations,
   requestRouter,
   reviewPreparationOperations,
+  serviceReadOperations,
 } from "../src/request-routing.ts";
 
 test("request routing assigns review preparation operations to one domain", () => {
@@ -48,6 +49,23 @@ test("request routing assigns extracted managers without overlapping preparation
     seen,
     managedOperationOperations.map((op) => ["managed", op]),
   );
+});
+
+test("request routing keeps service reads independent from mutation domains", () => {
+  const seen = [];
+  const route = requestRouter(
+    [
+      { name: "managed", operations: managedOperationOperations, handle() {} },
+      {
+        name: "service-reads",
+        operations: serviceReadOperations,
+        handle: (input) => seen.push(input.op),
+      },
+    ],
+    () => {},
+  );
+  for (const op of serviceReadOperations) route({ op });
+  assert.deepEqual(seen, serviceReadOperations);
 });
 
 test("request routing rejects duplicate ownership at startup", () => {

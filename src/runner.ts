@@ -3,6 +3,7 @@ import {
   managedOperationOperations,
   requestRouter,
   reviewPreparationOperations,
+  serviceReadOperations,
 } from "./request-routing.ts";
 import { type prepareReview } from "./review-preview.ts";
 import { usageCache } from "./provider-usage.ts";
@@ -1383,6 +1384,112 @@ export function runner(c: Config) {
     }
     throw Error("Unknown managed operation");
   }
+  function handleServiceReadRequest(input: any) {
+    if (input.op === "capabilities") {
+      const adapters = capabilities();
+      return {
+        adapterSchemaVersion: 1,
+        adapters,
+        editing: adapters.some((value) => value.modes.includes("edit")),
+        editAdapters: adapters
+          .filter((value) => value.modes.includes("edit"))
+          .map((value) => value.id),
+        enabledAdapters: adapters
+          .filter((value) => value.available)
+          .map((value) => value.id),
+        strictWorkers: !!c.strictWorkers,
+        publishing: true,
+        scopedSettings: true,
+      };
+    }
+    if (input.op === "operations") {
+      refreshAccounts();
+      const counts: Record<string, number> = {
+        waiting_for_approval: 0,
+        queued: 0,
+        running: 0,
+        cancelling: 0,
+        succeeded: 0,
+        failed: 0,
+        cancelled: 0,
+        timed_out: 0,
+        interrupted: 0,
+      };
+      for (const row of db
+        .prepare("SELECT status,count(*) AS count FROM tasks GROUP BY status")
+        .all())
+        counts[String(row.status)] = Number(row.count);
+      const tasks = db
+        .prepare(
+          `SELECT t.id,t.adapter,t.mode,t.status,t.created,t.updated,t.error,t.review,t.project,t.conversation,
+        p.name AS project_name,c.title AS conversation_title,t.checks
+        FROM tasks t JOIN projects p ON p.id=t.project JOIN conversations c ON c.id=t.conversation
+        ORDER BY t.updated DESC,t.rowid DESC LIMIT 50`,
+        )
+        .all()
+        .map((row: any) => {
+          let checkStatus: string | null = null;
+          try {
+            checkStatus = row.checks
+              ? String(JSON.parse(String(row.checks)).status ?? "unknown")
+              : null;
+          } catch {
+            checkStatus = "unknown";
+          }
+          return {
+            id: row.id,
+            adapter: row.adapter,
+            mode: row.mode,
+            status: row.status,
+            created: row.created,
+            updated: row.updated,
+            error: operationError(row.error),
+            review: row.review,
+            project: row.project,
+            projectName: row.project_name,
+            conversation: row.conversation,
+            conversationTitle: row.conversation_title,
+            checkStatus,
+          };
+        });
+      const adapters = capabilities().map((value) => ({
+        ...value,
+        account: accountCache.get(value.id),
+        nativeVersion: versionCache.get(value.id) ?? {
+          state: c.command ? "unavailable" : "checking",
+          version: null,
+          testedVersion: value.nativeLimits.testedVersion,
+          checkedAt: null,
+        },
+        ...(renewalManager ? { renewal: renewalManager.view(value.id) } : {}),
+        usage: usage.view(value.id),
+      }));
+      return {
+        resources: {
+          limits,
+          freeBytes: Math.min(...[c.stateDir, c.worktrees, c.logs].map(freeBytes)),
+          service: serviceBudget(),
+        },
+        generatedAt: new Date().toISOString(),
+        service: {
+          state: "healthy",
+          dependencySetup: dependencyManager.busy(),
+          scheduler: "serial",
+          activeTask: active?.id ?? null,
+          queueDepth: counts.queued ?? 0,
+          security: c.strictWorkers ? "hardened" : "standard",
+          accountChange: accountManager.busy(),
+          renewing: !!preparing,
+        },
+        counts,
+        tasks,
+        adapters,
+      };
+    }
+    if (input.op === "audit")
+      return db.prepare("SELECT * FROM audit ORDER BY id DESC LIMIT 100").all();
+    throw Error("Unknown service read operation");
+  }
   function handleCoreRequest(input: any) {
     requireNoReviewPreparationMutation(input);
     const actor = auditContext.getStore(),
@@ -1514,109 +1621,6 @@ export function runner(c: Config) {
       );
     }
 
-    if (input.op === "capabilities") {
-      const adapters = capabilities();
-      return {
-        adapterSchemaVersion: 1,
-        adapters,
-        editing: adapters.some((value) => value.modes.includes("edit")),
-        editAdapters: adapters
-          .filter((value) => value.modes.includes("edit"))
-          .map((value) => value.id),
-        enabledAdapters: adapters
-          .filter((value) => value.available)
-          .map((value) => value.id),
-        strictWorkers: !!c.strictWorkers,
-        publishing: true,
-        scopedSettings: true,
-      };
-    }
-    if (input.op === "operations") {
-      refreshAccounts();
-      const counts: Record<string, number> = {
-        waiting_for_approval: 0,
-        queued: 0,
-        running: 0,
-        cancelling: 0,
-        succeeded: 0,
-        failed: 0,
-        cancelled: 0,
-        timed_out: 0,
-        interrupted: 0,
-      };
-      for (const row of db
-        .prepare("SELECT status,count(*) AS count FROM tasks GROUP BY status")
-        .all())
-        counts[String(row.status)] = Number(row.count);
-      const tasks = db
-        .prepare(
-          `SELECT t.id,t.adapter,t.mode,t.status,t.created,t.updated,t.error,t.review,t.project,t.conversation,
-        p.name AS project_name,c.title AS conversation_title,t.checks
-        FROM tasks t JOIN projects p ON p.id=t.project JOIN conversations c ON c.id=t.conversation
-        ORDER BY t.updated DESC,t.rowid DESC LIMIT 50`,
-        )
-        .all()
-        .map((row: any) => {
-          let checkStatus: string | null = null;
-          try {
-            checkStatus = row.checks
-              ? String(JSON.parse(String(row.checks)).status ?? "unknown")
-              : null;
-          } catch {
-            checkStatus = "unknown";
-          }
-          return {
-            id: row.id,
-            adapter: row.adapter,
-            mode: row.mode,
-            status: row.status,
-            created: row.created,
-            updated: row.updated,
-            error: operationError(row.error),
-            review: row.review,
-            project: row.project,
-            projectName: row.project_name,
-            conversation: row.conversation,
-            conversationTitle: row.conversation_title,
-            checkStatus,
-          };
-        });
-      const adapters = capabilities().map((value) => ({
-        ...value,
-        account: accountCache.get(value.id),
-        nativeVersion: versionCache.get(value.id) ?? {
-          state: c.command ? "unavailable" : "checking",
-          version: null,
-          testedVersion: value.nativeLimits.testedVersion,
-          checkedAt: null,
-        },
-        ...(renewalManager ? { renewal: renewalManager.view(value.id) } : {}),
-        usage: usage.view(value.id),
-      }));
-      return {
-        resources: {
-          limits,
-          freeBytes: Math.min(...[c.stateDir, c.worktrees, c.logs].map(freeBytes)),
-          service: serviceBudget(),
-        },
-        generatedAt: new Date().toISOString(),
-        service: {
-          state: "healthy",
-          dependencySetup: dependencyManager.busy(),
-          scheduler: "serial",
-          activeTask: active?.id ?? null,
-          queueDepth: counts.queued ?? 0,
-          security: c.strictWorkers ? "hardened" : "standard",
-          accountChange: accountManager.busy(),
-          renewing: !!preparing,
-        },
-        counts,
-        tasks,
-        adapters,
-      };
-    }
-    if (input.op === "audit")
-      return db.prepare("SELECT * FROM audit ORDER BY id DESC LIMIT 100").all();
     if (input.op === "project-checks") {
       if (dependencyManager.busy() || active)
         throw Error("Wait for checks or dependency preparation.");
@@ -2117,6 +2121,11 @@ export function runner(c: Config) {
         name: "managed-operations",
         operations: managedOperationOperations,
         handle: handleManagedOperationRequest,
+      },
+      {
+        name: "service-reads",
+        operations: serviceReadOperations,
+        handle: handleServiceReadRequest,
       },
     ],
     handleCoreRequest,

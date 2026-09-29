@@ -53,6 +53,8 @@ export const managedOperationOperations = [
   "account-refresh",
 ] as const;
 
+export const serviceReadOperations = ["capabilities", "operations", "audit"] as const;
+
 /**
  * Build the runner's operation table once at startup. An operation has one owner;
  * duplicate claims fail before either handler can receive a request.
