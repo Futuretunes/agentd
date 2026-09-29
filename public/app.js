@@ -2793,12 +2793,35 @@ async function updateFeedback() {
         "h3",
         job.state === "preparing"
           ? "Preparing preview…"
-          : job.state === "ready"
-            ? "Review before continuing"
-            : job.state,
+          : job.state === "applying"
+            ? "Creating integration review…"
+            : job.state === "cancelling"
+              ? "Stopping…"
+              : job.state === "ready"
+                ? "Review before continuing"
+                : job.state,
       ),
     );
     if (job.error) box.append(node("p", job.error, "error"));
+    if (job.state === "applied" && job.kind === "integration" && job.result) {
+      const data = await api("/api/tasks/" + job.result);
+      $("feedback-dialog").close();
+      $("review-dialog").close();
+      feedbackTask = null;
+      reviewTask = null;
+      reset(data.task.conversation);
+      await refresh();
+      await openReview(job.result);
+      return;
+    }
+    if (["preparing", "applying"].includes(job.state))
+      box.append(
+        button("Cancel", async () => {
+          await api("/api/feedback", { action: "cancel", id: job.id });
+          feedbackSignature = "";
+          await updateFeedback();
+        }),
+      );
     const plan = job.plan;
     if (!plan) return;
     box.append(
@@ -2900,15 +2923,18 @@ async function updateFeedback() {
               keys: keys.filter((x) => x.check.checked).map((x) => x.key),
               instruction: instruction?.value,
             });
+            if (job.kind === "integration") {
+              feedbackSignature = "";
+              await updateFeedback();
+              return;
+            }
             $("feedback-dialog").close();
             $("review-dialog").close();
             feedbackTask = null;
             reviewTask = null;
             reset(result.conversation);
             await refresh();
-            if (job.kind === "integration") await openReview(result.id);
-            else
-              notice("Feedback request saved. Review and approve its run to continue.");
+            notice("Feedback request saved. Review and approve its run to continue.");
           } finally {
             action.disabled = false;
           }

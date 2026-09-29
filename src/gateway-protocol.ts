@@ -73,6 +73,7 @@ const fields: Record<string, string> = {
   "feedback-status": "owner task",
   "feedback-prepare": "owner task kind publication base",
   "feedback-apply": "owner task id fingerprint keys instruction",
+  "feedback-cancel": "owner task id",
   "settings-view": "project conversation agent mode prompt overrides owner",
   "settings-save":
     "project conversation agent scope agentScope values previous mode prompt overrides owner",
@@ -122,6 +123,7 @@ export const gatewayMutations = new Set([
   "publication-approve",
   "feedback-prepare",
   "feedback-apply",
+  "feedback-cancel",
   "settings-save",
   "models-refresh",
   "attachment-upload",

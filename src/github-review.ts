@@ -1,8 +1,16 @@
 import { createHash } from "node:crypto";
-import { localGit, gitOutput, assertGitConfig } from "./git-policy.ts";
+import { localGit, assertGitConfig, GitOutputLimitError } from "./git-policy.ts";
 import { githubURL, branchName, type RepositoryGit } from "./repositories.ts";
 import { githubRequest, verifiedPull, type PublishPlan } from "./publishing.ts";
-import { treeSnapshot } from "./changes.ts";
+import {
+  sensitiveFilename,
+  sensitiveContent,
+  binaryNumstat,
+  scanLimits,
+  contentScan,
+  acceptBlob,
+  blobID,
+} from "./sensitive-data.ts";
 export const integrationGit = localGit;
 const git = integrationGit;
 export const integrationConfig = assertGitConfig;
@@ -183,39 +191,50 @@ export async function prepareIntegration(
     throw Error(
       "This commit already includes the current base. No integration is needed.",
     );
-  // A configured external driver could execute outside the worker boundary. Refuse it.
+  // repositoryGit checks local/worktree configuration before every invocation and
+  // refuses external drivers. Keep all potentially expensive Git work off the
+  // runner request path and cancellable through the owned publication slot.
   integrationConfig(repo);
   let output: string;
   try {
-    output = gitOutput(repo, [
-      "-c",
-      "merge.renormalize=false",
-      "-c",
-      "merge.conflictStyle=merge",
-      "merge-tree",
-      "--write-tree",
-      "--name-only",
-      "--no-messages",
-      "-z",
-      baseSha,
-      head,
-    ]);
+    output = await command(
+      repo,
+      [
+        "-c",
+        "merge.renormalize=false",
+        "-c",
+        "merge.conflictStyle=merge",
+        "merge-tree",
+        "--write-tree",
+        "--name-only",
+        "--no-messages",
+        "-z",
+        baseSha,
+        head,
+      ],
+      signal,
+      false,
+      undefined,
+      true,
+      true,
+    );
   } catch (e) {
-    if ((e as any).status !== 1)
-      throw Error(
-        "Could not prepare a safe merge. The history may be shallow or unsupported.",
-      );
-    output = String((e as any).stdout);
+    if (e instanceof GitOutputLimitError) throw e;
+    throw Error(
+      "Could not prepare a safe merge. The history may be shallow or unsupported.",
+    );
   }
   const [tree, ...parts] = output.split("\0");
   if (!/^[a-f0-9]{40}$/.test(tree)) throw Error("Invalid merge preview");
   const conflicts = parts.filter(Boolean);
   if (conflicts.length > 100) throw Error("Too many conflicts for this workflow");
   if (conflicts.length) {
-    const ancestor = git(repo, ["merge-base", baseSha, head]);
+    const ancestor = await command(repo, ["merge-base", baseSha, head], signal);
     for (const path of conflicts) {
       for (const revision of [ancestor, baseSha, head, tree]) {
-        const entry = git(repo, ["ls-tree", "-z", revision, "--", path])
+        const entry = (
+          await command(repo, ["ls-tree", "-z", revision, "--", path], signal)
+        )
           .split("\0")
           .filter(Boolean);
         if (
@@ -226,12 +245,25 @@ export async function prepareIntegration(
           throw Error(
             "Only ordinary text-file conflicts are supported; rename, delete, binary and symlink conflicts require separate resolution.",
           );
-        if (git(repo, ["show", revision + ":" + path]).includes("\0"))
+        if (
+          (
+            await command(
+              repo,
+              ["show", revision + ":" + path],
+              signal,
+              false,
+              undefined,
+              false,
+              false,
+              scanLimits.blobBytes + 1,
+            )
+          ).includes("\0")
+        )
           throw Error("Binary conflicts require separate resolution.");
       }
     }
   }
-  const preview = treeSnapshot(repo, baseSha, tree);
+  const preview = await asyncTreeSnapshot(command, repo, baseSha, tree, signal);
   if (preview.truncated || preview.blocked.length)
     throw Error(
       "Integration includes oversized, binary or sensitive changes; resolve these separately.",
@@ -247,6 +279,120 @@ export async function prepareIntegration(
     summary: preview.summary,
   };
   return { ...value, fingerprint: fingerprint(value) };
+}
+
+async function asyncTreeSnapshot(
+  command: RepositoryGit,
+  repo: string,
+  revision: string,
+  tree: string,
+  signal: AbortSignal,
+) {
+  const names = (
+      await command(repo, ["diff", "--name-only", "-z", revision, tree], signal)
+    )
+      .split("\0")
+      .filter(Boolean),
+    blocked = names.filter(sensitiveFilename),
+    scan = contentScan();
+  if (names.length > scanLimits.files)
+    blocked.push("[too many files for sensitive-data review]");
+  else if (!blocked.length) {
+    try {
+      for (const name of names)
+        for (const value of [revision, tree]) {
+          const sha = blobID(
+            await command(
+              repo,
+              ["--literal-pathspecs", "ls-tree", "-z", value, "--", name],
+              signal,
+            ),
+          );
+          if (
+            !sha ||
+            !acceptBlob(scan, sha, await command(repo, ["cat-file", "-s", sha], signal))
+          )
+            continue;
+          const body = await command(
+            repo,
+            ["cat-file", "blob", sha],
+            signal,
+            false,
+            undefined,
+            false,
+            false,
+            scanLimits.blobBytes + 1,
+          );
+          if (body.includes("\0")) blocked.push("[binary changes require local review]");
+          if (sensitiveContent(body).length)
+            blocked.push(name + " [possible credential content]");
+        }
+    } catch (error) {
+      if (signal.aborted) throw error;
+      blocked.push("[sensitive-data scan incomplete; separate review required]");
+    }
+  }
+  if (
+    binaryNumstat(
+      await command(
+        repo,
+        ["diff", "--numstat", "-z", "--no-renames", revision, tree],
+        signal,
+      ),
+    )
+  )
+    blocked.push("[binary changes require local review]");
+  let patch =
+      "[Diff withheld: sensitive, binary or unscannable changes require separate review.]",
+    truncated = false;
+  if (!blocked.length)
+    try {
+      patch = await command(
+        repo,
+        [
+          "diff",
+          "--no-ext-diff",
+          "--no-textconv",
+          "--no-color",
+          "--no-renames",
+          revision,
+          tree,
+        ],
+        signal,
+        false,
+        undefined,
+        false,
+        false,
+        180000,
+      );
+    } catch (error) {
+      if (!(error instanceof GitOutputLimitError)) throw error;
+      patch = "";
+      truncated = true;
+    }
+  const summary = await command(
+    repo,
+    ["diff", "--stat", "--stat-count=100", "--no-renames", revision, tree],
+    signal,
+  );
+  return { tree, files: names, summary, patch, truncated, blocked };
+}
+
+export async function materializeIntegration(
+  command: RepositoryGit,
+  repo: string,
+  worktree: string,
+  baseSha: string,
+  tree: string,
+  signal: AbortSignal,
+) {
+  await command(repo, ["worktree", "add", "--detach", worktree, baseSha], signal);
+  await command(worktree, ["read-tree", "--reset", "-u", tree], signal);
+  if (
+    (await command(worktree, ["rev-parse", "HEAD"], signal)) !== baseSha ||
+    (await command(worktree, ["write-tree"], signal)) !== tree
+  )
+    throw Error("Integration review did not match the approved snapshot.");
 }
 export function unresolvedConflicts(repo: string, tree: string, paths: string[]) {
   return paths.filter((path) => {

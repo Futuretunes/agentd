@@ -240,4 +240,7 @@ function recover(db: DatabaseSync) {
   db.exec(
     "UPDATE review_jobs SET state='expired',error='Service restarted. Prepare a fresh preview.' WHERE state IN ('preparing','ready')",
   );
+  db.exec(
+    "UPDATE review_jobs SET state='interrupted',error='Service stopped while creating the integration review. Approve again to reconcile it.' WHERE state='applying'",
+  );
 }

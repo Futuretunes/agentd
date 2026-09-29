@@ -12,7 +12,9 @@ Each category is limited to 150 entries, with at most 250 KB of normalized comme
 
 ## Integrate an advanced base
 
-Enter the target branch and **Preview base integration**. The daemon fetches that branch and computes a merged tree without changing the project checkout, old worktrees or published branch. Inspect the diff and conflict list before choosing **Create integration review**. That action creates a separate isolated worktree and pending edit review; it does not run a model or publish anything.
+Enter the target branch and **Preview base integration**. The daemon fetches that branch and computes a merged tree without changing the project checkout, old worktrees or published branch. Fetch, merge analysis, conflict inspection and bounded diff/sensitive-data scanning run as cancellable background work so ordinary status and history reads remain available. Inspect the diff and conflict list before choosing **Create integration review**.
+
+Creating the integration review is a second background step bound to the exact approved preview. It verifies the retained tree and base refs, materializes a separate isolated worktree, then verifies that worktree's HEAD and tree before publishing the pending review in one database transaction. You can cancel while it is being created. Cancellation removes the partial worktree and keeps the reviewed preview available until its original expiry. This action does not run a model or publish anything.
 
 For conflicts, select **Request revisions**, explain how the versions should be combined, and approve the new agent run. Conflict markers block checks and commit approval. Once resolved, inspect the complete diff against the fetched base, run fresh checks and approve the local commit. The commit retains the new base and previous approved head as its two parents. **Publish to GitHub → Publication** can then prepare a separately approved forward update to the existing draft PR. No rebase or published-history rewrite is performed. A base that changes again requires another preview/integration.
 
@@ -20,7 +22,7 @@ Only ordinary text conflicts are supported initially. Binary, symlink, delete/re
 
 ## Persistence and approval boundaries
 
-Previews belong to the authenticated browser that prepared them, expire after 30 minutes and expire on restart. Apply requests use the stored preview and exact fingerprint; client-supplied trees or repository paths are not accepted. Repeated identical apply requests return the same resulting task, including after restart. A different selection requires a new preview from the latest committed turn. Imported snapshot bodies are retained in local task state; audit records contain identifiers/fingerprints, not comment bodies.
+Previews belong to the authenticated browser that prepared them, expire after 30 minutes and expire on restart. Apply requests use the stored preview and exact fingerprint; client-supplied trees or repository paths are not accepted. Repeated identical apply requests return the same resulting task, including after restart. If the service stops while an approved integration is being materialized, its durable job becomes interrupted; approving that same exact preview again reconciles the deterministic worktree identity before retrying. It never resumes approval on startup. A different selection requires a new preview from the latest committed turn. Imported snapshot bodies are retained in local task state; audit records contain identifiers/fingerprints, not comment bodies.
 
 Integration trees are retained under internal Git refs. Existing snapshots and worktrees are preserved; automated storage retention remains on the backlog. Checks and commit approval carry the recorded integration parents through revision requests and retries. Publishing accepts only these recorded, approved merges, and retains its remote-head lease and fresh-base checks.
 

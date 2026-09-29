@@ -355,6 +355,14 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
     assert.match(calls.at(-1).owner, /^[a-f0-9]{64}$/);
     for (const key of ["tree", "repo", "prompt"])
       assert.equal(calls.at(-1)[key], undefined);
+    await req(
+      "/api/feedback",
+      { action: "cancel", id: "preview", owner: "spoofed", signal: "injected" },
+      cookie,
+    );
+    assert.equal(calls.at(-1).op, "feedback-cancel");
+    assert.match(calls.at(-1).owner, /^[a-f0-9]{64}$/);
+    assert.equal(calls.at(-1).signal, undefined);
     await req("/api/feedback?targets=1&task=fixture", null, cookie);
     assert.equal(calls.at(-1).op, "feedback-targets");
     await req("/api/check-setup?project=default&task=fixture", null, cookie);

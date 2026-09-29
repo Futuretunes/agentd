@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { localGit, gitEnvironment } from "../src/git-policy.ts";
+import { localGit, gitEnvironment, GitOutputLimitError } from "../src/git-policy.ts";
 import { snapshot } from "../src/changes.ts";
 import { repositoryGit } from "../src/repositories.ts";
 const plain = (repo, args) =>
@@ -82,6 +82,29 @@ test("shared local and repository Git reject executable drivers, includes and tr
     plain(repo, ["config", "extensions.worktreeConfig", "true"]);
     plain(repo, ["config", "--worktree", "filter.evil.process", "malicious"]);
     assert.throws(() => localGit(repo, ["status"]), /unsupported/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+test("asynchronous repository Git enforces caller output bounds", async () => {
+  const { root, repo } = fixture(),
+    state = join(root, "state");
+  mkdirSync(state);
+  const command = repositoryGit({ stateDir: state });
+  try {
+    await assert.rejects(
+      command(
+        repo,
+        ["show", "HEAD:README"],
+        new AbortController().signal,
+        false,
+        undefined,
+        false,
+        false,
+        1,
+      ),
+      GitOutputLimitError,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

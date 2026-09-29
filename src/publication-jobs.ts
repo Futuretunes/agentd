@@ -1,14 +1,15 @@
 import { type DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
+import { rmSync } from "node:fs";
 import { localGit } from "./git-policy.ts";
 import { operationSlot } from "./operation-slot.ts";
 import { branchName, repositoryGit, type RepositoryGit } from "./repositories.ts";
 import {
   integrationGit,
-  integrationConfig,
   githubReviewAPI,
   loadFeedback,
+  materializeIntegration,
   selectedFeedback,
   prepareIntegration,
   type ReviewAPI,
@@ -296,6 +297,18 @@ export function publicationJobs(c: Options) {
       publishTarget(input.task);
       return feedbackView(input.task, input.owner);
     }
+    if (input.op === "feedback-cancel") {
+      const stored = db.prepare("SELECT * FROM review_jobs WHERE id=?").get(input.id);
+      if (!stored || stored.owner !== input.owner)
+        throw Error("This operation belongs to another browser.");
+      if (!["preparing", "applying"].includes(String(stored.state)))
+        return feedbackView(String(stored.task), input.owner).find(
+          (job: any) => job.id === stored.id,
+        );
+      if (!slot.cancel(String(stored.id)))
+        throw Error("This operation is no longer active. Refresh its status.");
+      return { id: stored.id, state: "cancelling" };
+    }
     const applying = input.op === "feedback-apply",
       stored = applying
         ? db.prepare("SELECT * FROM review_jobs WHERE id=?").get(input.id)
@@ -314,7 +327,15 @@ export function publicationJobs(c: Options) {
         throw Error("A different selection was already imported.");
       return get(String(stored.result));
     }
-    if (applying && (stored!.state !== "ready" || Number(stored!.expires) < Date.now()))
+    if (applying && stored!.kind === "integration" && stored!.state === "applying")
+      return feedbackView(String(stored!.task), input.owner).find(
+        (job: any) => job.id === stored!.id,
+      );
+    if (
+      applying &&
+      (!["ready", "interrupted"].includes(String(stored!.state)) ||
+        Number(stored!.expires) < Date.now())
+    )
       throw Error("Preview expired. Prepare it again.");
     const task = String(stored?.task ?? input.task),
       { row, p } = latestCommitted(task);
@@ -324,24 +345,11 @@ export function publicationJobs(c: Options) {
       );
     slot.assertAvailable();
     requireAdapter(String(row.adapter), "edit");
-    if (applying) {
+    if (applying && stored!.kind === "comments") {
       if (plan.sourceHead !== row.commit_sha)
         throw Error("The local commit changed. Prepare again.");
       const id = randomUUID(),
-        at = new Date().toISOString(),
-        integration = stored!.kind === "integration",
-        repo = String(p.repo),
-        worktree = integration ? join(c.worktrees, id) : null;
-      if (integration) {
-        integrationConfig(repo);
-        integrationGit(repo, ["worktree", "add", "--detach", worktree!, plan.baseSha]);
-        try {
-          integrationGit(worktree!, ["read-tree", "--reset", "-u", plan.tree]);
-        } catch (error) {
-          git(["worktree", "remove", "--force", worktree!], repo);
-          throw error;
-        }
-      }
+        at = new Date().toISOString();
       db.exec("BEGIN");
       try {
         db.prepare(
@@ -349,15 +357,9 @@ export function publicationJobs(c: Options) {
         ).run(
           id,
           row.adapter,
-          integration
-            ? "Integrate " +
-                plan.base +
-                " at " +
-                plan.baseSha +
-                ". Review the combined changes and resolve any conflicts before checks and commit."
-            : chosen!.prompt,
-          integration ? plan.baseSha : row.commit_sha,
-          integration ? "succeeded" : "waiting_for_approval",
+          chosen!.prompt,
+          row.commit_sha,
+          "waiting_for_approval",
           at,
           at,
           row.project,
@@ -365,22 +367,22 @@ export function publicationJobs(c: Options) {
           "[]",
           row.id,
           "edit",
-          integration ? plan.tree : null,
-          integration ? plan.head : null,
-          integration ? JSON.stringify(plan.conflicts) : null,
-          worktree,
-          integration ? "pending" : null,
+          null,
+          null,
+          null,
+          null,
+          null,
         );
-        if (!integration) bindExecution(id);
+        bindExecution(id);
         db.prepare("INSERT INTO events(task,status,at) VALUES(?,?,?)").run(
           id,
-          integration ? "succeeded" : "waiting_for_approval",
+          "waiting_for_approval",
           at,
         );
         db.prepare(
           "UPDATE review_jobs SET state='applied',result=?,selection=?,updated=? WHERE id=?",
         ).run(id, chosen?.selection ?? null, at, stored!.id);
-        audit(integration ? "approve-integration" : "import-feedback", id, {
+        audit("import-feedback", id, {
           source: task,
           preview: stored!.id,
           fingerprint: plan.fingerprint,
@@ -389,10 +391,168 @@ export function publicationJobs(c: Options) {
         db.exec("COMMIT");
       } catch (error) {
         db.exec("ROLLBACK");
-        if (worktree) git(["worktree", "remove", "--force", worktree], repo);
         throw error;
       }
       return get(id);
+    }
+    if (applying) {
+      if (plan.sourceHead !== row.commit_sha)
+        throw Error("The local commit changed. Prepare again.");
+      const id =
+          typeof stored!.result === "string" &&
+          /^[a-f0-9-]{36}$/.test(String(stored!.result))
+            ? String(stored!.result)
+            : randomUUID(),
+        repo = String(p.repo),
+        worktree = join(c.worktrees, id),
+        gitCommand =
+          c.repositoryCommand ??
+          repositoryGit({ stateDir: c.stateDir, githubProfile: c.profile() });
+      const recovered = get(id);
+      if (recovered) {
+        db.prepare(
+          "UPDATE review_jobs SET state='applied',error=NULL,updated=? WHERE id=?",
+        ).run(new Date().toISOString(), stored!.id);
+        return recovered;
+      }
+      db.exec("BEGIN");
+      try {
+        db.prepare(
+          "UPDATE review_jobs SET state='applying',result=?,error=NULL,updated=? WHERE id=?",
+        ).run(id, new Date().toISOString(), stored!.id);
+        audit("approve-integration", task, {
+          preview: stored!.id,
+          fingerprint: plan.fingerprint,
+        });
+        db.exec("COMMIT");
+      } catch (error) {
+        db.exec("ROLLBACK");
+        throw error;
+      }
+      void slot.start(String(stored!.id), async (signal) => {
+        const cleanup = async () => {
+          let registrationGone = false;
+          try {
+            await gitCommand(
+              repo,
+              ["worktree", "remove", "--force", worktree],
+              new AbortController().signal,
+            );
+            registrationGone = true;
+          } catch {
+            try {
+              const registered = await gitCommand(
+                repo,
+                ["worktree", "list", "--porcelain", "-z"],
+                new AbortController().signal,
+              );
+              registrationGone = !registered
+                .split("\0")
+                .some((line) => line === "worktree " + worktree);
+            } catch {}
+          }
+          try {
+            rmSync(worktree, { recursive: true, force: true });
+          } catch {
+            return false;
+          }
+          return registrationGone;
+        };
+        try {
+          if (stored!.state === "interrupted" && !(await cleanup()))
+            throw Error(
+              "Could not reconcile the interrupted integration worktree safely.",
+            );
+          const current = latestCommitted(task);
+          if (current.row.commit_sha !== plan.sourceHead)
+            throw Error("The local commit changed. Prepare again.");
+          if (
+            (await gitCommand(
+              repo,
+              ["rev-parse", "refs/agentd/integrations/" + stored!.id],
+              signal,
+            )) !== plan.tree ||
+            (await gitCommand(
+              repo,
+              ["rev-parse", "refs/agentd/integration-bases/" + stored!.id],
+              signal,
+            )) !== plan.baseSha
+          )
+            throw Error("The retained integration snapshot changed. Prepare again.");
+          await materializeIntegration(
+            gitCommand,
+            repo,
+            worktree,
+            plan.baseSha,
+            plan.tree,
+            signal,
+          );
+          const final = latestCommitted(task);
+          if (final.row.commit_sha !== plan.sourceHead)
+            throw Error("The local commit changed. Prepare again.");
+          const at = new Date().toISOString();
+          db.exec("BEGIN");
+          try {
+            db.prepare(
+              "INSERT INTO tasks(id,adapter,prompt,revision,status,created,updated,project,conversation,attachments,parent,mode,seed_tree,merge_parent,conflict_paths,worktree,review) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            ).run(
+              id,
+              row.adapter,
+              "Integrate " +
+                plan.base +
+                " at " +
+                plan.baseSha +
+                ". Review the combined changes and resolve any conflicts before checks and commit.",
+              plan.baseSha,
+              "succeeded",
+              at,
+              at,
+              row.project,
+              row.conversation,
+              "[]",
+              row.id,
+              "edit",
+              plan.tree,
+              plan.head,
+              JSON.stringify(plan.conflicts),
+              worktree,
+              "pending",
+            );
+            db.prepare("INSERT INTO events(task,status,at) VALUES(?,?,?)").run(
+              id,
+              "succeeded",
+              at,
+            );
+            db.prepare(
+              "UPDATE review_jobs SET state='applied',error=NULL,updated=? WHERE id=?",
+            ).run(at, stored!.id);
+            audit("create-integration-review", id, {
+              source: task,
+              preview: stored!.id,
+              fingerprint: plan.fingerprint,
+            });
+            db.exec("COMMIT");
+          } catch (error) {
+            db.exec("ROLLBACK");
+            throw error;
+          }
+        } catch (error) {
+          const cleaned = await cleanup();
+          db.prepare(
+            "UPDATE review_jobs SET state=?,error=?,updated=? WHERE id=? AND state='applying'",
+          ).run(
+            signal.aborted && cleaned ? "ready" : "failed",
+            !cleaned
+              ? "Could not confirm cleanup of the integration worktree. Review it before retrying."
+              : signal.aborted
+                ? "Integration review creation cancelled."
+                : (error as Error).message,
+            new Date().toISOString(),
+            stored!.id,
+          );
+        }
+      });
+      return feedbackView(task, input.owner).find((job: any) => job.id === stored!.id);
     }
     const kind = input.kind;
     if (!["comments", "integration"].includes(kind))

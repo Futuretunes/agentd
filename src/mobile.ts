@@ -251,7 +251,7 @@ export function mobile(c: Config) {
         }
         if (path === "/api/feedback" && req.method === "POST") {
           const input = await body(req);
-          if (!["prepare", "apply"].includes(input.action))
+          if (!["prepare", "apply", "cancel"].includes(input.action))
             throw Error("Unsupported feedback action");
           send(
             200,

@@ -21,7 +21,7 @@ Definitions:
 
 - **Worker** is the active execution slot, including asynchronous task checkout and validation checks. Its cancellation/completion promise remains owned by the runner.
 - **Account busy** combines native account mutation, native credential renewal and pre-dispatch preparation. **Preparation** is the pre-dispatch renewal slot; checkout holds the worker slot.
-- **Publication** also covers asynchronous GitHub feedback/integration preparation. This shared slot is explicitly preserved, not silently split by this refactor.
+- **Publication** also covers asynchronous GitHub feedback/integration preparation and approved integration worktree materialization. This shared slot is explicitly preserved, not silently split by this refactor.
 - **Account probes** include normalized sign-in/version checks. The conditional dispatch blocker is needed only for installations using credential renewal, matching previous behavior.
 - Durable queued/unsettled/review-preparation states come from SQLite; the other states come from live manager/runner slots. They are not reconstructed into a new distributed lock.
 
@@ -49,7 +49,7 @@ This is the first extracted domain, not a global lease manager. Dependency cance
 
 ## Publication and check owners
 
-Publication and feedback share `publication-jobs.ts` and one operation slot; shutdown waits for transport settlement and leaves interrupted approved publication marked as needing attention. `check-execution.ts` owns the isolated check process through cleanup and state persistence. It returns a completion handle to the runner's existing shared task/check worker slot. The runner clears only that same handle on completion. Approval/admission and synchronous snapshot preparation remain runner responsibilities. A running-state write must succeed before a check process starts. No additional parallel worker capacity is introduced.
+Publication and feedback share `publication-jobs.ts` and one operation slot; shutdown waits for transport settlement and leaves interrupted approved publication marked as needing attention. Integration preview Git and approved worktree materialization also hold that slot through cancellation and cleanup. An interrupted materialization records its deterministic result identity and requires the same browser approval to reconcile and retry; startup never replays it. `check-execution.ts` owns the isolated check process through cleanup and state persistence. It returns a completion handle to the runner's existing shared task/check worker slot. The runner clears only that same handle on completion. A running-state write must succeed before a check process starts. No additional parallel worker capacity is introduced.
 
 ## Task execution owner
 

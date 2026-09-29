@@ -37,7 +37,12 @@ export function branchName(value: unknown) {
   return value;
 }
 export { gitPolicy } from "./git-policy.ts";
-import { gitPolicy, gitEnvironment, assertGitConfig } from "./git-policy.ts";
+import {
+  gitPolicy,
+  gitEnvironment,
+  assertGitConfig,
+  GitOutputLimitError,
+} from "./git-policy.ts";
 export function checkRepositorySize(path: string) {
   let total = 0,
     count = 0;
@@ -76,6 +81,8 @@ export function repositoryGit(options: {
     network = false,
     budget?: string,
     acceptOne = false,
+    preserveOneOutput = false,
+    maxOutput = 256000,
   ) {
     const home = mkdtempSync(join(options.stateDir, "git-home-"));
     mkdirSync(join(home, "templates"));
@@ -111,6 +118,7 @@ export function repositoryGit(options: {
           stdio: ["ignore", "pipe", "ignore"],
         });
         let output = "",
+          outputBytes = 0,
           stopped = false;
         const kill = () => {
           stopped = true;
@@ -133,7 +141,8 @@ export function repositoryGit(options: {
           : undefined;
         child.stdout.on("data", (v) => {
           output += v.toString();
-          if (output.length > 256000) kill();
+          outputBytes += v.length;
+          if (outputBytes > maxOutput) kill();
         });
         child.on("error", () => {});
         child.on("close", (code) => {
@@ -150,14 +159,16 @@ export function repositoryGit(options: {
             stopped = true;
           }
           if (!stopped && (code === 0 || (acceptOne && code === 1)))
-            resolve(code === 1 ? "NOT_ANCESTOR" : output.trim());
+            resolve(code === 1 && !preserveOneOutput ? "NOT_ANCESTOR" : output.trim());
           else
             reject(
-              Error(
-                stopped
-                  ? "Repository operation stopped or exceeded its time/size limit."
-                  : "Git could not complete this operation. Check the repository, branch and GitHub connection.",
-              ),
+              outputBytes > maxOutput
+                ? new GitOutputLimitError()
+                : Error(
+                    stopped
+                      ? "Repository operation stopped or exceeded its time/size limit."
+                      : "Git could not complete this operation. Check the repository, branch and GitHub connection.",
+                  ),
             );
         });
       });

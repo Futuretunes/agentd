@@ -39,7 +39,7 @@ function fixture() {
   git(root, ["clone", "--bare", repo, remote]);
   git(repo, ["remote", "add", "origin", url]);
   const calls = [];
-  const command = async (cwd, args, signal, _network, _budget, one) => {
+  const command = async (cwd, args, signal, _network, _budget, one, preserveOne) => {
     if (signal.aborted) throw Error("Cancelled");
     calls.push(args);
     try {
@@ -50,7 +50,8 @@ function fixture() {
         ...args.map((x) => (x === url ? remote : x)),
       ]);
     } catch (e) {
-      if (one && e.status === 1) return "NOT_ANCESTOR";
+      if (one && e.status === 1)
+        return preserveOne ? String(e.stdout).trim() : "NOT_ANCESTOR";
       throw e;
     }
   };
@@ -308,6 +309,18 @@ test("integration conflicts require resolution, fresh checks and a reviewed merg
         app.request({ op: "feedback-apply", owner, id: job.id, fingerprint: "wrong" }),
       /changed/,
     );
+    const applying = app.request({
+      op: "feedback-apply",
+      owner,
+      id: job.id,
+      fingerprint: ready.plan.fingerprint,
+    });
+    assert.equal(applying.state, "applying");
+    const applied = await until(
+      () => app.request({ op: "feedback-status", owner, task: r.row.id })[0],
+      (value) => value.state !== "applying",
+    );
+    assert.equal(applied.state, "applied", applied.error);
     const row = app.request({
       op: "feedback-apply",
       owner,
@@ -399,6 +412,117 @@ test("integration conflicts require resolution, fresh checks and a reviewed merg
     );
   } finally {
     await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test("integration application stays responsive, is owner-cancellable and recovers an interrupted approval", async () => {
+  const f = fixture();
+  let block = false,
+    entered,
+    release;
+  const started = new Promise((resolve) => {
+      entered = resolve;
+    }),
+    gate = new Promise((resolve) => {
+      release = resolve;
+    }),
+    original = f.command;
+  f.command = async (...args) => {
+    if (block && args[1][0] === "worktree" && args[1][1] === "add") {
+      entered();
+      await Promise.race([
+        gate,
+        new Promise((_, reject) =>
+          args[2].addEventListener("abort", () => reject(Error("Cancelled")), {
+            once: true,
+          }),
+        ),
+      ]);
+    }
+    return original(...args);
+  };
+  const r = await reviewed(f);
+  try {
+    advance(f);
+    const preview = r.app.request({
+      op: "feedback-prepare",
+      owner,
+      task: r.row.id,
+      kind: "integration",
+      base: "main",
+    });
+    const ready = await until(
+      () => r.app.request({ op: "feedback-status", owner, task: r.row.id })[0],
+      (value) => value.state !== "preparing",
+    );
+    assert.equal(ready.state, "ready", ready.error);
+    block = true;
+    const applying = r.app.request({
+      op: "feedback-apply",
+      owner,
+      id: preview.id,
+      fingerprint: ready.plan.fingerprint,
+    });
+    assert.equal(applying.state, "applying");
+    await started;
+    assert.equal(r.app.request({ op: "show", id: r.row.id }).task.id, r.row.id);
+    assert.equal(
+      r.app.request({ op: "feedback-status", owner, task: r.row.id })[0].state,
+      "applying",
+    );
+    assert.throws(
+      () =>
+        r.app.request({
+          op: "feedback-cancel",
+          owner: "b".repeat(64),
+          id: preview.id,
+        }),
+      /another browser/,
+    );
+    assert.equal(
+      r.app.request({ op: "feedback-cancel", owner, id: preview.id }).state,
+      "cancelling",
+    );
+    const cancelled = await until(
+      () => r.app.request({ op: "feedback-status", owner, task: r.row.id })[0],
+      (value) => value.state !== "applying",
+    );
+    assert.equal(cancelled.state, "ready");
+    assert.match(cancelled.error, /cancelled/);
+    assert.equal(r.app.request({ op: "list" }).length, 1);
+
+    await r.app.close();
+    const db = new DatabaseSync(join(r.config.stateDir, "tasks.sqlite")),
+      result = "22222222-2222-4222-8222-222222222222";
+    db.prepare(
+      "UPDATE review_jobs SET state='applying',result=?,error=NULL,expires=? WHERE id=?",
+    ).run(result, Date.now() + 60000, preview.id);
+    db.close();
+    block = false;
+    release();
+    r.app = runner(r.config);
+    await once(r.app.server, "listening");
+    assert.equal(
+      r.app.request({ op: "feedback-status", owner, task: r.row.id })[0].state,
+      "interrupted",
+    );
+    const retry = r.app.request({
+      op: "feedback-apply",
+      owner,
+      id: preview.id,
+      fingerprint: ready.plan.fingerprint,
+    });
+    assert.equal(retry.state, "applying");
+    const applied = await until(
+      () => r.app.request({ op: "feedback-status", owner, task: r.row.id })[0],
+      (value) => value.state !== "applying",
+    );
+    assert.equal(applied.state, "applied", applied.error);
+    assert.equal(applied.result, result);
+    assert.equal(r.app.request({ op: "show", id: result }).task.review, "pending");
+  } finally {
+    release();
+    await r.app.close();
     rmSync(f.root, { recursive: true, force: true });
   }
 });

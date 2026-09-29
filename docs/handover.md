@@ -1,6 +1,10 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-async-restart-preparation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-async-integration-preparation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.48.0 — background integration preparation and application
+
+[Handover](handovers/2026-09-29-async-integration-preparation.md): base integration Git preflights and approved worktree materialization now run in the owned publication/feedback slot. Reads stay responsive; creation is cancellable and exact-tree/ref verification remains mandatory. Interrupted approved creation requires explicit same-preview reconciliation. Exact release validation, CI and staging evidence are updated in the handover; candidate is not installed. Installed baseline remains 0.43.0.
 
 ## Candidate 0.47.0 — background restart preparation
 
