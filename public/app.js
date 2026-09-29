@@ -1704,30 +1704,80 @@ async function openReview(id) {
       ),
     );
     if (!value.blocked.length) {
-      const files = node("section", undefined, "large-review-files");
-      files.append(node("h3", "Changed files"));
+      const acknowledged = new Set(value.acknowledgedFiles ?? []),
+        files = node("section", undefined, "large-review-files"),
+        progress = node("p", undefined, "muted");
+      const updateProgress = () => {
+        progress.textContent = `${acknowledged.size} of ${value.files.length} files explicitly reviewed for this exact snapshot.`;
+        if (acknowledged.size === value.files.length) {
+          progress.className = "good";
+          progress.textContent +=
+            " The review record is complete; commit and revision remain unavailable for this oversized change.";
+        }
+      };
+      updateProgress();
+      files.append(node("h3", "Changed files"), progress);
       for (const file of value.files) {
         const row = node("div", undefined, "large-review-file"),
-          status = node("span", "Not loaded", "muted"),
-          open = button("Inspect " + file, async () => {
-            open.disabled = true;
-            status.textContent = "Loading…";
-            try {
-              const page = await api("/api/review-jobs", {
-                action: "file",
-                job: job.id,
-                tree: value.tree,
-                file,
-              });
-              row.append(renderDiff(page.patch));
-              status.textContent = "Loaded from this exact snapshot";
-              open.remove();
-            } catch (error) {
-              status.textContent = error.message;
-              status.className = "error";
-              open.disabled = false;
-            }
-          });
+          status = node(
+            "span",
+            acknowledged.has(file) ? "Reviewed for this exact snapshot" : "Not reviewed",
+            acknowledged.has(file) ? "good" : "muted",
+          ),
+          open = button(
+            (acknowledged.has(file) ? "Inspect again " : "Inspect ") + file,
+            async () => {
+              open.disabled = true;
+              status.textContent = "Loading…";
+              status.className = "muted";
+              try {
+                const page = await api("/api/review-jobs", {
+                  action: "file",
+                  job: job.id,
+                  tree: value.tree,
+                  file,
+                });
+                row.append(renderDiff(page.patch));
+                if (page.acknowledged) {
+                  acknowledged.add(file);
+                  status.textContent = "Reviewed for this exact snapshot";
+                  status.className = "good";
+                  updateProgress();
+                } else {
+                  const mark = button("Mark file reviewed", async () => {
+                    mark.disabled = true;
+                    status.textContent = "Saving review…";
+                    try {
+                      const saved = await api("/api/review-jobs", {
+                        action: "acknowledge",
+                        job: job.id,
+                        tree: value.tree,
+                        file,
+                        fingerprint: page.fingerprint,
+                      });
+                      acknowledged.add(file);
+                      status.textContent = "Reviewed for this exact snapshot";
+                      status.className = "good";
+                      mark.remove();
+                      updateProgress();
+                      value.acknowledgedFiles = saved.acknowledgedFiles;
+                    } catch (error) {
+                      status.textContent = error.message;
+                      status.className = "error";
+                      mark.disabled = false;
+                    }
+                  });
+                  row.append(mark);
+                  status.textContent = "Loaded; mark it reviewed when finished";
+                }
+                open.remove();
+              } catch (error) {
+                status.textContent = error.message;
+                status.className = "error";
+                open.disabled = false;
+              }
+            },
+          );
         row.append(open, status);
         files.append(row);
       }

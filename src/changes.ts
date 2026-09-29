@@ -9,6 +9,7 @@ import {
 } from "./sensitive-data.ts";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 
 export { localGit as git } from "./git-policy.ts";
 import { localGit as git, gitOutput, GitOutputLimitError } from "./git-policy.ts";
@@ -221,7 +222,15 @@ export function filePatch(repo: string, revision: string, tree: string, file: st
     ],
     { maxBuffer: 180000 },
   );
-  return { tree, file, patch };
+  const fingerprint = createHash("sha256")
+    .update("agentd-review-file-v1\0")
+    .update(tree)
+    .update("\0")
+    .update(file)
+    .update("\0")
+    .update(patch)
+    .digest("hex");
+  return { tree, file, patch, fingerprint };
 }
 
 // Materialize only the approved Git tree, never the agent's mutable working directory.

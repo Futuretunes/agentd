@@ -484,6 +484,66 @@ test("large-review file reads stay owner-bound and pinned to the prepared tree",
     });
     assert.equal(page.tree, job.result.tree);
     assert.match(page.patch, /large preview fixture/);
+    assert.equal(page.acknowledged, false);
+    assert.throws(
+      () =>
+        app.request({
+          op: "review-file-acknowledge",
+          owner: "a",
+          job: job.id,
+          tree: job.result.tree,
+          file: "README.md",
+          fingerprint: "0".repeat(64),
+        }),
+      /changed/,
+    );
+    const saved = app.request({
+      op: "review-file-acknowledge",
+      owner: "a",
+      job: job.id,
+      tree: job.result.tree,
+      file: "README.md",
+      fingerprint: page.fingerprint,
+    });
+    assert.equal(saved.acknowledged, true);
+    assert.equal(saved.complete, true);
+    assert.deepEqual(saved.acknowledgedFiles, ["README.md"]);
+    let blocked = app.request({
+      op: "commit-start",
+      owner: "a",
+      id: task.id,
+      tree: job.result.tree,
+      message: "Still blocked",
+    });
+    for (let i = 0; i < 100; i++) {
+      blocked = app.request({ op: "commit-job", owner: "a", job: blocked.id });
+      if (blocked.status !== "preparing") break;
+      await sleep(10);
+    }
+    assert.equal(blocked.status, "failed");
+    assert.match(blocked.error, /oversized/);
+    assert.equal(
+      app.request({
+        op: "review-file",
+        owner: "a",
+        job: job.id,
+        tree: job.result.tree,
+        file: "README.md",
+      }).acknowledged,
+      true,
+    );
+    const audit = app.request({ op: "audit" });
+    assert.equal(
+      audit.find((item) => item.action === "acknowledge-review-file").task,
+      task.id,
+    );
+    const again = app.request({ op: "review-start", id: task.id, owner: "a" });
+    for (let i = 0; i < 100; i++) {
+      job = app.request({ op: "review-job", owner: "a", job: again.id });
+      if (job.status !== "preparing") break;
+      await sleep(10);
+    }
+    assert.deepEqual(job.result.acknowledgedFiles, ["README.md"]);
   } finally {
     await app.close();
     rmSync(f.root, { recursive: true, force: true });

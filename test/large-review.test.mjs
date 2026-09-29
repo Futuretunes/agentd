@@ -78,6 +78,7 @@ test("oversized aggregate reviews expose bounded exact-tree text files separatel
     assert.equal(page.tree, overview.tree);
     assert.equal(page.file, "part-3.txt");
     assert.match(page.patch, /after-3/);
+    assert.match(page.fingerprint, /^[a-f0-9]{64}$/);
     assert.ok(Buffer.byteLength(page.patch) < 180000);
     assert.throws(
       () => filePatch(repo, head, overview.tree, "not-changed.txt"),

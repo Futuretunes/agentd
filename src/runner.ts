@@ -54,6 +54,10 @@ import { type RepositoryGit } from "./repositories.ts";
 import { githubAccount } from "./github-account.ts";
 import { accounts } from "./accounts.ts";
 import { snapshot, commitSnapshot, filePatch } from "./changes.ts";
+import {
+  acknowledgeReviewFile,
+  acknowledgedReviewFiles,
+} from "./review-acknowledgements.ts";
 import { isolated } from "./isolation.ts";
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID, createHash } from "node:crypto";
@@ -1064,7 +1068,7 @@ export function runner(c: Config) {
   function handleReviewPreparationRequest(input: any) {
     if (input.op === "review-job")
       return previewManager.view(input.owner ?? "local", input.job);
-    if (input.op === "review-file") {
+    if (["review-file", "review-file-acknowledge"].includes(input.op)) {
       const job = previewManager.view(input.owner ?? "local", input.job);
       if (job.status !== "succeeded" || !job.result)
         throw Error("Finish preparing the change preview first");
@@ -1076,12 +1080,41 @@ export function runner(c: Config) {
         throw Error("File is not part of this review");
       const row = get(job.task);
       if (!row || row.review !== "pending") throw Error("Review is already resolved");
-      return filePatch(
+      const page = filePatch(
         String(project(String(row.project)).repo),
         String(row.revision),
         String(job.result.tree),
         input.file,
       );
+      if (input.op === "review-file")
+        return {
+          ...page,
+          acknowledged:
+            acknowledgedReviewFiles(db, String(row.id), page.tree, [page.file]).length ===
+            1,
+        };
+      if (input.fingerprint !== page.fingerprint)
+        throw Error("The file review changed. Reload it before marking it reviewed.");
+      auditedWrite(
+        "acknowledge-review-file",
+        String(row.id),
+        { tree: page.tree, file: page.file, fingerprint: page.fingerprint },
+        () => acknowledgeReviewFile(db, String(row.id), page),
+      );
+      const acknowledged = acknowledgedReviewFiles(
+        db,
+        String(row.id),
+        page.tree,
+        job.result.files,
+      );
+      return {
+        tree: page.tree,
+        file: page.file,
+        fingerprint: page.fingerprint,
+        acknowledged: true,
+        acknowledgedFiles: acknowledged,
+        complete: acknowledged.length === job.result.files.length,
+      };
     }
     if (input.op === "review-cancel")
       return previewManager.cancel(input.owner ?? "local", input.job);
@@ -1134,6 +1167,10 @@ export function runner(c: Config) {
         (value) => ({
           project: row.project,
           ...value,
+          acknowledgedFiles:
+            value.truncated && !value.blocked.length
+              ? acknowledgedReviewFiles(db, String(row.id), value.tree, value.files)
+              : [],
           mergeParent: row.merge_parent,
           checks: row.checks
             ? ((v: any) => ({ ...v, output: v.log ? logTail(v.log) : "" }))(

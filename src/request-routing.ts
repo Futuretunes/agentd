@@ -9,6 +9,7 @@ export type RequestRoute = {
 export const reviewPreparationOperations = [
   "review-job",
   "review-file",
+  "review-file-acknowledge",
   "review-cancel",
   "review-start",
   "validation-job",
