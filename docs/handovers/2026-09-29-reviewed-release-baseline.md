@@ -4,7 +4,7 @@
 - Requested outcome: finish runner request-routing decomposition, consolidate the stacked work into one reviewed release baseline, then stop.
 - Status: implemented, exact archive verified, Linux validated and staged; not installed or merged.
 - Release: 0.49.0, task schema 2.
-- Branch and base: `release/0.49.0-reviewed-baseline` from cumulative 0.48.0; draft PR #53 targets `main` directly.
+- Branch and base: `release/0.49.0-reviewed-baseline` from cumulative 0.48.0; PR #53 targets `main` directly and is ready for independent review.
 - Implementation commit: `e96027df8c5f18be4b08a56a8453290ac8565eb0`.
 - PR: https://github.com/Futuretunes/agentd/pull/53
 
