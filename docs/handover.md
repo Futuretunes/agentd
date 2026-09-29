@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.55.0 — consolidated request-routing baseline
 
-[Latest handover](handovers/2026-09-29-routing-baseline.md): the complete 0.49–0.55 stack is consolidated into main-targeted draft PR #60. Every supported request operation has one startup-validated owner; unknown input remains fail-closed. Exact implementation `1a6d7dc` passed 194/194 required Linux tests with zero skips, typecheck and formatting. Consolidated CI and independent review remain pending. The exact archive is staged but unexecuted. Production remains 0.43.0.
+[Latest handover](handovers/2026-09-29-routing-baseline.md): the complete 0.49–0.55 stack is consolidated into main-targeted PR #60, ready for review. Every supported request operation has one startup-validated owner; unknown input remains fail-closed. Exact implementation `1a6d7dc` passed 194/194 required Linux tests with zero skips, typecheck and formatting. Consolidated Node 24/26 and Linux CI passed; independent review remains pending. The exact archive is staged but unexecuted. Production remains 0.43.0.
 
 ## Candidate 0.55.0 — complete explicit request routing
 
