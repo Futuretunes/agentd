@@ -26,6 +26,15 @@ class ResourceDeploymentTests(unittest.TestCase):
             self.assertEqual(backups.prune(c,backups.plan(c)['fingerprint']),1)
             self.assertFalse(all[5].exists());self.assertTrue(unknown.exists());self.assertTrue(all[3].exists());self.assertTrue(all[4].exists());self.assertTrue(linked.is_symlink())
 
+    def test_measurement_tolerates_files_replaced_by_a_running_service(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);(root/'kept').write_bytes(b'x'*4096);(root/'renamed.tmp').write_bytes(b'y')
+            real=Path.lstat
+            def vanishing(self,*a,**k):
+                if self.name=='renamed.tmp':raise FileNotFoundError(2,'No such file',str(self))
+                return real(self,*a,**k)
+            with patch.object(Path,'lstat',vanishing):self.assertGreaterEqual(backups.size(root),4096)
+
     def test_backup_measurement_does_not_follow_links_and_limits_large_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);inside=root/'inside';inside.mkdir();outside=root/'outside';outside.write_bytes(b'x'*10000);(inside/'link').symlink_to(outside)

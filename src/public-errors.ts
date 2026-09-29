@@ -18,6 +18,17 @@ const fixed = new Set([
   "Disk reserve reached. Review storage cleanup before starting more work.",
   "Storage inventory is too large; preserve for manual review",
   "Existing pull request reused; its current title, description and state were kept.",
+  "Current access key did not match.",
+  "Choose a generated or custom access key.",
+  "New access key must be different.",
+  "Access-key preview expired. Review it again.",
+  "Confirm the saved key and enter the current key again.",
+  "The new access key changed. Review it again.",
+  "Use an access key containing 24 to 128 characters.",
+  "Use a less predictable access key without spaces.",
+  "Access-key rotation is not installed.",
+  "Access-key rotation was refused.",
+  "Access-key rotation is unavailable.",
 ]);
 export function publicError(value: unknown) {
   const message =

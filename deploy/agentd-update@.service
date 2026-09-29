@@ -1,0 +1,13 @@
+[Unit]
+Description=AgentD approved update to %i
+# Started only by the administration helper for a validated, approved, newer version.
+# Runs outside the helper sandbox because installing replaces /opt/agentd and restarts
+# services; the command is fixed and the instance is only a version number.
+ConditionPathExists=/var/lib/agentd-releases/%i.json
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/python3 -B /opt/agentd/scripts/run_approved_update.py --version %i --config /etc/agentd/update.json
+TimeoutStartSec=30min
+UMask=0077

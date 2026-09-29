@@ -289,7 +289,11 @@ async function asyncTreeSnapshot(
   signal: AbortSignal,
 ) {
   const names = (
-      await command(repo, ["diff", "--name-only", "-z", revision, tree], signal)
+      await command(
+        repo,
+        ["diff", "--name-only", "-z", "--no-renames", revision, tree],
+        signal,
+      )
     )
       .split("\0")
       .filter(Boolean),

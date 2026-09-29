@@ -1077,6 +1077,22 @@ a {
 .large-review-file .file-review {
   flex-basis: 100%;
 }
+.paginated-review {
+  flex-basis: 100%;
+  min-width: 0;
+}
+.paginated-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.paginated-diff {
+  max-height: 60vh;
+  overflow: auto;
+  white-space: pre;
+}
 @media (max-width: 760px) {
   #workspace {
     grid-template-columns: minmax(0, 1fr);

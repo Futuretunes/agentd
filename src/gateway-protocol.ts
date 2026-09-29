@@ -7,6 +7,10 @@ import { dirname, isAbsolute } from "node:path";
 const fields: Record<string, string> = {
   "storage-preview": "owner",
   "storage-cleanup": "owner fingerprint",
+  "admin-access-rotate": "owner currentKey newHash",
+  "admin-diagnostics": "",
+  "admin-updates": "",
+  "admin-update-start": "owner version",
   capabilities: "",
   operations: "",
   projects: "",
@@ -22,6 +26,9 @@ const fields: Record<string, string> = {
   "review-job": "job owner",
   "review-file": "job tree file owner",
   "review-file-acknowledge": "job tree file fingerprint owner",
+  "review-file-page": "job tree file page owner",
+  "review-file-page-acknowledge":
+    "job tree file page pages fileFingerprint pageFingerprint owner",
   "review-cancel": "job owner",
   "validation-start": "id tree owner",
   "validation-job": "job owner",
@@ -59,7 +66,7 @@ const fields: Record<string, string> = {
   "account-cancel": "owner session",
   "account-refresh": "owner",
   "github-status": "owner",
-  "github-start": "owner",
+  "github-start": "owner access",
   "github-cancel": "owner session",
   "github-logout": "owner",
   "repository-start": "kind url branch name project",
@@ -84,8 +91,11 @@ const fields: Record<string, string> = {
   "attachment-read": "id",
 };
 export const gatewayMutations = new Set([
+  "admin-access-rotate",
+  "admin-update-start",
   "review-start",
   "review-file-acknowledge",
+  "review-file-page-acknowledge",
   "review-cancel",
   "validation-start",
   "validation-cancel",
@@ -149,6 +159,26 @@ export function gatewayRequest(value: unknown): Record<string, any> {
     (typeof input.owner !== "string" || !/^[a-f0-9]{64}$/.test(input.owner))
   )
     throw Error("Browser owner required");
+  if (
+    input.op === "review-file-page" &&
+    (!Number.isSafeInteger(input.page) || input.page < 0)
+  )
+    throw Error("Reload the paginated file review.");
+  if (
+    input.op === "review-file-page-acknowledge" &&
+    (typeof input.tree !== "string" ||
+      !/^[a-f0-9]{40}$/.test(input.tree) ||
+      !Number.isSafeInteger(input.page) ||
+      !Number.isSafeInteger(input.pages) ||
+      input.page < 0 ||
+      input.pages <= 1 ||
+      input.page >= input.pages ||
+      typeof input.fileFingerprint !== "string" ||
+      !/^[a-f0-9]{64}$/.test(input.fileFingerprint) ||
+      typeof input.pageFingerprint !== "string" ||
+      !/^[a-f0-9]{64}$/.test(input.pageFingerprint))
+  )
+    throw Error("Reload the paginated file review before marking this page reviewed.");
   if (
     input.op === "review-file-acknowledge" &&
     (typeof input.tree !== "string" ||
@@ -221,7 +251,7 @@ export function gatewaySocket(
     connection.setTimeout(10000, () => connection.destroy());
     const chunks: Buffer[] = [];
     let length = 0;
-    connection.on("data", (chunk) => {
+    connection.on("data", async (chunk) => {
       length += chunk.length;
       if (length > 7_500_000) {
         connection.destroy();
@@ -237,8 +267,9 @@ export function gatewaySocket(
         const input = gatewayRequest(JSON.parse(bytes.subarray(0, end).toString("utf8")));
         if (input.op !== "attachment-upload" && length > 80000)
           throw Error("Request too large");
+        const result = await dispatch(input);
         connection.end(
-          JSON.stringify({ ok: true, result: browserResult(dispatch(input)) }) + "\n",
+          JSON.stringify({ ok: true, result: browserResult(result) }) + "\n",
         );
       } catch (error) {
         connection.end(JSON.stringify({ ok: false, error: publicError(error) }) + "\n");
