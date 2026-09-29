@@ -235,3 +235,21 @@ export function paginatedReviewProgress(
       ]),
   );
 }
+
+export function reviewCoverage(
+  db: DatabaseSync,
+  task: string,
+  tree: string,
+  files: string[],
+) {
+  const acknowledged = new Set(acknowledgedReviewFiles(db, task, tree, files)),
+    paginated = paginatedReviewProgress(db, task, tree, files);
+  for (const [file, value] of Object.entries(paginated))
+    if (value.pages > 1 && value.acknowledged.length === value.pages)
+      acknowledged.add(file);
+  const completed = files.filter((file) => acknowledged.has(file));
+  return {
+    completed,
+    complete: files.length > 0 && completed.length === files.length,
+  };
+}

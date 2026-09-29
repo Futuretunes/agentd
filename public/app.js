@@ -1699,7 +1699,7 @@ async function openReview(id) {
     content.append(
       node(
         "p",
-        "The combined diff is too large for one response. Inspect bounded text files below. Commit and revision approval remain unavailable until the change is reduced.",
+        "The combined diff is too large for one response. Inspect every bounded text file below. Complete coverage can unlock checks and commit for this exact snapshot; revision requests remain unavailable.",
         "error",
       ),
     );
@@ -1715,7 +1715,7 @@ async function openReview(id) {
         if (completed.size === value.files.length) {
           progress.className = "good";
           progress.textContent +=
-            " The review record is complete; commit and revision remain unavailable for this oversized change.";
+            " The review record is complete. Refreshing will unlock checks and commit for this exact snapshot.";
         }
       };
       updateProgress();
@@ -1811,12 +1811,16 @@ async function openReview(id) {
                             pages: current.pages,
                             acknowledged: saved.acknowledgedPages,
                           };
-                          if (saved.complete) completed.add(file);
-                          status.textContent = saved.complete
+                          if (saved.fileComplete) completed.add(file);
+                          status.textContent = saved.fileComplete
                             ? "Reviewed for this exact snapshot"
                             : `${saved.acknowledgedPages.length} of ${current.pages} pages reviewed`;
-                          status.className = saved.complete ? "good" : "muted";
+                          status.className = saved.fileComplete ? "good" : "muted";
                           updateProgress();
+                          if (saved.complete) {
+                            await openReview(id);
+                            return;
+                          }
                           await showPage(current);
                         } catch (error) {
                           pageStatus.textContent = error.message;
@@ -1868,6 +1872,7 @@ async function openReview(id) {
                       mark.remove();
                       updateProgress();
                       value.acknowledgedFiles = saved.acknowledgedFiles;
+                      if (saved.complete) await openReview(id);
                     } catch (error) {
                       status.textContent = error.message;
                       status.className = "error";
@@ -1945,19 +1950,21 @@ async function openReview(id) {
     const check = button("Run checks", async () => {
       await startValidation(id, value.tree, actions, checksBox);
     });
-    check.disabled = !!value.conflicts?.length || !checksReady;
+    const reviewReady =
+      !value.blocked.length && (!value.truncated || value.largeReviewComplete);
+    check.disabled = !!value.conflicts?.length || !checksReady || !reviewReady;
     const passed = value.checks?.status === "passed" && value.checks?.tree === value.tree;
     const commitReady =
       (value.files.length || value.mergeParent) &&
       !value.conflicts?.length &&
-      !value.truncated &&
-      !value.blocked.length &&
+      reviewReady &&
       passed;
     let next;
     if (value.conflicts?.length)
       next = "Resolve the conflicts first. Use Request revisions to ask your agent.";
-    else if (value.truncated || value.blocked.length)
-      next = "Resolve the warnings above before committing.";
+    else if (value.blocked.length) next = "Resolve the warnings above before committing.";
+    else if (value.truncated && !value.largeReviewComplete)
+      next = "Review and mark every changed file page before running checks.";
     else if (!checksReady)
       next = setup?.error
         ? "This project has no supported checks yet: " + setup.error

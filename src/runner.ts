@@ -60,6 +60,7 @@ import {
   acknowledgedReviewFiles,
   acknowledgedReviewPages,
   paginatedReviewProgress,
+  reviewCoverage,
 } from "./review-acknowledgements.ts";
 import { isolated } from "./isolation.ts";
 import { DatabaseSync } from "node:sqlite";
@@ -805,6 +806,13 @@ export function runner(c: Config) {
       );
     if ((prepared ? prepared.conflicts : review(row).conflicts).length)
       throw Error("Resolve conflict markers before running checks.");
+    if (value.blocked.length)
+      throw Error("Resolve files that require separate review before running checks.");
+    if (
+      value.truncated &&
+      !reviewCoverage(db, String(row.id), value.tree, value.files).complete
+    )
+      throw Error("Complete the exact file review before running checks.");
     const p = project(String(row.project));
     if (!p.check_dependencies)
       throw Error("Open Set up checks to prepare this project’s dependencies.");
@@ -836,10 +844,15 @@ export function runner(c: Config) {
     if (value.conflicts.length)
       throw Error("Resolve conflict markers before committing.");
     if (value.tree !== input.tree) throw Error("Changes have changed. Review again.");
-    if (value.truncated || value.blocked.length)
+    if (value.blocked.length)
       throw Error(
-        "Review contains oversized changes or sensitive files or credential content; resolve them before committing",
+        "Review contains sensitive, binary or unscannable files; resolve them before committing",
       );
+    if (
+      value.truncated &&
+      !reviewCoverage(db, String(row.id), value.tree, value.files).complete
+    )
+      throw Error("Complete the exact file review before committing these changes");
     const checks = row.checks ? JSON.parse(String(row.checks)) : null;
     if (
       checks?.status !== "passed" ||
@@ -1146,11 +1159,13 @@ export function runner(c: Config) {
           acknowledgeReviewPage(db, String(row.id), plan),
         );
         const acknowledgedPages = acknowledgedReviewPages(db, String(row.id), plan);
+        const coverage = reviewCoverage(db, String(row.id), value.tree, job.result.files);
         return {
           ...plan,
           acknowledged: true,
           acknowledgedPages,
-          complete: acknowledgedPages.length === value.pages,
+          fileComplete: acknowledgedPages.length === value.pages,
+          complete: coverage.complete,
         };
       }
       const page = filePatch(repo, revision, tree, input.file);
@@ -1168,13 +1183,15 @@ export function runner(c: Config) {
         page.tree,
         job.result.files,
       );
+      const coverage = reviewCoverage(db, String(row.id), page.tree, job.result.files);
       return {
         tree: page.tree,
         file: page.file,
         fingerprint: page.fingerprint,
         acknowledged: true,
+        fileComplete: true,
         acknowledgedFiles: acknowledged,
-        complete: acknowledged.length === job.result.files.length,
+        complete: coverage.complete,
       };
     }
     if (input.op === "review-cancel")
@@ -1236,6 +1253,10 @@ export function runner(c: Config) {
             value.truncated && !value.blocked.length
               ? paginatedReviewProgress(db, String(row.id), value.tree, value.files)
               : {},
+          largeReviewComplete:
+            value.truncated && !value.blocked.length
+              ? reviewCoverage(db, String(row.id), value.tree, value.files).complete
+              : false,
           mergeParent: row.merge_parent,
           checks: row.checks
             ? ((v: any) => ({ ...v, output: v.log ? logTail(v.log) : "" }))(
