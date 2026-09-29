@@ -4,6 +4,7 @@ import {
   requestRouter,
   reviewPreparationOperations,
   serviceReadOperations,
+  workspaceReadOperations,
 } from "./request-routing.ts";
 import { type prepareReview } from "./review-preview.ts";
 import { usageCache } from "./provider-usage.ts";
@@ -1490,6 +1491,94 @@ export function runner(c: Config) {
       return db.prepare("SELECT * FROM audit ORDER BY id DESC LIMIT 100").all();
     throw Error("Unknown service read operation");
   }
+  function handleWorkspaceReadRequest(input: any) {
+    if (input.op === "projects")
+      return db
+        .prepare(
+          `SELECT p.*, (SELECT count(*) FROM conversations c WHERE c.project=p.id AND c.archived=0) AS conversations FROM projects p WHERE p.archived=0 ORDER BY p.created,p.id`,
+        )
+        .all();
+    if (input.op === "archived-projects")
+      return db
+        .prepare("SELECT id,name,created FROM projects WHERE archived=1 ORDER BY name,id")
+        .all();
+    if (input.op === "history") {
+      const query = input.query ?? "",
+        filter = input.filter ?? "active",
+        before = input.before ?? Number.MAX_SAFE_INTEGER;
+      if (
+        typeof query !== "string" ||
+        query.length > 200 ||
+        !["active", "archived", "all"].includes(filter) ||
+        !Number.isSafeInteger(before) ||
+        before < 1
+      )
+        throw Error("Invalid history search");
+      const rows = db
+        .prepare(
+          `SELECT c.rowid AS sequence,c.id,c.title,c.project,c.archived,p.name AS projectName,p.archived AS projectArchived,
+        (SELECT status FROM tasks t WHERE t.conversation=c.id ORDER BY t.rowid DESC LIMIT 1) AS status,
+        (SELECT max(updated) FROM tasks t WHERE t.conversation=c.id) AS updated
+        FROM conversations c JOIN projects p ON p.id=c.project WHERE c.rowid<?
+        AND (?='all' OR (?='archived' AND (c.archived=1 OR p.archived=1)) OR (?='active' AND c.archived=0 AND p.archived=0))
+        AND (?='' OR instr(lower(c.title),lower(?))>0 OR instr(lower(p.name),lower(?))>0
+          OR EXISTS(SELECT 1 FROM tasks t WHERE t.conversation=c.id AND instr(lower(t.prompt),lower(?))>0))
+        ORDER BY c.rowid DESC LIMIT 51`,
+        )
+        .all(before, filter, filter, filter, query, query, query, query);
+      const more = rows.length > 50;
+      return { items: rows.slice(0, 50), next: more ? rows[49].sequence : null };
+    }
+    if (input.op === "conversations") {
+      project(input.project);
+      return db
+        .prepare(
+          `SELECT c.*, (SELECT status FROM tasks t WHERE t.conversation=c.id ORDER BY created DESC,rowid DESC LIMIT 1) AS status,
+        (SELECT adapter FROM tasks t WHERE t.conversation=c.id ORDER BY created DESC,rowid DESC LIMIT 1) AS adapter,
+        (SELECT max(created) FROM tasks t WHERE t.conversation=c.id) AS updated
+        FROM conversations c WHERE c.project=? AND c.archived=0 ORDER BY updated DESC LIMIT 100`,
+        )
+        .all(input.project);
+    }
+    if (input.op === "conversation-show") {
+      const thread = conversation(input.id),
+        before = input.before ?? Number.MAX_SAFE_INTEGER;
+      if (!Number.isSafeInteger(before) || before < 1)
+        throw Error("Invalid conversation cursor");
+      const rows = db
+        .prepare(
+          "SELECT rowid AS sequence,* FROM tasks WHERE conversation=? AND rowid<? ORDER BY rowid DESC LIMIT 31",
+        )
+        .all(input.id, before);
+      const more = rows.length > 30,
+        page = rows.slice(0, 30).reverse();
+      return {
+        conversation: thread,
+        project: project(String(thread.project)),
+        olderBefore: more ? page[0].sequence : null,
+        messages: page.map((row) => ({
+          ...row,
+          answer:
+            row.log && existsSync(String(row.log) + ".answer")
+              ? logTail(String(row.log) + ".answer", 60000)
+              : null,
+          answerTruncated:
+            !!row.log &&
+            existsSync(String(row.log) + ".answer") &&
+            statSync(String(row.log) + ".answer").size > 60000,
+          output: row.log ? logTail(String(row.log)) : "",
+          outputTruncated:
+            !!row.log &&
+            existsSync(String(row.log)) &&
+            statSync(String(row.log)).size > 60000,
+          images: JSON.parse(String(row.attachments)).map((id: string) => attachment(id)),
+        })),
+      };
+    }
+    if (input.op === "list")
+      return db.prepare("SELECT * FROM tasks ORDER BY created DESC LIMIT 100").all();
+    throw Error("Unknown workspace read operation");
+  }
   function handleCoreRequest(input: any) {
     requireNoReviewPreparationMutation(input);
     const actor = auditContext.getStore(),
@@ -1636,12 +1725,6 @@ export function runner(c: Config) {
       ).run(dependencies, hash, input.id);
       return project(input.id);
     }
-    if (input.op === "projects")
-      return db
-        .prepare(
-          `SELECT p.*, (SELECT count(*) FROM conversations c WHERE c.project=p.id AND c.archived=0) AS conversations FROM projects p WHERE p.archived=0 ORDER BY p.created,p.id`,
-        )
-        .all();
     if (input.op === "project-create" || input.op === "project-register") {
       const name = title(input.name),
         id = randomUUID();
@@ -1707,37 +1790,6 @@ export function runner(c: Config) {
       audit(input.op, null, { project: input.id });
       return project(input.id);
     }
-    if (input.op === "archived-projects")
-      return db
-        .prepare("SELECT id,name,created FROM projects WHERE archived=1 ORDER BY name,id")
-        .all();
-    if (input.op === "history") {
-      const query = input.query ?? "",
-        filter = input.filter ?? "active",
-        before = input.before ?? Number.MAX_SAFE_INTEGER;
-      if (
-        typeof query !== "string" ||
-        query.length > 200 ||
-        !["active", "archived", "all"].includes(filter) ||
-        !Number.isSafeInteger(before) ||
-        before < 1
-      )
-        throw Error("Invalid history search");
-      const rows = db
-        .prepare(
-          `SELECT c.rowid AS sequence,c.id,c.title,c.project,c.archived,p.name AS projectName,p.archived AS projectArchived,
-        (SELECT status FROM tasks t WHERE t.conversation=c.id ORDER BY t.rowid DESC LIMIT 1) AS status,
-        (SELECT max(updated) FROM tasks t WHERE t.conversation=c.id) AS updated
-        FROM conversations c JOIN projects p ON p.id=c.project WHERE c.rowid<?
-        AND (?='all' OR (?='archived' AND (c.archived=1 OR p.archived=1)) OR (?='active' AND c.archived=0 AND p.archived=0))
-        AND (?='' OR instr(lower(c.title),lower(?))>0 OR instr(lower(p.name),lower(?))>0
-          OR EXISTS(SELECT 1 FROM tasks t WHERE t.conversation=c.id AND instr(lower(t.prompt),lower(?))>0))
-        ORDER BY c.rowid DESC LIMIT 51`,
-        )
-        .all(before, filter, filter, filter, query, query, query, query);
-      const more = rows.length > 50;
-      return { items: rows.slice(0, 50), next: more ? rows[49].sequence : null };
-    }
     if (input.op === "project-rename") {
       project(input.id);
       auditedWrite(input.op, null, { project: input.id }, () =>
@@ -1746,52 +1798,6 @@ export function runner(c: Config) {
           .run(title(input.name), input.id),
       );
       return project(input.id);
-    }
-    if (input.op === "conversations") {
-      project(input.project);
-      return db
-        .prepare(
-          `SELECT c.*, (SELECT status FROM tasks t WHERE t.conversation=c.id ORDER BY created DESC,rowid DESC LIMIT 1) AS status,
-        (SELECT adapter FROM tasks t WHERE t.conversation=c.id ORDER BY created DESC,rowid DESC LIMIT 1) AS adapter,
-        (SELECT max(created) FROM tasks t WHERE t.conversation=c.id) AS updated
-        FROM conversations c WHERE c.project=? AND c.archived=0 ORDER BY updated DESC LIMIT 100`,
-        )
-        .all(input.project);
-    }
-    if (input.op === "conversation-show") {
-      const thread = conversation(input.id),
-        before = input.before ?? Number.MAX_SAFE_INTEGER;
-      if (!Number.isSafeInteger(before) || before < 1)
-        throw Error("Invalid conversation cursor");
-      const rows = db
-        .prepare(
-          "SELECT rowid AS sequence,* FROM tasks WHERE conversation=? AND rowid<? ORDER BY rowid DESC LIMIT 31",
-        )
-        .all(input.id, before);
-      const more = rows.length > 30,
-        page = rows.slice(0, 30).reverse();
-      return {
-        conversation: thread,
-        project: project(String(thread.project)),
-        olderBefore: more ? page[0].sequence : null,
-        messages: page.map((row) => ({
-          ...row,
-          answer:
-            row.log && existsSync(String(row.log) + ".answer")
-              ? logTail(String(row.log) + ".answer", 60000)
-              : null,
-          answerTruncated:
-            !!row.log &&
-            existsSync(String(row.log) + ".answer") &&
-            statSync(String(row.log) + ".answer").size > 60000,
-          output: row.log ? logTail(String(row.log)) : "",
-          outputTruncated:
-            !!row.log &&
-            existsSync(String(row.log)) &&
-            statSync(String(row.log)).size > 60000,
-          images: JSON.parse(String(row.attachments)).map((id: string) => attachment(id)),
-        })),
-      };
     }
     if (input.op === "conversation-restore") {
       const thread = conversation(input.id);
@@ -1824,8 +1830,6 @@ export function runner(c: Config) {
       audit(input.op, null, { conversation: input.id });
       return { ok: true };
     }
-    if (input.op === "list")
-      return db.prepare("SELECT * FROM tasks ORDER BY created DESC LIMIT 100").all();
     if (input.op === "create") {
       const mode = input.mode ?? "ask";
       if (!["ask", "edit", "chat"].includes(mode)) throw Error("Invalid task mode");
@@ -2126,6 +2130,11 @@ export function runner(c: Config) {
         name: "service-reads",
         operations: serviceReadOperations,
         handle: handleServiceReadRequest,
+      },
+      {
+        name: "workspace-reads",
+        operations: workspaceReadOperations,
+        handle: handleWorkspaceReadRequest,
       },
     ],
     handleCoreRequest,

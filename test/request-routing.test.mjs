@@ -5,6 +5,7 @@ import {
   requestRouter,
   reviewPreparationOperations,
   serviceReadOperations,
+  workspaceReadOperations,
 } from "../src/request-routing.ts";
 
 test("request routing assigns review preparation operations to one domain", () => {
@@ -66,6 +67,25 @@ test("request routing keeps service reads independent from mutation domains", ()
   );
   for (const op of serviceReadOperations) route({ op });
   assert.deepEqual(seen, serviceReadOperations);
+});
+
+test("request routing assigns workspace reads without claiming mutations", () => {
+  const seen = [];
+  const route = requestRouter(
+    [
+      { name: "service", operations: serviceReadOperations, handle() {} },
+      {
+        name: "workspace-reads",
+        operations: workspaceReadOperations,
+        handle: (input) => seen.push(input.op),
+      },
+    ],
+    () => {},
+  );
+  for (const op of workspaceReadOperations) route({ op });
+  assert.deepEqual(seen, workspaceReadOperations);
+  assert.equal(workspaceReadOperations.includes("project-rename"), false);
+  assert.equal(workspaceReadOperations.includes("conversation-archive"), false);
 });
 
 test("request routing rejects duplicate ownership at startup", () => {

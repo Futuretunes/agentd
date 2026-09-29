@@ -55,6 +55,15 @@ export const managedOperationOperations = [
 
 export const serviceReadOperations = ["capabilities", "operations", "audit"] as const;
 
+export const workspaceReadOperations = [
+  "projects",
+  "archived-projects",
+  "history",
+  "conversations",
+  "conversation-show",
+  "list",
+] as const;
+
 /**
  * Build the runner's operation table once at startup. An operation has one owner;
  * duplicate claims fail before either handler can receive a request.
