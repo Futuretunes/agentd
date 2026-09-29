@@ -4,6 +4,7 @@ import {
   requestRouter,
   reviewPreparationOperations,
   serviceReadOperations,
+  taskOperations,
   workspaceMutationOperations,
   workspaceReadOperations,
 } from "./request-routing.ts";
@@ -1721,123 +1722,10 @@ export function runner(c: Config) {
     }
     throw Error("Unknown workspace mutation operation");
   }
-  function handleCoreRequest(input: any) {
+  function handleTaskRequest(input: any) {
     requireNoReviewPreparationMutation(input);
     const { receipt, recovered } = inspectCreationRequest(input);
     if (recovered) return recovered;
-    if (input.op === "attachment-upload") {
-      requireSpace([c.stateDir], limits.reserveBytes);
-      return images.upload(input);
-    }
-    if (input.op === "storage-preview" || input.op === "storage-cleanup") {
-      if (blocked("storage"))
-        throw Error("Wait for current work before reviewing storage cleanup");
-      if (typeof input.owner !== "string" || !/^[a-f0-9]{64}$/.test(input.owner))
-        throw Error("Browser owner required");
-      return input.op === "storage-preview"
-        ? storage.preview(input.owner)
-        : storage.apply(input.owner, input.fingerprint);
-    }
-    if (input.op === "attachment-read") return images.read(input.id);
-    if (
-      input.op === "settings-view" ||
-      input.op === "settings-save" ||
-      input.op === "models-refresh"
-    ) {
-      const projectId = String(input.project ?? "default"),
-        conversationId = input.conversation ? String(input.conversation) : null,
-        agent = String(input.agent ?? "claude");
-      project(projectId);
-      if (conversationId && conversation(conversationId).project !== projectId)
-        throw Error("Conversation belongs to another project");
-      if (!adapterIds.includes(agent)) throw Error("Unsupported adapter");
-      if (input.op === "models-refresh") {
-        if (blocked("models"))
-          throw Error("Wait for active work or account checks before refreshing models");
-        catalog.refresh(agent);
-        audit("refresh-models", null, {
-          adapter: agent,
-          actor: input.owner ? "browser" : "local",
-        });
-      }
-      if (input.op === "settings-save") {
-        if (!["project", "conversation"].includes(input.scope))
-          throw Error("Invalid settings scope");
-        const scopeId = input.scope === "project" ? projectId : conversationId;
-        if (!scopeId)
-          throw Error("Start a conversation before saving conversation settings");
-        const target = input.agentScope === "*" ? "*" : agent,
-          values = settings(input.values, target),
-          before = layer(input.scope, scopeId, target);
-        if (
-          target !== "*" &&
-          values.model &&
-          !["auto", "provider"].includes(values.model) &&
-          !catalog.view(agent).models.some((m) => m.id === values.model)
-        )
-          throw Error("Refresh native models and choose a listed model");
-        const revision = JSON.stringify(before);
-        if (input.previous !== undefined && input.previous !== revision)
-          throw Error("Settings changed in another browser. Reload before saving.");
-        if (
-          values.access === "edit" &&
-          target !== "*" &&
-          !capabilities()
-            .find((a) => a.id === agent)
-            ?.modes.includes("edit")
-        )
-          throw Error("Editing is outside this agent’s installation policy");
-        db.exec("BEGIN");
-        try {
-          db.prepare(
-            "INSERT INTO execution_settings(scope,scope_id,agent,settings,updated) VALUES(?,?,?,?,?) ON CONFLICT(scope,scope_id,agent) DO UPDATE SET settings=excluded.settings,updated=excluded.updated",
-          ).run(
-            input.scope,
-            scopeId,
-            target,
-            JSON.stringify(values),
-            new Date().toISOString(),
-          );
-          if (target !== "*")
-            resolveSettings(
-              [
-                ...layers(
-                  projectId,
-                  input.scope === "project" ? null : conversationId,
-                  agent,
-                ),
-                { source: "Validation", values: { access: "edit" } },
-              ],
-              agent,
-              "ask",
-              "",
-              catalog.view(agent),
-            );
-          audit("change-execution-settings", null, {
-            scope: input.scope,
-            id: scopeId,
-            agent: target,
-            before,
-            after: values,
-            actor: input.owner ? "browser" : "local",
-          });
-          refreshPending();
-          db.exec("COMMIT");
-        } catch (e) {
-          db.exec("ROLLBACK");
-          throw e;
-        }
-      }
-      return settingsView(
-        projectId,
-        conversationId,
-        agent,
-        String(input.mode ?? "ask"),
-        String(input.prompt ?? "").slice(0, 16000),
-        settings(input.overrides ?? {}, agent, true),
-      );
-    }
-
     if (input.op === "create") {
       const mode = input.mode ?? "ask";
       if (!["ask", "edit", "chat"].includes(mode)) throw Error("Invalid task mode");
@@ -2120,6 +2008,125 @@ export function runner(c: Config) {
       else throw new Error("Task cannot be cancelled in this state");
       return get(input.id);
     }
+    throw Error("Unknown task operation");
+  }
+  function handleCoreRequest(input: any) {
+    requireNoReviewPreparationMutation(input);
+    const { receipt, recovered } = inspectCreationRequest(input);
+    if (recovered) return recovered;
+    if (input.op === "attachment-upload") {
+      requireSpace([c.stateDir], limits.reserveBytes);
+      return images.upload(input);
+    }
+    if (input.op === "storage-preview" || input.op === "storage-cleanup") {
+      if (blocked("storage"))
+        throw Error("Wait for current work before reviewing storage cleanup");
+      if (typeof input.owner !== "string" || !/^[a-f0-9]{64}$/.test(input.owner))
+        throw Error("Browser owner required");
+      return input.op === "storage-preview"
+        ? storage.preview(input.owner)
+        : storage.apply(input.owner, input.fingerprint);
+    }
+    if (input.op === "attachment-read") return images.read(input.id);
+    if (
+      input.op === "settings-view" ||
+      input.op === "settings-save" ||
+      input.op === "models-refresh"
+    ) {
+      const projectId = String(input.project ?? "default"),
+        conversationId = input.conversation ? String(input.conversation) : null,
+        agent = String(input.agent ?? "claude");
+      project(projectId);
+      if (conversationId && conversation(conversationId).project !== projectId)
+        throw Error("Conversation belongs to another project");
+      if (!adapterIds.includes(agent)) throw Error("Unsupported adapter");
+      if (input.op === "models-refresh") {
+        if (blocked("models"))
+          throw Error("Wait for active work or account checks before refreshing models");
+        catalog.refresh(agent);
+        audit("refresh-models", null, {
+          adapter: agent,
+          actor: input.owner ? "browser" : "local",
+        });
+      }
+      if (input.op === "settings-save") {
+        if (!["project", "conversation"].includes(input.scope))
+          throw Error("Invalid settings scope");
+        const scopeId = input.scope === "project" ? projectId : conversationId;
+        if (!scopeId)
+          throw Error("Start a conversation before saving conversation settings");
+        const target = input.agentScope === "*" ? "*" : agent,
+          values = settings(input.values, target),
+          before = layer(input.scope, scopeId, target);
+        if (
+          target !== "*" &&
+          values.model &&
+          !["auto", "provider"].includes(values.model) &&
+          !catalog.view(agent).models.some((m) => m.id === values.model)
+        )
+          throw Error("Refresh native models and choose a listed model");
+        const revision = JSON.stringify(before);
+        if (input.previous !== undefined && input.previous !== revision)
+          throw Error("Settings changed in another browser. Reload before saving.");
+        if (
+          values.access === "edit" &&
+          target !== "*" &&
+          !capabilities()
+            .find((a) => a.id === agent)
+            ?.modes.includes("edit")
+        )
+          throw Error("Editing is outside this agent’s installation policy");
+        db.exec("BEGIN");
+        try {
+          db.prepare(
+            "INSERT INTO execution_settings(scope,scope_id,agent,settings,updated) VALUES(?,?,?,?,?) ON CONFLICT(scope,scope_id,agent) DO UPDATE SET settings=excluded.settings,updated=excluded.updated",
+          ).run(
+            input.scope,
+            scopeId,
+            target,
+            JSON.stringify(values),
+            new Date().toISOString(),
+          );
+          if (target !== "*")
+            resolveSettings(
+              [
+                ...layers(
+                  projectId,
+                  input.scope === "project" ? null : conversationId,
+                  agent,
+                ),
+                { source: "Validation", values: { access: "edit" } },
+              ],
+              agent,
+              "ask",
+              "",
+              catalog.view(agent),
+            );
+          audit("change-execution-settings", null, {
+            scope: input.scope,
+            id: scopeId,
+            agent: target,
+            before,
+            after: values,
+            actor: input.owner ? "browser" : "local",
+          });
+          refreshPending();
+          db.exec("COMMIT");
+        } catch (e) {
+          db.exec("ROLLBACK");
+          throw e;
+        }
+      }
+      return settingsView(
+        projectId,
+        conversationId,
+        agent,
+        String(input.mode ?? "ask"),
+        String(input.prompt ?? "").slice(0, 16000),
+        settings(input.overrides ?? {}, agent, true),
+      );
+    }
+
     throw new Error("Unknown operation");
   }
   const dispatchRequest = requestRouter(
@@ -2148,6 +2155,11 @@ export function runner(c: Config) {
         name: "workspace-mutations",
         operations: workspaceMutationOperations,
         handle: handleWorkspaceMutationRequest,
+      },
+      {
+        name: "tasks",
+        operations: taskOperations,
+        handle: handleTaskRequest,
       },
     ],
     handleCoreRequest,

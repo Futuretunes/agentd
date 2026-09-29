@@ -76,6 +76,21 @@ export const workspaceMutationOperations = [
   "conversation-archive",
 ] as const;
 
+export const taskOperations = [
+  "create",
+  "revise",
+  "restart-settings",
+  "retry",
+  "task-output",
+  "review",
+  "validate",
+  "discard",
+  "commit",
+  "show",
+  "approve",
+  "cancel",
+] as const;
+
 /**
  * Build the runner's operation table once at startup. An operation has one owner;
  * duplicate claims fail before either handler can receive a request.

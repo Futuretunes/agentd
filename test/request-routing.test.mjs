@@ -5,6 +5,7 @@ import {
   requestRouter,
   reviewPreparationOperations,
   serviceReadOperations,
+  taskOperations,
   workspaceMutationOperations,
   workspaceReadOperations,
 } from "../src/request-routing.ts";
@@ -104,6 +105,23 @@ test("request routing assigns workspace mutations separately from reads", () => 
   );
   for (const op of workspaceMutationOperations) route({ op });
   assert.deepEqual(seen, workspaceMutationOperations);
+});
+
+test("request routing assigns task lifecycle operations to one owner", () => {
+  const seen = [];
+  const route = requestRouter(
+    [
+      { name: "workspace", operations: workspaceMutationOperations, handle() {} },
+      {
+        name: "tasks",
+        operations: taskOperations,
+        handle: (input) => seen.push(input.op),
+      },
+    ],
+    () => {},
+  );
+  for (const op of taskOperations) route({ op });
+  assert.deepEqual(seen, taskOperations);
 });
 
 test("request routing rejects duplicate ownership at startup", () => {
