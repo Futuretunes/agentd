@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.38.0 — publication and feedback ownership
 
-[Handover](handovers/2026-09-29-publication-owner.md): publishing and GitHub feedback move into a shared domain manager with owned shutdown, preserving their mutual exclusion and approval checks. Exact cumulative validation and staging are pending; production remains unchanged.
+[Handover](handovers/2026-09-29-publication-owner.md): publishing and GitHub feedback move into a shared domain manager with owned shutdown, preserving their mutual exclusion and approval checks. Exact archive `5de9de5` passed 154/154 Linux tests with zero skips, formatting, typecheck and CI; draft #42 is open. The cumulative installer is staged for 0.38.0 but unexecuted; production remains unchanged.
 
 ## Candidate 0.37.0 — dependency publication recovery
 

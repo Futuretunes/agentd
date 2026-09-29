@@ -183,4 +183,4 @@ Dependency selection and job success now share one checked SQLite transaction. F
 
 ## R2 publication domain — candidate 0.38.0
 
-Publication and GitHub feedback share an extracted manager and owned operation slot. Shutdown waits for transport settlement; immediate shutdown prevents transport startup. Approval cancellation remains needs-attention. Existing commit/owner/fingerprint/conflict safeguards remain. Exact validation and staging pending; not installed. Task/check decomposition and synchronous review/integration Git work remain open.
+Publication and GitHub feedback share an extracted manager and owned operation slot. Shutdown waits for transport settlement; immediate shutdown prevents transport startup. Approval cancellation remains needs-attention. Existing commit/owner/fingerprint/conflict safeguards remain. Exact archive passed 154/154 Linux tests, zero skips, formatting, typecheck and CI; draft #42; not installed. Task/check decomposition and synchronous review/integration Git work remain open.
