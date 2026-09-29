@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.37.0 — dependency publication recovery
 
-[Handover](handovers/2026-09-29-dependency-recovery.md): project dependency selection and job success publish atomically; failure/startup cleanup preserves referenced or uncertain stages. Fault-injection and restart coverage added. Exact Linux/CI pending; not deployed.
+[Handover](handovers/2026-09-29-dependency-recovery.md): project dependency selection and job success publish atomically; failure/startup cleanup preserves referenced or uncertain stages. Fault-injection and restart coverage added. Exact archive `6463492` passed 151/151 Linux tests, zero skips, formatting, typecheck and CI; draft #41 is open. The cumulative installer is staged for 0.37.0; not deployed.
 
 ## Candidate 0.36.0 — repository operation ownership
 

@@ -179,4 +179,4 @@ Repository discovery/import/update is extracted with owned completion, cancellat
 
 ## R10/R6 dependency publication recovery — candidate 0.37.0
 
-Dependency selection and job success now share one checked SQLite transaction. Failure/startup cleanup protects referenced and aliased stages and preserves uncertain references. Regression coverage includes publication-write failure and legacy interrupted startup. Physical durability, corrupt-package repair and whole-cache retention remain separate work. Exact Linux/CI pending; not installed.
+Dependency selection and job success now share one checked SQLite transaction. Failure/startup cleanup protects referenced and aliased stages and preserves uncertain references. Regression coverage includes publication-write failure and legacy interrupted startup. Physical durability, corrupt-package repair and whole-cache retention remain separate work. Exact archive passed 151/151 Linux tests, zero skips, formatting, typecheck and CI; draft #41; not installed.
