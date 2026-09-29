@@ -6,7 +6,7 @@
 - Release: 0.52.0, task schema 2.
 - Branch and base: `refactor/workspace-read-routing` from `refactor/service-read-routing`.
 - Implementation commit: `742eec8dad8292d43f2515724bcbbf42964191b7`.
-- PR: https://github.com/Futuretunes/agentd/pull/56, draft against PR #55's branch pending final CI and review.
+- PR: https://github.com/Futuretunes/agentd/pull/56, ready for review against PR #55's branch.
 
 ## Changes and relevant files
 
@@ -19,7 +19,7 @@ Active and archived project lists, conversation history/search, project conversa
 - macOS full suite: 182 passed, 0 failed; nine Linux-only tests skipped as expected.
 - Required Ubuntu suite from the exact archive: 191/191 passed with zero failures and zero skips.
 - Exact archive: version 0.52.0, task schema 2, SHA-256 `8e2d490af47012cf2cb51634c0f71978a962b913a307518c20f123cad552dc6d`.
-- GitHub Actions is pending for the documentation-complete branch and must pass before the PR is marked ready.
+- GitHub Actions runs `36553680128` and `36553686948`: Node 24, Node 26 and Required Linux isolation passed.
 
 No live model request, account consent, publication, cleanup, deployment, merge or tag occurred.
 
@@ -33,4 +33,4 @@ This is an internal dispatch refactor. It does not broaden browser authority, ch
 
 ## Next steps
 
-After CI and review, mark #56 ready. The next bounded request-routing slice is project and conversation mutations, followed separately by task reads/actions and attachment/settings/storage operations. Larger product backlog remains R8 narrower GitHub consent, R14 binary/large-file review, GUI administration, retention quotas and notifications.
+The next bounded request-routing slice is project and conversation mutations, followed separately by task reads/actions and attachment/settings/storage operations. Larger product backlog remains R8 narrower GitHub consent, R14 binary/large-file review, GUI administration, retention quotas and notifications.
