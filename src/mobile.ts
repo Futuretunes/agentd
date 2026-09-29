@@ -22,6 +22,10 @@ type Config = {
 export function mobile(c: Config) {
   const sessions = new Map<string, number>(),
     attempts = new Map<string, { count: number; until: number }>(),
+    rollbackPreviews = new Map<
+      string,
+      { fingerprint: string; version: string; expires: number }
+    >(),
     updatePreviews = new Map<
       string,
       { fingerprint: string; version: string; expires: number }
@@ -185,8 +189,9 @@ export function mobile(c: Config) {
           attempts.set(limitKey, attempt);
           const input = await body(req),
             now = Date.now();
-          for (const [owner, preview] of updatePreviews)
-            if (preview.expires < now) updatePreviews.delete(owner);
+          for (const previews of [updatePreviews, rollbackPreviews])
+            for (const [owner, preview] of previews)
+              if (preview.expires < now) previews.delete(owner);
           if (!accessKeyMatches(input.currentKey, accessHash))
             throw Error("Current access key did not match.");
           if (input.action === "preview") {
@@ -232,6 +237,52 @@ export function mobile(c: Config) {
               throw Error("Confirm that services will restart during the update.");
             updatePreviews.delete(accountOwner);
             await call({ op: "admin-update-start", version: preview.version });
+            send(202, { started: true, version: preview.version });
+            return;
+          }
+          if (input.action === "rollback-preview") {
+            const value = await call({ op: "admin-updates" }),
+              target = value.rollback;
+            if (!target?.available)
+              throw Error(target?.reason ?? "No earlier version is available.");
+            if (value.configuration !== "ok")
+              throw Error("Server configuration needs review before rolling back.");
+            if (value.running) throw Error("An update or rollback is already running.");
+            const expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-rollback-preview:${accountOwner}:${value.installed.version}:${target.version}:${target.completedAt}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            rollbackPreviews.set(accountOwner, {
+              fingerprint,
+              version: target.version,
+              expires,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              installed: value.installed,
+              rollback: target,
+            });
+            return;
+          }
+          if (input.action === "rollback") {
+            const preview = rollbackPreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint ||
+              input.version !== preview.version
+            )
+              throw Error("Rollback preview expired. Review it again.");
+            if (input.confirmed !== true)
+              throw Error(
+                "Confirm that services restart and newer task data is set aside during the rollback.",
+              );
+            rollbackPreviews.delete(accountOwner);
+            await call({ op: "admin-rollback-start", version: preview.version });
             send(202, { started: true, version: preview.version });
             return;
           }

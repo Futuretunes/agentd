@@ -29,7 +29,7 @@ def size(path,limit=MAX_TOTAL):
             if total>limit:raise ValueError('Backup storage budget reached')
     return total
 
-def records(c):
+def records(c,measure=True):
     items=[]
     for path in Path(c['app']).parent.glob('agentd-backup-*'):
         s=path.lstat()
@@ -43,7 +43,9 @@ def records(c):
             if any((path/name).is_symlink() or not (path/name).is_dir() for name in ('app','state')):continue
             items.append({'path':str(path),'completed':data['completed'],'dev':s.st_dev,'ino':s.st_ino,'bytes':0,'pinned':(path/'KEEP').exists(),'version':data.get('version')})
         except (OSError,ValueError,TypeError):continue
-    for item in items:item['bytes']=size(Path(item['path']))
+    # Measuring walks every backup; listings that only need identity skip it.
+    if measure:
+        for item in items:item['bytes']=size(Path(item['path']))
     return sorted(items,key=lambda x:(x['completed'],x['path']),reverse=True)
 
 def plan(c,now=None):

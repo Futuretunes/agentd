@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Enable Settings > Updates: install the fixed update job unit and the approved-releases directory.
+"""Enable Settings > Updates: install the fixed update and rollback job units and the
+approved-releases directory. Installs only the units that are missing.
 
 No service is restarted. The administration helper can then start
-agentd-update@<version>.service for an approved, newer release; nothing else changes.
+agentd-update@<version>.service or agentd-rollback@<version>.service; nothing else changes.
 """
 import argparse,fcntl,json,os,subprocess,sys,tempfile
 from pathlib import Path
@@ -11,33 +12,40 @@ sys.path.insert(0,str(Path(__file__).resolve().parent))
 import update
 import run_approved_update as job
 from separate_gateway import atomic
-UNIT='agentd-update@.service'
+# Configuration key -> (unit template, script the installed release must contain).
+UNITS={'updateUnit':('agentd-update@.service','scripts/run_approved_update.py'),
+       'rollbackUnit':('agentd-rollback@.service','scripts/run_rollback.py')}
 
-def unit_path():return Path('/etc/systemd/system')/UNIT
+def unit_path(unit):return Path('/etc/systemd/system')/unit
 
 def verify(c):
-    loaded=update.capture(['systemctl','show','agentd-update@0.0.0.service','--property=LoadState','--property=FragmentPath'])
-    values=dict(line.split('=',1) for line in loaded.splitlines() if '=' in line)
-    if values.get('LoadState')!='loaded' or values.get('FragmentPath')!=str(unit_path()):raise ValueError('Update job unit is not loaded')
+    for key,(unit,_) in UNITS.items():
+        if not c.get(key):continue
+        loaded=update.capture(['systemctl','show',unit.replace('@.','@0.0.0.'),'--property=LoadState','--property=FragmentPath'])
+        values=dict(line.split('=',1) for line in loaded.splitlines() if '=' in line)
+        if values.get('LoadState')!='loaded' or values.get('FragmentPath')!=str(unit_path(unit)):raise ValueError('Job unit is not loaded: '+unit)
     info=job.RELEASES.lstat()
     if job.RELEASES.is_symlink() or info.st_uid!=0 or info.st_mode&0o077:raise ValueError('Approved-releases directory must be root-only')
 
-def apply(c,config_path,previous,current,backup):
-    path=unit_path();old_config=config_path.read_bytes();record=Path(c['deployment'])/'installed.json';old_record=record.read_bytes()
+def apply(c,config_path,previous,current,backup,missing):
+    old_config=config_path.read_bytes();record=Path(c['deployment'])/'installed.json';old_record=record.read_bytes()
     (backup/'update.json').write_bytes(old_config);(backup/'installed.json').write_bytes(old_record)
-    new=dict(c,updateUnit=UNIT,configFiles=[*c['configFiles'],str(path)]);journal=Path(c['deployment'])/'updates-pending.json'
-    atomic(journal,json.dumps({'backup':str(backup)}).encode());changed=False
+    paths=[unit_path(UNITS[key][0]) for key in missing]
+    new=dict(c,**{key:UNITS[key][0] for key in missing},configFiles=[*c['configFiles'],*map(str,paths)])
+    journal=Path(c['deployment'])/'updates-pending.json';atomic(journal,json.dumps({'backup':str(backup)}).encode());changed=False
     try:
         if update.inventory(c)!=current:raise ValueError('Configuration drift before enabling updates')
         changed=True
-        atomic(path,(Path(c['app'])/'deploy'/UNIT).read_bytes(),0o644);job.RELEASES.mkdir(mode=0o700,exist_ok=True)
+        for key,path in zip(missing,paths):atomic(path,(Path(c['app'])/'deploy'/UNITS[key][0]).read_bytes(),0o644)
+        job.RELEASES.mkdir(mode=0o700,exist_ok=True)
         update.run(['systemctl','daemon-reload']);verify(new);target=update.inventory(new)
         atomic(config_path,(json.dumps(new,indent=2)+'\n').encode());atomic(record,(json.dumps(dict(previous,configuration=target),indent=2)+'\n').encode());journal.unlink()
-        print('In-app updates enabled: update job unit installed and approved-releases directory ready.')
+        print('In-app updates enabled: '+', '.join(UNITS[key][0] for key in missing)+' installed; approved-releases directory ready.')
         print('Configuration rollback backup: '+str(backup))
     except BaseException:
         if changed:
-            path.unlink(missing_ok=True);atomic(config_path,old_config);atomic(record,old_record);update.run(['systemctl','daemon-reload'])
+            for path in paths:path.unlink(missing_ok=True)
+            atomic(config_path,old_config);atomic(record,old_record);update.run(['systemctl','daemon-reload'])
         else:journal.unlink(missing_ok=True)
         raise
 
@@ -46,7 +54,8 @@ def main():
     if os.geteuid()!=0:raise ValueError('Administrator required')
     path=update.canonical(a.config);c=update.config(path)
     if not c.get('adminUnit'):raise ValueError('The administration helper is required first')
-    if c.get('updateUnit'):verify(c);print('In-app updates already enabled and verified.');return
+    missing=[key for key in UNITS if not c.get(key)]
+    if not missing:verify(c);print('In-app updates and rollback already enabled and verified.');return
     root=Path(c['deployment']);s=root.stat()
     if root.is_symlink() or s.st_uid!=0 or s.st_mode&0o077:raise ValueError('Invalid private deployment directory')
     with (root/'update.lock').open('w') as lock:
@@ -55,9 +64,11 @@ def main():
         previous=json.loads((root/'installed.json').read_text());current=update.inventory(c)
         if current!=previous['configuration']:raise ValueError('Installed configuration drifted')
         installed=json.loads((Path(c['app'])/'release-manifest.json').read_text())
-        if installed!=previous['release'] or 'scripts/run_approved_update.py' not in installed.get('files',{}):raise ValueError('Install a release containing in-app updates first')
-        if unit_path().exists():raise ValueError('An update job unit already exists; review it first')
-        backup=Path(tempfile.mkdtemp(prefix='agentd-updates-backup-',dir=Path(c['app']).parent));apply(c,path,previous,current,backup)
+        if installed!=previous['release'] or any(UNITS[key][1] not in installed.get('files',{}) for key in missing):
+            raise ValueError('Install a release containing in-app updates and rollback first')
+        for key in missing:
+            if unit_path(UNITS[key][0]).exists():raise ValueError('A job unit already exists; review it first: '+UNITS[key][0])
+        backup=Path(tempfile.mkdtemp(prefix='agentd-updates-backup-',dir=Path(c['app']).parent));apply(c,path,previous,current,backup,missing)
 
 if __name__=='__main__':
     try:main()

@@ -73,6 +73,16 @@ export async function readUpdates(socket: string): Promise<any> {
   return value;
 }
 
+export async function startRollback(
+  socket: string,
+  version: string,
+): Promise<{ started: true; version: string }> {
+  if (typeof version !== "string" || !releaseVersion.test(version))
+    throw Error("Rollback request is invalid.");
+  await request(socket, { op: "rollback-start", version }, 15000);
+  return { started: true, version };
+}
+
 export async function startUpdate(
   socket: string,
   version: string,

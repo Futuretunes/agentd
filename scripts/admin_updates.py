@@ -6,23 +6,24 @@ sys.dont_write_bytecode=True
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import update
 import run_approved_update as job
+import run_rollback as rollback
 
 CONFIG=Path('/etc/agentd/update.json')
 DEPLOYMENT=Path('/var/lib/agentd-deployment')
 STATES={'running','succeeded','failed'}
 
-def running(unit_prefix='agentd-update@'):
-    # A job counts as running while systemd reports any instance active or starting.
-    result=subprocess.run(['/usr/bin/systemctl','list-units','--no-legend','--plain','--all',unit_prefix+'*'],check=True,text=True,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,timeout=5)
+def running(patterns=('agentd-update@*','agentd-rollback@*')):
+    # A job counts as running while systemd reports any update or rollback instance active or starting.
+    result=subprocess.run(['/usr/bin/systemctl','list-units','--no-legend','--plain','--all',*patterns],check=True,text=True,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,timeout=5)
     return any(len(line.split())>=3 and line.split()[2] in ('active','activating','reloading','deactivating') for line in result.stdout.splitlines())
 
 def last_status(deployment):
     try:value=json.loads((deployment/job.STATUS).read_text())
     except (OSError,ValueError):return None
     if value.get('format')!=1 or value.get('state') not in STATES or value.get('stage') not in job.STAGES:return None
-    return {key:value.get(key) for key in ('version','stage','state','message','startedAt','updatedAt','failedStage','revision') if isinstance(value.get(key),str)}
+    return {key:value.get(key) for key in ('kind','version','stage','state','message','startedAt','updatedAt','failedStage','revision','savedVersion') if isinstance(value.get(key),str)}
 
-def snapshot(releases=job.RELEASES,deployment=DEPLOYMENT,config=CONFIG,is_running=running,owner=0):
+def snapshot(releases=job.RELEASES,deployment=DEPLOYMENT,config=CONFIG,is_running=running,owner=0,find_rollback=None):
     c=update.config(config);record=json.loads((deployment/'installed.json').read_text());installed=record['release']
     if list(deployment.glob('*pending.json')):configuration='recovery_required'
     else:
@@ -40,8 +41,16 @@ def snapshot(releases=job.RELEASES,deployment=DEPLOYMENT,config=CONFIG,is_runnin
         except Exception:
             candidates.append({'version':version,'valid':False,'newer':False})
     candidates.sort(key=lambda item:job.version_key(item['version']),reverse=True)
+    try:
+        target,reason=(find_rollback or (lambda:rollback.candidate(c,installed,config)))()
+    except Exception:
+        target,reason=None,'Rollback availability could not be determined.'
+    rollback_view={'available':bool(target),'reason':None if target else reason}
+    if target:
+        rollback_view.update(version=target['version'],revision=target['revision'][:12],completedAt=target['completedAt'],
+                             schemaChange=target['taskSchemaVersion']!=installed.get('taskSchemaVersion'))
     return {'format':1,'installed':{'version':installed['version'],'revision':str(installed.get('revision',''))[:12],'taskSchemaVersion':installed.get('taskSchemaVersion')},
-      'configuration':configuration,'running':bool(is_running()),'job':last_status(deployment),'candidates':candidates[:10]}
+      'configuration':configuration,'running':bool(is_running()),'job':last_status(deployment),'candidates':candidates[:10],'rollback':rollback_view}
 
 if __name__=='__main__':
     try:print(json.dumps(snapshot(),separators=(',',':')))

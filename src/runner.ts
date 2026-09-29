@@ -86,6 +86,7 @@ type Config = {
   rotateAccess?: (currentKey: string, newHash: string) => Promise<{ rotated: true }>;
   adminUpdates?: () => Promise<any>;
   startUpdate?: (version: string) => Promise<{ started: true; version: string }>;
+  startRollback?: (version: string) => Promise<{ started: true; version: string }>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -1483,6 +1484,23 @@ export function runner(c: Config) {
     throw Error("Unknown review preparation operation");
   }
   function handleManagedOperationRequest(input: any) {
+    if (input.op === "admin-rollback-start") {
+      if (!c.startRollback) throw Error("In-app rollback is not installed.");
+      if (
+        typeof input.version !== "string" ||
+        !/^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$/.test(input.version)
+      )
+        throw Error("Rollback request is invalid.");
+      // Rolling back stops both services and restores older task data.
+      if (blocked("update"))
+        throw Error(
+          "Finish or stop current work, account changes and preparations before rolling back.",
+        );
+      return c.startRollback(input.version).then((result) => {
+        audit("rollback-start", null, { version: input.version });
+        return result;
+      });
+    }
     if (input.op === "admin-update-start") {
       if (!c.startUpdate) throw Error("In-app updates are not installed.");
       if (

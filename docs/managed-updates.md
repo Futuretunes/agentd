@@ -77,7 +77,24 @@ Once enabled (`sudo python3 -B /opt/agentd/scripts/apply_updates.py --config /et
    - That job runs outside the helper sandbox. It re-verifies the approval and archive, refuses anything not newer, runs the release's own `update.py plan` and `install` (tests, stopped-state backup, swap, readiness, rollback), then the installed `apply_*` verifications.
 4. **Progress.** The job writes `update-status.json` (fixed messages only) and a root-only `update-<time>.log` in the deployment directory. Services restart near the end, and the operator is signed out. After signing in, Settings > Updates shows the result.
 
-Rollback from the app is not implemented yet; use the backup printed in the update log, as described below.
+### Rollback (since 0.64.0)
+
+Settings > Updates > Roll back returns to the **newest completed managed backup whose release is older** than the installed one, together with that backup's task state.
+
+- **Compatibility:** the older release's own `update.config()` must accept today's `update.json` (checked by running it). Otherwise rollback is unavailable, with a reason. For example, 0.62.x predates `updateUnit` and cannot be restored this way.
+- **Approval:** the same step-up as updates. The current key, a separate 5-minute rollback preview (an update preview cannot approve a rollback), confirmation and the shared rate limit.
+- **Checks along the way:** the runner requires idle admission. The helper accepts only the offered version and starts the fixed `agentd-rollback@<version>.service`.
+- **What the job does:**
+  1. Takes the update lock, refuses pending recovery or drift, re-derives the target and checks idle state.
+  2. **Moves** the running application and state into a new completed managed backup, so nothing is deleted.
+  3. Restores **copies** of the target backup, so the source stays available.
+  4. Rewrites `installed.json`, restarts, and requires readiness for the older version and schema, then runs the verifications.
+
+  Any failure while restoring puts back exactly what was running.
+
+- **After a rollback:** the newer release can be installed again from the list if its approval is still present.
+
+To enable rollback on a host with in-app updates already enabled, run `apply_updates.py` again; it adds only the missing unit.
 
 ## Database compatibility
 

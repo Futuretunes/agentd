@@ -20,7 +20,7 @@ VERSION=re.compile(r'[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}')
 STATUS='update-status.json'
 # Fixed user-facing descriptions; never subprocess output or paths.
 STAGES={'verifying':'Verifying the approved release','planning':'Checking configuration and idle state',
- 'installing':'Running tests, backing up and installing','verifying_services':'Verifying services after the update',
+ 'installing':'Running tests, backing up and installing','restoring':'Restoring the previous version and its data','verifying_services':'Verifying services after the update',
  'succeeded':'Update installed','failed':'Update did not complete'}
 
 def version_key(value):

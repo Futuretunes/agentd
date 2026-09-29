@@ -10,6 +10,7 @@ import {
   readDiagnostics,
   readUpdates,
   rotateAccessKey,
+  startRollback,
   startUpdate,
 } from "./admin-client.ts";
 
@@ -72,6 +73,9 @@ export function start(options: Options) {
             : undefined,
           adminUpdates: process.env.AGENTD_ADMIN_SOCKET
             ? () => readUpdates(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          startRollback: process.env.AGENTD_ADMIN_SOCKET
+            ? (version) => startRollback(process.env.AGENTD_ADMIN_SOCKET!, version)
             : undefined,
           startUpdate: process.env.AGENTD_ADMIN_SOCKET
             ? (version) => startUpdate(process.env.AGENTD_ADMIN_SOCKET!, version)

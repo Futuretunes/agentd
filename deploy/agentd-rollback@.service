@@ -1,0 +1,12 @@
+[Unit]
+Description=AgentD rollback to %i
+# Started only by the administration helper after it confirmed that %i is the
+# newest older release with a compatible, completed managed backup. The job
+# re-derives and re-checks the target and restores what was running on failure.
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/python3 -B /opt/agentd/scripts/run_rollback.py --version %i --config /etc/agentd/update.json
+TimeoutStartSec=30min
+UMask=0077
