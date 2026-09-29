@@ -3707,9 +3707,7 @@ async function renderBackupsSettings() {
     ),
   );
   if (report.blocked)
-    list.append(
-      node("p", "Pending recovery is blocking backup cleanup.", "attention"),
-    );
+    list.append(node("p", "Pending recovery is blocking backup cleanup.", "attention"));
   if (!(report.items ?? []).length)
     list.append(node("p", "No managed update backups are recorded yet.", "muted"));
   for (const item of report.items ?? []) {
