@@ -228,6 +228,13 @@ export function runner(c: Config) {
   const previewManager = reviewJobs(c.reviewPrepare, () => {
     if (!closing) setImmediate(pump);
   });
+  const validationManager = reviewJobs(
+    c.reviewPrepare,
+    () => {
+      if (!closing) setImmediate(pump);
+    },
+    "check-preparation",
+  );
   function blocked(operation: Operation) {
     const read = (state: BusyState): boolean => {
       switch (state) {
@@ -615,7 +622,7 @@ export function runner(c: Config) {
       throw Error("This work mode is not enabled for this adapter");
   };
   function pump() {
-    if (previewManager.busy() || blocked("dispatch")) return;
+    if (previewManager.busy() || validationManager.busy() || blocked("dispatch")) return;
     const row = db
       .prepare("SELECT * FROM tasks WHERE status='queued' ORDER BY created,id LIMIT 1")
       .get();
@@ -683,8 +690,12 @@ export function runner(c: Config) {
       row,
     );
   }
-  function available(row: any) {
-    if (previewManager.busy() || blocked("review"))
+  function available(row: any, ownValidation = false) {
+    if (
+      previewManager.busy() ||
+      (!ownValidation && validationManager.busy()) ||
+      blocked("review")
+    )
       throw Error("Wait for the active worker before reviewing changes");
     if (
       row.mode !== "edit" ||
@@ -718,15 +729,16 @@ export function runner(c: Config) {
       decision: row.review,
     };
   };
-  function validate(row: any, expected: string) {
+  function validate(row: any, expected: string, prepared?: any) {
     requireSpace([c.stateDir, c.worktrees, c.logs], limits.reserveBytes);
     if (blocked("checks"))
       throw Error("Finish account or dependency preparation before running checks");
     if (projectBusy(String(row.project))) throw Error("Wait for the repository update.");
-    available(row);
+    available(row, !!prepared);
     if (!["pending", "committed"].includes(row.review))
       throw Error("This review is already resolved");
-    const value = snapshot(String(row.worktree), String(row.revision), c.stateDir);
+    const value =
+      prepared ?? snapshot(String(row.worktree), String(row.revision), c.stateDir);
     if (value.tree !== expected) throw Error("Changes have changed. Review again.");
     if (
       row.review === "committed" &&
@@ -736,7 +748,7 @@ export function runner(c: Config) {
       throw Error(
         "Committed files changed. Restore the committed content before rechecking.",
       );
-    if (review(row).conflicts.length)
+    if ((prepared ? prepared.conflicts : review(row).conflicts).length)
       throw Error("Resolve conflict markers before running checks.");
     const p = project(String(row.project));
     if (!p.check_dependencies)
@@ -783,6 +795,17 @@ export function runner(c: Config) {
       return previewManager.view(input.owner ?? "local", input.job);
     if (input.op === "review-cancel")
       return previewManager.cancel(input.owner ?? "local", input.job);
+    if (input.op === "validation-job")
+      return validationManager.view(input.owner ?? "local", input.job);
+    if (input.op === "validation-cancel") {
+      const job = validationManager.view(input.owner ?? "local", input.job);
+      if (job.status === "preparing")
+        return validationManager.cancel(input.owner ?? "local", input.job);
+      const running = active;
+      if (job.status === "succeeded" && running && running.id === job.task)
+        running.stop("cancelled");
+      return validationManager.view(input.owner ?? "local", input.job);
+    }
     if (input.op === "review-start") {
       const row = get(input.id);
       if (!row) throw Error("Task not found");
@@ -821,8 +844,43 @@ export function runner(c: Config) {
         }),
       );
     }
+    if (input.op === "validation-start") {
+      const row = get(input.id);
+      if (!row) throw Error("Task not found");
+      if (!validationManager.busy()) {
+        // Fail cheap prerequisites before creating a background job, then repeat all
+        // checks after the snapshot settles so queued state can never authorize work.
+        requireSpace([c.stateDir, c.worktrees, c.logs], limits.reserveBytes);
+        if (blocked("checks"))
+          throw Error("Finish account or dependency preparation before running checks");
+        if (projectBusy(String(row.project)))
+          throw Error("Wait for the repository update.");
+        available(row);
+        if (!["pending", "committed"].includes(String(row.review)))
+          throw Error("This review is already resolved");
+        if (!project(String(row.project)).check_dependencies)
+          throw Error("Open Set up checks to prepare this project’s dependencies.");
+      }
+      return validationManager.start(
+        input.owner ?? "local",
+        input.id,
+        {
+          worktree: String(row.worktree),
+          revision: String(row.revision),
+          stateDir: c.stateDir,
+          mergeParent: row.merge_parent as string | null,
+          conflictPaths: JSON.parse(String(row.conflict_paths ?? "[]")),
+        },
+        (value) => {
+          const current = get(input.id);
+          if (!current) throw Error("Task not found");
+          return validate(current, input.tree, value);
+        },
+        input.id + ":" + input.tree,
+      );
+    }
     if (
-      previewManager.busy() &&
+      (previewManager.busy() || validationManager.busy()) &&
       (gatewayMutations.has(input.op) ||
         ["project-register", "project-checks"].includes(input.op))
     )
@@ -1828,8 +1886,9 @@ export function runner(c: Config) {
       closing = true;
       usageAbort.abort();
       const previewClosed = previewManager.close();
+      const validationClosed = validationManager.close();
       await publicationManager.close();
-      await previewClosed;
+      await Promise.all([previewClosed, validationClosed]);
       await usageWork;
       await dependencyManager.close();
       await repositoryManager.close();

@@ -21,6 +21,9 @@ const fields: Record<string, string> = {
   "review-start": "id owner",
   "review-job": "job owner",
   "review-cancel": "job owner",
+  "validation-start": "id tree owner",
+  "validation-job": "job owner",
+  "validation-cancel": "job owner",
   "task-output": "id",
   create:
     "adapter prompt mode attachments parent conversation project overrides requestId",
@@ -71,6 +74,8 @@ const fields: Record<string, string> = {
 export const gatewayMutations = new Set([
   "review-start",
   "review-cancel",
+  "validation-start",
+  "validation-cancel",
   "create",
   "retry",
   "restart-settings",
@@ -129,6 +134,11 @@ export function gatewayRequest(value: unknown): Record<string, any> {
     (typeof input.fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(input.fingerprint))
   )
     throw Error("Refresh the run preview before approving.");
+  if (
+    input.op === "validation-start" &&
+    (typeof input.tree !== "string" || !/^[a-f0-9]{40}$/.test(input.tree))
+  )
+    throw Error("Refresh the change preview before running checks.");
   if (
     ["create", "project-create"].includes(input.op) &&
     (typeof input.requestId !== "string" ||

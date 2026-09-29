@@ -413,3 +413,120 @@ test("background review keeps reads responsive, excludes mutations and recovers 
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+test("background check preparation is owner-bound, cancellable and revalidates exact changes", async () => {
+  const f = setup();
+  let release,
+    entered,
+    waiting = true;
+  const started = () =>
+    new Promise((resolve) => {
+      entered = resolve;
+    });
+  let prepared = started();
+  const app = runner({
+    repo: f.repo,
+    stateDir: join(f.root, "state"),
+    worktrees: join(f.root, "trees"),
+    logs: join(f.root, "logs"),
+    editing: true,
+    editAdapters: ["codex"],
+    command: () => [
+      process.execPath,
+      ["-e", "require('fs').writeFileSync('README.md','edited\\n')"],
+    ],
+    isolate: (_tree, _state, command, args, adapter) => ({
+      command: adapter ? command : process.execPath,
+      args: adapter ? args : ["-e", "console.log('checks passed')"],
+      cleanup() {},
+    }),
+    reviewPrepare: async (input, signal) => {
+      entered();
+      if (waiting) await new Promise((resolve) => (release = resolve));
+      if (signal.aborted) throw Error("Review preparation stopped.");
+      return {
+        ...snapshot(input.worktree, input.revision, input.stateDir),
+        conflicts: [],
+      };
+    },
+  });
+  const waitJob = async (owner, id) => {
+    for (let i = 0; i < 200; i++) {
+      const job = app.request({ op: "validation-job", owner, job: id });
+      if (job.status !== "preparing") return job;
+      await sleep(10);
+    }
+    throw Error("Validation job timeout");
+  };
+  await once(app.server, "listening");
+  try {
+    const task = app.request({
+      op: "create",
+      adapter: "codex",
+      prompt: "edit",
+      mode: "edit",
+    });
+    app.request({ op: "approve", id: task.id });
+    const done = await finished(app, task.id);
+    app.request({ op: "project-checks", id: "default", dependencies: f.repo });
+    let view = app.request({ op: "review", id: task.id });
+
+    const cancelled = app.request({
+      op: "validation-start",
+      owner: "a",
+      id: task.id,
+      tree: view.tree,
+    });
+    await prepared;
+    assert.equal(
+      app.request({
+        op: "validation-start",
+        owner: "a",
+        id: task.id,
+        tree: view.tree,
+      }).id,
+      cancelled.id,
+    );
+    assert.equal(app.request({ op: "show", id: task.id }).task.status, "succeeded");
+    assert.throws(
+      () => app.request({ op: "validation-job", owner: "b", job: cancelled.id }),
+      /expired/,
+    );
+    app.request({ op: "validation-cancel", owner: "a", job: cancelled.id });
+    release();
+    assert.equal((await waitJob("a", cancelled.id)).status, "cancelled");
+    assert.equal(app.request({ op: "show", id: task.id }).task.checks, null);
+
+    prepared = started();
+    const stale = app.request({
+      op: "validation-start",
+      owner: "a",
+      id: task.id,
+      tree: view.tree,
+    });
+    await prepared;
+    for (const op of ["discard", "commit", "revise", "project-register"])
+      assert.throws(() => app.request({ op, id: task.id }), /preview/);
+    writeFileSync(join(done.worktree, "README.md"), "changed during preparation\n");
+    release();
+    const failed = await waitJob("a", stale.id);
+    assert.equal(failed.status, "failed");
+    assert.match(failed.error, /changed/i);
+    assert.equal(app.request({ op: "show", id: task.id }).task.checks, null);
+
+    view = app.request({ op: "review", id: task.id });
+    waiting = false;
+    const accepted = app.request({
+      op: "validation-start",
+      owner: "a",
+      id: task.id,
+      tree: view.tree,
+    });
+    assert.equal((await waitJob("a", accepted.id)).status, "succeeded");
+    assert.equal((await checked(app, task.id)).status, "passed");
+  } finally {
+    release?.();
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});

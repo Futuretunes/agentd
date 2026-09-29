@@ -1,6 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-async-review.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-async-check-preparation.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+
+## Candidate 0.44.0 — background check preparation
+
+[Handover](handovers/2026-09-29-async-check-preparation.md): the GUI now prepares exact check snapshots in an owner-bound, cancellable background job before launching the existing isolated check execution. State-changing operations and task dispatch wait, reads remain responsive, and changed content fails before checks start. Focused validation passed; exact Linux release and CI are pending. Installed baseline remains 0.43.0.
+
+## Installed baseline — 0.43.0
+
+The operator reported successful cumulative installation: 179/179 tests, task schema 2, service healthy with starts 38, and resource limits already verified. A managed application backup was created; configuration, projects and native profiles were preserved. Phone acceptance of background preview progress/cancellation remains pending.
 
 ## Candidate 0.43.0 — background change previews
 

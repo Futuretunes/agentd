@@ -2,14 +2,18 @@ import { randomUUID } from "node:crypto";
 import { operationSlot } from "./operation-slot.ts";
 import { prepareReview, type ReviewInput } from "./review-preview.ts";
 import { publicError } from "./public-errors.ts";
-export function reviewJobs(prepare = prepareReview, settled = () => {}) {
-  const slot = operationSlot("review-preview");
+export function reviewJobs(
+  prepare = prepareReview,
+  settled = () => {},
+  kind = "review-preview",
+) {
+  const slot = operationSlot(kind);
   const jobs = new Map<string, any>();
   function view(owner: string, id: string) {
     const job = jobs.get(id);
     if (!job || job.owner !== owner || (!slot.busy() && job.expires < Date.now()))
       throw Error("Review preview expired. Open the review again.");
-    const { owner: _, expires: __, task, ...value } = job;
+    const { owner: _, expires: __, key: ___, task, ...value } = job;
     return { ...value, task };
   }
   return {
@@ -20,11 +24,12 @@ export function reviewJobs(prepare = prepareReview, settled = () => {}) {
       task: string,
       input: ReviewInput,
       decorate: (value: any) => any,
+      key = task,
     ) {
       const current = slot.view();
       if (current) {
         const existing = jobs.get(current.id);
-        if (existing.owner === owner && existing.task === task)
+        if (existing.owner === owner && existing.key === key)
           return view(owner, current.id);
       }
       slot.assertAvailable();
@@ -35,6 +40,7 @@ export function reviewJobs(prepare = prepareReview, settled = () => {}) {
         id: string;
         owner: string;
         task: string;
+        key: string;
         status: string;
         expires: number;
         result: any;
@@ -43,6 +49,7 @@ export function reviewJobs(prepare = prepareReview, settled = () => {}) {
         id,
         owner,
         task,
+        key,
         status: "preparing",
         expires: Date.now() + 300000,
         result: null,

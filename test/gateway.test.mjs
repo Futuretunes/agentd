@@ -59,6 +59,18 @@ test("gateway authority rejects admin operations, extra path fields and missing 
     gatewayRequest({ op: "conversation-rename", id: "x", name: "New", owner }).name,
     "New",
   );
+  assert.equal(
+    gatewayRequest({
+      op: "validation-start",
+      id: "x",
+      tree: "a".repeat(40),
+      owner,
+    }).tree,
+    "a".repeat(40),
+  );
+  assert.throws(() =>
+    gatewayRequest({ op: "validation-start", id: "x", tree: "bad", owner }),
+  );
 });
 const call = (path, data) =>
   new Promise((resolve, reject) => {

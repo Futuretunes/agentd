@@ -1729,12 +1729,7 @@ async function openReview(id) {
     revise.disabled = value.truncated || !!value.blocked.length;
     const setUp = button("Set up checks", () => openCheckSetup(value.project, id));
     const check = button("Run checks", async () => {
-      await api("/api/action", { op: "validate", id, tree: value.tree });
-      checking = id;
-      actions.replaceChildren(
-        button("Stop checks", () => api("/api/action", { op: "cancel", id }), "danger"),
-      );
-      checksBox.lastChild.textContent = "Running…";
+      await startValidation(id, value.tree, actions, checksBox);
     });
     check.disabled = !!value.conflicts?.length || !checksReady;
     const passed = value.checks?.status === "passed" && value.checks?.tree === value.tree;
@@ -1825,8 +1820,7 @@ async function openReview(id) {
         button(
           "Recheck committed files",
           async () => {
-            await api("/api/action", { op: "validate", id, tree: value.tree });
-            checking = id;
+            await startValidation(id, value.tree, actions, checksBox);
           },
           "primary",
         ),
@@ -1841,6 +1835,37 @@ async function openReview(id) {
     );
   }
   if (!$("review-dialog").open) $("review-dialog").showModal();
+}
+
+async function startValidation(id, tree, actions, checksBox) {
+  let job = await api("/api/validation-jobs", { action: "start", id, tree });
+  const stop = button(
+    "Stop preparing checks",
+    async () => {
+      job = await api("/api/validation-jobs", { action: "cancel", job: job.id });
+    },
+    "danger",
+  );
+  actions.replaceChildren(stop);
+  checksBox.lastChild.textContent = "Preparing exact changes…";
+  while (job.status === "preparing") {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    job = await api("/api/validation-jobs", { action: "status", job: job.id });
+  }
+  if (job.status === "cancelled") {
+    await openReview(id);
+    return;
+  }
+  if (job.status !== "succeeded") {
+    const message = job.error || "Check preparation failed. Review the changes again.";
+    await openReview(id);
+    throw Error(message);
+  }
+  checking = id;
+  actions.replaceChildren(
+    button("Stop checks", () => api("/api/action", { op: "cancel", id }), "danger"),
+  );
+  checksBox.lastChild.textContent = "Running…";
 }
 $("review-close").onclick = () => {
   $("review-dialog").close();
