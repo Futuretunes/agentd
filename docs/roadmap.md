@@ -248,3 +248,7 @@ Project check setup, local creation/registration, project lifecycle and conversa
 ## R2 task-lifecycle routing — candidate 0.54.0
 
 Task creation, compatibility revision/restart, retry, detail/output, review/validation, commit/discard, approval and cancellation now dispatch through one explicit route owner. Existing durable receipts, exact-content approval, adapter policy, audit and cancellation behavior are preserved. Exact source `5c48c82` passed 193/193 required Ubuntu tests with zero skips, typecheck and formatting. PR #58 is ready for review against #57's branch; Node 24/26 and Linux CI passed; cumulative archive staged, not installed. Next bounded slice: attachment/settings/storage routing, then reassess the fail-closed fallback.
+
+## R2 complete explicit request routing — candidate 0.55.0
+
+Attachment transfer, settings/model refresh and storage review/cleanup now dispatch through one support route. Every supported request operation has one startup-validated owner, while malformed and unknown input retains the existing fail-closed fallback. Storage approval, settings capability ceilings and mutation admission are unchanged. Exact source `1a6d7dc` passed 194/194 required Ubuntu tests with zero skips, typecheck and formatting. Draft #59 targets #58's branch and awaits final CI; cumulative archive staged, not installed. Next: review/consolidate the 0.49–0.55 routing stack before larger product backlog work.
