@@ -12,11 +12,13 @@ class BackupsTest(unittest.TestCase):
         plan={'keep':3,'minimumAgeDays':30,'blocked':False,'fingerprint':'a'*64,'items':[
             {'path':'/var/lib/agentd-backup-abc','completed':1700000000,'bytes':100,'pinned':False,'eligible':True,'version':'0.64.0'}
         ]}
-        with patch.object(backups.update,'config',return_value={'app':'/opt/agentd'}),patch.object(backups.backup_retention,'plan',return_value=plan):
+        with patch.object(backups.update,'config',return_value={'app':'/opt/agentd'}),patch.object(backups.backup_retention,'plan',return_value=plan),patch.object(backups.rollback,'candidate',return_value=(None,'none')):
             value=backups.snapshot()
         self.assertEqual(value['items'][0]['id'],'agentd-backup-abc')
+        self.assertFalse(value['items'][0]['rollbackTarget'])
         self.assertNotIn('/var/lib',json.dumps(value))
         self.assertTrue(value['items'][0]['eligible'])
+        self.assertIn('rollback',value)
 
     def test_prune_rejects_invalid_fingerprint(self):
         with self.assertRaises(ValueError):backups.prune('zzz')

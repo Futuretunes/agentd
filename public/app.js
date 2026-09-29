@@ -4434,14 +4434,23 @@ async function renderBackupsSettings() {
     card.append(
       node(
         "p",
-        item.pinned
-          ? "Pinned · kept"
-          : item.eligible
-            ? "Eligible for cleanup"
-            : "Retained",
-        item.eligible ? "attention" : "muted",
+        item.rollbackTarget
+          ? "Current rollback target"
+          : item.pinned
+            ? "Pinned · kept"
+            : item.eligible
+              ? "Eligible for cleanup"
+              : "Retained",
+        item.rollbackTarget ? "good" : item.eligible ? "attention" : "muted",
       ),
     );
+    if (item.rollbackTarget && report.rollback?.available)
+      card.append(
+        button("Review rollback to this backup", () => {
+          backupsDialog.close();
+          void openUpdatesWithRollback(report.rollback);
+        }),
+      );
     list.append(card);
   }
   const actions = [];
@@ -4450,21 +4459,44 @@ async function renderBackupsSettings() {
       button("Review eligible cleanup", () => renderBackupCleanupForm(eligible)),
     );
   }
-  actions.push(
-    button("Open Updates for restore", () => {
-      backupsDialog.close();
-      $("updates-settings").click();
-    }),
-  );
+  if (report.rollback?.available)
+    actions.push(
+      button(
+        `Review rollback to ${report.rollback.version}`,
+        () => void openUpdatesWithRollback(report.rollback),
+      ),
+    );
+  else
+    actions.push(
+      button("Open Updates", () => {
+        backupsDialog.close();
+        $("updates-settings").click();
+      }),
+    );
   backupsContent.replaceChildren(
     list,
     ...actions,
     node(
       "p",
-      "Restoring an older AgentD version and its task data is done from Settings > Updates (Roll back). Worktree cleanup stays under Activity.",
+      report.rollback?.available
+        ? "The marked backup is the managed rollback target. Confirming starts the same Settings > Updates rollback job."
+        : report.rollback?.reason ||
+            "Restoring an older AgentD version and its task data uses Settings > Updates (Roll back). Worktree cleanup stays under Activity.",
       "muted",
     ),
   );
+}
+async function openUpdatesWithRollback(target) {
+  backupsDialog.close();
+  $("preferences-dialog").close();
+  const value = await api("/api/updates");
+  if (!value.rollback?.available || value.rollback.version !== target.version) {
+    notice(value.rollback?.reason || "Rollback target changed. Open Updates again.");
+    $("updates-settings").click();
+    return;
+  }
+  $("updates-dialog").showModal();
+  renderRollbackReview(value.rollback);
 }
 function renderBackupCleanupForm(eligible) {
   const form = node("form"),
