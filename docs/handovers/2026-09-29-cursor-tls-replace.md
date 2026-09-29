@@ -5,7 +5,7 @@
 - Status: implemented; not installed
 - Release: 0.71.0
 - Branch and base: `feat/gui-tls-replace` on `main` (0.70.0)
-- PR: (open after push)
+- PR: #81
 
 ## Changes and relevant files
 
