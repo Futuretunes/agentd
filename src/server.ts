@@ -9,6 +9,8 @@ import { pathToFileURL } from "node:url";
 import {
   readDiagnostics,
   readUpdates,
+  readBackups,
+  pruneBackups,
   restartService,
   rotateAccessKey,
   startRollback,
@@ -91,6 +93,12 @@ export function start(options: Options) {
                   process.env.AGENTD_ADMIN_SOCKET!,
                   target as "runner" | "gateway",
                 )
+            : undefined,
+          adminBackups: process.env.AGENTD_ADMIN_SOCKET
+            ? () => readBackups(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          pruneManagedBackups: process.env.AGENTD_ADMIN_SOCKET
+            ? (fingerprint) => pruneBackups(process.env.AGENTD_ADMIN_SOCKET!, fingerprint)
             : undefined,
           gateway: process.env.AGENTD_GATEWAY_SOCKET
             ? {

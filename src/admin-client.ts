@@ -106,3 +106,27 @@ export async function restartService(
     throw Error("Service restart response is invalid.");
   return { restarted: true, target };
 }
+
+export async function readBackups(socket: string): Promise<any> {
+  const value: any = await request(socket, { op: "backups" }, 20000);
+  if (
+    value?.format !== 1 ||
+    !Array.isArray(value.items) ||
+    typeof value.fingerprint !== "string" ||
+    !Number.isSafeInteger(value.keep)
+  )
+    throw Error("Backups response is invalid.");
+  return value;
+}
+
+export async function pruneBackups(
+  socket: string,
+  fingerprint: string,
+): Promise<{ removed: number }> {
+  if (typeof fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(fingerprint))
+    throw Error("Backup cleanup request is invalid.");
+  const value: any = await request(socket, { op: "backups-prune", fingerprint }, 120000);
+  if (!Number.isSafeInteger(value?.removed))
+    throw Error("Backup cleanup response is invalid.");
+  return { removed: value.removed };
+}

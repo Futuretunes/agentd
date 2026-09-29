@@ -193,6 +193,14 @@
         </p>
         <button id="diagnostics-settings">View diagnostics</button>
       </section>
+      <section class="settings-section" aria-labelledby="settings-backups-heading">
+        <h3 id="settings-backups-heading">Backups</h3>
+        <p class="muted">
+          Review managed update backups and remove only those older than the retention
+          policy allows. Restoring a version is done from Updates.
+        </p>
+        <button id="backups-settings">Manage backups</button>
+      </section>
       <section class="settings-section" aria-labelledby="settings-updates-heading">
         <h3 id="settings-updates-heading">Updates</h3>
         <p class="muted">
@@ -218,6 +226,13 @@
         <button id="updates-close" aria-label="Close updates">×</button>
       </div>
       <div id="updates-content" aria-live="polite"></div>
+    </dialog>
+    <dialog id="backups-dialog" aria-labelledby="backups-heading">
+      <div class="review-head">
+        <h2 id="backups-heading">Managed backups</h2>
+        <button id="backups-close" aria-label="Close backups">×</button>
+      </div>
+      <div id="backups-content" aria-live="polite"></div>
     </dialog>
     <dialog id="cli-dialog" aria-labelledby="cli-heading">
       <div class="review-head">

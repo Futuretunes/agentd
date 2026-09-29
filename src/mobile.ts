@@ -42,6 +42,10 @@ export function mobile(c: Config) {
         expires: number;
         requiresIdle: boolean;
       }
+    >(),
+    backupPreviews = new Map<
+      string,
+      { fingerprint: string; inventory: string; expires: number; eligible: number }
     >();
   let accessHash = c.accessHash;
   const bridge = (input: unknown) =>
@@ -440,6 +444,80 @@ export function mobile(c: Config) {
             return;
           }
           throw Error("Unsupported service restart action.");
+        }
+        if (path === "/api/backups" && req.method === "GET") {
+          send(200, await call({ op: "admin-backups" }));
+          return;
+        }
+        if (path === "/api/backups" && req.method === "POST") {
+          const limitKey = "backups:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now();
+          for (const [owner, preview] of backupPreviews)
+            if (preview.expires < now) backupPreviews.delete(owner);
+          if (!accessKeyMatches(input.currentKey, accessHash))
+            throw Error("Current access key did not match.");
+          if (input.action === "preview") {
+            const value = await call({ op: "admin-backups" }),
+              eligible = (value.items ?? []).filter((item: any) => item.eligible).length;
+            if (value.blocked)
+              throw Error("Resolve pending recovery before cleaning backups.");
+            if (!eligible) throw Error("No eligible managed backups to remove.");
+            const expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-backups-prune-preview:${accountOwner}:${value.fingerprint}:${eligible}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            backupPreviews.set(accountOwner, {
+              fingerprint,
+              inventory: value.fingerprint,
+              expires,
+              eligible,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              inventory: value.fingerprint,
+              eligible,
+              keep: value.keep,
+              minimumAgeDays: value.minimumAgeDays,
+            });
+            return;
+          }
+          if (input.action === "prune") {
+            const preview = backupPreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint
+            )
+              throw Error("Backup cleanup preview expired. Review it again.");
+            if (input.confirmed !== true)
+              throw Error("Confirm removal of eligible managed backups.");
+            const current = await call({ op: "admin-backups" });
+            if (current.fingerprint !== preview.inventory)
+              throw Error("Backup inventory changed. Review it again.");
+            backupPreviews.delete(accountOwner);
+            const result = await call({
+              op: "admin-backups-prune",
+              fingerprint: preview.inventory,
+            });
+            send(200, result);
+            return;
+          }
+          throw Error("Unsupported backups action.");
         }
         if (path === "/api/storage" && req.method === "POST") {
           const input = await body(req);
