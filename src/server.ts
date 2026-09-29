@@ -12,6 +12,8 @@ import {
   readUpdates,
   readBackups,
   pruneBackups,
+  readAdapters,
+  applyAdapters,
   restartService,
   rotateAccessKey,
   startRollback,
@@ -103,6 +105,18 @@ export function start(options: Options) {
             : undefined,
           pruneManagedBackups: process.env.AGENTD_ADMIN_SOCKET
             ? (fingerprint) => pruneBackups(process.env.AGENTD_ADMIN_SOCKET!, fingerprint)
+            : undefined,
+          adminAdapters: process.env.AGENTD_ADMIN_SOCKET
+            ? () => readAdapters(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          applyAdapterPolicy: process.env.AGENTD_ADMIN_SOCKET
+            ? (enabled, editing, editAdapters) =>
+                applyAdapters(
+                  process.env.AGENTD_ADMIN_SOCKET!,
+                  enabled,
+                  editing,
+                  editAdapters,
+                )
             : undefined,
           gateway: process.env.AGENTD_GATEWAY_SOCKET
             ? {

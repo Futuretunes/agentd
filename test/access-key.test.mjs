@@ -43,6 +43,60 @@ test("administration helper accepts only fixed service restart requests", () => 
     assert.throws(() => handleAdminRequest(input, { mobileConfig: "/unused" }));
 });
 
+test("administration helper accepts only fixed adapter policy requests", () => {
+  const applied = [];
+  const run = (enabled, editing, editAdapters) => {
+    applied.push({ enabled, editing, editAdapters });
+    return {
+      format: 1,
+      enabled,
+      editing,
+      editAdapters,
+      fingerprint: "a".repeat(64),
+    };
+  };
+  assert.equal(
+    handleAdminRequest(
+      {
+        op: "adapters-apply",
+        enabled: ["claude"],
+        editing: false,
+        editAdapters: [],
+      },
+      { mobileConfig: "/unused", applyAdapters: run },
+    ).format,
+    1,
+  );
+  assert.deepEqual(applied, [{ enabled: ["claude"], editing: false, editAdapters: [] }]);
+  assert.deepEqual(
+    handleAdminRequest(
+      { op: "adapters" },
+      {
+        mobileConfig: "/unused",
+        adapters: () => ({
+          format: 1,
+          enabled: ["claude"],
+          fingerprint: "b".repeat(64),
+        }),
+      },
+    ).enabled,
+    ["claude"],
+  );
+  for (const input of [
+    { op: "adapters-apply", enabled: ["claude"], editing: false },
+    {
+      op: "adapters-apply",
+      enabled: ["claude"],
+      editing: false,
+      editAdapters: [],
+      path: "/etc/passwd",
+    },
+  ])
+    assert.throws(() =>
+      handleAdminRequest(input, { mobileConfig: "/unused", applyAdapters: run }),
+    );
+});
+
 test("administration helper accepts only its fixed diagnostic request", () => {
   const result = { format: 1, generatedAt: "fixture" };
   assert.equal(

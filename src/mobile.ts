@@ -46,6 +46,18 @@ export function mobile(c: Config) {
     backupPreviews = new Map<
       string,
       { fingerprint: string; inventory: string; expires: number; eligible: number }
+    >(),
+    adapterPreviews = new Map<
+      string,
+      {
+        fingerprint: string;
+        inventory: string;
+        expires: number;
+        enabled: string[];
+        editing: boolean;
+        editAdapters: string[];
+        requiresIdle: boolean;
+      }
     >();
   let accessHash = c.accessHash;
   const bridge = (input: unknown) =>
@@ -518,6 +530,114 @@ export function mobile(c: Config) {
             return;
           }
           throw Error("Unsupported backups action.");
+        }
+        if (path === "/api/adapters" && req.method === "GET") {
+          send(200, await call({ op: "admin-adapters" }));
+          return;
+        }
+        if (path === "/api/adapters" && req.method === "POST") {
+          const limitKey = "adapters:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now(),
+            allowed = new Set(["claude", "codex", "cursor"]);
+          for (const [owner, preview] of adapterPreviews)
+            if (preview.expires < now) adapterPreviews.delete(owner);
+          if (!accessKeyMatches(input.currentKey, accessHash))
+            throw Error("Current access key did not match.");
+          const enabled = Array.isArray(input.enabled) ? input.enabled.map(String) : null,
+            editAdapters = Array.isArray(input.editAdapters)
+              ? input.editAdapters.map(String)
+              : [],
+            editing = input.editing === true;
+          if (
+            !enabled ||
+            !enabled.length ||
+            enabled.length > 3 ||
+            enabled.some((item: string) => !allowed.has(item)) ||
+            new Set(enabled).size !== enabled.length ||
+            editAdapters.length > 3 ||
+            editAdapters.some((item: string) => !allowed.has(item)) ||
+            new Set(editAdapters).size !== editAdapters.length ||
+            (editing && !editAdapters.length) ||
+            editAdapters.some((item: string) => !enabled.includes(item))
+          )
+            throw Error("Choose at least one supported agent adapter.");
+          if (input.action === "preview") {
+            const current = await call({ op: "admin-adapters" }),
+              plan = await call({
+                op: "admin-service-restart-plan",
+                target: "runner",
+              });
+            const expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-adapters-apply-preview:${accountOwner}:${current.fingerprint}:${enabled.join(",")}:${editing}:${editAdapters.join(",")}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            adapterPreviews.set(accountOwner, {
+              fingerprint,
+              inventory: current.fingerprint,
+              expires,
+              enabled,
+              editing,
+              editAdapters: editing ? editAdapters : [],
+              requiresIdle: !plan.idle,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              inventory: current.fingerprint,
+              enabled,
+              editing,
+              editAdapters: editing ? editAdapters : [],
+              requiresIdle: !plan.idle,
+              requiresRestart: true,
+            });
+            return;
+          }
+          if (input.action === "apply") {
+            const preview = adapterPreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint ||
+              JSON.stringify(input.enabled) !== JSON.stringify(preview.enabled) ||
+              input.editing !== preview.editing ||
+              JSON.stringify(input.editAdapters ?? []) !==
+                JSON.stringify(preview.editAdapters)
+            )
+              throw Error("Adapter policy preview expired. Review it again.");
+            if (preview.requiresIdle && input.confirmedIdle !== true)
+              throw Error(
+                "Confirm that current work is stopped before changing adapter policy.",
+              );
+            if (input.confirmed !== true)
+              throw Error("Confirm the adapter policy change.");
+            const current = await call({ op: "admin-adapters" });
+            if (current.fingerprint !== preview.inventory)
+              throw Error("Adapter policy changed. Review it again.");
+            adapterPreviews.delete(accountOwner);
+            const result = await call({
+              op: "admin-adapters-apply",
+              enabled: preview.enabled,
+              editing: preview.editing,
+              editAdapters: preview.editAdapters,
+            });
+            send(200, result);
+            return;
+          }
+          throw Error("Unsupported adapter policy action.");
         }
         if (path === "/api/storage" && req.method === "POST") {
           const input = await body(req);

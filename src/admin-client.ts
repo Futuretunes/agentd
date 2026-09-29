@@ -143,3 +143,36 @@ export async function pruneBackups(
     throw Error("Backup cleanup response is invalid.");
   return { removed: value.removed };
 }
+
+export async function readAdapters(socket: string): Promise<any> {
+  const value: any = await request(socket, { op: "adapters" });
+  if (
+    value?.format !== 1 ||
+    !Array.isArray(value.enabled) ||
+    !Array.isArray(value.supported) ||
+    typeof value.fingerprint !== "string" ||
+    !/^[a-f0-9]{64}$/.test(value.fingerprint)
+  )
+    throw Error("Adapter policy response is invalid.");
+  return value;
+}
+
+export async function applyAdapters(
+  socket: string,
+  enabled: string[],
+  editing: boolean,
+  editAdapters: string[],
+): Promise<any> {
+  const value: any = await request(
+    socket,
+    { op: "adapters-apply", enabled, editing, editAdapters },
+    15000,
+  );
+  if (
+    value?.format !== 1 ||
+    !Array.isArray(value.enabled) ||
+    typeof value.fingerprint !== "string"
+  )
+    throw Error("Adapter policy change was refused.");
+  return value;
+}

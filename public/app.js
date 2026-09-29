@@ -3685,73 +3685,254 @@ async function openConfigurationSettings() {
   );
   configurationDialog.showModal();
   try {
-    const report = await api("/api/configuration"),
-      flags = report.configuration,
-      yesNo = (value) => (value ? "Yes" : "No"),
-      state =
-        flags.state === "ok"
-          ? "Matches the installed release"
-          : flags.state === "reload_required"
-            ? "Needs sudo systemctl daemon-reload"
-            : flags.state === "recovery_required"
-              ? "Interrupted update needs recovery"
-              : "Changed outside the managed installer";
-    const overview = node("section", undefined, "operation-section");
-    overview.append(node("h3", "Managed status"));
-    overview.append(node("p", state, flags.state === "ok" ? "good" : "attention"));
-    for (const [label, value] of [
-      ["Standard resource profile", flags.resourceProfile],
-      ["Gateway hardening profile", flags.gatewayHardening],
-      ["Separate gateway identity", flags.separateGateway],
-      ["Administration helper", flags.administrationHelper],
-      ["Gateway can read its config", flags.gatewayConfigReadable !== false],
-      ["Recovery pending", flags.recoveryPending],
-    ])
-      overview.append(
-        node(
-          "p",
-          `${label}: ${yesNo(value)}`,
-          value && label !== "Recovery pending" ? "good" : "muted",
-        ),
-      );
-    const tls = node("section", undefined, "operation-section");
-    tls.append(node("h3", "TLS certificate"));
-    tls.append(
-      node(
-        "p",
-        report.tls.certificateExpires
-          ? "Expires: " + report.tls.certificateExpires
-          : "Expiry could not be read from the managed certificate.",
-        report.tls.certificateExpires ? "muted" : "attention",
-      ),
-    );
-    const guidance = node("section", undefined, "operation-section");
-    guidance.append(node("h3", "Where to change things"));
-    for (const note of Object.values(report.notes ?? {}))
-      guidance.append(node("p", note));
-    configurationContent.replaceChildren(
-      overview,
-      tls,
-      guidance,
-      button("Open GitHub settings", () => {
-        configurationDialog.close();
-        $("github-settings").click();
-      }),
-      button("Open agent defaults", () => {
-        configurationDialog.close();
-        $("settings-defaults").click();
-      }),
-      node(
-        "p",
-        `Generated ${new Date(report.generatedAt).toLocaleString()}. No configuration contents or private paths are included.`,
-        "muted",
-      ),
-    );
+    await renderConfigurationSettings();
   } catch (error) {
     configurationContent.replaceChildren(
       node("p", error.message || "Configuration is unavailable.", "error"),
     );
   }
+}
+async function renderConfigurationSettings() {
+  const [report, adapters] = await Promise.all([
+      api("/api/configuration"),
+      api("/api/adapters").catch(() => null),
+    ]),
+    flags = report.configuration,
+    yesNo = (value) => (value ? "Yes" : "No"),
+    state =
+      flags.state === "ok"
+        ? "Matches the installed release"
+        : flags.state === "reload_required"
+          ? "Needs sudo systemctl daemon-reload"
+          : flags.state === "recovery_required"
+            ? "Interrupted update needs recovery"
+            : "Changed outside the managed installer";
+  const overview = node("section", undefined, "operation-section");
+  overview.append(node("h3", "Managed status"));
+  overview.append(node("p", state, flags.state === "ok" ? "good" : "attention"));
+  for (const [label, value] of [
+    ["Standard resource profile", flags.resourceProfile],
+    ["Gateway hardening profile", flags.gatewayHardening],
+    ["Separate gateway identity", flags.separateGateway],
+    ["Administration helper", flags.administrationHelper],
+    ["Gateway can read its config", flags.gatewayConfigReadable !== false],
+    ["Recovery pending", flags.recoveryPending],
+  ])
+    overview.append(
+      node(
+        "p",
+        `${label}: ${yesNo(value)}`,
+        value && label !== "Recovery pending" ? "good" : "muted",
+      ),
+    );
+  const tls = node("section", undefined, "operation-section");
+  tls.append(node("h3", "TLS certificate"));
+  tls.append(
+    node(
+      "p",
+      report.tls.certificateExpires
+        ? "Expires: " + report.tls.certificateExpires
+        : "Expiry could not be read from the managed certificate.",
+      report.tls.certificateExpires ? "muted" : "attention",
+    ),
+  );
+  const policy = node("section", undefined, "operation-section");
+  policy.append(node("h3", "Agent adapters"));
+  if (!adapters) {
+    policy.append(
+      node("p", "Adapter policy changes are not available on this install yet.", "muted"),
+    );
+  } else {
+    policy.append(
+      node(
+        "p",
+        `Enabled: ${(adapters.enabled ?? []).join(", ") || "none"}. Editing: ${
+          adapters.editing ? (adapters.editAdapters ?? []).join(", ") || "on" : "off"
+        }.`,
+      ),
+    );
+    policy.append(
+      node(
+        "p",
+        "Changing adapters writes the managed environment and requires a task runner restart before new work uses it.",
+        "muted",
+      ),
+    );
+  }
+  const guidance = node("section", undefined, "operation-section");
+  guidance.append(node("h3", "Where to change things"));
+  for (const note of Object.values(report.notes ?? {})) guidance.append(node("p", note));
+  const actions = [];
+  if (adapters)
+    actions.push(
+      button("Change agent adapters", () => renderAdapterPolicyForm(adapters)),
+    );
+  actions.push(
+    button("Open GitHub settings", () => {
+      configurationDialog.close();
+      $("github-settings").click();
+    }),
+    button("Open agent defaults", () => {
+      configurationDialog.close();
+      $("settings-defaults").click();
+    }),
+  );
+  configurationContent.replaceChildren(
+    overview,
+    tls,
+    policy,
+    guidance,
+    ...actions,
+    node(
+      "p",
+      `Generated ${new Date(report.generatedAt).toLocaleString()}. No configuration contents or private paths are included.`,
+      "muted",
+    ),
+  );
+}
+function renderAdapterPolicyForm(current) {
+  const form = node("form"),
+    supported = current.supported ?? ["claude", "codex", "cursor"],
+    enabledBoxes = {},
+    editBoxes = {},
+    editing = node("input"),
+    currentLabel = node("label", "Current access key"),
+    currentKey = node("input"),
+    submit = node("button", "Review adapter policy", "primary"),
+    enabledSection = node("section", undefined, "operation-section"),
+    editSection = node("section", undefined, "operation-section");
+  enabledSection.append(node("h3", "Enabled adapters"));
+  enabledSection.append(node("p", "At least one adapter must stay enabled.", "muted"));
+  for (const id of supported) {
+    const label = node("label", id),
+      box = node("input");
+    box.type = "checkbox";
+    box.checked = (current.enabled ?? []).includes(id);
+    enabledBoxes[id] = box;
+    label.prepend(box);
+    enabledSection.append(label);
+  }
+  const editingLabel = node("label", "Allow edit mode");
+  editing.type = "checkbox";
+  editing.checked = !!current.editing;
+  editingLabel.prepend(editing);
+  editSection.append(node("h3", "Edit permissions"));
+  editSection.append(editingLabel);
+  editSection.append(
+    node(
+      "p",
+      "Edit adapters must also be enabled above. Leave edit mode off to refuse edits.",
+      "muted",
+    ),
+  );
+  for (const id of supported) {
+    const label = node("label", id + " may edit"),
+      box = node("input");
+    box.type = "checkbox";
+    box.checked = (current.editAdapters ?? []).includes(id);
+    editBoxes[id] = box;
+    label.prepend(box);
+    editSection.append(label);
+  }
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  form.append(
+    enabledSection,
+    editSection,
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const enabled = supported.filter((id) => enabledBoxes[id].checked),
+        editAdapters = editing.checked
+          ? supported.filter((id) => editBoxes[id].checked)
+          : [];
+      if (!enabled.length) throw Error("Choose at least one supported agent adapter.");
+      if (editing.checked && !editAdapters.length)
+        throw Error("Choose at least one edit adapter when editing is enabled.");
+      const plan = await api("/api/adapters", {
+        action: "preview",
+        currentKey: currentKey.value,
+        enabled,
+        editing: editing.checked,
+        editAdapters,
+      });
+      currentKey.value = "";
+      renderAdapterPolicyApproval(plan);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
+}
+function renderAdapterPolicyApproval(plan) {
+  const form = node("form"),
+    confirm = node("input"),
+    idle = node("input"),
+    submit = node("button", "Apply adapter policy", "primary"),
+    confirmLabel = node("label", "I understand the task runner must be restarted"),
+    idleLabel = node(
+      "label",
+      "Current work, account changes and preparations are stopped",
+    );
+  confirm.type = "checkbox";
+  confirm.required = true;
+  confirmLabel.prepend(confirm);
+  idle.type = "checkbox";
+  if (plan.requiresIdle) {
+    idle.required = true;
+    idleLabel.prepend(idle);
+  }
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      `Apply enabled [${(plan.enabled ?? []).join(", ")}] with editing ${
+        plan.editing ? `[${(plan.editAdapters ?? []).join(", ")}]` : "off"
+      }.`,
+      "attention",
+    ),
+    node(
+      "p",
+      "The change is written now. Restart the task runner afterward so new work uses it.",
+      "muted",
+    ),
+    confirmLabel,
+    ...(plan.requiresIdle ? [idleLabel] : []),
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      await api("/api/adapters", {
+        action: "apply",
+        fingerprint: plan.fingerprint,
+        enabled: plan.enabled,
+        editing: plan.editing,
+        editAdapters: plan.editAdapters,
+        confirmed: true,
+        ...(plan.requiresIdle ? { confirmedIdle: true } : {}),
+      });
+      notice(
+        "Adapter policy saved. Restart the task runner from Diagnostics when ready.",
+      );
+      await renderConfigurationSettings();
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
 }
 const backupsDialog = $("backups-dialog"),
   backupsContent = $("backups-content");

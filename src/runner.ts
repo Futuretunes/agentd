@@ -93,6 +93,12 @@ type Config = {
   ) => Promise<{ restarted: true; target: "runner" | "gateway" }>;
   adminBackups?: () => Promise<any>;
   pruneManagedBackups?: (fingerprint: string) => Promise<{ removed: number }>;
+  adminAdapters?: () => Promise<any>;
+  applyAdapterPolicy?: (
+    enabled: string[],
+    editing: boolean,
+    editAdapters: string[],
+  ) => Promise<any>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -1565,6 +1571,28 @@ export function runner(c: Config) {
         return result;
       });
     }
+    if (input.op === "admin-adapters-apply") {
+      if (!c.applyAdapterPolicy) throw Error("Adapter policy changes are not installed.");
+      if (
+        !Array.isArray(input.enabled) ||
+        typeof input.editing !== "boolean" ||
+        !Array.isArray(input.editAdapters)
+      )
+        throw Error("Adapter policy request is invalid.");
+      if (blocked("update"))
+        throw Error(
+          "Finish or stop current work, account changes and preparations before changing adapter policy.",
+        );
+      return c
+        .applyAdapterPolicy(input.enabled, input.editing, input.editAdapters)
+        .then((result) => {
+          audit("adapters-apply", null, {
+            enabled: input.enabled,
+            editing: input.editing,
+          });
+          return result;
+        });
+    }
     requireNoReviewPreparationMutation(input);
     if (typeof input.op === "string" && input.op.startsWith("feedback-"))
       return publicationManager.feedback(input);
@@ -1624,6 +1652,10 @@ export function runner(c: Config) {
     if (input.op === "admin-backups") {
       if (!c.adminBackups) throw Error("Backup management is not installed.");
       return c.adminBackups();
+    }
+    if (input.op === "admin-adapters") {
+      if (!c.adminAdapters) throw Error("Adapter policy is not installed.");
+      return c.adminAdapters();
     }
     if (input.op === "admin-configuration") {
       if (!c.adminConfiguration) throw Error("Configuration overview is not installed.");
