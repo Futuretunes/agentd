@@ -1773,8 +1773,8 @@ export function runner(c: Config) {
     async close() {
       closing = true;
       usageAbort.abort();
-      await usageWork;
       await publicationManager.close();
+      await usageWork;
       await dependencyManager.close();
       await repositoryManager.close();
       await github.close();
