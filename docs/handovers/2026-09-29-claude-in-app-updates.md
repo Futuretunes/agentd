@@ -32,3 +32,9 @@ Rollback from the app (next item), CLI updates, backups page.
 - 0.63.0 (`44400ee`) was installed by the terminal procedure. The **first attempt stopped after the tests and before the recovery journal**: no service was stopped, the backup directory stayed empty, and 0.62.3 kept running. The retry succeeded.
 - Probable cause, reproduced in a unit test: `backup_retention.size()` (used by `admission()`, which runs again after the tests while services are live) called `lstat()` on entries the running runner had already atomically replaced, raising `FileNotFoundError`. Four clean suite runs left no stray files, which rules out candidate pollution.
 - **0.63.1:** `size()` skips entries that vanish while live state is measured. The real backup is still taken with services stopped, and special-file and budget checks are unchanged. Regression test in `test/resource_deployment.py`.
+
+## Host state — 2026-09-29 16:40 UTC
+
+- 0.63.0 installed (`44400ee`); `apply_updates.py` enabled the `agentd-update@.service` job unit and `/var/lib/agentd-releases`, and recorded the baseline.
+- **0.63.1 approved** (`f28bf00`, SHA-256 `2a5e1fc9432cec2d28c6d3622ad5cb8725c7a338c70386b9251c6c42b3be3199`, deterministic, CI green). The helper lists it as valid, newer and without a schema change, with configuration `ok` and no running job.
+- **Pending operator acceptance:** install 0.63.1 from Settings > Updates on the phone. This is the first real end-to-end use of the in-app flow.
