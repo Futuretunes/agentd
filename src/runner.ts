@@ -82,6 +82,10 @@ import { join, isAbsolute } from "node:path";
 import { createServer } from "node:net";
 
 type Config = {
+  adminDiagnostics?: () => Promise<any>;
+  rotateAccess?: (currentKey: string, newHash: string) => Promise<{ rotated: true }>;
+  adminUpdates?: () => Promise<any>;
+  startUpdate?: (version: string) => Promise<{ started: true; version: string }>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -1479,6 +1483,37 @@ export function runner(c: Config) {
     throw Error("Unknown review preparation operation");
   }
   function handleManagedOperationRequest(input: any) {
+    if (input.op === "admin-update-start") {
+      if (!c.startUpdate) throw Error("In-app updates are not installed.");
+      if (
+        typeof input.version !== "string" ||
+        !/^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$/.test(input.version)
+      )
+        throw Error("Update request is invalid.");
+      // The installer stops both services; never start it under active work.
+      if (blocked("update"))
+        throw Error(
+          "Finish or stop current work, account changes and preparations before updating.",
+        );
+      return c.startUpdate(input.version).then((result) => {
+        audit("update-start", null, { version: input.version });
+        return result;
+      });
+    }
+    if (input.op === "admin-access-rotate") {
+      if (!c.rotateAccess) throw Error("Access-key rotation is not installed.");
+      if (
+        typeof input.currentKey !== "string" ||
+        input.currentKey.length > 256 ||
+        typeof input.newHash !== "string" ||
+        !/^[a-f0-9]{64}$/.test(input.newHash)
+      )
+        throw Error("Access-key rotation request is invalid.");
+      return c.rotateAccess(input.currentKey, input.newHash).then((result) => {
+        audit("rotate-access-key", null, { result: "succeeded" });
+        return result;
+      });
+    }
     requireNoReviewPreparationMutation(input);
     if (typeof input.op === "string" && input.op.startsWith("feedback-"))
       return publicationManager.feedback(input);
@@ -1531,6 +1566,32 @@ export function runner(c: Config) {
     throw Error("Unknown managed operation");
   }
   function handleServiceReadRequest(input: any) {
+    if (input.op === "admin-updates") {
+      if (!c.adminUpdates) throw Error("In-app updates are not installed.");
+      return c.adminUpdates();
+    }
+    if (input.op === "admin-diagnostics") {
+      if (!c.adminDiagnostics) throw Error("Diagnostics are not installed.");
+      return c.adminDiagnostics().then((system) => ({
+        ...system,
+        runner: {
+          uptimeSeconds: Math.max(0, Math.floor(process.uptime())),
+          recentFailures: db
+            .prepare(
+              `SELECT id,status,updated,error FROM tasks
+               WHERE status IN ('failed','timed_out','interrupted')
+               ORDER BY updated DESC,rowid DESC LIMIT 10`,
+            )
+            .all()
+            .map((row: any) => ({
+              id: row.id,
+              status: row.status,
+              updated: row.updated,
+              error: operationError(row.error),
+            })),
+        },
+      }));
+    }
     if (input.op === "capabilities") {
       const adapters = capabilities();
       return {

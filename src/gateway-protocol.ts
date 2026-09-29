@@ -7,6 +7,10 @@ import { dirname, isAbsolute } from "node:path";
 const fields: Record<string, string> = {
   "storage-preview": "owner",
   "storage-cleanup": "owner fingerprint",
+  "admin-access-rotate": "owner currentKey newHash",
+  "admin-diagnostics": "",
+  "admin-updates": "",
+  "admin-update-start": "owner version",
   capabilities: "",
   operations: "",
   projects: "",
@@ -87,6 +91,8 @@ const fields: Record<string, string> = {
   "attachment-read": "id",
 };
 export const gatewayMutations = new Set([
+  "admin-access-rotate",
+  "admin-update-start",
   "review-start",
   "review-file-acknowledge",
   "review-file-page-acknowledge",
@@ -245,7 +251,7 @@ export function gatewaySocket(
     connection.setTimeout(10000, () => connection.destroy());
     const chunks: Buffer[] = [];
     let length = 0;
-    connection.on("data", (chunk) => {
+    connection.on("data", async (chunk) => {
       length += chunk.length;
       if (length > 7_500_000) {
         connection.destroy();
@@ -261,8 +267,9 @@ export function gatewaySocket(
         const input = gatewayRequest(JSON.parse(bytes.subarray(0, end).toString("utf8")));
         if (input.op !== "attachment-upload" && length > 80000)
           throw Error("Request too large");
+        const result = await dispatch(input);
         connection.end(
-          JSON.stringify({ ok: true, result: browserResult(dispatch(input)) }) + "\n",
+          JSON.stringify({ ok: true, result: browserResult(result) }) + "\n",
         );
       } catch (error) {
         connection.end(JSON.stringify({ ok: false, error: publicError(error) }) + "\n");
