@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.59.0 — exact-coverage large-review commit gate
 
-[Latest handover](handovers/2026-09-29-large-review-commit-gate.md): truncated aggregate reviews can run checks and commit only after every changed file has durable coverage for the same task and exact Git tree. Passing exact-tree checks, no conflicts and no blocked sensitive/binary/unscannable files remain mandatory. Revision and restart stay blocked. Exact source `39c30b4` passed 200/200 required Linux tests with zero skips, typecheck and formatting. The cumulative archive and launcher are staged but unexecuted. Production remains 0.55.0.
+[Latest handover](handovers/2026-09-29-large-review-commit-gate.md): truncated aggregate reviews can run checks and commit only after every changed file has durable coverage for the same task and exact Git tree. Passing exact-tree checks, no conflicts and no blocked sensitive/binary/unscannable files remain mandatory. Revision and restart stay blocked. Exact source `39c30b4` passed 200/200 required Linux tests with zero skips, typecheck and formatting; Node 24/26 and required Linux CI passed. PR #64 is ready for review against PR #63's branch. The cumulative archive and launcher are staged but unexecuted. Production remains 0.55.0.
 
 ## Candidate 0.58.0 — bounded paginated large-file review
 

@@ -6,7 +6,7 @@
 - Release: 0.59.0, task schema 2.
 - Branch and base: `feat/large-review-commit-eligibility` from `feat/paginated-large-review`.
 - Implementation commit: `39c30b498a52a4188102e9506285b4b8c98a1851`.
-- PR: pending against PR #63's branch.
+- PR: https://github.com/Futuretunes/agentd/pull/64, ready for review against PR #63's branch.
 
 ## Changes and relevant files
 
@@ -23,7 +23,7 @@ This slice does not authorize revision requests or restart-with-settings for ove
 - macOS full suite: 191 passed, 0 failed; nine Linux-only tests skipped as expected (200 total).
 - Required Ubuntu suite from the exact archive: 200/200 passed with zero failures and zero skips.
 - Exact archive: version 0.59.0, task schema 2, SHA-256 `6a4cfeb503a1aa4683f4a72bd12a898ebfccc50bf8e284ed2529efadc95c59a2`.
-- GitHub Actions: pending.
+- GitHub Actions runs `36564869379` and `36564899287` passed Node 24, Node 26 and required Linux isolation.
 
 No live model request, account consent, publication, cleanup, deployment, merge or tag occurred.
 
@@ -38,4 +38,3 @@ Coverage records are trusted private daemon state and are accepted only through 
 ## Next steps
 
 The next security item should narrow GitHub account consent and publishing permissions so repository import, feedback reads and draft-PR writes expose the smallest clear scopes in the GUI. GUI administration, hard retention quotas, notifications and independent review of the stacked release remain queued.
-
