@@ -93,6 +93,23 @@ export function diagnostics(command = "/opt/agentd/scripts/admin_diagnostics.py"
   return value;
 }
 
+export function configurationOverview(
+  command = "/opt/agentd/scripts/admin_configuration.py",
+) {
+  const output = execFileSync("/usr/bin/python3", ["-B", command], {
+    cwd: "/opt/agentd",
+    encoding: "utf8",
+    timeout: 10000,
+    maxBuffer: 32768,
+    env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const value = JSON.parse(output);
+  if (value?.format !== 1 || !value.configuration || value.error)
+    throw Error("Configuration overview unavailable");
+  return value;
+}
+
 function runScript(command: string) {
   return execFileSync("/usr/bin/python3", ["-B", command], {
     cwd: "/opt/agentd",
@@ -218,6 +235,7 @@ export function handleAdminRequest(
   config: {
     mobileConfig: string;
     diagnostics?: () => unknown;
+    configuration?: () => unknown;
     updates?: () => unknown;
     startUnit?: (unit: string) => void;
     restart?: (target: unknown) => { restarted: true; target: "runner" | "gateway" };
@@ -233,6 +251,8 @@ export function handleAdminRequest(
   }
   if (input?.op === "diagnostics" && Object.keys(input).join(" ") === "op")
     return (config.diagnostics ?? diagnostics)();
+  if (input?.op === "configuration" && Object.keys(input).join(" ") === "op")
+    return (config.configuration ?? configurationOverview)();
   if (input?.op === "updates" && Object.keys(input).join(" ") === "op")
     return (config.updates ?? updates)();
   if (input?.op === "rollback-start") {

@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   readDiagnostics,
+  readConfiguration,
   readUpdates,
   readBackups,
   pruneBackups,
@@ -73,6 +74,9 @@ export function start(options: Options) {
       ? runner({
           adminDiagnostics: process.env.AGENTD_ADMIN_SOCKET
             ? () => readDiagnostics(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          adminConfiguration: process.env.AGENTD_ADMIN_SOCKET
+            ? () => readConfiguration(process.env.AGENTD_ADMIN_SOCKET!)
             : undefined,
           adminUpdates: process.env.AGENTD_ADMIN_SOCKET
             ? () => readUpdates(process.env.AGENTD_ADMIN_SOCKET!)

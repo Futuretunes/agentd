@@ -9,6 +9,7 @@ const fields: Record<string, string> = {
   "storage-cleanup": "owner fingerprint",
   "admin-access-rotate": "owner currentKey newHash",
   "admin-diagnostics": "",
+  "admin-configuration": "",
   "admin-updates": "",
   "admin-update-start": "owner version",
   "admin-rollback-start": "owner version",

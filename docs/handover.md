@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.68.0 — configuration overview (Cursor)
+
+Settings > Configuration shows a read-only managed hardening/resource/TLS overview. Mutations remain future work. See [handover](handovers/2026-09-29-cursor-configuration-overview.md). Not installed.
+
 ## Candidate 0.67.0 — managed backups (Cursor)
 
 Settings > Backups lists sanitized managed update backups and can remove only retention-eligible items with step-up preview. Version restore remains Updates rollback. See [handover](handovers/2026-09-29-cursor-managed-backups.md). Not installed. Next admin slice: configuration pages.
