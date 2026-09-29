@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { requestRouter, reviewPreparationOperations } from "../src/request-routing.ts";
+import {
+  managedOperationOperations,
+  requestRouter,
+  reviewPreparationOperations,
+} from "../src/request-routing.ts";
 
 test("request routing assigns review preparation operations to one domain", () => {
   const seen = [];
@@ -20,6 +24,30 @@ test("request routing assigns review preparation operations to one domain", () =
     ...reviewPreparationOperations.map((op) => ["review", op]),
     ["core", "show"],
   ]);
+});
+
+test("request routing assigns extracted managers without overlapping preparation", () => {
+  const seen = [];
+  const route = requestRouter(
+    [
+      {
+        name: "review-preparation",
+        operations: reviewPreparationOperations,
+        handle: (input) => seen.push(["review", input.op]),
+      },
+      {
+        name: "managed-operations",
+        operations: managedOperationOperations,
+        handle: (input) => seen.push(["managed", input.op]),
+      },
+    ],
+    (input) => seen.push(["core", input?.op]),
+  );
+  for (const op of managedOperationOperations) route({ op });
+  assert.deepEqual(
+    seen,
+    managedOperationOperations.map((op) => ["managed", op]),
+  );
 });
 
 test("request routing rejects duplicate ownership at startup", () => {

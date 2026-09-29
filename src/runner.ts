@@ -1,5 +1,9 @@
 import { reviewJobs } from "./review-jobs.ts";
-import { requestRouter, reviewPreparationOperations } from "./request-routing.ts";
+import {
+  managedOperationOperations,
+  requestRouter,
+  reviewPreparationOperations,
+} from "./request-routing.ts";
 import { type prepareReview } from "./review-preview.ts";
 import { usageCache } from "./provider-usage.ts";
 import { probeUsage } from "./usage-probe.ts";
@@ -1040,6 +1044,18 @@ export function runner(c: Config) {
     if (closing) throw new Error("Service is stopping");
     return dispatchRequest(input);
   }
+  function requireNoReviewPreparationMutation(input: any) {
+    if (
+      (previewManager.busy() ||
+        validationManager.busy() ||
+        commitManager.busy() ||
+        revisionManager.busy() ||
+        restartManager.busy()) &&
+      (gatewayMutations.has(input.op) ||
+        ["project-register", "project-checks"].includes(input.op))
+    )
+      throw Error("Wait for the change preview, or cancel it before changing work.");
+  }
   function handleReviewPreparationRequest(input: any) {
     if (input.op === "review-job")
       return previewManager.view(input.owner ?? "local", input.job);
@@ -1315,17 +1331,60 @@ export function runner(c: Config) {
     }
     throw Error("Unknown review preparation operation");
   }
+  function handleManagedOperationRequest(input: any) {
+    requireNoReviewPreparationMutation(input);
+    if (typeof input.op === "string" && input.op.startsWith("feedback-"))
+      return publicationManager.feedback(input);
+    if (input.op === "publication-targets") return publicationManager.targets(input.task);
+    if (input.op === "publication-status") return publicationManager.status(input.task);
+    if (input.op === "publication-preview") return publicationManager.start(input);
+    if (input.op === "publication-approve") return publicationManager.start(input, true);
+    if (input.op === "check-setup") return dependencyManager.view(input);
+    if (input.op === "check-prepare") return dependencyManager.start(input);
+    if (input.op === "check-cancel") return dependencyManager.cancel(input.id);
+    if (input.op === "github-status") return github.view(input.owner);
+    if (input.op === "github-start") {
+      if (blocked("githubChange"))
+        throw Error("Wait for the repository or publishing operation.");
+      return github.start(input.owner);
+    }
+    if (input.op === "github-cancel") return github.cancel(input.owner, input.session);
+    if (input.op === "github-logout") {
+      if (blocked("githubChange"))
+        throw Error("Wait for the repository or publishing operation.");
+      return github.logout();
+    }
+    if (input.op === "repository-jobs") return repositoryManager.view();
+    if (input.op === "repository-start") return repositoryManager.start(input);
+    if (input.op === "repository-cancel") return repositoryManager.cancel(input.job);
+    if (input.op === "account-session")
+      return { session: accountManager.view(input.owner), busy: accountManager.busy() };
+    if (input.op === "account-start" && catalog.busy())
+      throw Error("Wait for model discovery before changing accounts");
+    if (input.op === "account-start") {
+      if (!["login", "logout"].includes(input.action))
+        throw Error("Unsupported account action");
+      if (blocked("accountChange"))
+        throw Error(
+          "Wait for current work or account checks to finish before changing accounts.",
+        );
+      const result = accountManager.start(input.owner, input.adapter, input.action);
+      if (input.adapter === "codex") usage.clear();
+      audit("account-" + input.action, null, { adapter: input.adapter });
+      return result;
+    }
+    if (input.op === "account-code")
+      return accountManager.submit(input.owner, input.session, input.code);
+    if (input.op === "account-cancel")
+      return accountManager.cancel(input.owner, input.session);
+    if (input.op === "account-refresh") {
+      refreshAccounts(true);
+      return { ok: true };
+    }
+    throw Error("Unknown managed operation");
+  }
   function handleCoreRequest(input: any) {
-    if (
-      (previewManager.busy() ||
-        validationManager.busy() ||
-        commitManager.busy() ||
-        revisionManager.busy() ||
-        restartManager.busy()) &&
-      (gatewayMutations.has(input.op) ||
-        ["project-register", "project-checks"].includes(input.op))
-    )
-      throw Error("Wait for the change preview, or cancel it before changing work.");
+    requireNoReviewPreparationMutation(input);
     const actor = auditContext.getStore(),
       receipt = receipts.inspect(
         input,
@@ -1455,58 +1514,6 @@ export function runner(c: Config) {
       );
     }
 
-    if (closing) throw new Error("Service is stopping");
-
-    if (typeof input.op === "string" && input.op.startsWith("feedback-"))
-      return publicationManager.feedback(input);
-    if (input.op === "publication-targets") return publicationManager.targets(input.task);
-    if (input.op === "publication-status") {
-      return publicationManager.status(input.task);
-    }
-    if (input.op === "publication-preview") return publicationManager.start(input);
-    if (input.op === "publication-approve") return publicationManager.start(input, true);
-    if (input.op === "check-setup") return dependencyManager.view(input);
-    if (input.op === "check-prepare") return dependencyManager.start(input);
-    if (input.op === "check-cancel") return dependencyManager.cancel(input.id);
-    if (input.op === "github-status") return github.view(input.owner);
-    if (input.op === "github-start") {
-      if (blocked("githubChange"))
-        throw Error("Wait for the repository or publishing operation.");
-      return github.start(input.owner);
-    }
-    if (input.op === "github-cancel") return github.cancel(input.owner, input.session);
-    if (input.op === "github-logout") {
-      if (blocked("githubChange"))
-        throw Error("Wait for the repository or publishing operation.");
-      return github.logout();
-    }
-    if (input.op === "repository-jobs") return repositoryManager.view();
-    if (input.op === "repository-start") return repositoryManager.start(input);
-    if (input.op === "repository-cancel") return repositoryManager.cancel(input.job);
-    if (input.op === "account-session")
-      return { session: accountManager.view(input.owner), busy: accountManager.busy() };
-    if (input.op === "account-start" && catalog.busy())
-      throw Error("Wait for model discovery before changing accounts");
-    if (input.op === "account-start") {
-      if (!["login", "logout"].includes(input.action))
-        throw Error("Unsupported account action");
-      if (blocked("accountChange"))
-        throw Error(
-          "Wait for current work or account checks to finish before changing accounts.",
-        );
-      const result = accountManager.start(input.owner, input.adapter, input.action);
-      if (input.adapter === "codex") usage.clear();
-      audit("account-" + input.action, null, { adapter: input.adapter });
-      return result;
-    }
-    if (input.op === "account-code")
-      return accountManager.submit(input.owner, input.session, input.code);
-    if (input.op === "account-cancel")
-      return accountManager.cancel(input.owner, input.session);
-    if (input.op === "account-refresh") {
-      refreshAccounts(true);
-      return { ok: true };
-    }
     if (input.op === "capabilities") {
       const adapters = capabilities();
       return {
@@ -2105,6 +2112,11 @@ export function runner(c: Config) {
         name: "review-preparation",
         operations: reviewPreparationOperations,
         handle: handleReviewPreparationRequest,
+      },
+      {
+        name: "managed-operations",
+        operations: managedOperationOperations,
+        handle: handleManagedOperationRequest,
       },
     ],
     handleCoreRequest,

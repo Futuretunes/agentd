@@ -24,6 +24,35 @@ export const reviewPreparationOperations = [
   "restart-start",
 ] as const;
 
+export const managedOperationOperations = [
+  "feedback-targets",
+  "feedback-status",
+  // Local compatibility name used by publication lifecycle tests and admin clients.
+  "feedback-preview",
+  "feedback-prepare",
+  "feedback-apply",
+  "feedback-cancel",
+  "publication-targets",
+  "publication-status",
+  "publication-preview",
+  "publication-approve",
+  "check-setup",
+  "check-prepare",
+  "check-cancel",
+  "github-status",
+  "github-start",
+  "github-cancel",
+  "github-logout",
+  "repository-jobs",
+  "repository-start",
+  "repository-cancel",
+  "account-session",
+  "account-start",
+  "account-code",
+  "account-cancel",
+  "account-refresh",
+] as const;
+
 /**
  * Build the runner's operation table once at startup. An operation has one owner;
  * duplicate claims fail before either handler can receive a request.
