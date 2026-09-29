@@ -4,7 +4,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.56.0 — bounded per-file large-review inspection
 
-[Latest handover](handovers/2026-09-29-bounded-large-review.md): aggregate-large safe text reviews expose owner-bound, exact-tree per-file inspection with repeated binary, sensitive-data and output bounds. Commit/revision/restart remain blocked for truncated reviews. Exact source `652b518` passed 196/196 required Linux tests with zero skips, typecheck and formatting. Draft PR #61 targets PR #60's branch; final CI is pending. The cumulative archive is staged but unexecuted. Production remains 0.55.0.
+[Latest handover](handovers/2026-09-29-bounded-large-review.md): aggregate-large safe text reviews expose owner-bound, exact-tree per-file inspection with repeated binary, sensitive-data and output bounds. Commit/revision/restart remain blocked for truncated reviews. Exact source `652b518` passed 196/196 required Linux tests with zero skips, typecheck and formatting; Node 24/26 and required Linux CI passed. PR #61 is ready for review against PR #60's branch. The cumulative archive is staged but unexecuted. Production remains 0.55.0.
 
 ## Installed baseline — 0.55.0
 

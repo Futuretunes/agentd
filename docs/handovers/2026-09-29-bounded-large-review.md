@@ -6,7 +6,7 @@
 - Release: 0.56.0, task schema 2.
 - Branch and base: `feat/bounded-large-review` from `release/0.55.0-routing-baseline`.
 - Implementation commit: `652b518c16a526c22304b003645f9098525700e0`.
-- PR: https://github.com/Futuretunes/agentd/pull/61, draft against PR #60's branch pending final CI and review.
+- PR: https://github.com/Futuretunes/agentd/pull/61, ready for review against PR #60's branch.
 
 ## Changes and relevant files
 
@@ -21,7 +21,7 @@ This is an inspection-only first R14 slice. Truncated aggregate reviews still ca
 - macOS full suite: 187 passed, 0 failed; nine Linux-only tests skipped as expected.
 - Required Ubuntu suite from the exact archive: 196/196 passed with zero failures and zero skips.
 - Exact archive: version 0.56.0, task schema 2, SHA-256 `c7965b0beade33ff6943e86d252a05dd33df4fe42fcf5c6fcce7c8c8712abb47`.
-- GitHub Actions is pending for the documentation-complete branch.
+- GitHub Actions runs `36557925748` and `36557930659` passed Node 24, Node 26 and required Linux isolation.
 
 No live model request, account consent, publication, cleanup, deployment, merge or tag occurred.
 
@@ -35,4 +35,4 @@ Opening a file proves that the server delivered a bounded exact-tree patch; it d
 
 ## Next steps
 
-After CI and review, mark #61 ready. The next R14 slice is a durable exact-tree acknowledgement design for a complete set of individually bounded files, or bounded pagination within one oversized text file. Only then consider allowing checks/commit for a fully reviewed large snapshot. R8 GitHub consent narrowing, GUI administration, retention quotas and notifications remain queued.
+The next R14 slice is a durable exact-tree acknowledgement design for a complete set of individually bounded files, or bounded pagination within one oversized text file. Only then consider allowing checks/commit for a fully reviewed large snapshot. R8 GitHub consent narrowing, GUI administration, retention quotas and notifications remain queued.
