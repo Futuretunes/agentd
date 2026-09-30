@@ -22,6 +22,8 @@ import {
   operationsSummaryCounts,
   adapterAccountActionLabel,
   adapterAccountStatusLine,
+  projectNavLabel,
+  conversationNavLabel,
 } from "../public/ui.js";
 test("operationsSummaryCounts keeps pending reviews out of Completed", () => {
   assert.deepEqual(
@@ -127,6 +129,25 @@ test("adapterAccountStatusLine keeps disabled signed-out muted", () => {
     }),
     { text: "Account status unavailable", className: "muted" },
   );
+});
+test("projectNavLabel explains conversation counts for sidebar badges", () => {
+  assert.deepEqual(projectNavLabel("Demo", 0), {
+    title: "Demo",
+    countLabel: "0 conversations",
+    accessibleName: "Demo, 0 conversations",
+  });
+  assert.deepEqual(projectNavLabel("Demo", 1), {
+    title: "Demo",
+    countLabel: "1 conversation",
+    accessibleName: "Demo, 1 conversation",
+  });
+});
+test("conversationNavLabel names threads for assistive tech", () => {
+  assert.deepEqual(conversationNavLabel("Plan checks", "Answer ready"), {
+    title: "Plan checks",
+    statusLabel: "Answer ready",
+    accessibleName: "Plan checks, Answer ready",
+  });
 });
 test("reviewCommittedProgression prefers publish after fresh checks", () => {
   assert.deepEqual(

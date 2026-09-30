@@ -19,6 +19,8 @@ import {
   operationsSummaryCounts,
   adapterAccountActionLabel,
   adapterAccountStatusLine,
+  projectNavLabel,
+  conversationNavLabel,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -1342,6 +1344,7 @@ async function refresh() {
       $("projects").dataset.signature = JSON.stringify([projects, projectId]);
       $("projects").replaceChildren(
         ...projects.map((p) => {
+          const nav = projectNavLabel(p.name, p.conversations);
           const b = button(
             "",
             () => {
@@ -1351,7 +1354,10 @@ async function refresh() {
             },
             "project" + (p.id === projectId ? " selected" : ""),
           );
-          b.append(node("span", "▱ " + p.name), node("small", String(p.conversations)));
+          b.setAttribute("aria-label", nav.accessibleName);
+          const count = node("small", nav.countLabel);
+          count.title = nav.countLabel;
+          b.append(node("span", "▱ " + nav.title), count);
           return b;
         }),
       );
@@ -1366,12 +1372,14 @@ async function refresh() {
       $("tasks").dataset.signature = JSON.stringify([threads, selected]);
       $("tasks").replaceChildren(
         ...threads.map((t) => {
+          const nav = conversationNavLabel(t.title, labels[t.status] ?? "New");
           const b = button(
             "",
             () => reset(t.id),
             "thread" + (selected === t.id ? " selected" : ""),
           );
-          b.append(node("span", t.title), node("small", labels[t.status] ?? "New"));
+          b.setAttribute("aria-label", nav.accessibleName);
+          b.append(node("span", nav.title), node("small", nav.statusLabel));
           return b;
         }),
       );
