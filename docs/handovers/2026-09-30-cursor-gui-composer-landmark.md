@@ -6,7 +6,7 @@
 - Release: 0.133.0
 - Branch and base: `feat/gui-composer-landmark` on `main` (0.132.0)
 - Implementation commit(s): 8511ea0
-- PR: pending
+- PR: #207
 
 ## Changes and relevant files
 
