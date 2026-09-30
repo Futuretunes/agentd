@@ -2,9 +2,10 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: Settings > Access key can delete leftover `/etc/agentd/mobile-access.txt`
-- Status: implemented; pending merge and live-install
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.77.0
 - Branch and base: `feat/gui-access-key-recovery-delete` on `main` (0.76.0)
+- PR: #93
 
 ## Changes and relevant files
 
@@ -15,10 +16,8 @@
 ## Validation evidence
 
 - `node --test test/access-key-recovery.test.mjs`
-- typecheck / format (run with commit)
+- CI green on #93; live-installed on 192.168.1.20; recovery status `present: false`.
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
-2. Host may already lack the file; UI then shows that no leftover file is present.
-3. Next backlog: notifications (ntfy) or remaining Configuration polish.
+1. Next backlog: notifications (roadmap item 5 / ntfy) or remaining Configuration polish.
