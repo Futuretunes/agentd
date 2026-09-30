@@ -2299,3 +2299,8 @@ test("turn history navigation is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /pages\.setAttribute\("aria-label", "Turn history navigation"\)/);
 });
+
+test("history result actions are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /actions\.setAttribute\("aria-label", "History result actions"\)/);
+});
