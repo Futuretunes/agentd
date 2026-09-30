@@ -2279,3 +2279,8 @@ test("storage cleanup preview is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /details\.setAttribute\("aria-label", "Storage cleanup preview"\)/);
 });
+
+test("update preview is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /details\.setAttribute\("aria-label", "Update preview"\)/);
+});

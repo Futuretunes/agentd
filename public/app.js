@@ -6270,6 +6270,8 @@ function renderUpdateReview(release) {
   key.autocomplete = "current-password";
   label.htmlFor = key.id;
   const details = node("div");
+  details.setAttribute("aria-label", "Update preview");
+  details.setAttribute("aria-live", "polite");
   const preview = button(
     "Preview update",
     async () => {
