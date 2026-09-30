@@ -610,6 +610,15 @@ test("history search marks results busy while loading", () => {
   assert.match(source, /results\.setAttribute\("aria-busy", "true"\)/);
   assert.match(source, /results\.setAttribute\("aria-busy", "false"\)/);
 });
+test("history pagination exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("history-pages").getAttribute("aria-label"),
+    "History pagination",
+  );
+});
 test("welcome suggestion chips expose stable accessible names", () => {
   const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(source, /aria-label", "Suggested prompts"/);
