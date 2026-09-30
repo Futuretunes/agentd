@@ -5,8 +5,8 @@
 - Status: implemented
 - Release: 0.84.0
 - Branch and base: `feat/gui-run-elapsed` on `main` (0.83.1)
-- Implementation commit(s): (filled after commit)
-- PR: (filled after open)
+- Implementation commit(s): `7b0709bfa7aa77a270ee66c07671d6dc0353a249`
+- PR: #109 — https://github.com/Futuretunes/agentd/pull/109
 
 ## Changes and relevant files
 
