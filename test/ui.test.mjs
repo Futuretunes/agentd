@@ -1294,3 +1294,11 @@ test("phone drawer clears left safe-area inset", () => {
     /#sidebar\s*\{[\s\S]*?padding-left:\s*max\(0px,\s*env\(safe-area-inset-left\)\)/,
   );
 });
+
+test("phone conversation region clears horizontal safe-area insets", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /#detail\s*\{\s*padding:\s*22px\s+max\(16px,\s*env\(safe-area-inset-right\)\)\s+22px\s+max\(16px,\s*env\(safe-area-inset-left\)\)/,
+  );
+});

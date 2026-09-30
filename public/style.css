@@ -1296,7 +1296,8 @@ a {
     font-size: 15px;
   }
   #detail {
-    padding: 22px 16px;
+    padding: 22px max(16px, env(safe-area-inset-right)) 22px
+      max(16px, env(safe-area-inset-left));
   }
   .welcome {
     padding: 5vh 0 0;
