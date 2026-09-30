@@ -2178,3 +2178,12 @@ test("New project dialog heading exposes a stable accessible name", () => {
   assert.equal(head.getAttribute("role"), "group");
   assert.equal(head.getAttribute("aria-label"), "New project heading");
 });
+
+test("Request revisions dialog heading exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const head = document.getElementById("revision-heading-group");
+  assert.equal(head.getAttribute("role"), "group");
+  assert.equal(head.getAttribute("aria-label"), "Request revisions heading");
+});
