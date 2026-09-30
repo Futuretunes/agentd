@@ -1732,3 +1732,16 @@ test("repository name exposes a stable accessible name", () => {
     "Import project name",
   );
 });
+
+test("project input exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="project-input"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Project name");
+  assert.equal(
+    document.getElementById("project-input").getAttribute("aria-label"),
+    "New project name",
+  );
+});
