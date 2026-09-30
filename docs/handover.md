@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.113.0 — New conversation accessible name (Cursor)
 
-New conversation controls set `aria-label="New conversation"`. See [handover](handovers/2026-09-30-cursor-gui-new-chat-label.md). Not installed.
+New conversation controls set `aria-label="New conversation"`. See [handover](handovers/2026-09-30-cursor-gui-new-chat-label.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.112.0 — Connection bullet + login focus (Cursor)
 

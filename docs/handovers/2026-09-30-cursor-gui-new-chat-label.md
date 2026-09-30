@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: New conversation controls expose a stable accessible name without relying on the ＋ glyph
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.113.0
 - Branch and base: `feat/gui-new-chat-label` on `main` (0.112.0)
 - Implementation commit(s): 384f1d2
@@ -16,13 +16,15 @@
 
 ## Validation evidence
 
+- CI green on #167; live-installed on 192.168.1.20 (0.113.0 / 61bc07f).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.112.0 / revert of #167.
 
 ## Constraints and known issues
 
@@ -30,5 +32,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #167 and live-installed 0.113.0.
 2. Continue UX polish or admin slices as operator priority allows.
