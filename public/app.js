@@ -4197,50 +4197,6 @@ function renderNotificationsForm(current) {
   };
   configurationContent.replaceChildren(form);
 }
-function renderNotificationsPauseForm(current, pause) {
-  const form = node("form"),
-    currentLabel = node("label", "Current access key"),
-    currentKey = node("input"),
-    submit = node(
-      "button",
-      pause ? "Review pause notifications" : "Review resume notifications",
-      "primary",
-    );
-  currentKey.type = "password";
-  currentKey.autocomplete = "current-password";
-  currentKey.required = true;
-  currentLabel.append(currentKey);
-  submit.type = "submit";
-  form.append(
-    node(
-      "p",
-      pause
-        ? `Pause pushes to ${current.server}/…/${current.topic}. The destination stays saved.`
-        : `Resume pushes to ${current.server}/…/${current.topic}.`,
-      "attention",
-    ),
-    currentLabel,
-    submit,
-    button("Cancel", () => void renderConfigurationSettings()),
-  );
-  form.onsubmit = async (event) => {
-    event.preventDefault();
-    submit.disabled = true;
-    try {
-      const plan = await api("/api/notifications", {
-        action: "preview",
-        paused: pause,
-        currentKey: currentKey.value,
-      });
-      currentKey.value = "";
-      renderNotificationsApproval(plan);
-    } catch (error) {
-      notice(error.message);
-      submit.disabled = false;
-    }
-  };
-  configurationContent.replaceChildren(form);
-}
 function renderNotificationsClearForm(current) {
   const form = node("form"),
     currentLabel = node("label", "Current access key"),
