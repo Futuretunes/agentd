@@ -1340,6 +1340,10 @@ a {
     flex-shrink: 0;
     white-space: nowrap;
   }
+  .code-head button {
+    min-height: 44px;
+    min-width: 44px;
+  }
   #prompt {
     font-size: 16px;
   }

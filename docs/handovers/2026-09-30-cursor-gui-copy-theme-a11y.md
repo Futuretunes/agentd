@@ -1,0 +1,35 @@
+# 2026-09-30 — 0.118.0: Code copy feedback + theme-color (UX-1 / UX-4)
+
+- Author/agent: Cursor
+- Requested outcome: Code Copy announces success politely and phone Copy targets stay ≥44px; browser chrome theme-color follows appearance
+- Status: implemented
+- Release: 0.118.0
+- Branch and base: `feat/gui-copy-code-a11y` on `main` (0.117.0)
+- Implementation commit(s): 0b95a2e
+- PR: #177
+
+## Changes and relevant files
+
+- Answer code Copy uses `aria-label` + `aria-live="polite"` and resets to “Copy code” after 2s.
+- Phone `.code-head button` is at least 44×44.
+- `setupShell` updates `meta[name=theme-color]` for light/dark (including system preference changes).
+- Package 0.118.0; coverage in `test/ui.test.mjs`.
+
+## Validation evidence
+
+- `node --test test/ui.test.mjs`
+- `npm run typecheck`
+- `npm run format:check`
+
+## Deployment and rollback
+
+Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+
+## Constraints and known issues
+
+- Clipboard API failures still show “Select code to copy” and then reset.
+
+## Next steps
+
+1. Merge when CI is green; live-install on 192.168.1.20.
+2. Continue UX polish or admin slices as operator priority allows.
