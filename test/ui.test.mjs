@@ -2314,3 +2314,8 @@ test("activity summary is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /summary\.setAttribute\("aria-label", "Activity summary"\)/);
 });
+
+test("activity service is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /service\.setAttribute\("aria-label", "Activity service"\)/);
+});
