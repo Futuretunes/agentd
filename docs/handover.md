@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.133.0 — Composer complementary landmark (Cursor)
 
-Composer wrap is a Message composer complementary landmark. See [handover](handovers/2026-09-30-cursor-gui-composer-landmark.md). Not installed.
+Composer wrap is a Message composer complementary landmark. See [handover](handovers/2026-09-30-cursor-gui-composer-landmark.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.132.0 — Workspace accessible name (Cursor)
 
