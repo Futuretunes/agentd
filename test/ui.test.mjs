@@ -945,3 +945,17 @@ test("patch metadata becomes file status, names come from headers and counts exc
   assert.equal(files[2].from, "old.js");
   assert.deepEqual(diffStats(patch), { files: 4, additions: 2, deletions: 2 });
 });
+
+test("review and run content announce updates politely", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("review-content").getAttribute("aria-live"),
+    "polite",
+  );
+  assert.equal(
+    document.getElementById("run-content").getAttribute("aria-live"),
+    "polite",
+  );
+});
