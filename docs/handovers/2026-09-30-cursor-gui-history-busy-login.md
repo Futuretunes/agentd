@@ -6,7 +6,7 @@
 - Release: 0.120.0
 - Branch and base: `feat/gui-history-busy-login` on `main` (0.119.0)
 - Implementation commit(s): 7053649
-- PR: pending
+- PR: #181
 
 ## Changes and relevant files
 
