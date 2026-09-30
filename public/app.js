@@ -27,6 +27,7 @@ import {
   openDialog,
   setTextWithTitle,
   emptyConversationList,
+  noProjectActionReason,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -1412,9 +1413,13 @@ async function refresh() {
       if (!threads.length) {
         const empty = emptyConversationList();
         empty.start.onclick = () => $("new").click();
+        empty.start.disabled = !projectId;
+        empty.start.title = projectId ? "" : noProjectActionReason("new");
         $("tasks").append(empty.wrap);
       }
     }
+    $("new").disabled = !projectId;
+    $("new").title = projectId ? "" : noProjectActionReason("new");
     if (draftLocation !== draftKey()) {
       saveDraft();
       $("prompt").value = "";
@@ -1487,8 +1492,9 @@ async function refresh() {
       !projectId ||
       !policy.enabledAdapters.length ||
       (composerPolicy?.key === composerKey() && !composerPolicy.allowedModes.length);
-    $("hint").textContent =
-      composerPolicy?.key === composerKey() && !composerPolicy.allowedModes.length
+    $("hint").textContent = !projectId
+      ? noProjectActionReason("send")
+      : composerPolicy?.key === composerKey() && !composerPolicy.allowedModes.length
         ? "Runs are disabled by the effective environment settings. Open Agent settings to change them."
         : archivedView
           ? "This conversation is archived. Restore it through History to continue."

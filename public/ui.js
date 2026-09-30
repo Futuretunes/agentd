@@ -589,6 +589,12 @@ export function applySuggestionPrompt(field, text) {
   };
 }
 
+/** Why New conversation / Send stay blocked when no project is selected (U10). */
+export function noProjectActionReason(action = "send") {
+  if (action === "new") return "Create or select a project first.";
+  return "Create or select a project to send a message.";
+}
+
 /** Set visible text and a matching title so ellipsized labels stay readable (U17). */
 export function setTextWithTitle(el, text) {
   const value = String(text ?? "");

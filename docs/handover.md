@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.111.0 — Honest no-project New/Send reasons (Cursor)
+
+Without a selected project, New conversation and Send explain the block. See [handover](handovers/2026-09-30-cursor-gui-new-conversation-reason.md). Not installed.
+
 ## Candidate 0.110.0 — Notice roles for errors vs info (Cursor)
 
 Page/dialog notices use `role="alert"` for errors and `role="status"` for info. See [handover](handovers/2026-09-30-cursor-gui-notice-role.md). **Live-installed on 192.168.1.20.**
