@@ -2,11 +2,11 @@
 
 - Author/agent: Cursor
 - Requested outcome: Suggestion chips give visible feedback (fill + focus + caret at end) without auto-submitting
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.90.0
 - Branch and base: `feat/gui-suggestion-focus` on `main` (0.89.0)
-- Implementation commit(s): (filled after commit)
-- PR: (filled after open)
+- Implementation commit(s): 8d91a4f
+- PR: #121
 
 ## Changes and relevant files
 
@@ -16,13 +16,15 @@
 
 ## Validation evidence
 
+- CI green on #121; live-installed on 192.168.1.20 (0.90.0 / 3c2402ee2d84).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.89.0 / revert of #121.
 
 ## Constraints and known issues
 
@@ -31,5 +33,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
-2. Remaining UX polish / admin slices as operator priority allows.
+1. Done: merged #121 and live-installed 0.90.0.
+2. Remaining UX: post-commit publish primary step as separately scoped work.
