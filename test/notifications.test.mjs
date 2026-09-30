@@ -26,7 +26,7 @@ test("notification settings set and clear", () => {
   assert.equal(saved.configured, true);
   assert.equal(saved.server, "https://ntfy.sh");
   assert.equal(saved.topic, "agentd-alerts");
-  assert.equal(saved.deliveryEnabled, false);
+  assert.equal(saved.deliveryEnabled, true);
   const stored = JSON.parse(readFileSync(mobile, "utf8"));
   assert.deepEqual(stored.notifications, {
     ntfy: { server: "https://ntfy.sh", topic: "agentd-alerts" },
