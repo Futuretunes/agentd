@@ -6,7 +6,7 @@
 - Release: 0.105.0
 - Branch and base: `feat/gui-dialog-focus-restore` on `main` (0.104.0)
 - Implementation commit(s): 8a4b81e
-- PR: (filled after open)
+- PR: #151
 
 ## Changes and relevant files
 
