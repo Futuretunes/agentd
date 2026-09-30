@@ -278,6 +278,8 @@ h3 {
 }
 .selected {
   background: var(--surface-3);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .thread {
   display: block;
