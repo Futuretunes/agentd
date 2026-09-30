@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.85.0 — Bounded live output while running (Cursor)
 
-While a run is active, the conversation turn shows a bounded plain-text tail of current log output (ANSI stripped). Reuses existing poll/`logTail`; no websockets. See [handover](handovers/2026-09-30-cursor-gui-live-output.md). Not installed.
+While a run is active, the conversation turn shows a bounded plain-text tail of current log output (ANSI stripped). Reuses existing poll/`logTail`; no websockets. See [handover](handovers/2026-09-30-cursor-gui-live-output.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.84.0 — Active-run elapsed time (Cursor)
 
