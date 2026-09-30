@@ -30,6 +30,7 @@ import {
   openDialog,
   setTextWithTitle,
   emptyConversationList,
+  emptyProjectList,
   noProjectActionReason,
 } from "../public/ui.js";
 test("operationsSummaryCounts keeps pending reviews out of Completed", () => {
@@ -719,6 +720,14 @@ test("emptyConversationList offers a New conversation control", () => {
   assert.match(empty.start.className, /empty-list-cta/);
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(css, /\.empty-list-cta/);
+});
+test("emptyProjectList offers a New project control", () => {
+  const { document } = parseHTML("<!doctype html><html><body></body></html>");
+  const empty = emptyProjectList(document);
+  assert.equal(empty.copy.textContent, "Create a project to start working.");
+  assert.equal(empty.start.textContent, "＋ New project");
+  assert.equal(empty.start.getAttribute("aria-label"), "Create or import project");
+  assert.match(empty.start.className, /empty-list-cta/);
 });
 test("sidebar New conversation exposes a stable accessible name", () => {
   const { document } = parseHTML(

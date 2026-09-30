@@ -655,6 +655,25 @@ export function emptyConversationList(documentRef = document) {
 }
 
 /**
+ * Empty project list copy plus a primary Create project control (U17).
+ * Caller wires the button action; this only builds the nodes.
+ */
+export function emptyProjectList(documentRef = document) {
+  const wrap = documentRef.createElement("div");
+  wrap.className = "empty-list-wrap";
+  const copy = documentRef.createElement("p");
+  copy.className = "empty-list";
+  copy.textContent = "Create a project to start working.";
+  const start = documentRef.createElement("button");
+  start.type = "button";
+  start.className = "new-chat empty-list-cta";
+  start.textContent = "＋ New project";
+  start.setAttribute("aria-label", "Create or import project");
+  wrap.append(copy, start);
+  return { wrap, copy, start };
+}
+
+/**
  * Open a modal dialog and restore focus to the trigger when it closes (U19).
  * Re-opening an already-open dialog is a no-op so refresh paths keep the trigger.
  */
