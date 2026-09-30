@@ -2158,3 +2158,14 @@ test("diagnostics dialog heading exposes a stable accessible name", () => {
   assert.equal(head.getAttribute("role"), "group");
   assert.equal(head.getAttribute("aria-label"), "Diagnostics heading");
 });
+
+test("New project dialog heading exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const head = document.querySelector(
+    '#project-dialog [aria-label="New project heading"]',
+  );
+  assert.equal(head.getAttribute("role"), "group");
+  assert.equal(head.getAttribute("aria-label"), "New project heading");
+});
