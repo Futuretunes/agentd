@@ -1206,6 +1206,8 @@ function renderThread(data) {
         ),
       );
     const actions = node("div", undefined, "actions");
+    actions.setAttribute("role", "group");
+    actions.setAttribute("aria-label", "Turn actions");
     if (t.status === "waiting_for_approval" && !t.settings_error) {
       actions.append(
         button(
