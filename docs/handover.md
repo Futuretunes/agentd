@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.81.0 — signed-in HTTPS origin configuration (Cursor)
 
-Settings > Configuration shows and can change the managed signed-in https origin with step-up preview; phone gateway restart is required afterward. See [handover](handovers/2026-09-30-cursor-origin-config.md). Not installed.
+Settings > Configuration shows and can change the managed signed-in https origin with step-up preview; phone gateway restart is required afterward. See [handover](handovers/2026-09-30-cursor-origin-config.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.80.0 — ntfy authenticated deep links and durable dedupe (Cursor)
 

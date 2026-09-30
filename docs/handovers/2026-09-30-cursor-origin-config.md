@@ -2,9 +2,10 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: Settings > Configuration can view/change the managed signed-in https origin
-- Status: implemented; pending merge and live-install
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.81.0
 - Branch and base: `feat/gui-origin-config` on `main` (0.80.0)
+- PR: #101
 
 ## Changes and relevant files
 
@@ -16,9 +17,9 @@
 ## Validation evidence
 
 - `node --test test/origin.test.mjs test/notifications.test.mjs test/request-routing.test.mjs`
-- typecheck / format (run with commit)
+- CI green on #101; live-installed on 192.168.1.20 (0.81.0 / 76f000b).
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20; confirm origin display and that a change still requires gateway restart.
+1. Confirm origin display on the live host; gateway restart still required after a change.
 2. Remaining Configuration polish if any; otherwise UX backlog.
