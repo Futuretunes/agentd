@@ -493,6 +493,13 @@ test("user-facing copy names the Activity surface, not Operations", () => {
   assert.match(errors, /in Activity/);
   assert.equal(errors.includes("in Operations"), false);
 });
+test("workspace offers a skip link into the conversation region", () => {
+  const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
+  assert.match(html, /class="skip-link"[^>]*href="#detail"/);
+  assert.match(html, /id="detail"[^>]*tabindex="-1"/);
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(css, /\.skip-link:focus/);
+});
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
   globalThis.document = document;
