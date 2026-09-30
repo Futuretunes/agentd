@@ -5,6 +5,8 @@
 - Status: implemented; pending merge and live-install
 - Release: 0.83.1
 - Branch and base: `fix/settings-restart-flake` on `main` (0.83.0)
+- Implementation commit(s): `786b3cd`
+- PR: #107
 - Known flake: recorded in [2026-09-29-claude-0.64.1.md](2026-09-29-claude-0.64.1.md) (CI timeout waiting for `partial.txt`, actual empty / expected `keep me`)
 
 ## Changes and relevant files
