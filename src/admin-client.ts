@@ -299,3 +299,26 @@ export async function deleteAccessKeyRecoveryFile(
   if (value?.deleted !== true) throw Error("Access-key recovery deletion was refused.");
   return { deleted: true };
 }
+
+export async function readNotifications(socket: string): Promise<any> {
+  const value: any = await request(socket, { op: "notifications" });
+  if (
+    value?.format !== 1 ||
+    typeof value.configured !== "boolean" ||
+    typeof value.fingerprint !== "string" ||
+    !/^[a-f0-9]{64}$/.test(value.fingerprint)
+  )
+    throw Error("Notification settings response is invalid.");
+  return value;
+}
+
+export async function applyNotifications(socket: string, settings: object): Promise<any> {
+  const value: any = await request(
+    socket,
+    { op: "notifications-apply", settings },
+    15000,
+  );
+  if (value?.format !== 1 || typeof value.fingerprint !== "string")
+    throw Error("Notification settings change was refused.");
+  return value;
+}

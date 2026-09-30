@@ -28,6 +28,8 @@ import {
   startProfileEnable,
   readAccessKeyRecovery,
   deleteAccessKeyRecoveryFile,
+  readNotifications,
+  applyNotifications as writeNotifications,
 } from "./admin-client.ts";
 
 const version: string = JSON.parse(
@@ -159,6 +161,12 @@ export function start(options: Options) {
           deleteAccessKeyRecovery: process.env.AGENTD_ADMIN_SOCKET
             ? (currentKey) =>
                 deleteAccessKeyRecoveryFile(process.env.AGENTD_ADMIN_SOCKET!, currentKey)
+            : undefined,
+          adminNotifications: process.env.AGENTD_ADMIN_SOCKET
+            ? () => readNotifications(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          applyNotifications: process.env.AGENTD_ADMIN_SOCKET
+            ? (settings) => writeNotifications(process.env.AGENTD_ADMIN_SOCKET!, settings)
             : undefined,
           gateway: process.env.AGENTD_GATEWAY_SOCKET
             ? {

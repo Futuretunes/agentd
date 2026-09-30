@@ -120,6 +120,15 @@ export function mobile(c: Config) {
         fingerprint: string;
         expires: number;
       }
+    >(),
+    notificationPreviews = new Map<
+      string,
+      {
+        fingerprint: string;
+        inventory: string;
+        expires: number;
+        settings: { clear: true } | { server: string; topic: string };
+      }
     >();
   let accessHash = c.accessHash;
   const bridge = (input: unknown) =>
@@ -509,6 +518,85 @@ export function mobile(c: Config) {
             return;
           }
           throw Error("Unsupported access-key recovery action.");
+        }
+        if (path === "/api/notifications" && req.method === "GET") {
+          send(200, await call({ op: "admin-notifications" }));
+          return;
+        }
+        if (path === "/api/notifications" && req.method === "POST") {
+          const limitKey = "notifications:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now();
+          for (const [owner, preview] of notificationPreviews)
+            if (preview.expires < now) notificationPreviews.delete(owner);
+          if (!accessKeyMatches(input.currentKey, accessHash))
+            throw Error("Current access key did not match.");
+          if (input.action === "preview") {
+            const current = await call({ op: "admin-notifications" });
+            let settings: { clear: true } | { server: string; topic: string };
+            if (input.clear === true) settings = { clear: true };
+            else {
+              if (typeof input.server !== "string" || typeof input.topic !== "string")
+                throw Error("Enter an https ntfy server and topic.");
+              settings = {
+                server: input.server.replace(/\/+$/, ""),
+                topic: input.topic.trim(),
+              };
+            }
+            const expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-notifications-preview:${accountOwner}:${current.fingerprint}:${JSON.stringify(settings)}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            notificationPreviews.set(accountOwner, {
+              fingerprint,
+              inventory: current.fingerprint,
+              expires,
+              settings,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              settings,
+              inventory: current.fingerprint,
+            });
+            return;
+          }
+          if (input.action === "apply") {
+            const preview = notificationPreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint ||
+              JSON.stringify(input.settings) !== JSON.stringify(preview.settings)
+            )
+              throw Error("Notification settings preview expired. Review it again.");
+            if (input.confirmed !== true)
+              throw Error("Confirm the notification settings change.");
+            const current = await call({ op: "admin-notifications" });
+            if (current.fingerprint !== preview.inventory)
+              throw Error("Notification settings changed. Review it again.");
+            notificationPreviews.delete(accountOwner);
+            const result = await call({
+              op: "admin-notifications-apply",
+              settings: preview.settings,
+            });
+            send(200, result);
+            return;
+          }
+          throw Error("Unsupported notifications action.");
         }
         if (path === "/api/service-restart" && req.method === "POST") {
           const limitKey = "service-restart:" + (req.socket.remoteAddress ?? "unknown"),

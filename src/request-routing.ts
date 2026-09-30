@@ -41,6 +41,7 @@ export const managedOperationOperations = [
   "admin-tls-replace",
   "admin-profiles-enable",
   "admin-access-key-recovery-delete",
+  "admin-notifications-apply",
   "feedback-targets",
   "feedback-status",
   // Local compatibility name used by publication lifecycle tests and admin clients.
@@ -83,6 +84,7 @@ export const serviceReadOperations = [
   "admin-runtime-flags",
   "admin-profiles",
   "admin-access-key-recovery",
+  "admin-notifications",
 ] as const;
 
 export const workspaceReadOperations = [
