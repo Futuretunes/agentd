@@ -416,9 +416,17 @@ test("workspace has unique controls, keyboard-accessible attachment input and na
     "diagnostics-settings",
     "diagnostics-dialog",
     "diagnostics-content",
+    "attach",
   ])
     assert.ok(document.getElementById(id), id);
-  assert.equal(document.getElementById("files").hasAttribute("hidden"), false);
+  const attach = document.getElementById("attach");
+  const files = document.getElementById("files");
+  assert.equal(attach.tagName, "BUTTON");
+  assert.equal(attach.getAttribute("aria-label"), "Attach images");
+  assert.equal(attach.getAttribute("aria-controls"), "files");
+  assert.equal(files.className, "sr-only");
+  assert.equal(files.getAttribute("tabindex"), "-1");
+  assert.equal(files.hasAttribute("hidden"), false);
   assert.equal(
     document.getElementById("drawer-open").getAttribute("aria-controls"),
     "sidebar",

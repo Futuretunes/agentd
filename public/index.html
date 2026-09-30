@@ -106,16 +106,23 @@
             <div id="attachments"></div>
             <div class="compose-foot">
               <div class="tools">
-                <label class="attach" for="files"
-                  ><span aria-hidden="true">＋</span
-                  ><span class="sr-only">Attach images</span
+                <span class="attach-wrap"
+                  ><button
+                    type="button"
+                    class="attach"
+                    id="attach"
+                    aria-label="Attach images"
+                    aria-controls="files"
+                  >
+                    <span aria-hidden="true">＋</span></button
                   ><input
                     id="files"
                     type="file"
                     accept="image/png,image/jpeg"
                     multiple
-                    class="file-input"
-                /></label>
+                    class="sr-only"
+                    tabindex="-1"
+                /></span>
                 <details id="run-picker" class="run-picker">
                   <summary aria-label="Agent, mode and model">
                     <span id="picker-summary">Claude</span

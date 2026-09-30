@@ -729,7 +729,7 @@ export function setupShell() {
   });
   mobile.addEventListener("change", () => drawer(false));
   drawer(false);
-  $("preferences-menu").onclick = () => $("preferences-dialog").showModal();
+  // Preferences open is owned by app.js (loads accounts via openDialog).
   $("preferences-close").onclick = () => $("preferences-dialog").close();
   const appearance = $("theme");
   try {

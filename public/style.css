@@ -480,8 +480,12 @@ header h1 {
   border-color: transparent;
   background: transparent;
 }
-.attach {
+.attach-wrap {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.attach {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -489,18 +493,10 @@ header h1 {
   padding: 4px 12px;
   border: 0;
   background: transparent;
-  overflow: hidden;
 }
-.file-input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-}
-.attach:focus-within {
-  outline: 2px solid var(--accent);
+.attach:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 .hint {
   font-size: 12px;
