@@ -6,7 +6,7 @@
 - Release: 0.118.0
 - Branch and base: `feat/gui-copy-code-a11y` on `main` (0.117.0)
 - Implementation commit(s): 0b95a2e
-- PR: pending
+- PR: #177
 
 ## Changes and relevant files
 
