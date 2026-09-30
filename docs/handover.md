@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.95.0 — New project layout + composer fade (Cursor)
 
-New project puts name/create first and Import as an alternative; conversation fades into the composer. See [handover](handovers/2026-09-30-cursor-gui-new-project-layout.md). Not installed.
+New project puts name/create first and Import as an alternative; conversation fades into the composer. See [handover](handovers/2026-09-30-cursor-gui-new-project-layout.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.94.0 — Honest Sign in for disabled adapters (Cursor)
 
