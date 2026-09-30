@@ -2274,3 +2274,8 @@ test("Agent settings close control is named in app bootstrap", () => {
     /settingsClose\.setAttribute\("aria-label", "Close agent settings"\)/,
   );
 });
+
+test("storage cleanup preview is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /details\.setAttribute\("aria-label", "Storage cleanup preview"\)/);
+});

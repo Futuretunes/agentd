@@ -667,6 +667,8 @@ function renderOperations(data) {
       try {
         const plan = await api("/api/storage", { action: "preview" });
         const details = node("div");
+        details.setAttribute("aria-label", "Storage cleanup preview");
+        details.setAttribute("aria-live", "polite");
         details.append(
           node(
             "p",
