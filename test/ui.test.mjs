@@ -1680,3 +1680,16 @@ test("publishing title exposes a stable accessible name", () => {
     "Pull request title",
   );
 });
+
+test("publishing body exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="publishing-body"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Pull request description");
+  assert.equal(
+    document.getElementById("publishing-body").getAttribute("aria-label"),
+    "Pull request description",
+  );
+});
