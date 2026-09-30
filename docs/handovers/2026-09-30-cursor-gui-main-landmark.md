@@ -6,7 +6,7 @@
 - Release: 0.130.0
 - Branch and base: `feat/gui-main-landmark` on `main` (0.129.0)
 - Implementation commit(s): 31a4e83
-- PR: pending
+- PR: #201
 
 ## Changes and relevant files
 
