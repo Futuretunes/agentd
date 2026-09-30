@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.130.0 — Main desk landmark name (Cursor)
 
-Conversation `<main>` is labeled Conversation workspace. See [handover](handovers/2026-09-30-cursor-gui-main-landmark.md). Not installed.
+Conversation `<main>` is labeled Conversation workspace. See [handover](handovers/2026-09-30-cursor-gui-main-landmark.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.129.0 — Conversation image link names (Cursor)
 
