@@ -1246,3 +1246,13 @@ test("repository status exposes a stable accessible name", () => {
     "Repository status",
   );
 });
+
+test("review content exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("review-content").getAttribute("aria-label"),
+    "Reviewed changes",
+  );
+});
