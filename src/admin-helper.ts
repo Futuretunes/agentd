@@ -267,6 +267,78 @@ export function applyNotificationSettings(
   return notificationsView(value);
 }
 
+const signedInOrigin = /^https:\/\/[a-z0-9.-]{1,253}(?::[0-9]{2,5})?$/i;
+
+function normalizeSignedInOrigin(input: unknown) {
+  if (typeof input !== "string" || input.length > 253)
+    throw Error("Enter an https origin with host and optional port only.");
+  const trimmed = input.trim().replace(/\/+$/, "");
+  if (
+    !signedInOrigin.test(trimmed) ||
+    trimmed.includes("@") ||
+    trimmed.includes("?") ||
+    trimmed.includes("#") ||
+    trimmed.includes("*")
+  )
+    throw Error("Use an https origin without path or credentials.");
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw Error("Use an https origin without path or credentials.");
+  }
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash ||
+    (parsed.pathname !== "/" && parsed.pathname !== "")
+  )
+    throw Error("Use an https origin without path or credentials.");
+  return `https://${parsed.host}`;
+}
+
+function originView(value: Record<string, unknown>) {
+  const raw = typeof value.origin === "string" ? value.origin : null;
+  let origin: string | null = null;
+  try {
+    if (raw) origin = normalizeSignedInOrigin(raw);
+  } catch {
+    origin = null;
+  }
+  const fingerprint = createHash("sha256")
+    .update(JSON.stringify({ origin }))
+    .digest("hex");
+  return {
+    format: 1 as const,
+    origin,
+    fingerprint,
+    valid: origin !== null,
+  };
+}
+
+export function originSettings(
+  mobileConfig = "/etc/agentd-web/mobile.json",
+  expectedUid = 0,
+) {
+  return originView(readMobileConfig(mobileConfig, expectedUid).value);
+}
+
+export function applyOriginSettings(
+  input: unknown,
+  mobileConfig = "/etc/agentd-web/mobile.json",
+  expectedUid = 0,
+) {
+  if (!input || typeof input !== "object") throw Error("Invalid origin settings");
+  const request = input as { origin?: unknown };
+  const origin = normalizeSignedInOrigin(request.origin);
+  const { info, value } = readMobileConfig(mobileConfig, expectedUid);
+  value.origin = origin;
+  writeMobileConfig(mobileConfig, value, info);
+  return originView(value);
+}
+
 export function diagnostics(command = "/opt/agentd/scripts/admin_diagnostics.py") {
   const output = execFileSync("/usr/bin/python3", ["-B", command], {
     cwd: "/opt/agentd",
@@ -730,6 +802,8 @@ export function handleAdminRequest(
     deleteAccessKeyRecovery?: (currentKey: unknown) => { deleted: true };
     notifications?: () => unknown;
     applyNotifications?: (input: unknown) => unknown;
+    origin?: () => unknown;
+    applyOrigin?: (input: unknown) => unknown;
   },
 ) {
   if (input?.op === "rotate-access-key") {
@@ -756,6 +830,16 @@ export function handleAdminRequest(
     return (
       config.applyNotifications ??
       ((settings: unknown) => applyNotificationSettings(settings, config.mobileConfig))
+    )(input.settings);
+  }
+  if (input?.op === "origin" && Object.keys(input).join(" ") === "op")
+    return (config.origin ?? (() => originSettings(config.mobileConfig)))();
+  if (input?.op === "origin-apply") {
+    if (Object.keys(input).sort().join(" ") !== "op settings")
+      throw Error("Unsupported admin operation");
+    return (
+      config.applyOrigin ??
+      ((settings: unknown) => applyOriginSettings(settings, config.mobileConfig))
     )(input.settings);
   }
   if (input?.op === "diagnostics" && Object.keys(input).join(" ") === "op")

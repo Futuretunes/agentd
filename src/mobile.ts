@@ -129,6 +129,15 @@ export function mobile(c: Config) {
         expires: number;
         settings: { clear: true } | { server: string; topic: string };
       }
+    >(),
+    originPreviews = new Map<
+      string,
+      {
+        fingerprint: string;
+        inventory: string;
+        expires: number;
+        settings: { origin: string };
+      }
     >();
   let accessHash = c.accessHash;
   const bridge = (input: unknown) =>
@@ -597,6 +606,78 @@ export function mobile(c: Config) {
             return;
           }
           throw Error("Unsupported notifications action.");
+        }
+        if (path === "/api/origin" && req.method === "GET") {
+          send(200, await call({ op: "admin-origin" }));
+          return;
+        }
+        if (path === "/api/origin" && req.method === "POST") {
+          const limitKey = "origin:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now();
+          for (const [owner, preview] of originPreviews)
+            if (preview.expires < now) originPreviews.delete(owner);
+          if (!accessKeyMatches(input.currentKey, accessHash))
+            throw Error("Current access key did not match.");
+          if (input.action === "preview") {
+            const current = await call({ op: "admin-origin" });
+            if (typeof input.origin !== "string")
+              throw Error("Enter an https origin with host and optional port only.");
+            const settings = { origin: input.origin.trim().replace(/\/+$/, "") };
+            const expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-origin-preview:${accountOwner}:${current.fingerprint}:${JSON.stringify(settings)}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            originPreviews.set(accountOwner, {
+              fingerprint,
+              inventory: current.fingerprint,
+              expires,
+              settings,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              settings,
+              inventory: current.fingerprint,
+            });
+            return;
+          }
+          if (input.action === "apply") {
+            const preview = originPreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint ||
+              JSON.stringify(input.settings) !== JSON.stringify(preview.settings)
+            )
+              throw Error("Origin settings preview expired. Review it again.");
+            if (input.confirmed !== true)
+              throw Error("Confirm the origin settings change.");
+            const current = await call({ op: "admin-origin" });
+            if (current.fingerprint !== preview.inventory)
+              throw Error("Origin settings changed. Review it again.");
+            originPreviews.delete(accountOwner);
+            const result = await call({
+              op: "admin-origin-apply",
+              settings: preview.settings,
+            });
+            send(200, result);
+            return;
+          }
+          throw Error("Unsupported origin action.");
         }
         if (path === "/api/service-restart" && req.method === "POST") {
           const limitKey = "service-restart:" + (req.socket.remoteAddress ?? "unknown"),

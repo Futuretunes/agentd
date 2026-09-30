@@ -117,6 +117,8 @@ type Config = {
   deleteAccessKeyRecovery?: (currentKey: string) => Promise<{ deleted: true }>;
   adminNotifications?: () => Promise<any>;
   applyNotifications?: (settings: object) => Promise<any>;
+  adminOrigin?: () => Promise<any>;
+  applyOrigin?: (settings: object) => Promise<any>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -1773,6 +1775,15 @@ export function runner(c: Config) {
         return result;
       });
     }
+    if (input.op === "admin-origin-apply") {
+      if (!c.applyOrigin) throw Error("Origin settings are not installed.");
+      if (!input.settings || typeof input.settings !== "object")
+        throw Error("Origin settings request is invalid.");
+      return c.applyOrigin(input.settings).then((result) => {
+        audit("origin-apply", null, { origin: result.origin ?? null });
+        return result;
+      });
+    }
     requireNoReviewPreparationMutation(input);
     if (typeof input.op === "string" && input.op.startsWith("feedback-"))
       return publicationManager.feedback(input);
@@ -1857,6 +1868,10 @@ export function runner(c: Config) {
     if (input.op === "admin-notifications") {
       if (!c.adminNotifications) throw Error("Notification settings are not installed.");
       return c.adminNotifications();
+    }
+    if (input.op === "admin-origin") {
+      if (!c.adminOrigin) throw Error("Origin settings are not installed.");
+      return c.adminOrigin();
     }
     if (input.op === "admin-configuration") {
       if (!c.adminConfiguration) throw Error("Configuration overview is not installed.");

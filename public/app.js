@@ -3702,12 +3702,13 @@ async function openConfigurationSettings() {
   }
 }
 async function renderConfigurationSettings() {
-  const [report, adapters, runtime, profiles, notifications] = await Promise.all([
+  const [report, adapters, runtime, profiles, notifications, origin] = await Promise.all([
       api("/api/configuration"),
       api("/api/adapters").catch(() => null),
       api("/api/runtime-flags").catch(() => null),
       api("/api/profiles").catch(() => null),
       api("/api/notifications").catch(() => null),
+      api("/api/origin").catch(() => null),
     ]),
     flags = report.configuration,
     yesNo = (value) => (value ? "Yes" : "No"),
@@ -3851,6 +3852,30 @@ async function renderConfigurationSettings() {
       ),
     );
   }
+  const originSection = node("section", undefined, "operation-section");
+  originSection.append(node("h3", "Signed-in origin"));
+  if (!origin) {
+    originSection.append(
+      node("p", "Origin settings are not available on this install yet.", "muted"),
+    );
+  } else if (origin.valid && origin.origin) {
+    originSection.append(node("p", "Current origin: " + origin.origin, "good"));
+    originSection.append(
+      node(
+        "p",
+        "Browsers must use this exact https URL. ntfy deep links and CSRF checks use it. Restart the phone gateway after changing it.",
+        "muted",
+      ),
+    );
+  } else {
+    originSection.append(
+      node(
+        "p",
+        "No valid https origin is set. Sign-in and ntfy deep links need one.",
+        "attention",
+      ),
+    );
+  }
   const notificationsSection = node("section", undefined, "operation-section");
   notificationsSection.append(node("h3", "Mobile notifications"));
   if (!notifications) {
@@ -3909,6 +3934,12 @@ async function renderConfigurationSettings() {
         () => renderNotificationsForm(notifications),
       ),
     );
+  if (origin)
+    actions.push(
+      button(origin.valid ? "Change signed-in origin" : "Set signed-in origin", () =>
+        renderOriginForm(origin),
+      ),
+    );
   if (notifications?.configured)
     actions.push(
       button("Clear ntfy destination", () => renderNotificationsClearForm(notifications)),
@@ -3942,6 +3973,7 @@ async function renderConfigurationSettings() {
   );
   configurationContent.replaceChildren(
     overview,
+    originSection,
     tls,
     policySection,
     runtimeSection,
@@ -3954,6 +3986,114 @@ async function renderConfigurationSettings() {
       "muted",
     ),
   );
+}
+function renderOriginForm(current) {
+  const form = node("form"),
+    origin = node("input"),
+    currentLabel = node("label", "Current access key"),
+    currentKey = node("input"),
+    submit = node("button", "Review signed-in origin", "primary"),
+    section = node("section", undefined, "operation-section");
+  section.append(node("h3", "Set signed-in origin"));
+  section.append(
+    node(
+      "p",
+      "Stores the https URL browsers use to reach AgentD. After saving, restart the phone gateway so CSRF checks and ntfy deep links use the new value.",
+      "muted",
+    ),
+  );
+  origin.type = "url";
+  origin.required = true;
+  origin.placeholder = "https://agentd.example";
+  origin.value = current?.origin || "";
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  const originLabel = node("label", "https origin");
+  originLabel.append(origin);
+  form.append(
+    section,
+    originLabel,
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/origin", {
+        action: "preview",
+        origin: origin.value,
+        currentKey: currentKey.value,
+      });
+      currentKey.value = "";
+      renderOriginApproval(plan);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
+}
+function renderOriginApproval(plan) {
+  const form = node("form"),
+    confirm = node("input"),
+    currentLabel = node("label", "Enter the current access key again"),
+    currentKey = node("input"),
+    submit = node("button", "Save signed-in origin", "primary"),
+    confirmLabel = node(
+      "label",
+      "I understand browsers must use this origin and the phone gateway needs a restart",
+    ),
+    settings = plan.settings ?? {};
+  confirm.type = "checkbox";
+  confirm.required = true;
+  confirmLabel.prepend(confirm);
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  form.append(
+    node("p", "Save signed-in origin " + settings.origin + ".", "attention"),
+    confirmLabel,
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      await api("/api/origin", {
+        action: "apply",
+        fingerprint: plan.fingerprint,
+        settings,
+        currentKey: currentKey.value,
+        confirmed: true,
+      });
+      notice("Signed-in origin saved. Restart the phone gateway to apply it.");
+      configurationContent.replaceChildren(
+        node("p", "Signed-in origin saved: " + settings.origin + ".", "good"),
+        node(
+          "p",
+          "Restart the phone gateway so CSRF checks and ntfy deep links use the new origin.",
+          "muted",
+        ),
+        button("Restart phone gateway now", () =>
+          openConfigurationServiceRestart("gateway", "Phone gateway"),
+        ),
+        button("Back to configuration", () => void renderConfigurationSettings()),
+      );
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
 }
 function renderNotificationsForm(current) {
   const form = node("form"),
