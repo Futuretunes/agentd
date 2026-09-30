@@ -6,7 +6,7 @@
 - Release: 0.119.0
 - Branch and base: `feat/gui-history-focus` on `main` (0.118.0)
 - Implementation commit(s): 0dcab2b
-- PR: pending
+- PR: #179
 
 ## Changes and relevant files
 
