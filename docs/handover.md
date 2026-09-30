@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.107.0 — Skip link to conversation (Cursor)
 
-Signed-in workspace offers a keyboard skip link into `#detail`. See [handover](handovers/2026-09-30-cursor-gui-skip-link.md). Not installed.
+Signed-in workspace offers a keyboard skip link into `#detail`. See [handover](handovers/2026-09-30-cursor-gui-skip-link.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.106.0 — Activity naming in user-facing copy (Cursor)
 
