@@ -28,7 +28,7 @@ class BackupsTest(unittest.TestCase):
             {'path':'/opt/agentd-backup-newer1','completed':1700000100,'bytes':100,'pinned':False,'eligible':False,'version':'0.73.0'},
         ]}
         target={'path':'/opt/agentd-backup-newer1','version':'0.73.0','revision':'a'*40,'completedAt':'2026-01-01T00:00:00+00:00','taskSchemaVersion':2}
-        with patch.object(backups.update,'config',return_value={'app':'/opt/agentd','restoreUnit':'agentd-restore@.service'}),patch.object(backups.backup_retention,'plan',return_value=plan),patch.object(backups.rollback,'candidate',return_value=(target,None)),patch.object(backups.rollback,'restorable',return_value={'agentd-backup-older1','agentd-backup-newer1'}),patch('pathlib.Path.read_text',return_value=json.dumps({'release':{'version':'0.74.0'}})):
+        with patch.object(backups.update,'config',return_value={'app':'/opt/agentd','rollbackUnit':'agentd-rollback@.service'}),patch.object(backups.backup_retention,'plan',return_value=plan),patch.object(backups.rollback,'candidate',return_value=(target,None)),patch.object(backups.rollback,'restorable',return_value={'agentd-backup-older1','agentd-backup-newer1'}),patch('pathlib.Path.read_text',return_value=json.dumps({'release':{'version':'0.74.0'}})),patch('pathlib.Path.is_file',return_value=True):
             value=backups.snapshot()
         self.assertTrue(value['restoreEnabled'])
         by_id={item['id']:item for item in value['items']}

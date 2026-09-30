@@ -104,7 +104,7 @@ Settings > Backups can restore a **specific older compatible managed backup** (n
 - **Approval:** step-up access key, a separate 5-minute restore preview, confirmation.
 - **Job unit:** the helper starts fixed `agentd-restore@<backup-id>.service`, which runs `run_rollback.py --backup-id …`.
 
-Run `apply_updates.py` again after installing 0.74+ to enable `restoreUnit` if it is missing.
+Run `apply_updates.py` again after installing 0.74+ to place `agentd-restore@.service` beside rollback. The restore unit is not recorded as its own `update.json` key, so older releases remain configuration-compatible.
 
 ## Database compatibility
 

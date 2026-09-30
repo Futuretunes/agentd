@@ -46,8 +46,9 @@ def snapshot():
             }
         else:
             rollback_view={'available':False,'reason':reason or 'No earlier version backup is available.','backupId':None}
-        # Selected restore requires the dedicated job unit; listing stays cheap when it is absent.
-        if c.get('restoreUnit'):
+        # Selected restore uses agentd-restore@.service beside rollback; no update.json key
+        # so older releases remain configuration-compatible.
+        if c.get('rollbackUnit') and Path('/etc/systemd/system/agentd-restore@.service').is_file():
             restorable_ids=rollback.restorable(c,installed,CONFIG)
     except Exception:
         pass
@@ -58,7 +59,7 @@ def snapshot():
         'blocked':bool(value['blocked']),
         'fingerprint':value['fingerprint'],
         'rollback':rollback_view,
-        'restoreEnabled':bool(c.get('restoreUnit')),
+        'restoreEnabled':bool(c.get('rollbackUnit') and Path('/etc/systemd/system/agentd-restore@.service').is_file()),
         'items':[public_item(item,rollback_id,restorable_ids) for item in value['items']],
     }
 
