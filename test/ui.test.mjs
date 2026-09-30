@@ -1667,3 +1667,16 @@ test("feedback base exposes a stable accessible name", () => {
     "Feedback base branch",
   );
 });
+
+test("publishing title exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="publishing-title"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Pull request title");
+  assert.equal(
+    document.getElementById("publishing-title").getAttribute("aria-label"),
+    "Pull request title",
+  );
+});
