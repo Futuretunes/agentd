@@ -7,6 +7,7 @@ import {
   renderUsage,
   formatActiveStatusLabel,
   liveOutputPreview,
+  composerStopControl,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -1400,9 +1401,13 @@ async function refresh() {
         fingerprint = "empty";
       }
     }
-    const running = !!latest && ["queued", "running"].includes(latest.status);
-    $("stop-current").hidden = !running;
-    $("send").hidden = running;
+    const stop = composerStopControl(latest?.status);
+    const stopBtn = $("stop-current");
+    stopBtn.hidden = !stop.visible;
+    stopBtn.textContent = stop.label;
+    stopBtn.disabled = stop.disabled;
+    stopBtn.dataset.mode = stop.mode;
+    $("send").hidden = stop.visible;
     $("rename").hidden = !selected;
     $("archive").hidden = !selected;
     const locked = latest && (pending(latest.status) || latest.review === "pending");

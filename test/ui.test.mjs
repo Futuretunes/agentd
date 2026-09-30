@@ -11,7 +11,35 @@ import {
   formatCompactDuration,
   formatActiveStatusLabel,
   liveOutputPreview,
+  composerStopControl,
 } from "../public/ui.js";
+test("composerStopControl replaces Send while a run is active", () => {
+  assert.deepEqual(composerStopControl("running"), {
+    visible: true,
+    label: "■ Stop",
+    disabled: false,
+    mode: "stop",
+  });
+  assert.deepEqual(composerStopControl("queued"), {
+    visible: true,
+    label: "■ Stop",
+    disabled: false,
+    mode: "stop",
+  });
+  assert.deepEqual(composerStopControl("cancelling"), {
+    visible: true,
+    label: "Stopping…",
+    disabled: true,
+    mode: "stopping",
+  });
+  assert.deepEqual(composerStopControl("waiting_for_approval"), {
+    visible: true,
+    label: "Cancel",
+    disabled: false,
+    mode: "cancel",
+  });
+  assert.equal(composerStopControl("succeeded").visible, false);
+});
 test("liveOutputPreview keeps a trailing bounded plain-text window", () => {
   assert.deepEqual(liveOutputPreview(""), { text: "", truncated: false });
   assert.deepEqual(liveOutputPreview("hello"), { text: "hello", truncated: false });
