@@ -1977,3 +1977,12 @@ test("image attachment wrap exposes a stable accessible name", () => {
   assert.equal(wrap.getAttribute("role"), "group");
   assert.equal(wrap.getAttribute("aria-label"), "Image attachment");
 });
+
+test("model and effort row exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const row = document.querySelector(".picker-model");
+  assert.equal(row.getAttribute("role"), "group");
+  assert.equal(row.getAttribute("aria-label"), "Model and effort");
+});
