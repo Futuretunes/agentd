@@ -1350,3 +1350,13 @@ test("phone drawer clears right safe-area inset", () => {
     /#sidebar\s*\{[\s\S]*?padding-right:\s*max\(0px,\s*env\(safe-area-inset-right\)\)/,
   );
 });
+
+test("access key content exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("access-key-content").getAttribute("aria-label"),
+    "Access key",
+  );
+});

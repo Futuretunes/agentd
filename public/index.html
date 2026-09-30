@@ -183,8 +183,8 @@
               >
                 Stop</button
               ><button class="primary" id="send" aria-label="Send message">
-                Send <span aria-hidden="true">↑</span></button
-              >
+                Send <span aria-hidden="true">↑</span>
+              </button>
             </div>
           </form>
           <p class="hint" id="draft-hint" aria-live="polite"></p>
@@ -288,7 +288,7 @@
           <span aria-hidden="true">×</span>
         </button>
       </div>
-      <div id="access-key-content" aria-live="polite"></div>
+      <div id="access-key-content" aria-label="Access key" aria-live="polite"></div>
     </dialog>
     <dialog id="updates-dialog" aria-labelledby="updates-heading">
       <div class="review-head">
@@ -333,7 +333,11 @@
           <span aria-hidden="true">×</span>
         </button>
       </div>
-      <div id="diagnostics-content" aria-label="Server diagnostics" aria-live="polite"></div>
+      <div
+        id="diagnostics-content"
+        aria-label="Server diagnostics"
+        aria-live="polite"
+      ></div>
     </dialog>
     <dialog id="project-settings-dialog" aria-labelledby="project-settings-heading">
       <div class="review-head">
@@ -342,7 +346,12 @@
           <span aria-hidden="true">×</span>
         </button>
       </div>
-      <section id="project-info" hidden aria-label="Project information" aria-live="polite"></section>
+      <section
+        id="project-info"
+        hidden
+        aria-label="Project information"
+        aria-live="polite"
+      ></section>
       <button id="project-defaults">Agent defaults for this project</button>
     </dialog>
     <dialog id="project-dialog" aria-labelledby="project-heading">
@@ -416,7 +425,12 @@
           ><button class="primary">Search</button>
         </div>
       </form>
-      <div id="history-results" aria-label="Search results" aria-live="polite" aria-busy="false"></div>
+      <div
+        id="history-results"
+        aria-label="Search results"
+        aria-live="polite"
+        aria-busy="false"
+      ></div>
       <div id="history-pages" aria-label="History pagination" class="actions"></div>
       <section id="archived-projects" aria-label="Archived projects"></section>
     </dialog>
@@ -474,7 +488,11 @@
         server and are never given to agents. Disconnect removes the saved connection
         here; revoke its authorization on GitHub to remove access everywhere.
       </p>
-      <div id="github-content" aria-label="GitHub connection status" aria-live="polite"></div>
+      <div
+        id="github-content"
+        aria-label="GitHub connection status"
+        aria-live="polite"
+      ></div>
     </dialog>
     <dialog id="check-setup-dialog" aria-labelledby="check-setup-heading">
       <div class="review-head">
@@ -518,7 +536,11 @@
         ></textarea
         ><button class="primary">Prepare preview</button>
       </form>
-      <div id="publishing-content" aria-label="Publication preview" aria-live="polite"></div>
+      <div
+        id="publishing-content"
+        aria-label="Publication preview"
+        aria-live="polite"
+      ></div>
     </dialog>
     <dialog id="revision-dialog" aria-labelledby="revision-heading">
       <form id="revision-form" aria-label="Request revisions">
@@ -570,7 +592,11 @@
           history and requires fresh checks and commit approval.
         </p>
       </form>
-      <div id="feedback-content" aria-label="GitHub feedback results" aria-live="polite"></div>
+      <div
+        id="feedback-content"
+        aria-label="GitHub feedback results"
+        aria-live="polite"
+      ></div>
     </dialog>
   </body>
 </html>
