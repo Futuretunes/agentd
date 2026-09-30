@@ -251,6 +251,35 @@ export function renderDiff(patch) {
   }
   return box;
 }
+/** Compact human duration for active-run status (seconds under 60, then minutes). */
+export function formatCompactDuration(seconds) {
+  const secs = Math.max(0, Math.floor(Number(seconds) || 0));
+  if (secs < 60) return `${secs}s`;
+  const minutes = Math.floor(secs / 60);
+  const rem = secs % 60;
+  if (minutes < 60) return `${minutes}m ${rem}s`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m`;
+}
+
+/**
+ * Honest active-status wording with elapsed time since the current state began.
+ * Prefer task.updated (status transition time); created is a fallback only.
+ */
+export function formatActiveStatusLabel(status, startedAt, now = Date.now()) {
+  const started = Date.parse(startedAt);
+  const secs = Number.isFinite(started)
+    ? Math.max(0, Math.floor((now - started) / 1000))
+    : 0;
+  const duration = formatCompactDuration(secs);
+  if (status === "waiting_for_approval")
+    return `Ready for your approval · waiting ${duration}`;
+  if (status === "queued") return `Queued · ${duration}`;
+  if (status === "running") return `Working · ${duration}`;
+  if (status === "cancelling") return `Stopping · ${duration}`;
+  return duration;
+}
+
 export function setupShell() {
   const $ = (id) => document.getElementById(id),
     mobile = matchMedia("(max-width: 760px)");
@@ -337,21 +366,7 @@ export function setupShell() {
   new MutationObserver(nameDialogs).observe(document.body, { childList: true });
   const elapsed = () => {
     for (const p of document.querySelectorAll("[data-started]")) {
-      const secs = Math.max(
-        0,
-        Math.floor((Date.now() - Date.parse(p.dataset.started)) / 1000),
-      );
-      p.textContent =
-        (p.dataset.state === "running"
-          ? "Working"
-          : p.dataset.state === "queued"
-            ? "Queued"
-            : "Stopping") +
-        " · " +
-        Math.floor(secs / 60) +
-        "m " +
-        (secs % 60) +
-        "s";
+      p.textContent = formatActiveStatusLabel(p.dataset.state, p.dataset.started);
     }
   };
   elapsed();

@@ -1,5 +1,12 @@
 import { stageCreation, completeCreation } from "./request-id.js";
-import { renderMarkdown, renderDiff, diffStats, setupShell, renderUsage } from "./ui.js";
+import {
+  renderMarkdown,
+  renderDiff,
+  diffStats,
+  setupShell,
+  renderUsage,
+  formatActiveStatusLabel,
+} from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
   composerPolicy = null;
@@ -1003,6 +1010,18 @@ function renderThread(data) {
     turn.append(user);
     const response = node("div", undefined, "agent-message");
     const head = node("div", undefined, "message-head");
+    const statusLabel =
+      t.status === "succeeded" && t.review === "pending"
+        ? "Changes ready for review"
+        : pending(t.status)
+          ? formatActiveStatusLabel(t.status, t.updated || t.created)
+          : (labels[t.status] ?? t.status);
+    const status = node("span", statusLabel, "status " + t.status);
+    if (pending(t.status)) {
+      // updated is set on each status transition; no separate started_at field exists.
+      status.dataset.started = t.updated || t.created;
+      status.dataset.state = t.status;
+    }
     head.append(
       node(
         "strong",
@@ -1014,13 +1033,7 @@ function renderThread(data) {
               ? "◈ Codex"
               : "✳ Claude",
       ),
-      node(
-        "span",
-        t.status === "succeeded" && t.review === "pending"
-          ? "Changes ready for review"
-          : (labels[t.status] ?? t.status),
-        "status " + t.status,
-      ),
+      status,
     );
     response.append(head);
     if (t.outputTruncated)
@@ -1060,8 +1073,7 @@ function renderThread(data) {
       );
     if (["running", "queued", "cancelling"].includes(t.status)) {
       const progress = node("p", "", "run-progress");
-      progress.dataset.started = t.updated;
-      progress.dataset.state = t.status;
+      progress.setAttribute("aria-hidden", "true");
       response.append(progress);
     }
     if (t.execution) {
