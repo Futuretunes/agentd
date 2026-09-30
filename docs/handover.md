@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.94.0 — Honest Sign in for disabled adapters (Cursor)
 
-Operations shows “Sign in for later” for policy-disabled adapters; signed-out disabled cards stay muted. Cursor text-only note only when Cursor is available. See [handover](handovers/2026-09-30-cursor-gui-disabled-adapter-signin.md). Not installed.
+Operations shows “Sign in for later” for policy-disabled adapters; signed-out disabled cards stay muted. Cursor text-only note only when Cursor is available. See [handover](handovers/2026-09-30-cursor-gui-disabled-adapter-signin.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.93.0 — Operations awaiting-review count (Cursor)
 
