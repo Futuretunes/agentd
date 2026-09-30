@@ -1654,3 +1654,16 @@ test("publishing base exposes a stable accessible name", () => {
     "Publication base branch",
   );
 });
+
+test("feedback base exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="feedback-base"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Base branch to integrate");
+  assert.equal(
+    document.getElementById("feedback-base").getAttribute("aria-label"),
+    "Feedback base branch",
+  );
+});
