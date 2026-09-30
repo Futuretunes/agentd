@@ -58,7 +58,7 @@ Priority: high; start alongside UX-1 and validate in every subsequent item.
 
 Priority: normal, after core flows.
 
-- Fix crowded import/label/composer layouts; explain or remove ambiguous badges; make disclosure and icon treatments consistent.
+- Fix crowded import/label/composer layouts; explain or remove ambiguous badges; make disclosure and icon treatments consistent. **Candidate 0.95.0:** New project name/create precede Import; composer top fade softens scroll under the sticky compose area.
 - Logo/font/style preferences require visual review, not a backend change. Do not remove useful native semantics solely to imitate another app.
 - Acceptance: coherent desktop and phone screenshots with long titles, empty states, errors and loading states; no clipped controls or inaccessible replacement widgets.
 

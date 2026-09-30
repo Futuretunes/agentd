@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.95.0 — New project layout + composer fade (Cursor)
+
+New project puts name/create first and Import as an alternative; conversation fades into the composer. See [handover](handovers/2026-09-30-cursor-gui-new-project-layout.md). Not installed.
+
 ## Candidate 0.94.0 — Honest Sign in for disabled adapters (Cursor)
 
 Operations shows “Sign in for later” for policy-disabled adapters; signed-out disabled cards stay muted. Cursor text-only note only when Cursor is available. See [handover](handovers/2026-09-30-cursor-gui-disabled-adapter-signin.md). Not installed.
