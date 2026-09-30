@@ -1036,21 +1036,24 @@ function empty() {
     node("p", "Start a conversation. Choose an agent. You decide when it runs.", "muted"),
   );
   const ideas = node("div", undefined, "suggestions");
+  ideas.setAttribute("role", "group");
+  ideas.setAttribute("aria-label", "Suggested prompts");
   for (const text of $("mode").value === "chat"
     ? ["Help me think through a design", "Explain a concept", "Review text I paste here"]
-    : ["Explain this project", "Review the architecture", "Plan the next milestone"])
-    ideas.append(
-      button(text, () => {
-        const prompt = $("prompt");
-        const applied = applySuggestionPrompt(prompt, text);
-        saveDraft();
-        prompt.focus();
-        if (applied.hint) {
-          $("draft-hint").textContent = applied.hint;
-          $("draft-hint").hidden = false;
-        }
-      }),
-    );
+    : ["Explain this project", "Review the architecture", "Plan the next milestone"]) {
+    const chip = button(text, () => {
+      const prompt = $("prompt");
+      const applied = applySuggestionPrompt(prompt, text);
+      saveDraft();
+      prompt.focus();
+      if (applied.hint) {
+        $("draft-hint").textContent = applied.hint;
+        $("draft-hint").hidden = false;
+      }
+    });
+    chip.setAttribute("aria-label", "Use suggestion: " + text);
+    ideas.append(chip);
+  }
   intro.append(ideas);
   d.append(intro);
 }
