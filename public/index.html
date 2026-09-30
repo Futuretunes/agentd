@@ -553,9 +553,13 @@
         ><select id="publishing-target" aria-label="Publication target">
           <option value="">Create a new draft PR</option></select
         ><label for="publishing-base">GitHub base branch</label
-        ><input id="publishing-base" value="main" required maxlength="200" /><label
-          for="publishing-title"
-          >Pull request title</label
+        ><input
+          id="publishing-base"
+          aria-label="Publication base branch"
+          value="main"
+          required
+          maxlength="200"
+        /><label for="publishing-title">Pull request title</label
         ><input
           id="publishing-title"
           value="Apply reviewed changes"
