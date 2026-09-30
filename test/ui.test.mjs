@@ -642,6 +642,15 @@ test("conversation image links expose open-attachment names", () => {
   assert.match(source, /Open attached image: " \+ item\.name/);
   assert.match(source, /aria-label", "Attached images"/);
 });
+test("main desk exposes a conversation workspace landmark name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.querySelector("main.desk").getAttribute("aria-label"),
+    "Conversation workspace",
+  );
+});
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(app, /Open Activity to start/);
