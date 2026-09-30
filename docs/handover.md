@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.118.0 — Code copy feedback + theme-color (Cursor)
 
-Code Copy announces politely; phone Copy targets stay large; theme-color follows appearance. See [handover](handovers/2026-09-30-cursor-gui-copy-theme-a11y.md). Not installed.
+Code Copy announces politely; phone Copy targets stay large; theme-color follows appearance. See [handover](handovers/2026-09-30-cursor-gui-copy-theme-a11y.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.117.0 — Phone drawer and sheet motion (Cursor)
 
