@@ -1886,3 +1886,11 @@ test("login blurb exposes a stable accessible name", () => {
     "login-blurb",
   );
 });
+
+test("review diff lines expose Added or Removed accessible names", () => {
+  const source = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(
+    source,
+    /aria-label", \(added \? "Added: " : "Removed: "\) \+ line\.slice\(1\)/,
+  );
+});
