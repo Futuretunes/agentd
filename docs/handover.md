@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.170.0 — Access-key settings live region (Cursor)
+
+Access-key settings content announces politely. See [handover](handovers/2026-09-30-cursor-gui-access-key-live.md). **Live-installed on 192.168.1.20.**
+
 ## Candidate 0.169.0 — Sign-in form accessible name (Cursor)
 
 Login form is labeled Sign in. See [handover](handovers/2026-09-30-cursor-gui-login-form-label.md). **Live-installed on 192.168.1.20.**
