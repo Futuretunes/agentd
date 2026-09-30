@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.105.0 — Dialog focus restoration (Cursor)
 
-Modals restore keyboard focus to the opener on close via `openDialog`. See [handover](handovers/2026-09-30-cursor-gui-dialog-focus-restore.md). Not installed.
+Modals restore keyboard focus to the opener on close via `openDialog`. See [handover](handovers/2026-09-30-cursor-gui-dialog-focus-restore.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.104.0 — Selected nav non-colour cue (Cursor)
 
