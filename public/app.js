@@ -2342,6 +2342,8 @@ async function loadHistory(before = null) {
         ),
       );
       const actions = node("div", undefined, "actions");
+      actions.setAttribute("role", "group");
+      actions.setAttribute("aria-label", "History result actions");
       actions.append(
         button("Open", () => {
           saveDraft();
