@@ -112,7 +112,9 @@ function applyPolicy() {
       policy.adapters?.find((a) => a.id === $("adapter").value)?.features?.images ===
         false;
   $("files").disabled = textOnly || submitting;
-  $("files").closest("label").hidden = textOnly;
+  $("attach").disabled = textOnly || submitting;
+  $("attach").hidden = textOnly;
+  $("files").hidden = textOnly;
   $("mode").title = chat
     ? "Text conversation only. No project files, terminal, editing, web browsing or plugins."
     : "";
@@ -1665,6 +1667,10 @@ $("project-menu").onclick = () => {
   );
 };
 
+$("attach").onclick = () => {
+  if ($("attach").disabled || $("attach").hidden) return;
+  $("files").click();
+};
 $("files").onchange = async () => {
   const epoch = generation;
   uploading = true;
