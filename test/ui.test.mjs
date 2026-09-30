@@ -1995,3 +1995,14 @@ test("projects section heading exposes a stable accessible name", () => {
   assert.equal(section.getAttribute("role"), "group");
   assert.equal(section.getAttribute("aria-label"), "Projects section");
 });
+
+test("conversations section heading exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const section = document.querySelector(
+    '.section-label[aria-label="Conversations section"]',
+  );
+  assert.equal(section.getAttribute("role"), "group");
+  assert.equal(section.getAttribute("aria-label"), "Conversations section");
+});
