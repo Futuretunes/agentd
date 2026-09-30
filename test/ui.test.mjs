@@ -437,6 +437,10 @@ test("workspace has unique controls, keyboard-accessible attachment input and na
     document.getElementById("drawer-open").getAttribute("aria-controls"),
     "sidebar",
   );
+  assert.equal(
+    document.getElementById("run-options").getAttribute("aria-label"),
+    "Change model and effort",
+  );
   for (const id of ["drawer-open", "drawer-close", "conversation-menu"]) {
     const el =
       id === "conversation-menu"
