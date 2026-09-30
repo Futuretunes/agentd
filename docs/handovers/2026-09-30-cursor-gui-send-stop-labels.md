@@ -6,7 +6,7 @@
 - Release: 0.114.0
 - Branch and base: `feat/gui-send-stop-labels` on `main` (0.113.0)
 - Implementation commit(s): 925990f
-- PR: (filled after open)
+- PR: #169
 
 ## Changes and relevant files
 
