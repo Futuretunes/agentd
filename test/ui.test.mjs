@@ -18,7 +18,34 @@ import {
   approvalModelLine,
   applySuggestionPrompt,
   reviewCommittedProgression,
+  formatTerminalStatusLabel,
 } from "../public/ui.js";
+test("formatTerminalStatusLabel keeps Ask answers distinct from reviews", () => {
+  assert.equal(
+    formatTerminalStatusLabel({ status: "succeeded", mode: "ask", review: null }),
+    "Answer ready",
+  );
+  assert.equal(
+    formatTerminalStatusLabel({
+      status: "succeeded",
+      mode: "edit",
+      review: "pending",
+    }),
+    "Changes ready for review",
+  );
+  assert.equal(
+    formatTerminalStatusLabel({
+      status: "succeeded",
+      mode: "edit",
+      review: "committed",
+    }),
+    "Committed",
+  );
+  assert.equal(
+    formatTerminalStatusLabel({ status: "failed" }, { failed: "Failed" }),
+    "Failed",
+  );
+});
 test("reviewCommittedProgression prefers publish after fresh checks", () => {
   assert.deepEqual(
     reviewCommittedProgression({ checksInput: "other", checksStatus: "passed" }),
