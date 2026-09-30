@@ -1146,3 +1146,13 @@ test("settings accounts expose a stable accessible name", () => {
     "Agent accounts",
   );
 });
+
+test("operations content exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("operations-content").getAttribute("aria-label"),
+    "Activity list",
+  );
+});
