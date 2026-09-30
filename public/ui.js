@@ -644,6 +644,7 @@ export function emptyConversationList(documentRef = document) {
   wrap.className = "empty-list-wrap";
   const copy = documentRef.createElement("p");
   copy.className = "empty-list";
+  copy.setAttribute("aria-label", "Empty conversations");
   copy.textContent = "Your conversations will appear here.";
   const start = documentRef.createElement("button");
   start.type = "button";
@@ -666,6 +667,7 @@ export function emptyProjectList(documentRef = document) {
   wrap.className = "empty-list-wrap";
   const copy = documentRef.createElement("p");
   copy.className = "empty-list";
+  copy.setAttribute("aria-label", "Empty projects");
   copy.textContent = "Create a project to start working.";
   const start = documentRef.createElement("button");
   start.type = "button";

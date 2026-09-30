@@ -1894,3 +1894,9 @@ test("review diff lines expose Added or Removed accessible names", () => {
     /aria-label", \(added \? "Added: " : "Removed: "\) \+ line\.slice\(1\)/,
   );
 });
+
+test("empty list copy exposes stable accessible names", () => {
+  const source = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(source, /aria-label", "Empty conversations"/);
+  assert.match(source, /aria-label", "Empty projects"/);
+});
