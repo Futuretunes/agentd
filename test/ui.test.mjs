@@ -977,3 +977,13 @@ test("page notice toast announces politely", () => {
   assert.equal(notice.getAttribute("role"), "status");
   assert.equal(notice.getAttribute("aria-live"), "polite");
 });
+
+test("thread title is described by the project name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("thread-title").getAttribute("aria-describedby"),
+    "project-name",
+  );
+});
