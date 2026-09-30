@@ -432,6 +432,16 @@ test("status and outcome classes keep non-colour cues", () => {
   assert.match(css, /\.good \{[\s\S]*font-weight: 600/);
   assert.match(css, /\.attention \{[\s\S]*font-weight: 600/);
 });
+test("dialog close controls share a consistent 44px target", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(css, /\.review-head button \{[\s\S]*min-width: 44px/);
+  assert.match(css, /\.review-head button \{[\s\S]*min-height: 44px/);
+});
+test("dialog close buttons expose accessible names", () => {
+  const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
+  const closes = [...html.matchAll(/aria-label="Close[^"]*"/g)];
+  assert.ok(closes.length >= 8, "expected several Close aria-labels");
+});
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
   globalThis.document = document;
