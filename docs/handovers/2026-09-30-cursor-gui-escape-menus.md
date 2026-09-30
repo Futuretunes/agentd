@@ -6,7 +6,7 @@
 - Release: 0.123.0
 - Branch and base: `feat/gui-escape-menus` on `main` (0.122.0)
 - Implementation commit(s): 11f64ec
-- PR: pending
+- PR: #187
 
 ## Changes and relevant files
 
