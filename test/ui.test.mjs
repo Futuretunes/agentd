@@ -669,6 +669,14 @@ test("signed-in workspace exposes a stable accessible name", () => {
     "agentd workspace",
   );
 });
+test("composer wrap exposes a complementary landmark name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const wrap = document.querySelector(".composer-wrap");
+  assert.equal(wrap.getAttribute("role"), "complementary");
+  assert.equal(wrap.getAttribute("aria-label"), "Message composer");
+});
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(app, /Open Activity to start/);
