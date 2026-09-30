@@ -1490,3 +1490,12 @@ test("publication confirm text exposes a stable accessible name", () => {
     "Publication summary",
   );
 });
+
+test("phone dialogs clear top safe-area inset", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+  assert.match(
+    phone,
+    /dialog\s*\{[\s\S]*?padding:\s*max\(20px,\s*env\(safe-area-inset-top\)\)\s+max\(16px,\s*env\(safe-area-inset-right\)\)\s+max\(20px,\s*env\(safe-area-inset-bottom\)\)\s+max\(16px,\s*env\(safe-area-inset-left\)\)/,
+  );
+});
