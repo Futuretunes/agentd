@@ -625,6 +625,38 @@ summary {
   font-size: 13px;
   padding: 10px 0;
 }
+/* Consistent disclosure chevrons for conversation/approval and file review (U17). */
+.turn summary,
+.file-review summary {
+  list-style: none;
+}
+.turn summary::-webkit-details-marker,
+.file-review summary::-webkit-details-marker {
+  display: none;
+}
+.turn summary::before,
+.file-review summary::before {
+  content: "";
+  display: inline-block;
+  width: 0.42em;
+  height: 0.42em;
+  margin-right: 0.55em;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  vertical-align: 0.12em;
+  transition: transform 0.15s ease;
+}
+.turn details[open] > summary::before,
+.file-review details[open] > summary::before {
+  transform: rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .turn summary::before,
+  .file-review summary::before {
+    transition: none;
+  }
+}
 details p,
 .path {
   font-size: 13px;
