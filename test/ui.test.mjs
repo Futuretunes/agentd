@@ -24,6 +24,7 @@ import {
   adapterAccountStatusLine,
   projectNavLabel,
   conversationNavLabel,
+  brandMarkElement,
 } from "../public/ui.js";
 test("operationsSummaryCounts keeps pending reviews out of Completed", () => {
   assert.deepEqual(
@@ -148,6 +149,19 @@ test("conversationNavLabel names threads for assistive tech", () => {
     statusLabel: "Answer ready",
     accessibleName: "Plan checks, Answer ready",
   });
+});
+test("brandMarkElement returns a decorative SVG diamond", () => {
+  const { document } = parseHTML("<html><body></body></html>");
+  const mark = brandMarkElement(document);
+  assert.equal(mark.tagName.toLowerCase(), "svg");
+  assert.equal(mark.getAttribute("aria-hidden"), "true");
+  assert.equal(mark.getAttribute("class"), "brand-mark");
+  assert.ok(mark.querySelector("path"));
+});
+test("workspace brand uses an SVG mark instead of the text glyph", () => {
+  const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
+  assert.match(html, /class="brand-mark"/);
+  assert.equal(html.includes("◈ agentd"), false);
 });
 test("reviewCommittedProgression prefers publish after fresh checks", () => {
   assert.deepEqual(

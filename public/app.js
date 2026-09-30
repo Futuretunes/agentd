@@ -21,6 +21,7 @@ import {
   adapterAccountStatusLine,
   projectNavLabel,
   conversationNavLabel,
+  brandMarkElement,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -1004,8 +1005,10 @@ function empty() {
   const d = $("detail");
   d.replaceChildren();
   const intro = node("div", undefined, "welcome");
+  const icon = node("div", undefined, "welcome-icon");
+  icon.append(brandMarkElement());
   intro.append(
-    node("div", "◈", "welcome-icon"),
+    icon,
     node("h2", "What shall we work on?"),
     node("p", "Start a conversation. Choose an agent. You decide when it runs.", "muted"),
   );

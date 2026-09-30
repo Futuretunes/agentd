@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.98.0 — SVG brand mark (Cursor)
+
+Login, sidebar and welcome use an SVG diamond mark instead of the text ◈ glyph. See [handover](handovers/2026-09-30-cursor-gui-brand-mark-svg.md). Not installed.
+
 ## Candidate 0.97.0 — Consistent disclosure chevrons (Cursor)
 
 Approval and file-review disclosures use a shared CSS chevron instead of browser-default triangles. See [handover](handovers/2026-09-30-cursor-gui-disclosure-chevrons.md). Not installed.
