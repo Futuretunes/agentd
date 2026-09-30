@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.123.0 — Escape closes composer menus (Cursor)
 
-Escape closes the agent picker and conversation menu when no dialog is open. See [handover](handovers/2026-09-30-cursor-gui-escape-menus.md). Not installed.
+Escape closes the agent picker and conversation menu when no dialog is open. See [handover](handovers/2026-09-30-cursor-gui-escape-menus.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.122.0 — Suggestion chip accessible names (Cursor)
 
