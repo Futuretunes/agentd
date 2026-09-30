@@ -551,7 +551,13 @@
         </p>
         <label for="revision-prompt">What should change?</label
         ><textarea id="revision-prompt" rows="5" maxlength="16000" required></textarea>
-        <p id="revision-status" class="muted" role="status" aria-live="polite"></p>
+        <p
+          id="revision-status"
+          class="muted"
+          role="status"
+          aria-label="Revision status"
+          aria-live="polite"
+        ></p>
         <div class="actions">
           <button type="button" id="revision-close">Cancel</button
           ><button class="primary">Create revision request</button>

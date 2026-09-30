@@ -1360,3 +1360,13 @@ test("access key content exposes a stable accessible name", () => {
     "Access key",
   );
 });
+
+test("revision status exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("revision-status").getAttribute("aria-label"),
+    "Revision status",
+  );
+});
