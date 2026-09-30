@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.101.0 — Phone Send stays on the tools row (Cursor)
 
-Phone composer keeps Send beside tools instead of wrapping under them. See [handover](handovers/2026-09-30-cursor-gui-composer-send-row.md). Not installed.
+Phone composer keeps Send beside tools instead of wrapping under them. See [handover](handovers/2026-09-30-cursor-gui-composer-send-row.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.100.0 — Disabled option reasons (Cursor)
 
