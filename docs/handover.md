@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.104.0 — Selected nav non-colour cue (Cursor)
 
-Selected project/conversation rows use weight + inset accent bar and `aria-current="page"`. See [handover](handovers/2026-09-30-cursor-gui-selected-nav-cue.md). Not installed.
+Selected project/conversation rows use weight + inset accent bar and `aria-current="page"`. See [handover](handovers/2026-09-30-cursor-gui-selected-nav-cue.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.103.0 — Consistent dialog close targets (Cursor)
 
