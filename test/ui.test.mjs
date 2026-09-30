@@ -646,6 +646,14 @@ test("history pagination exposes a stable accessible name", () => {
     "Settings",
   );
 });
+test("sidebar foot exposes a workspace tools landmark name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const foot = document.querySelector(".sidebar-foot");
+  assert.equal(foot.getAttribute("role"), "navigation");
+  assert.equal(foot.getAttribute("aria-label"), "Workspace tools");
+});
 test("welcome suggestion chips expose stable accessible names", () => {
   const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(source, /aria-label", "Suggested prompts"/);
