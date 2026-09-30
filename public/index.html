@@ -52,7 +52,7 @@
           </button>
         </div>
         <button id="new" class="new-chat" aria-label="New conversation">
-          ＋ New conversation
+          <span aria-hidden="true">＋</span> New conversation
         </button>
         <button id="history-menu" class="nav-action" aria-label="Search and history">
           Search &amp; history
@@ -182,7 +182,9 @@
                 aria-label="Stop run"
               >
                 Stop</button
-              ><button class="primary" id="send" aria-label="Send message">Send ↑</button>
+              ><button class="primary" id="send" aria-label="Send message">
+                Send <span aria-hidden="true">↑</span></button
+              >
             </div>
           </form>
           <p class="hint" id="draft-hint" aria-live="polite"></p>

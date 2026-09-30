@@ -781,6 +781,7 @@ test("emptyConversationList offers a New conversation control", () => {
   assert.equal(empty.copy.textContent, "Your conversations will appear here.");
   assert.equal(empty.start.textContent, "＋ New conversation");
   assert.equal(empty.start.getAttribute("aria-label"), "New conversation");
+  assert.equal(empty.start.querySelector('[aria-hidden="true"]')?.textContent, "＋");
   assert.match(empty.start.className, /empty-list-cta/);
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(css, /\.empty-list-cta/);
@@ -791,16 +792,24 @@ test("emptyProjectList offers a New project control", () => {
   assert.equal(empty.copy.textContent, "Create a project to start working.");
   assert.equal(empty.start.textContent, "＋ New project");
   assert.equal(empty.start.getAttribute("aria-label"), "Create or import project");
+  assert.equal(empty.start.querySelector('[aria-hidden="true"]')?.textContent, "＋");
   assert.match(empty.start.className, /empty-list-cta/);
 });
 test("sidebar New conversation exposes a stable accessible name", () => {
   const { document } = parseHTML(
     readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
   );
-  assert.equal(
-    document.getElementById("new").getAttribute("aria-label"),
-    "New conversation",
+  const neu = document.getElementById("new");
+  assert.equal(neu.getAttribute("aria-label"), "New conversation");
+  assert.equal(neu.querySelector('[aria-hidden="true"]')?.textContent, "＋");
+});
+test("Send arrow glyph is decorative beside its accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
   );
+  const send = document.getElementById("send");
+  assert.equal(send.getAttribute("aria-label"), "Send message");
+  assert.equal(send.querySelector('[aria-hidden="true"]')?.textContent, "↑");
 });
 test("composer hints announce changes politely", () => {
   const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
