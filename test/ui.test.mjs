@@ -1056,3 +1056,13 @@ test("repository form exposes a stable accessible name", () => {
     "Find GitHub repository",
   );
 });
+
+test("repository import form exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("repository-import").getAttribute("aria-label"),
+    "Import repository",
+  );
+});
