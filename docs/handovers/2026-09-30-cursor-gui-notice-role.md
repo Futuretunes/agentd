@@ -6,7 +6,7 @@
 - Release: 0.110.0
 - Branch and base: `feat/gui-notice-role` on `main` (0.109.0)
 - Implementation commit(s): 672adae
-- PR: (filled after open)
+- PR: #161
 
 ## Changes and relevant files
 
