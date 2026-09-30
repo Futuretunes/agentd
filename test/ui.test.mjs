@@ -1848,3 +1848,10 @@ test("project name eyebrow exposes a stable accessible name", () => {
     "project-name",
   );
 });
+
+test("answer copy code control exposes a stable accessible name", () => {
+  const source = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(source, /aria-label", "Copy code"/);
+  assert.match(source, /copy\.setAttribute\("aria-live", "polite"\)/);
+  assert.match(source, /copy\.textContent = "Copied"/);
+});
