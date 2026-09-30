@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.128.0 — Phone header safe-area (Cursor)
 
-Phone conversation header clears the status-bar safe area. See [handover](handovers/2026-09-30-cursor-gui-header-safe-area.md). Not installed.
+Phone conversation header clears the status-bar safe area. See [handover](handovers/2026-09-30-cursor-gui-header-safe-area.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.127.0 — Compose form accessible name (Cursor)
 
