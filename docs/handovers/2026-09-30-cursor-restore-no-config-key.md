@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: fix 0.74.0 so older managed backups remain configuration-compatible
-- Status: implemented; not installed
+- Status: implemented; live-installed as 0.74.1 on 192.168.1.20
 - Release: 0.74.1
 - Branch and base: `fix/restore-no-config-key` on `main` (0.74.0)
 - PR: #87
