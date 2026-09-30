@@ -1000,13 +1000,17 @@ function reset(thread = null) {
 }
 function renderUploads() {
   saveDraft();
-  $("attachments").replaceChildren(
-    ...uploads.map((item) =>
-      button(item.name + " ×", () => {
+  const list = $("attachments");
+  list.setAttribute("aria-label", "Attached images");
+  list.replaceChildren(
+    ...uploads.map((item) => {
+      const remove = button(item.name + " ×", () => {
         uploads = uploads.filter((x) => x.id !== item.id);
         renderUploads();
-      }),
-    ),
+      });
+      remove.setAttribute("aria-label", "Remove attachment: " + item.name);
+      return remove;
+    }),
   );
 }
 function images(items) {
