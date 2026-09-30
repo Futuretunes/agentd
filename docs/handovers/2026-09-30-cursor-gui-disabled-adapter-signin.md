@@ -5,7 +5,7 @@
 - Status: implemented
 - Release: 0.94.0
 - Branch and base: `feat/gui-disabled-adapter-signin` on `main` (0.93.0)
-- Implementation commit(s): (filled after commit)
+- Implementation commit(s): 4e39fa6
 - PR: (filled after open)
 
 ## Changes and relevant files
