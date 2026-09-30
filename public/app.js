@@ -1015,11 +1015,14 @@ function renderUploads() {
 }
 function images(items) {
   const box = node("div", undefined, "images");
+  box.setAttribute("role", "group");
+  box.setAttribute("aria-label", "Attached images");
   for (const item of items) {
     const a = node("a");
     a.href = "/api/images/" + item.id;
     a.target = "_blank";
     a.rel = "noopener";
+    a.setAttribute("aria-label", "Open attached image: " + item.name);
     const img = node("img");
     img.src = a.href;
     img.alt = item.name;
