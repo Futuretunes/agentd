@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-github-config-status.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-ntfy-pause.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.83.0 — Pause ntfy delivery (Cursor)
+
+Settings > Configuration can pause or resume ntfy pushes without clearing the saved destination. Paused destinations stay in Configuration; approval/completion pushes are skipped until resumed. See [handover](handovers/2026-09-30-cursor-ntfy-pause.md). Not installed.
 
 ## Candidate 0.82.0 — GitHub connection status in Configuration (Cursor)
 

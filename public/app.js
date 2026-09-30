@@ -3895,9 +3895,16 @@ async function renderConfigurationSettings() {
     notificationsSection.append(
       node(
         "p",
-        notifications.deliveryEnabled
-          ? "Approval requests and completed/failed runs send a push to this destination."
-          : "Delivery of approval and completion alerts is not enabled yet; only the destination is stored.",
+        notifications.paused ? "Paused." : "Active.",
+        notifications.paused ? "attention" : "good",
+      ),
+    );
+    notificationsSection.append(
+      node(
+        "p",
+        notifications.paused
+          ? "Pushes are skipped while paused. The destination stays saved until you resume or clear it."
+          : "Approval requests and completed/failed runs send a push to this destination.",
         "muted",
       ),
     );
@@ -3973,6 +3980,9 @@ async function renderConfigurationSettings() {
     );
   if (notifications?.configured)
     actions.push(
+      button(notifications.paused ? "Resume notifications" : "Pause notifications", () =>
+        renderNotificationsPauseForm(notifications, !notifications.paused),
+      ),
       button("Clear ntfy destination", () => renderNotificationsClearForm(notifications)),
     );
   actions.push(button("Replace TLS certificate", () => renderTlsReplaceForm(report.tls)));
@@ -4225,6 +4235,50 @@ function renderNotificationsClearForm(current) {
   };
   configurationContent.replaceChildren(form);
 }
+function renderNotificationsPauseForm(current, pause) {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    currentKey = node("input"),
+    submit = node(
+      "button",
+      pause ? "Review pause notifications" : "Review resume notifications",
+      "primary",
+    );
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      pause
+        ? `Pause ntfy pushes for ${current.server}/…/${current.topic}. The destination stays saved.`
+        : `Resume ntfy pushes for ${current.server}/…/${current.topic}.`,
+      "attention",
+    ),
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/notifications", {
+        action: "preview",
+        paused: pause,
+        currentKey: currentKey.value,
+      });
+      currentKey.value = "";
+      renderNotificationsApproval(plan);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
+}
 function renderNotificationsApproval(plan) {
   const form = node("form"),
     confirm = node("input"),
@@ -4241,14 +4295,15 @@ function renderNotificationsApproval(plan) {
   currentKey.required = true;
   currentLabel.append(currentKey);
   submit.type = "submit";
+  const summary = settings.clear
+    ? "Clear the saved ntfy destination."
+    : typeof settings.paused === "boolean"
+      ? settings.paused
+        ? "Pause ntfy notifications. The destination stays saved."
+        : "Resume ntfy notifications."
+      : `Save ntfy destination ${settings.server}/…/${settings.topic}.`;
   form.append(
-    node(
-      "p",
-      settings.clear
-        ? "Clear the saved ntfy destination."
-        : `Save ntfy destination ${settings.server}/…/${settings.topic}.`,
-      "attention",
-    ),
+    node("p", summary, "attention"),
     confirmLabel,
     currentLabel,
     submit,

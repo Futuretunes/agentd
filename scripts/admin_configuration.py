@@ -45,7 +45,7 @@ def snapshot():
         'notes':{
             'agents':'Change enabled agents and edit permissions from this Configuration page (adapter policy). Account login stays under Agents & accounts.',
             'github':'Manage the GitHub connection from Settings > GitHub.',
-            'notifications':'Configure an ntfy destination from this Configuration page. Approval requests and completed/failed runs send pushes when configured.',
+            'notifications':'Configure an ntfy destination from this Configuration page. Approval requests and completed/failed runs send pushes when configured and not paused.',
             'mutations':'Missing resource profile or gateway hardening can be enabled here (one-way). Adapter policy, runtime flags, TLS certificate replacement and the ntfy destination can also be changed; restart the affected service afterward when required.',
         },
     }

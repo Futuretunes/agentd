@@ -123,6 +123,7 @@ export const publicMessages = new Set<string>([
   "Configuration profiles response is invalid.",
   "Configuration profiles unavailable",
   "Configuration response is invalid.",
+  "Configure an ntfy destination before pausing notifications.",
   "Confirm deletion of the access-key recovery file.",
   "Confirm removal of eligible managed backups.",
   "Confirm that current work is stopped before changing adapter policy.",

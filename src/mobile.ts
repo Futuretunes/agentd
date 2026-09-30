@@ -127,7 +127,8 @@ export function mobile(c: Config) {
         fingerprint: string;
         inventory: string;
         expires: number;
-        settings: { clear: true } | { server: string; topic: string };
+        settings:
+          { clear: true } | { server: string; topic: string } | { paused: boolean };
       }
     >(),
     originPreviews = new Map<
@@ -552,14 +553,44 @@ export function mobile(c: Config) {
             throw Error("Current access key did not match.");
           if (input.action === "preview") {
             const current = await call({ op: "admin-notifications" });
-            let settings: { clear: true } | { server: string; topic: string };
-            if (input.clear === true) settings = { clear: true };
-            else {
-              if (typeof input.server !== "string" || typeof input.topic !== "string")
+            const settingsInput =
+              input.settings && typeof input.settings === "object"
+                ? (input.settings as Record<string, unknown>)
+                : null;
+            const clear = input.clear === true || settingsInput?.clear === true;
+            const pausedValue =
+              typeof input.paused === "boolean"
+                ? input.paused
+                : typeof settingsInput?.paused === "boolean"
+                  ? settingsInput.paused
+                  : undefined;
+            let settings:
+              { clear: true } | { server: string; topic: string } | { paused: boolean };
+            if (clear) settings = { clear: true };
+            else if (typeof pausedValue === "boolean") {
+              if (!current.configured)
+                throw Error(
+                  "Configure an ntfy destination before pausing notifications.",
+                );
+              settings = { paused: pausedValue };
+            } else {
+              const server =
+                typeof input.server === "string"
+                  ? input.server
+                  : typeof settingsInput?.server === "string"
+                    ? settingsInput.server
+                    : null;
+              const topic =
+                typeof input.topic === "string"
+                  ? input.topic
+                  : typeof settingsInput?.topic === "string"
+                    ? settingsInput.topic
+                    : null;
+              if (typeof server !== "string" || typeof topic !== "string")
                 throw Error("Enter an https ntfy server and topic.");
               settings = {
-                server: input.server.replace(/\/+$/, ""),
-                topic: input.topic.trim(),
+                server: server.replace(/\/+$/, ""),
+                topic: topic.trim(),
               };
             }
             const expires = now + 300000,
