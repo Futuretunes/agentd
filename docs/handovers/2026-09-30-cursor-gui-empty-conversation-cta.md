@@ -6,7 +6,7 @@
 - Release: 0.108.0
 - Branch and base: `feat/gui-empty-conversation-cta` on `main` (0.107.0)
 - Implementation commit(s): ec2e685
-- PR: (filled after open)
+- PR: #157
 
 ## Changes and relevant files
 
