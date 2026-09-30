@@ -1259,6 +1259,7 @@ a {
     visibility: hidden;
     padding-top: max(22px, env(safe-area-inset-top));
     padding-bottom: max(14px, env(safe-area-inset-bottom));
+    padding-left: max(0px, env(safe-area-inset-left));
     transition:
       transform 0.24s ease-out,
       visibility 0s linear 0.24s;

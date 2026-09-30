@@ -1286,3 +1286,11 @@ test("project info announces updates politely", () => {
     "polite",
   );
 });
+
+test("phone drawer clears left safe-area inset", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /#sidebar\s*\{[\s\S]*?padding-left:\s*max\(0px,\s*env\(safe-area-inset-left\)\)/,
+  );
+});
