@@ -1529,3 +1529,12 @@ test("picker panel clears phone safe-area insets", () => {
     /\.picker-panel\s*\{[\s\S]*?max-height:\s*calc\(\s*var\(--viewport-height,\s*100dvh\)\s*-\s*120px\s*-\s*env\(safe-area-inset-top\)\s*-\s*env\(safe-area-inset-bottom\)\s*\)/,
   );
 });
+
+test("phone drawer width clears left safe-area", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+  assert.match(
+    phone,
+    /#sidebar\s*\{[\s\S]*?width:\s*min\(310px,\s*calc\(85vw\s*-\s*env\(safe-area-inset-left\)\)\)/,
+  );
+});
