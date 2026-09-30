@@ -6,7 +6,7 @@
 - Release: 0.102.0
 - Branch and base: `feat/gui-status-noncolour-cues` on `main` (0.101.0)
 - Implementation commit(s): 26f78aa
-- PR: (filled after open)
+- PR: #145
 
 ## Changes and relevant files
 
