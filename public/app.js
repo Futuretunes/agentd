@@ -1351,6 +1351,7 @@ async function refresh() {
   if (busy) return;
   busy = true;
   const epoch = generation;
+  $("detail")?.setAttribute("aria-busy", "true");
   try {
     const capabilities = await api("/api/capabilities");
     policy = {
@@ -1529,6 +1530,7 @@ async function refresh() {
     } else if (signedIn) notice(e.message);
   } finally {
     busy = false;
+    $("detail")?.setAttribute("aria-busy", "false");
     if (epoch !== generation) refresh();
   }
 }

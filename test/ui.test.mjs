@@ -593,6 +593,15 @@ test("Escape closes run-picker and conversation menus outside dialogs", () => {
   assert.match(source, /keydown[\s\S]*Escape[\s\S]*run-picker[\s\S]*conversation-menu/s);
   assert.match(source, /dialog\[open\]/);
 });
+test("conversation region marks busy while workspace refresh runs", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(document.getElementById("detail").getAttribute("aria-busy"), "false");
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /detail"\)\?\.setAttribute\("aria-busy", "true"\)/);
+  assert.match(source, /detail"\)\?\.setAttribute\("aria-busy", "false"\)/);
+});
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(app, /Open Activity to start/);
