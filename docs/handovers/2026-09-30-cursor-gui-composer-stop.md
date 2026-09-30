@@ -2,11 +2,11 @@
 
 - Author/agent: Cursor
 - Requested outcome: Composer Send turns into an obvious Stop control while a run is active; cover waiting-for-approval Cancel and cancelling feedback without a new backend transport
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.86.0
 - Branch and base: `feat/gui-composer-stop` on `main` (0.85.0)
-- Implementation commit(s): (filled after commit)
-- PR: (filled after open)
+- Implementation commit(s): b9d2821
+- PR: #113
 
 ## Changes and relevant files
 
@@ -17,13 +17,15 @@
 
 ## Validation evidence
 
+- CI green on #113; live-installed on 192.168.1.20 (0.86.0 / c6b4f2e457fb).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.85.0 / revert of #113.
 
 ## Constraints and known issues
 
@@ -32,5 +34,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #113 and live-installed 0.86.0.
 2. Remaining UX-3: change-review sheet polish as separately scoped work.
