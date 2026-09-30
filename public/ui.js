@@ -777,6 +777,14 @@ export function setupShell() {
     }
     if (closed) e.preventDefault();
   });
+  for (const id of ["conversation-menu", "run-picker"]) {
+    const menu = $(id);
+    const summary = menu?.querySelector("summary");
+    if (!menu || !summary) continue;
+    const syncExpanded = () => summary.setAttribute("aria-expanded", String(menu.open));
+    menu.addEventListener("toggle", syncExpanded);
+    syncExpanded();
+  }
   // Native dialogs supply modality and focus restoration. Give dynamic dialogs names too.
   const nameDialogs = () => {
     for (const dialog of document.querySelectorAll("dialog")) {

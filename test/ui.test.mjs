@@ -602,6 +602,17 @@ test("conversation region marks busy while workspace refresh runs", () => {
   assert.match(source, /detail"\)\?\.setAttribute\("aria-busy", "true"\)/);
   assert.match(source, /detail"\)\?\.setAttribute\("aria-busy", "false"\)/);
 });
+test("composer menus sync aria-expanded on their summaries", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  for (const id of ["conversation-menu", "run-picker"]) {
+    const summary = document.getElementById(id).querySelector("summary");
+    assert.equal(summary.getAttribute("aria-expanded"), "false", id);
+  }
+  const source = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(source, /aria-expanded", String\(menu\.open\)/);
+});
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(app, /Open Activity to start/);
