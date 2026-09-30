@@ -280,6 +280,7 @@ export const publicMessages = new Set<string>([
   "Invalid merge preview",
   "Invalid model selection",
   "Invalid notification settings",
+  "Invalid ntfy destination",
   "Invalid output file",
   "Invalid port",
   "Invalid previous publication",
@@ -630,4 +631,5 @@ export const publicMessages = new Set<string>([
   "Worktree preparation timed out.",
   "Worktree registration mismatch",
   "Worktree size limit reached before checkout",
+  "ntfy delivery refused",
 ]);

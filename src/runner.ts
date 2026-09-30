@@ -275,7 +275,48 @@ export function runner(c: Config) {
       id,
     );
     db.prepare("INSERT INTO events(task,status,at) VALUES(?,?,?)").run(id, status, at);
+    void notifyTaskStatus(id, status, error);
   };
+  const notified = new Set<string>();
+  async function notifyTaskStatus(id: string, status: string, error: string | null) {
+    if (!c.adminNotifications) return;
+    const key = `${id}:${status}`;
+    if (notified.has(key)) return;
+    try {
+      const { taskNotificationCopy, publishNtfy } = await import("./notifications.ts");
+      const row = get(id) as any;
+      const project = row?.project
+        ? (db.prepare("SELECT name FROM projects WHERE id=?").get(row.project) as any)
+        : null;
+      const detail = taskNotificationCopy(status, {
+        projectName: project?.name,
+        adapter: row?.adapter,
+        error,
+      });
+      if (!detail) return;
+      const settings = await c.adminNotifications();
+      if (!settings?.configured || !settings.server || !settings.topic) return;
+      notified.add(key);
+      if (notified.size > 500)
+        for (const old of [...notified].slice(0, notified.size - 400))
+          notified.delete(old);
+      await publishNtfy(
+        {
+          server: settings.server,
+          topic: settings.topic,
+          origin: settings.origin,
+        },
+        {
+          title: detail.title,
+          message: `${detail.message} Task ${id}.`,
+          click: settings.origin || undefined,
+          tags: detail.tags,
+        },
+      );
+    } catch {
+      notified.delete(key);
+    }
+  }
   const git = (args: string[], repo = c.repo) => localGit(repo, args);
   const github = githubAccount(c.githubRoot ?? join(c.stateDir, "github"));
   const previewManager = reviewJobs(c.reviewPrepare, () => {

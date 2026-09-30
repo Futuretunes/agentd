@@ -215,6 +215,7 @@ function notificationsView(value: Record<string, unknown>) {
     ntfyServer.test(server) &&
     ntfyTopic.test(topic)
   );
+  const origin = typeof value.origin === "string" ? value.origin : null;
   const fingerprint = createHash("sha256")
     .update(
       JSON.stringify({
@@ -228,8 +229,9 @@ function notificationsView(value: Record<string, unknown>) {
     configured,
     server: configured ? server : null,
     topic: configured ? topic : null,
+    origin: configured && origin && /^https:\/\//.test(origin) ? origin : null,
     fingerprint,
-    deliveryEnabled: false,
+    deliveryEnabled: configured,
   };
 }
 

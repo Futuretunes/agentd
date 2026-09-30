@@ -3859,7 +3859,9 @@ async function renderConfigurationSettings() {
     notificationsSection.append(
       node(
         "p",
-        "Delivery of approval and completion alerts is not enabled yet; only the destination is stored.",
+        notifications.deliveryEnabled
+          ? "Approval requests and completed/failed runs send a push to this destination."
+          : "Delivery of approval and completion alerts is not enabled yet; only the destination is stored.",
         "muted",
       ),
     );
@@ -3956,7 +3958,7 @@ function renderNotificationsForm(current) {
   section.append(
     node(
       "p",
-      "Stores an https ntfy server and topic for later approval and completion alerts. Delivery is not enabled in this release.",
+      "Stores an https ntfy server and topic. Approval requests and completed/failed runs send pushes when a destination is saved.",
       "muted",
     ),
   );
