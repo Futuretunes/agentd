@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-review-actions-safe-area-x.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-drawer-safe-area-right.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.195.0 — Phone drawer right safe-area (Cursor)
+
+Phone drawer also clears safe-area-right. See [handover](handovers/2026-09-30-cursor-gui-drawer-safe-area-right.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.194.0 — Phone review footer horizontal safe-area (Cursor)
 
