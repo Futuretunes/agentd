@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.99.0 — Phone touch targets + readable type (Cursor)
+
+Phone primary controls are at least 44×44; prompt stays 16px; turn status copy is 15px. See [handover](handovers/2026-09-30-cursor-gui-phone-touch-targets.md). Not installed.
+
 ## Candidate 0.98.0 — SVG brand mark (Cursor)
 
 Login, sidebar and welcome use an SVG diamond mark instead of the text ◈ glyph. See [handover](handovers/2026-09-30-cursor-gui-brand-mark-svg.md). **Live-installed on 192.168.1.20.**

@@ -1238,9 +1238,31 @@ a {
   .compose-foot {
     gap: 4px;
   }
+  /* UX-4 / U18: phone primary controls stay ≥ 44×44. */
+  #drawer-open,
+  #drawer-close,
+  .attach,
+  #send,
+  #stop-current,
+  .header-actions > summary,
+  .run-picker > summary,
+  .suggestions button,
+  .new-chat,
+  .nav-action {
+    min-height: 44px;
+    min-width: 44px;
+  }
   #send {
-    padding: 9px 12px;
+    padding: 10px 14px;
     flex-shrink: 0;
+  }
+  #prompt {
+    font-size: 16px;
+  }
+  .turn,
+  .muted,
+  .status {
+    font-size: 15px;
   }
   #selection-summary {
     overflow: hidden;
@@ -1255,7 +1277,7 @@ a {
     font-size: 16px;
   }
   .hint {
-    font-size: 12px;
+    font-size: 13px;
   }
   .user-message {
     margin-left: 8%;
@@ -1299,7 +1321,7 @@ a {
     min-width: 56px;
   }
   .run-picker > summary {
-    padding: 4px 8px;
+    padding: 8px 12px;
   }
   #picker-summary {
     max-width: 38vw;
