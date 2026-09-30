@@ -9,8 +9,8 @@
 ## Changes and relevant files
 
 - `scripts/run_rollback.py`: `by_id` / `restorable` / `--backup-id` restore of a specific older compatible managed backup (same save-current-first path as rollback).
-- `deploy/agentd-restore@.service` + `apply_updates.py` `restoreUnit` + `update.py` accepts `restoreUnit`.
-- `scripts/admin_backups.py`: mark restorable items when the restore unit is enabled.
+- `deploy/agentd-restore@.service` installed beside rollback by `apply_updates.py` (no `restoreUnit` config key, so older releases stay configuration-compatible).
+- `scripts/admin_backups.py`: mark restorable items when the restore unit file is present.
 - Admin helper/client/runner/gateway/mobile: `backups-restore` / `admin-backups-restore` with step-up preview.
 - Settings > Backups: Review restore for older restorable backups.
 - Tests: `test/admin_backups.py`, `test/in_app_rollback.py`, `test/in-app-updates.test.mjs`.
