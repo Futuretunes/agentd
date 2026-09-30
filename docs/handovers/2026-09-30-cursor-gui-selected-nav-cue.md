@@ -5,8 +5,8 @@
 - Status: implemented
 - Release: 0.104.0
 - Branch and base: `feat/gui-selected-nav-cue` on `main` (0.103.0)
-- Implementation commit(s): a5cf3b4
-- PR: (filled after open)
+- Implementation commit(s): b92d10b
+- PR: #149
 
 ## Changes and relevant files
 
