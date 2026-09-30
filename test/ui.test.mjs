@@ -1507,3 +1507,12 @@ test("skip link clears top and left safe-area insets", () => {
     /\.skip-link\s*\{\s*position:\s*absolute;\s*left:\s*max\(12px,\s*env\(safe-area-inset-left\)\);\s*top:\s*max\(12px,\s*env\(safe-area-inset-top\)\)/,
   );
 });
+
+test("phone conversation menu panel clears bottom safe-area", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+  assert.match(
+    phone,
+    /\.menu-panel\s*\{[\s\S]*?max-height:\s*calc\(\s*var\(--viewport-height,\s*100dvh\)\s*-\s*72px\s*-\s*env\(safe-area-inset-bottom\)\s*\)/,
+  );
+});

@@ -1443,6 +1443,10 @@ a {
   .review-head h2 {
     font-size: 22px;
   }
+  .menu-panel {
+    max-height: calc(var(--viewport-height, 100dvh) - 72px - env(safe-area-inset-bottom));
+    overflow: auto;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   * {
