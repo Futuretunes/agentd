@@ -1007,3 +1007,13 @@ test("history results expose a stable accessible name", () => {
     "Search results",
   );
 });
+
+test("history form exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("history-form").getAttribute("aria-label"),
+    "Search history",
+  );
+});
