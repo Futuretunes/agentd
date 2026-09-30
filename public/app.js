@@ -628,6 +628,7 @@ function renderOperations(data) {
     const r = data.resources,
       b = r.service,
       storage = node("section", undefined, "operation-section");
+    storage.setAttribute("aria-label", "Activity storage");
     const bytes = (value) =>
       value >= 1024 ** 3
         ? (value / 1024 ** 3).toFixed(1) + " GiB"
