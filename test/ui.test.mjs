@@ -244,6 +244,7 @@ test("noticeRole marks errors as alerts and info as status", () => {
 test("page notice starts as a polite status region", () => {
   const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
   assert.match(html, /id="notice"[^>]*role="status"/);
+  assert.match(html, /id="notice"[^>]*aria-live="polite"/);
 });
 test("reviewProgression exposes one primary step with honest guidance", () => {
   assert.equal(
@@ -966,4 +967,13 @@ test("conversation workspace header exposes a landmark name", () => {
   );
   const header = document.querySelector("main.desk > header");
   assert.equal(header.getAttribute("aria-label"), "Conversation heading");
+});
+
+test("page notice toast announces politely", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const notice = document.getElementById("notice");
+  assert.equal(notice.getAttribute("role"), "status");
+  assert.equal(notice.getAttribute("aria-live"), "polite");
 });
