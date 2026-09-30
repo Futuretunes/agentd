@@ -284,7 +284,7 @@ export function probeAccount(id: string, home = homedir()): Promise<AccountStatu
             state: "error",
             method: null,
             checkedAt,
-            message: "Could not verify Cursor account. Reconnect in Operations.",
+            message: "Could not verify Cursor account. Reconnect in Activity.",
           });
           return;
         }

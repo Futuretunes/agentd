@@ -118,7 +118,7 @@ export async function chat(executable: string, prompt: string, selection?: Selec
   });
   if (code !== 0 || failed || !completed)
     throw Error(
-      "Chat could not complete. Check account status in Operations; the installed Codex version must match the validated chat policy.",
+      "Chat could not complete. Check account status in Activity; the installed Codex version must match the validated chat policy.",
     );
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -130,7 +130,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     );
   } catch {
     console.error(
-      "Chat could not complete. Check account status in Operations and the supported Codex version.",
+      "Chat could not complete. Check account status in Activity and the supported Codex version.",
     );
     process.exitCode = 1;
   }

@@ -10,6 +10,6 @@ export function nativeLimits(id: string) {
     maxTurns: id === "claude" ? claudeMaxTurns : null,
     protocolOutputBytes: ["codex", "cursor"].includes(id) ? 2_000_000 : null,
     protocolTimeoutSeconds: id === "cursor" ? 900 : null,
-    usage: "Account quota availability is shown in Operations",
+    usage: "Account quota availability is shown in Activity",
   };
 }
