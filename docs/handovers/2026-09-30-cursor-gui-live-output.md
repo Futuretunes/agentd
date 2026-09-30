@@ -2,11 +2,11 @@
 
 - Author/agent: Cursor
 - Requested outcome: Show a bounded current-output tail in the conversation while a run is active; reuse existing 3s poll + logTail payload; no websockets or new backend fields
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.85.0
 - Branch and base: `feat/gui-live-output` on `main` (0.84.0)
-- Implementation commit(s): (filled after commit)
-- PR: (filled after open)
+- Implementation commit(s): c6b5076
+- PR: #111
 
 ## Changes and relevant files
 
@@ -18,13 +18,15 @@
 
 ## Validation evidence
 
+- CI green on #111; live-installed on 192.168.1.20 (0.85.0 / e8da1a64e3fc).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.84.0 / revert of #111.
 
 ## Constraints and known issues
 
@@ -33,5 +35,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
-2. Remaining UX-3: change-review guidance / primary-step progression polish as separately scoped work.
+1. Done: merged #111 and live-installed 0.85.0.
+2. Remaining UX-3: composer Stop for active runs / change-review polish as separately scoped work.
