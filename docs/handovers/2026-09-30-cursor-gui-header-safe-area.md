@@ -6,7 +6,7 @@
 - Release: 0.128.0
 - Branch and base: `feat/gui-header-safe-area` on `main` (0.127.0)
 - Implementation commit(s): bfb0fc9
-- PR: pending
+- PR: #197
 
 ## Changes and relevant files
 
