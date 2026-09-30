@@ -428,8 +428,7 @@ header h1 {
 }
 .composer-wrap {
   position: relative;
-  padding: 12px max(24px, calc((100% - 760px) / 2))
-    max(14px, env(safe-area-inset-bottom));
+  padding: 12px max(24px, calc((100% - 760px) / 2)) max(14px, env(safe-area-inset-bottom));
   background: var(--bg);
 }
 .composer-wrap::before {
@@ -1259,6 +1258,7 @@ a {
     height: var(--viewport-height, 100dvh);
     visibility: hidden;
     padding-top: max(22px, env(safe-area-inset-top));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
     transition:
       transform 0.24s ease-out,
       visibility 0s linear 0.24s;
@@ -1442,5 +1442,13 @@ a {
   }
 }
 
-.provider-usage { margin-block: 1rem; overflow-wrap: anywhere; }
-.provider-usage progress { display: block; width: 100%; height: 0.8rem; accent-color: var(--accent); }
+.provider-usage {
+  margin-block: 1rem;
+  overflow-wrap: anywhere;
+}
+.provider-usage progress {
+  display: block;
+  width: 100%;
+  height: 0.8rem;
+  accent-color: var(--accent);
+}

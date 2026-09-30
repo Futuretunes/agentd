@@ -500,6 +500,7 @@ test("phone drawer and sheets animate with reduced-motion respect", () => {
   assert.match(phone, /#sidebar \{[^}]*transition:/s);
   assert.match(phone, /transform 0\.24s ease-out/);
   assert.match(phone, /safe-area-inset-top/);
+  assert.match(phone, /#sidebar \{[^}]*safe-area-inset-bottom/s);
   assert.match(phone, /dialog\[open\] \{[^}]*animation: agentd-sheet-up/s);
   assert.match(css, /@keyframes agentd-sheet-up/);
   assert.match(css, /prefers-reduced-motion: reduce[\s\S]*transition: none !important/);
