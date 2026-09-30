@@ -1959,3 +1959,12 @@ test("agent picker panel exposes a stable accessible name", () => {
   assert.equal(panel.getAttribute("role"), "group");
   assert.equal(panel.getAttribute("aria-label"), "Agent mode and model");
 });
+
+test("sidebar brand header exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const head = document.querySelector(".sidebar-head");
+  assert.equal(head.getAttribute("role"), "group");
+  assert.equal(head.getAttribute("aria-label"), "Workspace brand");
+});
