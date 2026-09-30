@@ -1206,3 +1206,13 @@ test("diagnostics content exposes a stable accessible name", () => {
     "Server diagnostics",
   );
 });
+
+test("configuration content exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("configuration-content").getAttribute("aria-label"),
+    "Configuration",
+  );
+});
