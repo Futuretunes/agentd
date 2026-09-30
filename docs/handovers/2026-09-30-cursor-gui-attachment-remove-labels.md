@@ -6,7 +6,7 @@
 - Release: 0.126.0
 - Branch and base: `feat/gui-attachment-remove-labels` on `main` (0.125.0)
 - Implementation commit(s): 657c15d
-- PR: pending
+- PR: #193
 
 ## Changes and relevant files
 
