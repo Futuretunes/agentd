@@ -987,3 +987,13 @@ test("thread title is described by the project name", () => {
     "project-name",
   );
 });
+
+test("review stats announce updates politely", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("review-stats").getAttribute("aria-live"),
+    "polite",
+  );
+});
