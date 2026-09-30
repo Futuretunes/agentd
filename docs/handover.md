@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.132.0 — Workspace accessible name (Cursor)
 
-Signed-in `#workspace` is labeled agentd workspace. See [handover](handovers/2026-09-30-cursor-gui-workspace-label.md). Not installed.
+Signed-in `#workspace` is labeled agentd workspace. See [handover](handovers/2026-09-30-cursor-gui-workspace-label.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.131.0 — Login landmark name (Cursor)
 

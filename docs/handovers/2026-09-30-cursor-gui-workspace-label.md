@@ -2,10 +2,10 @@
 
 - Author/agent: Cursor
 - Requested outcome: The signed-in workspace shell must expose a stable accessible name
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.132.0
 - Branch and base: `feat/gui-workspace-label` on `main` (0.131.0)
-- Implementation commit(s): 1edd975
+- Implementation commit(s): 406df2d
 - PR: #205
 
 ## Changes and relevant files
@@ -15,12 +15,14 @@
 
 ## Validation evidence
 
+- CI green on #205; live-installed on 192.168.1.20 (0.132.0 / 1e721ff).
+
 - `node --test test/ui.test.mjs`
 - `npm run format:check`
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.131.0 / revert of #205.
 
 ## Constraints and known issues
 
@@ -28,5 +30,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #205 and live-installed 0.132.0.
 2. Continue UX polish or admin slices as operator priority allows.
