@@ -187,7 +187,9 @@
     <dialog id="preferences-dialog" aria-labelledby="preferences-heading">
       <div class="review-head">
         <h2 id="preferences-heading">Settings</h2>
-        <button id="preferences-close" aria-label="Close settings">×</button>
+        <button id="preferences-close" aria-label="Close settings">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <section class="settings-section" aria-labelledby="settings-agents-heading">
         <h3 id="settings-agents-heading">Agents &amp; accounts</h3>
@@ -272,49 +274,63 @@
     <dialog id="access-key-dialog" aria-labelledby="access-key-heading">
       <div class="review-head">
         <h2 id="access-key-heading">Change access key</h2>
-        <button id="access-key-close" aria-label="Close access key settings">×</button>
+        <button id="access-key-close" aria-label="Close access key settings">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div id="access-key-content"></div>
     </dialog>
     <dialog id="updates-dialog" aria-labelledby="updates-heading">
       <div class="review-head">
         <h2 id="updates-heading">Updates</h2>
-        <button id="updates-close" aria-label="Close updates">×</button>
+        <button id="updates-close" aria-label="Close updates">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div id="updates-content" aria-live="polite"></div>
     </dialog>
     <dialog id="configuration-dialog" aria-labelledby="configuration-heading">
       <div class="review-head">
         <h2 id="configuration-heading">Configuration</h2>
-        <button id="configuration-close" aria-label="Close configuration">×</button>
+        <button id="configuration-close" aria-label="Close configuration">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div id="configuration-content" aria-live="polite"></div>
     </dialog>
     <dialog id="backups-dialog" aria-labelledby="backups-heading">
       <div class="review-head">
         <h2 id="backups-heading">Managed backups</h2>
-        <button id="backups-close" aria-label="Close backups">×</button>
+        <button id="backups-close" aria-label="Close backups">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div id="backups-content" aria-live="polite"></div>
     </dialog>
     <dialog id="cli-dialog" aria-labelledby="cli-heading">
       <div class="review-head">
         <h2 id="cli-heading">Agents &amp; CLIs</h2>
-        <button id="cli-close" aria-label="Close CLI settings">×</button>
+        <button id="cli-close" aria-label="Close CLI settings">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div id="cli-content" aria-live="polite"></div>
     </dialog>
     <dialog id="diagnostics-dialog" aria-labelledby="diagnostics-heading">
       <div class="review-head">
         <h2 id="diagnostics-heading">Server diagnostics</h2>
-        <button id="diagnostics-close" aria-label="Close diagnostics">×</button>
+        <button id="diagnostics-close" aria-label="Close diagnostics">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div id="diagnostics-content" aria-live="polite"></div>
     </dialog>
     <dialog id="project-settings-dialog" aria-labelledby="project-settings-heading">
       <div class="review-head">
         <h2 id="project-settings-heading">Project settings</h2>
-        <button id="project-settings-close" aria-label="Close project settings">×</button>
+        <button id="project-settings-close" aria-label="Close project settings">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <section id="project-info" hidden></section>
       <button id="project-defaults">Agent defaults for this project</button>
@@ -346,7 +362,9 @@
     <dialog id="operations-dialog" aria-labelledby="operations-heading">
       <div class="review-head">
         <h2 id="operations-heading">Activity</h2>
-        <button id="operations-close" aria-label="Close activity">×</button>
+        <button id="operations-close" aria-label="Close activity">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div id="operations-content" aria-live="polite"></div>
     </dialog>
@@ -356,7 +374,9 @@
           <h2 id="review-heading">Review changes</h2>
           <p id="review-stats" class="muted"></p>
         </div>
-        <button id="review-close" aria-label="Close review">×</button>
+        <button id="review-close" aria-label="Close review">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div id="review-content"></div>
       <div id="review-actions" class="actions"></div>
@@ -364,7 +384,9 @@
     <dialog id="history-dialog" aria-labelledby="history-heading">
       <div class="review-head">
         <h2 id="history-heading">Find your work</h2>
-        <button id="history-close" aria-label="Close history">×</button>
+        <button id="history-close" aria-label="Close history">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <form id="history-form">
         <label for="history-query"
@@ -391,14 +413,18 @@
     <dialog id="run-dialog" aria-labelledby="run-heading">
       <div class="review-head">
         <h2 id="run-heading">Run activity</h2>
-        <button id="run-close" aria-label="Close run activity">×</button>
+        <button id="run-close" aria-label="Close run activity">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div id="run-content"></div>
     </dialog>
     <dialog id="repository-dialog" aria-labelledby="repository-heading">
       <div class="review-head">
         <h2 id="repository-heading">GitHub repositories</h2>
-        <button id="repository-close" aria-label="Close repositories">×</button>
+        <button id="repository-close" aria-label="Close repositories">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <button id="github-open">GitHub connection</button>
       <form id="repository-form">
@@ -429,7 +455,9 @@
     <dialog id="github-dialog" aria-labelledby="github-heading">
       <div class="review-head">
         <h2 id="github-heading">GitHub connection</h2>
-        <button id="github-close" aria-label="Close GitHub connection">×</button>
+        <button id="github-close" aria-label="Close GitHub connection">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <p class="muted">
         Sign in on GitHub and review its requested permissions. Credentials stay on this
@@ -441,14 +469,18 @@
     <dialog id="check-setup-dialog" aria-labelledby="check-setup-heading">
       <div class="review-head">
         <h2 id="check-setup-heading">Set up checks</h2>
-        <button id="check-setup-close" aria-label="Close check setup">×</button>
+        <button id="check-setup-close" aria-label="Close check setup">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div id="check-setup-content" aria-live="polite"></div>
     </dialog>
     <dialog id="publishing-dialog" aria-labelledby="publishing-heading">
       <div class="review-head">
         <h2 id="publishing-heading">Publish reviewed changes</h2>
-        <button id="publishing-close" aria-label="Close publishing">×</button>
+        <button id="publishing-close" aria-label="Close publishing">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <p class="muted">
         Previewing only reads GitHub. Approval uploads the displayed commits and creates
@@ -508,7 +540,9 @@
     <dialog id="feedback-dialog" aria-labelledby="feedback-heading">
       <div class="review-head">
         <h2 id="feedback-heading">GitHub feedback and conflicts</h2>
-        <button id="feedback-close" aria-label="Close GitHub feedback">×</button>
+        <button id="feedback-close" aria-label="Close GitHub feedback">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <label for="feedback-target">Published pull request</label
       ><select id="feedback-target"></select

@@ -835,9 +835,12 @@ accountDialog.setAttribute("aria-labelledby", "account-heading");
 const accountHead = node("div", undefined, "review-head"),
   accountHeading = node("h2", "Connect your account");
 accountHeading.id = "account-heading";
-const accountClose = node("button", "×");
+const accountClose = node("button");
 accountClose.type = "button";
 accountClose.setAttribute("aria-label", "Close account dialog");
+const accountCloseGlyph = node("span", "×");
+accountCloseGlyph.setAttribute("aria-hidden", "true");
+accountClose.append(accountCloseGlyph);
 accountClose.onclick = () => {
   accountDialog.close();
   $("account-content").replaceChildren();
