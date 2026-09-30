@@ -1968,3 +1968,12 @@ test("sidebar brand header exposes a stable accessible name", () => {
   assert.equal(head.getAttribute("role"), "group");
   assert.equal(head.getAttribute("aria-label"), "Workspace brand");
 });
+
+test("image attachment wrap exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const wrap = document.querySelector(".attach-wrap");
+  assert.equal(wrap.getAttribute("role"), "group");
+  assert.equal(wrap.getAttribute("aria-label"), "Image attachment");
+});
