@@ -212,6 +212,11 @@ h3 {
   display: grid;
   gap: 12px;
 }
+.login label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 #workspace {
   height: var(--viewport-height, 100dvh);
   display: grid;
