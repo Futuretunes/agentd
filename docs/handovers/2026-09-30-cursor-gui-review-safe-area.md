@@ -6,7 +6,7 @@
 - Release: 0.121.0
 - Branch and base: `feat/gui-review-safe-area` on `main` (0.120.0)
 - Implementation commit(s): 69175b2
-- PR: pending
+- PR: #183
 
 ## Changes and relevant files
 
