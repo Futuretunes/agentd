@@ -383,6 +383,13 @@ test("workspace has unique controls, keyboard-accessible attachment input and na
     projectFields.indexOf("import-open") > projectFields.indexOf("project-input"),
   );
 });
+test("conversation disclosures replace browser-default triangles", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(css, /\.turn summary::-webkit-details-marker/);
+  assert.match(css, /\.file-review summary::-webkit-details-marker/);
+  assert.match(css, /\.turn summary::before/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
+});
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
   globalThis.document = document;

@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.97.0 — Consistent disclosure chevrons (Cursor)
+
+Approval and file-review disclosures use a shared CSS chevron instead of browser-default triangles. See [handover](handovers/2026-09-30-cursor-gui-disclosure-chevrons.md). Not installed.
+
 ## Candidate 0.96.0 — Sidebar project badge + accessible nav names (Cursor)
 
 Project rows show conversation counts in words; project and conversation buttons expose aria-labels. See [handover](handovers/2026-09-30-cursor-gui-sidebar-nav-labels.md). **Live-installed on 192.168.1.20.**
