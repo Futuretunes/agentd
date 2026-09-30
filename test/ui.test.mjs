@@ -2284,3 +2284,8 @@ test("update preview is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /details\.setAttribute\("aria-label", "Update preview"\)/);
 });
+
+test("rollback preview is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /details\.setAttribute\("aria-label", "Rollback preview"\)/);
+});

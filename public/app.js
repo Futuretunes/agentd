@@ -6347,6 +6347,8 @@ function renderRollbackReview(target) {
   key.autocomplete = "current-password";
   label.htmlFor = key.id;
   const details = node("div");
+  details.setAttribute("aria-label", "Rollback preview");
+  details.setAttribute("aria-live", "polite");
   const preview = button(
     "Preview rollback",
     async () => {
