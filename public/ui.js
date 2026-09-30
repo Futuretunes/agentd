@@ -619,6 +619,7 @@ export function emptyConversationList(documentRef = document) {
   start.type = "button";
   start.className = "new-chat empty-list-cta";
   start.textContent = "＋ New conversation";
+  start.setAttribute("aria-label", "New conversation");
   wrap.append(copy, start);
   return { wrap, copy, start };
 }

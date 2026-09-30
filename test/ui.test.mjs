@@ -530,9 +530,19 @@ test("emptyConversationList offers a New conversation control", () => {
   const empty = emptyConversationList(document);
   assert.equal(empty.copy.textContent, "Your conversations will appear here.");
   assert.equal(empty.start.textContent, "＋ New conversation");
+  assert.equal(empty.start.getAttribute("aria-label"), "New conversation");
   assert.match(empty.start.className, /empty-list-cta/);
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(css, /\.empty-list-cta/);
+});
+test("sidebar New conversation exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("new").getAttribute("aria-label"),
+    "New conversation",
+  );
 });
 test("composer hints announce changes politely", () => {
   const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
