@@ -1156,3 +1156,13 @@ test("operations content exposes a stable accessible name", () => {
     "Activity list",
   );
 });
+
+test("github content exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("github-content").getAttribute("aria-label"),
+    "GitHub connection status",
+  );
+});
