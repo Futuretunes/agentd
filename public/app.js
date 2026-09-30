@@ -484,6 +484,8 @@ function accountsSection(data) {
     }
     card.append(renderUsage(value.id, value.usage));
     const actions = node("div", undefined, "actions");
+    actions.setAttribute("role", "group");
+    actions.setAttribute("aria-label", "Adapter account actions");
     if (value.id === "cursor" && value.installed)
       card.append(
         node(
