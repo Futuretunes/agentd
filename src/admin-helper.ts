@@ -215,23 +215,26 @@ function notificationsView(value: Record<string, unknown>) {
     ntfyServer.test(server) &&
     ntfyTopic.test(topic)
   );
+  const paused = configured && ntfy?.paused === true;
   const origin = typeof value.origin === "string" ? value.origin : null;
   const fingerprint = createHash("sha256")
     .update(
       JSON.stringify({
         server: configured ? server : null,
         topic: configured ? topic : null,
+        paused: configured ? paused : false,
       }),
     )
     .digest("hex");
   return {
     format: 1 as const,
     configured,
+    paused,
     server: configured ? server : null,
     topic: configured ? topic : null,
     origin: configured && origin && /^https:\/\//.test(origin) ? origin : null,
     fingerprint,
-    deliveryEnabled: configured,
+    deliveryEnabled: configured && !paused,
   };
 }
 
@@ -248,10 +251,28 @@ export function applyNotificationSettings(
   expectedUid = 0,
 ) {
   if (!input || typeof input !== "object") throw Error("Invalid notification settings");
-  const request = input as { clear?: unknown; server?: unknown; topic?: unknown };
+  const request = input as {
+    clear?: unknown;
+    server?: unknown;
+    topic?: unknown;
+    paused?: unknown;
+  };
   const { info, value } = readMobileConfig(mobileConfig, expectedUid);
   if (request.clear === true) {
     if ("notifications" in value) delete value.notifications;
+    writeMobileConfig(mobileConfig, value, info);
+    return notificationsView(value);
+  }
+  if (typeof request.paused === "boolean") {
+    const current = notificationsView(value);
+    if (!current.configured || !current.server || !current.topic)
+      throw Error("Configure an ntfy destination before pausing notifications.");
+    const ntfy: { server: string; topic: string; paused?: true } = {
+      server: current.server,
+      topic: current.topic,
+    };
+    if (request.paused) ntfy.paused = true;
+    value.notifications = { ntfy };
     writeMobileConfig(mobileConfig, value, info);
     return notificationsView(value);
   }

@@ -310,7 +310,14 @@ export function runner(c: Config) {
       });
       if (!detail) return;
       const settings = await c.adminNotifications();
-      if (!settings?.configured || !settings.server || !settings.topic) return;
+      if (
+        !settings?.configured ||
+        !settings.deliveryEnabled ||
+        settings.paused ||
+        !settings.server ||
+        !settings.topic
+      )
+        return;
       rememberNotifiedKey(notified, key);
       await publishNtfy(
         {
