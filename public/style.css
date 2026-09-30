@@ -1347,6 +1347,11 @@ a {
   #prompt {
     font-size: 16px;
   }
+  .login {
+    padding: max(28px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right))
+      max(28px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
+    margin: max(6vh, env(safe-area-inset-top)) auto;
+  }
   .turn,
   .muted,
   .status {
