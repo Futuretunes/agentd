@@ -1196,3 +1196,13 @@ test("cli content exposes a stable accessible name", () => {
     "Agents and CLIs",
   );
 });
+
+test("diagnostics content exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("diagnostics-content").getAttribute("aria-label"),
+    "Server diagnostics",
+  );
+});
