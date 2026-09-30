@@ -651,6 +651,15 @@ test("main desk exposes a conversation workspace landmark name", () => {
     "Conversation workspace",
   );
 });
+test("login section exposes a sign-in landmark name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("login").getAttribute("aria-label"),
+    "Sign in to agentd",
+  );
+});
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(app, /Open Activity to start/);
