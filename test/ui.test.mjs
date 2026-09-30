@@ -10,7 +10,19 @@ import {
   diffStats,
   formatCompactDuration,
   formatActiveStatusLabel,
+  liveOutputPreview,
 } from "../public/ui.js";
+test("liveOutputPreview keeps a trailing bounded plain-text window", () => {
+  assert.deepEqual(liveOutputPreview(""), { text: "", truncated: false });
+  assert.deepEqual(liveOutputPreview("hello"), { text: "hello", truncated: false });
+  const long = "keep\n" + "x".repeat(7000);
+  const preview = liveOutputPreview(long, 6000);
+  assert.equal(preview.truncated, true);
+  assert.ok(preview.text.length <= 6000);
+  assert.equal(preview.text.includes("\u001b"), false);
+  assert.equal(liveOutputPreview("a\u001b[31mred\u001b[0mb").text, "aredb");
+  assert.match(liveOutputPreview("<script>alert(1)</script>").text, /<script>/);
+});
 test("compact duration and active status labels stay honest and short", () => {
   assert.equal(formatCompactDuration(0), "0s");
   assert.equal(formatCompactDuration(45), "45s");

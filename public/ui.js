@@ -280,6 +280,22 @@ export function formatActiveStatusLabel(status, startedAt, now = Date.now()) {
   return duration;
 }
 
+/**
+ * Bounded plain-text preview of live run output for the conversation turn.
+ * Strips ANSI, prefers a trailing line boundary, never interprets HTML/Markdown.
+ */
+export function liveOutputPreview(text, maxChars = 6000) {
+  const cleaned = String(text ?? "")
+    .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "")
+    .replace(/\r/g, "");
+  if (!cleaned) return { text: "", truncated: false };
+  if (cleaned.length <= maxChars) return { text: cleaned, truncated: false };
+  const slice = cleaned.slice(-maxChars);
+  const nl = slice.indexOf("\n");
+  const body = nl >= 0 && nl < 240 ? slice.slice(nl + 1) : slice;
+  return { text: body, truncated: true };
+}
+
 export function setupShell() {
   const $ = (id) => document.getElementById(id),
     mobile = matchMedia("(max-width: 760px)");
