@@ -959,3 +959,11 @@ test("review and run content announce updates politely", () => {
     "polite",
   );
 });
+
+test("conversation workspace header exposes a landmark name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const header = document.querySelector("main.desk > header");
+  assert.equal(header.getAttribute("aria-label"), "Conversation heading");
+});
