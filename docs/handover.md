@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.76.0 — Configuration profile enable (Cursor)
 
-Settings > Configuration can enable a missing standard resource profile or gateway hardening profile (one-way) via fixed oneshot jobs and step-up access-key preview. See [handover](handovers/2026-09-30-cursor-profile-enable.md). Not installed.
+Settings > Configuration can enable a missing standard resource profile or gateway hardening profile (one-way) via fixed oneshot jobs and step-up access-key preview. See [handover](handovers/2026-09-30-cursor-profile-enable.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.75.0 — Claude and Codex approved CLI installs (Cursor)
 
