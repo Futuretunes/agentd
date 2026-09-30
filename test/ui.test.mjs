@@ -1778,3 +1778,15 @@ test("access key input exposes a stable accessible name", () => {
   assert.equal(label.textContent.trim(), "Access key");
   assert.equal(document.getElementById("key").getAttribute("aria-label"), "Access key");
 });
+
+test("history query exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="history-query"]');
+  assert.ok(label);
+  assert.equal(
+    document.getElementById("history-query").getAttribute("aria-label"),
+    "History search",
+  );
+});
