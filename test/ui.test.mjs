@@ -1302,3 +1302,11 @@ test("phone conversation region clears horizontal safe-area insets", () => {
     /#detail\s*\{\s*padding:\s*22px\s+max\(16px,\s*env\(safe-area-inset-right\)\)\s+22px\s+max\(16px,\s*env\(safe-area-inset-left\)\)/,
   );
 });
+
+test("phone composer clears horizontal safe-area insets", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /\.composer-wrap\s*\{\s*padding:\s*8px\s+max\(12px,\s*env\(safe-area-inset-right\)\)\s+max\(10px,\s*env\(safe-area-inset-bottom\)\)\s+max\(12px,\s*env\(safe-area-inset-left\)\)/,
+  );
+});
