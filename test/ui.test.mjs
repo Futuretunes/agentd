@@ -425,6 +425,13 @@ test("phone composer keeps Send on the same row as tools", () => {
   assert.match(phone, /\.compose-foot \{[^}]*flex-wrap: nowrap/);
   assert.match(phone, /#send \{[^}]*white-space: nowrap/);
 });
+test("status and outcome classes keep non-colour cues", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(css, /\.status\.running[\s\S]*font-weight: 600/);
+  assert.match(css, /\.status\.failed[\s\S]*text-decoration: underline/);
+  assert.match(css, /\.good \{[\s\S]*font-weight: 600/);
+  assert.match(css, /\.attention \{[\s\S]*font-weight: 600/);
+});
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
   globalThis.document = document;
