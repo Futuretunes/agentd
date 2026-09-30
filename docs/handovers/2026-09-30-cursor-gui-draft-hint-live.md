@@ -6,7 +6,7 @@
 - Release: 0.109.0
 - Branch and base: `feat/gui-draft-hint-live` on `main` (0.108.0)
 - Implementation commit(s): 98c6ed3
-- PR: (filled after open)
+- PR: #159
 
 ## Changes and relevant files
 
