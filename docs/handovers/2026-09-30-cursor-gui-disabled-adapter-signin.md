@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Operations must not present “Sign in” as the fix for adapters disabled by security policy; Cursor capability notes must not contradict unavailability
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.94.0
 - Branch and base: `feat/gui-disabled-adapter-signin` on `main` (0.93.0)
 - Implementation commit(s): 4e39fa6
@@ -17,13 +17,15 @@
 
 ## Validation evidence
 
+- CI green on #129; live-installed on 192.168.1.20 (0.94.0 / 5518fd0d53ef).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.93.0 / revert of #129.
 
 ## Constraints and known issues
 
@@ -32,5 +34,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #129 and live-installed 0.94.0.
 2. Continue UX polish or admin slices as operator priority allows.
