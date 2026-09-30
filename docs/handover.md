@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.100.0 — Disabled option reasons (Cursor)
 
-Disabled agent and mode options expose a title reason. See [handover](handovers/2026-09-30-cursor-gui-disabled-option-reasons.md). Not installed.
+Disabled agent and mode options expose a title reason. See [handover](handovers/2026-09-30-cursor-gui-disabled-option-reasons.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.99.0 — Phone touch targets + readable type (Cursor)
 
