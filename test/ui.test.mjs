@@ -1872,3 +1872,17 @@ test("feedback comment checkboxes expose stable accessible names", () => {
   const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(source, /aria-label", "Select " \+ item\.key/);
 });
+
+test("login blurb exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("login-blurb").getAttribute("aria-label"),
+    "Sign-in guidance",
+  );
+  assert.equal(
+    document.getElementById("loginform").getAttribute("aria-describedby"),
+    "login-blurb",
+  );
+});
