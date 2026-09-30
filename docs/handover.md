@@ -12,7 +12,7 @@ Waiting-for-approval turns lead with one honest sentence (what the agent will do
 
 ## Candidate 0.88.0 — Auto-dismiss notices (Cursor)
 
-Page and in-dialog notices auto-dismiss (5s info / 8s error); page toast sits above open dialogs. See [handover](handovers/2026-09-30-cursor-gui-notice-dismiss.md). Not installed.
+Page and in-dialog notices auto-dismiss (5s info / 8s error); page toast sits above open dialogs. See [handover](handovers/2026-09-30-cursor-gui-notice-dismiss.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.87.0 — One primary review step (Cursor)
 
