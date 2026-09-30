@@ -16,7 +16,23 @@ import {
   noticeDismissMs,
   approvalSentence,
   approvalModelLine,
+  applySuggestionPrompt,
 } from "../public/ui.js";
+test("applySuggestionPrompt fills without submitting and parks the caret", () => {
+  const field = {
+    value: "",
+    setSelectionRange(start, end) {
+      this.start = start;
+      this.end = end;
+    },
+  };
+  const applied = applySuggestionPrompt(field, "Explain this project");
+  assert.equal(field.value, "Explain this project");
+  assert.equal(field.start, field.value.length);
+  assert.equal(field.end, field.value.length);
+  assert.match(applied.hint, /Suggestion filled/);
+  assert.equal(applySuggestionPrompt(null, "x").hint, "");
+});
 test("approvalSentence states one honest promise before Run", () => {
   assert.equal(
     approvalSentence(
