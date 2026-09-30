@@ -545,9 +545,23 @@ test("openDialog restores focus to the trigger when the dialog closes", () => {
   assert.equal(dialog.__agentdReturnFocus, null);
 });
 test("app opens dialogs through openDialog for focus restoration", () => {
-  const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
-  assert.match(app, /openDialog/);
-  assert.equal([...app.matchAll(/\.showModal\(/g)].length, 0);
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /openDialog\(/);
+  assert.equal([...source.matchAll(/\.showModal\(/g)].length, 0);
+  assert.match(
+    source,
+    /history-menu[\s\S]*openDialog\(\$\("history-dialog"\)\)[\s\S]*\$\("history-query"\)\.focus\(\)/,
+  );
+  assert.match(
+    source,
+    /add-project[\s\S]*openDialog\(\$\("project-dialog"\)\)[\s\S]*\$\("project-input"\)\.focus\(\)/,
+  );
+});
+test("history search field is ready for immediate typing", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.ok(document.getElementById("history-query").hasAttribute("autofocus"));
 });
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
