@@ -1091,19 +1091,31 @@ function renderThread(data) {
       status.dataset.started = t.updated || t.created;
       status.dataset.state = t.status;
     }
-    head.append(
-      node(
-        "strong",
-        t.merge_parent && !t.log && !t.revision_of && !t.retry_of
-          ? "◈ Base integration"
-          : t.adapter === "cursor"
-            ? "◉ Cursor"
-            : t.adapter === "codex"
-              ? "◈ Codex"
-              : "✳ Claude",
-      ),
-      status,
+    const agentLabel = node("strong");
+    const agentGlyph = node(
+      "span",
+      t.merge_parent && !t.log && !t.revision_of && !t.retry_of
+        ? "◈"
+        : t.adapter === "cursor"
+          ? "◉"
+          : t.adapter === "codex"
+            ? "◈"
+            : "✳",
     );
+    agentGlyph.setAttribute("aria-hidden", "true");
+    agentLabel.append(
+      agentGlyph,
+      document.createTextNode(
+        t.merge_parent && !t.log && !t.revision_of && !t.retry_of
+          ? " Base integration"
+          : t.adapter === "cursor"
+            ? " Cursor"
+            : t.adapter === "codex"
+              ? " Codex"
+              : " Claude",
+      ),
+    );
+    head.append(agentLabel, status);
     response.append(head);
     if (t.outputTruncated && !(pending(t.status) && String(t.output || "").trim()))
       response.append(
