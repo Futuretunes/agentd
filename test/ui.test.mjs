@@ -2205,3 +2205,12 @@ test("Create project actions expose a stable accessible name", () => {
   assert.equal(actions.getAttribute("role"), "group");
   assert.equal(actions.getAttribute("aria-label"), "Create project actions");
 });
+
+test("Request revisions actions expose a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const actions = document.querySelector("#revision-form .actions");
+  assert.equal(actions.getAttribute("role"), "group");
+  assert.equal(actions.getAttribute("aria-label"), "Request revisions actions");
+});
