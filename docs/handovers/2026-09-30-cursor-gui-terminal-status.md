@@ -2,11 +2,11 @@
 
 - Author/agent: Cursor
 - Requested outcome: Finished Ask/chat turns must not imply a review; pending and committed edits stay explicit
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.92.0
 - Branch and base: `feat/gui-terminal-status` on `main` (0.91.0)
-- Implementation commit(s): (filled after commit)
-- PR: (filled after open)
+- Implementation commit(s): eb922db
+- PR: #125
 
 ## Changes and relevant files
 
@@ -15,13 +15,15 @@
 
 ## Validation evidence
 
+- CI green on #125; live-installed on 192.168.1.20 (0.92.0 / 43041c490b7c).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.91.0 / revert of #125.
 
 ## Constraints and known issues
 
@@ -30,5 +32,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #125 and live-installed 0.92.0.
 2. Continue UX polish or admin slices as operator priority allows.

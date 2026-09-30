@@ -12,7 +12,7 @@ Operations summary adds “Awaiting review” and excludes pending-review succee
 
 ## Candidate 0.92.0 — Honest finished-status labels (Cursor)
 
-Finished Ask/chat turns say “Answer ready”; pending edits stay “Changes ready for review”; committed edits say “Committed”. See [handover](handovers/2026-09-30-cursor-gui-terminal-status.md). Not installed.
+Finished Ask/chat turns say “Answer ready”; pending edits stay “Changes ready for review”; committed edits say “Committed”. See [handover](handovers/2026-09-30-cursor-gui-terminal-status.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.91.0 — Primary Publish after commit (Cursor)
 
