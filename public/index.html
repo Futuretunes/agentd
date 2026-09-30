@@ -47,7 +47,9 @@
             >
               <path fill="currentColor" d="M8 1.25 14.75 8 8 14.75 1.25 8Z" /></svg
             >agentd</a
-          ><button id="drawer-close" aria-label="Close navigation">×</button>
+          ><button id="drawer-close" aria-label="Close navigation">
+            <span aria-hidden="true">×</span>
+          </button>
         </div>
         <button id="new" class="new-chat" aria-label="New conversation">
           ＋ New conversation
@@ -76,7 +78,7 @@
             aria-expanded="false"
             aria-controls="sidebar"
           >
-            ☰
+            <span aria-hidden="true">☰</span>
           </button>
           <div class="conversation-heading">
             <p class="eyebrow" id="project-name">Workspace</p>
@@ -84,7 +86,7 @@
           </div>
           <details id="conversation-menu" class="header-actions">
             <summary aria-label="Conversation and project actions" aria-expanded="false">
-              •••
+              <span aria-hidden="true">•••</span>
             </summary>
             <div class="menu-panel">
               <button id="rename" hidden>Rename conversation</button
@@ -101,11 +103,7 @@
           tabindex="-1"
           aria-busy="false"
         ></div>
-        <div
-          class="composer-wrap"
-          role="complementary"
-          aria-label="Message composer"
-        >
+        <div class="composer-wrap" role="complementary" aria-label="Message composer">
           <form
             id="compose"
             aria-label="Compose message"
@@ -138,6 +136,7 @@
                     multiple
                     class="sr-only"
                     tabindex="-1"
+                    aria-hidden="true"
                 /></span>
                 <details id="run-picker" class="run-picker">
                   <summary aria-label="Agent, mode and model" aria-expanded="false">
@@ -167,7 +166,13 @@
                   </div>
                 </details>
               </div>
-              <button type="button" id="stop-current" class="danger" hidden aria-label="Stop run">
+              <button
+                type="button"
+                id="stop-current"
+                class="danger"
+                hidden
+                aria-label="Stop run"
+              >
                 Stop</button
               ><button class="primary" id="send" aria-label="Send message">Send ↑</button>
             </div>
@@ -239,8 +244,8 @@
       <section class="settings-section" aria-labelledby="settings-configuration-heading">
         <h3 id="settings-configuration-heading">Configuration</h3>
         <p class="muted">
-          Review managed status and change which agent adapters are enabled. A task
-          runner restart is required after adapter changes take effect.
+          Review managed status and change which agent adapters are enabled. A task runner
+          restart is required after adapter changes take effect.
         </p>
         <button id="configuration-settings">View configuration</button>
       </section>
