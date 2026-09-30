@@ -454,6 +454,45 @@ export function formatTerminalStatusLabel(task = {}, fallbackLabels = {}) {
   return fallbackLabels[status] ?? status;
 }
 
+/**
+ * Operations account button: disabled adapters must not look like "Sign in" is the fix.
+ */
+export function adapterAccountActionLabel({
+  enabled = true,
+  installed = true,
+  accountState = "signed_out",
+} = {}) {
+  if (accountState === "signed_in") return "Reconnect account";
+  if (installed && !enabled) return "Sign in for later";
+  return "Sign in";
+}
+
+/**
+ * Lead account status line for an Operations agent card (U10).
+ * Disabled adapters stay muted even when signed out so "Sign in" is not the implied fix.
+ */
+export function adapterAccountStatusLine({ account = {}, enabled = true } = {}) {
+  if (account.state === "signed_in")
+    return {
+      text: `Signed in${account.method ? " · " + account.method : ""}`,
+      className: "good",
+    };
+  if (account.state === "unavailable")
+    return {
+      text: account.message || "Account status unavailable",
+      className: "muted",
+    };
+  if (account.state === "signed_out")
+    return {
+      text: enabled ? account.message || "Sign-in required" : "Account not signed in",
+      className: enabled ? "attention" : "muted",
+    };
+  return {
+    text: account.message || "",
+    className: "muted",
+  };
+}
+
 export function reviewCommittedProgression(state = {}) {
   const needsRecheck =
     state.checksInput !== "git-tree-v1" || state.checksStatus !== "passed";
