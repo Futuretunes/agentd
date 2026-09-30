@@ -6,7 +6,7 @@
 - Release: 0.106.0
 - Branch and base: `feat/gui-activity-copy` on `main` (0.105.0)
 - Implementation commit(s): 529c031
-- PR: (filled after open)
+- PR: #153
 
 ## Changes and relevant files
 
