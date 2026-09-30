@@ -364,6 +364,49 @@ export function noticeDismissMs(kind = "info") {
   return 5000;
 }
 
+export function approvalDurationLabel(ms) {
+  const seconds = Math.round(Number(ms) / 1000);
+  if (!Number.isFinite(seconds) || seconds <= 0) return "";
+  return seconds < 90 ? seconds + " seconds" : Math.round(seconds / 60) + " min";
+}
+
+export function approvalModelLine(selection = {}) {
+  const model =
+    selection.model === "provider" || !selection.model
+      ? "Provider default model"
+      : String(selection.model);
+  const effort =
+    !selection.effort || selection.effort === "provider"
+      ? ""
+      : " · " + selection.effort + " effort";
+  return model + effort;
+}
+
+/**
+ * One-sentence approval promise for the waiting card (U11).
+ * Mode/access decide whether the project can change; details stay elsewhere.
+ */
+export function approvalSentence(execution = {}, { adapter, mode } = {}) {
+  const agent =
+    adapter === "cursor" ? "Cursor" : adapter === "codex" ? "Codex" : "Claude";
+  const access = execution?.settings?.access;
+  const fs = String(execution?.permissions?.filesystem || "");
+  const chat = mode === "chat" || access === "chat";
+  const edit =
+    mode === "edit" || access === "edit" || /\bedit\b|write|isolated copy/i.test(fs);
+  let action;
+  if (chat)
+    action =
+      agent + " will answer from the text you send. Nothing in the project is changed";
+  else if (edit)
+    action =
+      agent +
+      " will edit an isolated copy of this project. Review changes before any commit";
+  else action = agent + " will read your project and answer. Nothing is changed";
+  const limit = approvalDurationLabel(execution?.timeoutMs);
+  return action + "." + (limit ? " Runs up to " + limit + "." : "");
+}
+
 export function setupShell() {
   const $ = (id) => document.getElementById(id),
     mobile = matchMedia("(max-width: 760px)");

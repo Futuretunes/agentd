@@ -14,7 +14,33 @@ import {
   composerStopControl,
   reviewProgression,
   noticeDismissMs,
+  approvalSentence,
+  approvalModelLine,
 } from "../public/ui.js";
+test("approvalSentence states one honest promise before Run", () => {
+  assert.equal(
+    approvalSentence(
+      {
+        timeoutMs: 120000,
+        settings: { access: "read" },
+        permissions: { filesystem: "Read-only" },
+      },
+      { adapter: "claude", mode: "ask" },
+    ),
+    "Claude will read your project and answer. Nothing is changed. Runs up to 2 min.",
+  );
+  assert.match(
+    approvalSentence(
+      { timeoutMs: 60000, settings: { access: "edit" } },
+      { adapter: "cursor", mode: "edit" },
+    ),
+    /Cursor will edit an isolated copy/,
+  );
+  assert.equal(
+    approvalModelLine({ model: "provider", effort: "high" }),
+    "Provider default model · high effort",
+  );
+});
 test("noticeDismissMs keeps confirmations short and errors readable", () => {
   assert.equal(noticeDismissMs("info"), 5000);
   assert.equal(noticeDismissMs(), 5000);
