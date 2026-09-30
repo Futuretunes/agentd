@@ -2,9 +2,10 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: push ntfy alerts for approval waits and terminal run statuses
-- Status: implemented; pending merge and live-install
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.79.0
 - Branch and base: `feat/gui-ntfy-delivery` on `main` (0.78.0)
+- PR: #97
 
 ## Changes and relevant files
 
@@ -16,9 +17,9 @@
 ## Validation evidence
 
 - `node --test test/notifications-delivery.test.mjs test/notifications.test.mjs`
-- typecheck / format (run with commit)
+- CI green on #97; live-installed on 192.168.1.20 (0.79.0 / 037545fd9e30).
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20; configure a topic and exercise one approval wait.
+1. Configure a topic and exercise one approval wait on the live host.
 2. Next: authenticated task deep links / duplicate persistence across restarts.
