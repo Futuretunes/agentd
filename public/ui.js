@@ -355,6 +355,15 @@ export function reviewProgression(state = {}) {
   };
 }
 
+/**
+ * Toast lifetime for page/dialog notices. Success/info clear quickly;
+ * explicit errors linger a bit longer so they remain readable.
+ */
+export function noticeDismissMs(kind = "info") {
+  if (kind === "error") return 8000;
+  return 5000;
+}
+
 export function setupShell() {
   const $ = (id) => document.getElementById(id),
     mobile = matchMedia("(max-width: 760px)");

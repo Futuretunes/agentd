@@ -655,7 +655,17 @@ details p,
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 12px 18px;
-  z-index: 10;
+  z-index: 40;
+}
+#notice.notice-info {
+  background: var(--surface);
+  color: var(--text);
+}
+.dialog-notice {
+  margin: 12px 0 0;
+}
+.dialog-notice.notice-info {
+  color: var(--muted);
 }
 dialog {
   background: var(--surface);

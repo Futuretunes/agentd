@@ -9,6 +9,7 @@ import {
   liveOutputPreview,
   composerStopControl,
   reviewProgression,
+  noticeDismissMs,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -227,21 +228,40 @@ const labels = {
 };
 const pending = (status) =>
   ["waiting_for_approval", "queued", "running", "cancelling"].includes(status);
-function notice(text = "") {
+let noticeTimer = 0;
+function notice(text = "", kind = "info") {
   const dialogs = [...document.querySelectorAll("dialog[open]")];
   const active = dialogs.at(-1);
   let target = $("notice");
   if (active) {
     target = active.querySelector(".dialog-notice");
     if (!target) {
-      target = node("p", "", "dialog-notice error");
+      target = node("p", "", "dialog-notice");
       target.setAttribute("role", "alert");
       active.append(target);
     }
   }
-  target.textContent = text;
-  target.hidden = !text;
-  if (active && text) target.scrollIntoView({ block: "nearest" });
+  if (noticeTimer) {
+    clearTimeout(noticeTimer);
+    noticeTimer = 0;
+  }
+  const message = String(text || "");
+  const tone =
+    kind === "error" || /\berror\b|failed|refused|denied/i.test(message) ? "error" : kind;
+  target.textContent = message;
+  target.hidden = !message;
+  target.classList.toggle("error", !!message && tone === "error");
+  target.classList.toggle("notice-info", !!message && tone !== "error");
+  if (active && message) target.scrollIntoView({ block: "nearest" });
+  if (!message) return;
+  const clearFor = target;
+  noticeTimer = setTimeout(() => {
+    if (clearFor.textContent !== message) return;
+    clearFor.textContent = "";
+    clearFor.hidden = true;
+    clearFor.classList.remove("error", "notice-info");
+    noticeTimer = 0;
+  }, noticeDismissMs(tone));
 }
 
 function node(tag, text, cls) {

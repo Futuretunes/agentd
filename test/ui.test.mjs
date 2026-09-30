@@ -13,7 +13,13 @@ import {
   liveOutputPreview,
   composerStopControl,
   reviewProgression,
+  noticeDismissMs,
 } from "../public/ui.js";
+test("noticeDismissMs keeps confirmations short and errors readable", () => {
+  assert.equal(noticeDismissMs("info"), 5000);
+  assert.equal(noticeDismissMs(), 5000);
+  assert.equal(noticeDismissMs("error"), 8000);
+});
 test("reviewProgression exposes one primary step with honest guidance", () => {
   assert.equal(
     reviewProgression({
