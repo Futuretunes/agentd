@@ -610,6 +610,7 @@ test("welcome suggestion chips expose stable accessible names", () => {
   const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(source, /aria-label", "Suggested prompts"/);
   assert.match(source, /Use suggestion: " \+ text/);
+  assert.match(source, /welcome-icon[\s\S]*aria-hidden[\s\S]*brandMarkElement/s);
 });
 test("Escape closes run-picker and conversation menus outside dialogs", () => {
   const source = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
