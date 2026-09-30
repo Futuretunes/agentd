@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Show honest elapsed time beside the conversation detail status label while a run is active; reuse existing poll/tick; no websockets or new backend fields
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.84.0
 - Branch and base: `feat/gui-run-elapsed` on `main` (0.83.1)
 - Implementation commit(s): `7b0709bfa7aa77a270ee66c07671d6dc0353a249`
@@ -19,13 +19,15 @@
 
 ## Validation evidence
 
+- CI green on #109; live-installed on 192.168.1.20 (0.84.0 / 870fa8ff521b).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only; do not merge/install from this handover. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.83.1 / revert of #109.
 
 ## Constraints and known issues
 
@@ -34,5 +36,5 @@ Not installed. Candidate only; do not merge/install from this handover. Rollback
 
 ## Next steps
 
-1. Merge when CI is green; do not install until operator asks.
+1. Done: merged #109 and live-installed 0.84.0.
 2. Remaining UX-3: bounded current output / change-review guidance as separately scoped work.
