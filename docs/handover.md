@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.111.0 — Honest no-project New/Send reasons (Cursor)
 
-Without a selected project, New conversation and Send explain the block. See [handover](handovers/2026-09-30-cursor-gui-new-conversation-reason.md). Not installed.
+Without a selected project, New conversation and Send explain the block. See [handover](handovers/2026-09-30-cursor-gui-new-conversation-reason.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.110.0 — Notice roles for errors vs info (Cursor)
 
