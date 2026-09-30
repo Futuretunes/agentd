@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.77.0 — Access-key recovery file deletion (Cursor)
 
-Settings > Access key can delete leftover root-only `/etc/agentd/mobile-access.txt` with step-up preview (O2). See [handover](handovers/2026-09-30-cursor-access-key-recovery-delete.md). Not installed.
+Settings > Access key can delete leftover root-only `/etc/agentd/mobile-access.txt` with step-up preview (O2). See [handover](handovers/2026-09-30-cursor-access-key-recovery-delete.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.76.0 — Configuration profile enable (Cursor)
 
