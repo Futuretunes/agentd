@@ -419,6 +419,12 @@ test("phone layout keeps primary controls at least 44px tall", () => {
   assert.match(phone, /min-height: 44px/);
   assert.match(phone, /#prompt \{\s*font-size: 16px;/);
 });
+test("phone composer keeps Send on the same row as tools", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+  assert.match(phone, /\.compose-foot \{[^}]*flex-wrap: nowrap/);
+  assert.match(phone, /#send \{[^}]*white-space: nowrap/);
+});
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
   globalThis.document = document;
