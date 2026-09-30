@@ -22,7 +22,7 @@ Priority: high; first UX implementation after corrective prerequisites.
 - Keep full raw logs one click away through “View log” and preserve authenticated downloads. Distinguish final answers from raw diagnostics; render a bounded safe Markdown subset with code-copy controls using safe DOM construction. Treat provider output as untrusted. Preserve strict CSP, block executable URLs/HTML and avoid automatic remote image/resource loads.
 - Show one primary action for each state, concise approval details and accurate success/needs-review/account/capability language. Preserve all separate approvals and refreshed policy snapshots.
 - Replace misleading Dictate behavior with honest keyboard-dictation guidance. Keep suggestion focus and saved drafts; do not auto-submit them.
-- Put recoverable errors beside the active control, including within dialogs. Clear obsolete messages and use short-lived success notices only where no action is required.
+- Put recoverable errors beside the active control, including within dialogs. Clear obsolete messages and use short-lived success notices only where no action is required. **Candidate 0.88.0:** page/dialog notices auto-dismiss (5s info / 8s error) and the page toast sits above open dialogs.
 - Acceptance: Ask, Edit, failed approval and failed modal action journeys are clear on desktop/phone. Malicious Markdown remains inert. Logs stay available. Keyboard focus and approval regression tests pass.
 
 ### UX-2 — Predictable navigation and settings (U3, U4, U5, U6, U9)
