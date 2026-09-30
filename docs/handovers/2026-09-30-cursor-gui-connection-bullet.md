@@ -6,7 +6,7 @@
 - Release: 0.112.0
 - Branch and base: `feat/gui-connection-bullet` on `main` (0.111.0)
 - Implementation commit(s): 7d1f9f5
-- PR: (filled after open)
+- PR: #165
 
 ## Changes and relevant files
 
