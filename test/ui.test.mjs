@@ -25,6 +25,7 @@ import {
   projectNavLabel,
   conversationNavLabel,
   brandMarkElement,
+  disabledOptionReason,
 } from "../public/ui.js";
 test("operationsSummaryCounts keeps pending reviews out of Completed", () => {
   assert.deepEqual(
@@ -162,6 +163,13 @@ test("workspace brand uses an SVG mark instead of the text glyph", () => {
   const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
   assert.match(html, /class="brand-mark"/);
   assert.equal(html.includes("◈ agentd"), false);
+});
+test("disabledOptionReason explains unavailable adapter and mode choices", () => {
+  assert.equal(
+    disabledOptionReason("adapter", "Adapter disabled by security policy"),
+    "Unavailable: not enabled on this server",
+  );
+  assert.equal(disabledOptionReason("mode", "Claude"), "Not available for Claude");
 });
 test("reviewCommittedProgression prefers publish after fresh checks", () => {
   assert.deepEqual(

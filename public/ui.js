@@ -510,6 +510,23 @@ export function brandMarkElement(documentRef = document) {
 }
 
 /**
+ * Title for a disabled <option> so assistive/hover users know why (U19).
+ */
+export function disabledOptionReason(kind, detail = "") {
+  if (kind === "adapter") {
+    const plain = {
+      "Adapter disabled by security policy": "not enabled on this server",
+      "CLI is missing or not executable": "not installed on this server",
+    };
+    const why = plain[detail] ?? detail ?? "unavailable";
+    return "Unavailable: " + why;
+  }
+  if (kind === "mode")
+    return detail ? "Not available for " + detail : "Not available for this agent";
+  return "Unavailable";
+}
+
+/**
  * Sidebar project row: explain the numeric badge and expose an accessible name (U17/U19).
  */
 export function projectNavLabel(name, conversations) {
