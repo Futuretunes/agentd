@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.82.0 — GitHub connection status in Configuration (Cursor)
 
-Settings > Configuration shows read-only GitHub connection status and AgentD access ceiling, with a deep link to GitHub settings for connect/reconnect/ceiling changes. See [handover](handovers/2026-09-30-cursor-github-config-status.md). Not installed.
+Settings > Configuration shows read-only GitHub connection status and AgentD access ceiling, with a deep link to GitHub settings for connect/reconnect/ceiling changes. See [handover](handovers/2026-09-30-cursor-github-config-status.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.81.0 — signed-in HTTPS origin configuration (Cursor)
 

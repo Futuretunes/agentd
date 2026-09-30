@@ -2,9 +2,10 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: Settings > Configuration shows read-only GitHub connection status inline
-- Status: implemented; pending merge and live-install
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.82.0
 - Branch and base: `feat/gui-github-config-status` on `main` (0.81.0)
+- PR: #103
 
 ## Changes and relevant files
 
@@ -15,9 +16,9 @@
 ## Validation evidence
 
 - Relies on existing `/api/github` coverage; no Configuration UI test pattern to extend.
-- typecheck / format (run with commit)
+- CI green on #103; live-installed on 192.168.1.20 (0.82.0 / f8567c5d10f5).
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20; confirm Configuration shows connection status and deep-links to GitHub settings.
-2. Remaining UX backlog if any Configuration polish remains.
+1. Confirm Configuration shows connection status on the live host.
+2. Remaining UX backlog; Configuration admin surface is largely complete.
