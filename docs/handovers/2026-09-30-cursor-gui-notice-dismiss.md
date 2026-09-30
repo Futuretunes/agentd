@@ -2,11 +2,11 @@
 
 - Author/agent: Cursor
 - Requested outcome: Notices/toasts auto-dismiss so they do not linger behind dialogs; keep errors readable; raise toast above open dialogs
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.88.0
 - Branch and base: `feat/gui-notice-dismiss` on `main` (0.87.0)
-- Implementation commit(s): (filled after commit)
-- PR: (filled after open)
+- Implementation commit(s): 518da5b
+- PR: #117
 
 ## Changes and relevant files
 
@@ -17,13 +17,15 @@
 
 ## Validation evidence
 
+- CI green on #117; live-installed on 192.168.1.20 (0.88.0 / 4b5fa7215bde).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.87.0 / revert of #117.
 
 ## Constraints and known issues
 
@@ -32,5 +34,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #117 and live-installed 0.88.0.
 2. Remaining UX-1: approval-card distillation / dictate honesty as separately scoped work.
