@@ -1334,3 +1334,11 @@ test("phone notice toast clears horizontal safe-area insets", () => {
     /#notice\s*\{[\s\S]*?max-width:\s*min\(\s*600px,\s*calc\(100vw\s*-\s*32px\s*-\s*env\(safe-area-inset-left\)\s*-\s*env\(safe-area-inset-right\)\)/,
   );
 });
+
+test("phone review sticky footer clears horizontal safe-area insets", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /#review-actions\s*\{\s*bottom:\s*0;\s*padding:\s*16px\s+max\(16px,\s*env\(safe-area-inset-right\)\)\s+max\(16px,\s*env\(safe-area-inset-bottom\)\)\s+max\(16px,\s*env\(safe-area-inset-left\)\)/,
+  );
+});
