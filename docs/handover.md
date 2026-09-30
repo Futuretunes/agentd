@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.106.0 — Activity naming in user-facing copy (Cursor)
 
-Guidance and public errors say Activity instead of Operations. See [handover](handovers/2026-09-30-cursor-gui-activity-copy.md). Not installed.
+Guidance and public errors say Activity instead of Operations. See [handover](handovers/2026-09-30-cursor-gui-activity-copy.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.105.0 — Dialog focus restoration (Cursor)
 
