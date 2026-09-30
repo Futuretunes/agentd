@@ -590,7 +590,13 @@
           run, and the result needs fresh checks and commit approval.
         </p>
         <label for="revision-prompt">What should change?</label
-        ><textarea id="revision-prompt" rows="5" maxlength="16000" required></textarea>
+        ><textarea
+          id="revision-prompt"
+          aria-label="Revision request"
+          rows="5"
+          maxlength="16000"
+          required
+        ></textarea>
         <p
           id="revision-status"
           class="muted"

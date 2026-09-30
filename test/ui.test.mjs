@@ -1693,3 +1693,16 @@ test("publishing body exposes a stable accessible name", () => {
     "Pull request description",
   );
 });
+
+test("revision prompt exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="revision-prompt"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "What should change?");
+  assert.equal(
+    document.getElementById("revision-prompt").getAttribute("aria-label"),
+    "Revision request",
+  );
+});
