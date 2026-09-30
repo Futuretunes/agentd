@@ -2246,3 +2246,12 @@ test("account dialog heading group is named in app bootstrap", () => {
   assert.match(src, /accountHead\.setAttribute\("role", "group"\)/);
   assert.match(src, /accountHead\.setAttribute\("aria-label", "Account heading"\)/);
 });
+
+test("Agent settings dialog heading group is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /settingsHead\.setAttribute\("role", "group"\)/);
+  assert.match(
+    src,
+    /settingsHead\.setAttribute\("aria-label", "Agent settings heading"\)/,
+  );
+});
