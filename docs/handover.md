@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.87.0 — One primary review step (Cursor)
 
-Pending change review sticky footer shows one primary step (Set up checks / Run checks / Commit) with next-step guidance; Request revisions and Discard stay secondary. See [handover](handovers/2026-09-30-cursor-gui-review-primary-step.md). Not installed.
+Pending change review sticky footer shows one primary step (Set up checks / Run checks / Commit) with next-step guidance; Request revisions and Discard stay secondary. See [handover](handovers/2026-09-30-cursor-gui-review-primary-step.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.86.0 — Composer Stop/Cancel while active (Cursor)
 
