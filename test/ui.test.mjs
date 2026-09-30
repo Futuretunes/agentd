@@ -1602,3 +1602,16 @@ test("dialog form first labels drop top margin", () => {
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(css, /dialog form > label:first-of-type\s*\{[\s\S]*?margin-top:\s*0/);
 });
+
+test("repository branch exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="repository-branch"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Branch");
+  assert.equal(
+    document.getElementById("repository-branch").getAttribute("aria-label"),
+    "Repository branch",
+  );
+});
