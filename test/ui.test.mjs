@@ -1758,3 +1758,13 @@ test("mode select exposes a stable accessible name", () => {
     "Conversation mode",
   );
 });
+
+test("adapter select exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="adapter"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Agent");
+  assert.equal(document.getElementById("adapter").getAttribute("aria-label"), "Agent");
+});
