@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.103.0 — Consistent dialog close targets (Cursor)
 
-Dialog × closes are a shared 44×44 control. See [handover](handovers/2026-09-30-cursor-gui-dialog-close-targets.md). Not installed.
+Dialog × closes are a shared 44×44 control. See [handover](handovers/2026-09-30-cursor-gui-dialog-close-targets.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.102.0 — Non-colour status cues (Cursor)
 
