@@ -637,6 +637,11 @@ test("compose form is named and described by composer hints", () => {
   assert.equal(form.getAttribute("aria-label"), "Compose message");
   assert.equal(form.getAttribute("aria-describedby"), "hint policy-hint draft-hint");
 });
+test("conversation image links expose open-attachment names", () => {
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /Open attached image: " \+ item\.name/);
+  assert.match(source, /aria-label", "Attached images"/);
+});
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(app, /Open Activity to start/);
