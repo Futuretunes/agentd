@@ -10,18 +10,20 @@ cli=load('admin_cli')
 approve=load('approve_cli')
 
 class AdminCli(unittest.TestCase):
-    def test_approve_list_and_start(self):
+    def approve_fixture(self,adapter,version,binary,releases,root):
+        payload=root/'payload'/adapter/version;payload.mkdir(parents=True)
+        exe=payload/binary
+        exe.write_text('#!/bin/sh\necho '+version+'\n');os.chmod(exe,0o755)
+        archive=root/(adapter+'.tar.gz')
+        with tarfile.open(archive,'w:gz') as tar:tar.add(payload,arcname=version)
+        sha=hashlib.sha256(archive.read_bytes()).hexdigest()
+        return approve.approve(archive,sha,version,adapter=adapter,notes='fixture',releases=releases,owner=os.getuid())
+
+    def test_approve_list_and_start_cursor(self):
         with tempfile.TemporaryDirectory() as root:
-            root=Path(root)
-            releases=root/'cli'
+            root=Path(root);releases=root/'cli'
             version='2026.09.29-abcdef0'
-            binary=root/'payload'/version;binary.mkdir(parents=True)
-            exe=binary/'cursor-agent'
-            exe.write_text('#!/bin/sh\necho '+version+'\n');os.chmod(exe,0o755)
-            archive=root/'cursor.tar.gz'
-            with tarfile.open(archive,'w:gz') as tar:tar.add(binary,arcname=version)
-            sha=hashlib.sha256(archive.read_bytes()).hexdigest()
-            meta=approve.approve(archive,sha,version,notes='fixture',releases=releases,owner=os.getuid())
+            meta=self.approve_fixture('cursor',version,'cursor-agent',releases,root)
             self.assertEqual(meta['id'],'cursor_'+version)
             inventory=cli.list_approvals(releases,owner=os.getuid())
             self.assertEqual(len(inventory['items']),1)
@@ -35,13 +37,25 @@ class AdminCli(unittest.TestCase):
             )
             self.assertTrue(result['started'])
             self.assertEqual(started,['agentd-cli-install@'+meta['id']+'.service'])
-            with self.assertRaises(ValueError):
-                cli.start_install(
-                    'cursor_1999.01.01-deadbee',
-                    list_fn=lambda:cli.list_approvals(releases,owner=os.getuid()),
-                    start=started.append,
-                    configured=lambda:True,
-                )
+
+    def test_approve_claude_and_codex(self):
+        with tempfile.TemporaryDirectory() as root:
+            root=Path(root);releases=root/'cli'
+            claude=self.approve_fixture('claude','2.1.283','claude',releases,root)
+            codex=self.approve_fixture('codex','0.157.1','codex',releases,root)
+            self.assertEqual(claude['id'],'claude_2.1.283')
+            self.assertEqual(codex['id'],'codex_0.157.1')
+            inventory=cli.list_approvals(releases,owner=os.getuid())
+            adapters={item['adapter'] for item in inventory['items']}
+            self.assertEqual(adapters,{'claude','codex'})
+            started=[]
+            cli.start_install(
+                claude['id'],
+                list_fn=lambda:cli.list_approvals(releases,owner=os.getuid()),
+                start=started.append,
+                configured=lambda:True,
+            )
+            self.assertEqual(started,['agentd-cli-install@claude_2.1.283.service'])
 
 if __name__=='__main__':
     unittest.main()

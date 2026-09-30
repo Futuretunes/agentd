@@ -661,9 +661,11 @@ export function mobile(c: Config) {
             throw Error("Current access key did not match.");
           if (
             typeof input.id !== "string" ||
-            !/^cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}$/.test(input.id)
+            !/^(?:cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}|claude_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}|codex_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4})$/.test(
+              input.id,
+            )
           )
-            throw Error("Choose an approved Cursor CLI package.");
+            throw Error("Choose an approved CLI package.");
           if (input.action === "preview") {
             const current = await call({ op: "admin-cli" }),
               item = (current.items ?? []).find((entry: any) => entry.id === input.id),
@@ -694,6 +696,7 @@ export function mobile(c: Config) {
               fingerprint,
               expiresAt: new Date(expires).toISOString(),
               id: input.id,
+              adapter: item.adapter,
               version: item.version,
               notes: item.notes ?? "",
               requiresIdle: !plan.idle,

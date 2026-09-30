@@ -169,7 +169,9 @@ export async function startCliInstall(
 ): Promise<{ started: true; id: string }> {
   if (
     typeof id !== "string" ||
-    !/^cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}$/.test(id)
+    !/^(?:cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}|claude_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}|codex_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4})$/.test(
+      id,
+    )
   )
     throw Error("CLI install request is invalid.");
   const value: any = await request(socket, { op: "cli-install", id }, 15000);

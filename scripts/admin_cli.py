@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """List and start installation of operator-approved native CLI binaries.
 
-Only Cursor is supported in this slice: versions live under /opt/cursor-agent/<version>
-with a managed symlink at the service user's ~/.local/bin/cursor-agent. Claude and Codex
-remain npm installs until a reviewed helper exists for them.
+Cursor, Claude and Codex approvals live under /var/lib/agentd-cli. Each install
+writes under /opt/<root>/<version> and updates a managed symlink in the service
+user's ~/.local/bin. Account profiles are never touched.
 """
 import json,os,re,subprocess,sys
 from pathlib import Path
@@ -13,9 +13,40 @@ import update
 
 CONFIG=Path('/etc/agentd/update.json')
 RELEASES=Path('/var/lib/agentd-cli')
-CURSOR_VERSION=re.compile(r'[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}')
-ID_KEY=re.compile(r'cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}')
+ADAPTERS={
+    'cursor':{
+        'id':re.compile(r'cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}'),
+        'version':re.compile(r'[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}'),
+        'binary':'cursor-agent',
+        'link':'cursor-agent',
+        'root':Path('/opt/cursor-agent'),
+        'prefix':'cursor_',
+    },
+    'claude':{
+        'id':re.compile(r'claude_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}'),
+        'version':re.compile(r'[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}'),
+        'binary':'claude',
+        'link':'claude',
+        'root':Path('/opt/claude-code'),
+        'prefix':'claude_',
+    },
+    'codex':{
+        'id':re.compile(r'codex_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}'),
+        'version':re.compile(r'[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}'),
+        'binary':'codex',
+        'link':'codex',
+        'root':Path('/opt/codex'),
+        'prefix':'codex_',
+    },
+}
+ID_KEY=re.compile(r'(?:cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}|claude_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}|codex_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4})')
 SHA=re.compile(r'[0-9a-f]{64}')
+
+def adapter_for(key):
+    if not isinstance(key,str) or not ID_KEY.fullmatch(key):raise ValueError('Invalid CLI approval id')
+    for name,spec in ADAPTERS.items():
+        if spec['id'].fullmatch(key):return name,spec
+    raise ValueError('Invalid CLI approval id')
 
 def root_file(path,owner=0):
     info=path.lstat()
@@ -25,7 +56,7 @@ def root_file(path,owner=0):
 def public_item(meta):
     return {
         'id':meta['id'],
-        'adapter':'cursor',
+        'adapter':meta['adapter'],
         'version':meta['version'],
         'notes':str(meta.get('notes') or '')[:200],
         'approvedAt':meta.get('approvedAt'),
@@ -33,12 +64,12 @@ def public_item(meta):
     }
 
 def approved(key,releases=RELEASES,owner=0):
-    if not isinstance(key,str) or not ID_KEY.fullmatch(key):raise ValueError('Invalid CLI approval id')
+    adapter,spec=adapter_for(key)
     record,archive=releases/(key+'.json'),releases/(key+'.tar.gz')
     root_file(record,owner);root_file(archive,owner)
     meta=json.loads(record.read_text())
-    if (meta.get('format')!=1 or meta.get('id')!=key or meta.get('adapter')!='cursor'
-            or not CURSOR_VERSION.fullmatch(str(meta.get('version','')))
+    if (meta.get('format')!=1 or meta.get('id')!=key or meta.get('adapter')!=adapter
+            or not spec['version'].fullmatch(str(meta.get('version','')))
             or not SHA.fullmatch(str(meta.get('sha256','')))):
         raise ValueError('Invalid CLI approval record')
     return meta,archive
@@ -50,7 +81,7 @@ def list_approvals(releases=RELEASES,owner=0):
     if info.st_uid!=owner or info.st_mode&0o077:
         raise ValueError('Approved CLI directory must be root-only')
     items=[]
-    for path in sorted(releases.glob('cursor_*.json')):
+    for path in sorted(releases.glob('*.json')):
         try:
             meta,_=approved(path.stem,releases,owner)
             items.append(public_item(meta))

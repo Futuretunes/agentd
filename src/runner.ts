@@ -1601,7 +1601,9 @@ export function runner(c: Config) {
       if (!c.startCliInstall) throw Error("CLI install is not installed.");
       if (
         typeof input.id !== "string" ||
-        !/^cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}$/.test(input.id)
+        !/^(?:cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}|claude_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}|codex_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4})$/.test(
+          input.id,
+        )
       )
         throw Error("CLI install request is invalid.");
       if (blocked("update"))

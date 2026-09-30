@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Install one operator-approved Cursor CLI archive.
+"""Install one operator-approved native CLI archive.
 
-Started only as agentd-cli-install@cursor_<version>.service. The administration
+Started only as agentd-cli-install@<approval-id>.service. The administration
 helper can only name an approval id. This job re-verifies the approval and
-archive, extracts under /opt/cursor-agent/<version>, and atomically updates the
+archive, extracts under /opt/<adapter-root>/<version>, and atomically updates the
 service-user symlink. Account profiles are never touched.
 """
 import argparse,grp,json,os,pwd,shutil,subprocess,sys,tarfile,tempfile,time
@@ -15,11 +15,10 @@ import admin_cli as cli
 import update
 
 CONFIG=Path('/etc/agentd/update.json')
-OPT_ROOT=Path('/opt/cursor-agent')
 STATUS='cli-install-status.json'
 STAGES={
     'verifying':'Verifying the approved CLI archive',
-    'installing':'Installing the Cursor agent binary',
+    'installing':'Installing the approved CLI binary',
     'linking':'Updating the managed symlink',
     'checking':'Checking the installed version',
     'succeeded':'CLI install completed',
@@ -54,41 +53,43 @@ def install(key,config_path=CONFIG,releases=cli.RELEASES,owner=0):
     status('verifying')
     try:
         meta,archive=cli.approved(key,releases,owner)
+        adapter,spec=cli.adapter_for(key)
         version=meta['version']
         if any(deployment.glob('*pending.json')):raise ValueError('Resolve pending recovery first')
         update.control_idle(c)
         installed=json.loads((deployment/'installed.json').read_text())
         update.idle(Path(c['state']),installed['release']['taskSchemaVersion'])
         status('installing')
-        OPT_ROOT.mkdir(mode=0o755,exist_ok=True)
-        if OPT_ROOT.is_symlink() or OPT_ROOT.lstat().st_uid!=0:
-            raise ValueError('Invalid Cursor install root')
-        target=OPT_ROOT/version
+        opt_root=spec['root']
+        opt_root.mkdir(mode=0o755,exist_ok=True)
+        if opt_root.is_symlink() or opt_root.lstat().st_uid!=0:
+            raise ValueError('Invalid CLI install root')
+        target=opt_root/version
         if target.exists():
-            raise ValueError('That Cursor version is already installed on disk')
-        stage=Path(tempfile.mkdtemp(prefix='agentd-cli-',dir=str(OPT_ROOT)))
+            raise ValueError('That CLI version is already installed on disk')
+        stage=Path(tempfile.mkdtemp(prefix='agentd-cli-',dir=str(opt_root)))
         try:
             extract_archive(archive,stage)
             extracted=stage/version
-            binary=extracted/'cursor-agent'
+            binary=extracted/spec['binary']
             if not binary.is_file() or not os.access(binary,os.X_OK):
-                raise ValueError('Extracted cursor-agent is not executable')
+                raise ValueError('Extracted CLI binary is not executable')
             extracted.rename(target)
             for path,_,files in os.walk(target):
                 os.chown(path,0,0)
                 for name in files:
                     os.chown(os.path.join(path,name),0,0)
-            os.chmod(binary,0o755)
+            os.chmod(target/spec['binary'],0o755)
         finally:
             shutil.rmtree(stage,ignore_errors=True)
         status('linking')
         home=agentd_home(c)
         link_dir=home/'.local'/'bin'
         link_dir.mkdir(parents=True,exist_ok=True)
-        link=link_dir/'cursor-agent'
-        temporary=link_dir/('.cursor-agent.'+str(os.getpid())+'.tmp')
+        link=link_dir/spec['link']
+        temporary=link_dir/('.'+spec['link']+'.'+str(os.getpid())+'.tmp')
         if temporary.exists() or temporary.is_symlink():temporary.unlink()
-        temporary.symlink_to(target/'cursor-agent')
+        temporary.symlink_to(target/spec['binary'])
         uid=pwd.getpwnam(c.get('user') or 'agentd').pw_uid
         gid=grp.getgrnam(c.get('group') or 'agentd').gr_gid
         os.chown(temporary,uid,gid,follow_symlinks=False)
@@ -102,11 +103,11 @@ def install(key,config_path=CONFIG,releases=cli.RELEASES,owner=0):
         )
         reported=(probe.stdout or '').strip().splitlines()[0][:128] if (probe.stdout or '').strip() else ''
         if version not in reported and reported!=version:
-            raise ValueError('Installed Cursor version did not report the approved id')
+            raise ValueError('Installed CLI version did not report the approved id')
         with log.open('a') as output:
             os.chmod(log,0o600)
-            output.write(f'installed {key} -> {target}\nreported {reported}\n')
-        status('succeeded','succeeded',version=version,reported=reported)
+            output.write(f'installed {key} adapter={adapter} -> {target}\nreported {reported}\n')
+        status('succeeded','succeeded',version=version,adapter=adapter,reported=reported)
     except Exception:
         status('failed','failed',failedStage=state['stage'])
         raise

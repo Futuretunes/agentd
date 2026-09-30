@@ -4767,7 +4767,7 @@ async function renderCliSettings() {
     list.append(card);
   }
   const approvedSection = node("section", undefined, "operation-section");
-  approvedSection.append(node("h3", "Approved Cursor packages"));
+  approvedSection.append(node("h3", "Approved CLI packages"));
   if (!approved) {
     approvedSection.append(
       node("p", "Approved CLI installs are not available on this install yet.", "muted"),
@@ -4780,14 +4780,15 @@ async function renderCliSettings() {
     approvedSection.append(
       node(
         "p",
-        "No approved Cursor packages are staged. An administrator places a reviewed archive with approve_cli.py first.",
+        "No approved CLI packages are staged. An administrator places a reviewed archive with approve_cli.py first.",
         "muted",
       ),
     );
   } else {
     for (const item of approved.items) {
-      const row = node("div", undefined, "operation-card");
-      row.append(node("h4", "Cursor " + item.version));
+      const row = node("div", undefined, "operation-card"),
+        title = (names[item.adapter] ?? item.adapter) + " " + item.version;
+      row.append(node("h4", title));
       if (item.notes) row.append(node("p", item.notes, "muted"));
       row.append(button("Review install", () => renderCliInstallForm(item)));
       approvedSection.append(row);
@@ -4799,15 +4800,15 @@ async function renderCliSettings() {
     node(
       "p",
       mismatch || unavailable
-        ? "A different or missing CLI can break model discovery, renewals and pinned work modes. Stage a reviewed Cursor archive on the server, then install it here. Claude and Codex remain host-managed npm installs."
-        : "Versions match the tested pins. Cursor can still be replaced from an approved package below when a newer reviewed binary is staged.",
+        ? "A different or missing CLI can break model discovery, renewals and pinned work modes. Stage a reviewed archive on the server, then install it here."
+        : "Versions match the tested pins. Approved packages below can still replace a CLI when a newer reviewed binary is staged.",
       mismatch || unavailable ? "attention" : "muted",
     ),
   );
   for (const step of [
     "1. Finish or stop active runs, preparations and account changes.",
     "2. Keep the current tested binary for rollback. Do not copy account profiles into a release.",
-    "3. Stage the official Cursor archive with approve_cli.py (root-only approved directory).",
+    "3. Stage the official archive with approve_cli.py --adapter cursor|claude|codex (root-only approved directory).",
     "4. Install from this page, refresh versions, then use separately approved smoke work if needed.",
     "5. Update AgentD's shared version pin in the same release train when the tested pin changes.",
   ])
@@ -4830,7 +4831,7 @@ async function renderCliSettings() {
     refresh,
     node(
       "p",
-      "Only Cursor uses the approved-package helper in this release. See the native CLI updates document in the repository.",
+      "Cursor, Claude and Codex can use the approved-package helper. See the native CLI updates document in the repository.",
       "muted",
     ),
   );
@@ -4839,14 +4840,16 @@ function renderCliInstallForm(item) {
   const form = node("form"),
     currentLabel = node("label", "Current access key"),
     currentKey = node("input"),
-    submit = node("button", "Review Cursor install", "primary");
+    adapterNames = { claude: "Claude", codex: "Codex", cursor: "Cursor" },
+    label = (adapterNames[item.adapter] ?? item.adapter) + " " + item.version,
+    submit = node("button", "Review " + label + " install", "primary");
   currentKey.type = "password";
   currentKey.autocomplete = "current-password";
   currentKey.required = true;
   currentLabel.append(currentKey);
   submit.type = "submit";
   form.append(
-    node("p", `Install approved Cursor ${item.version}.`, "attention"),
+    node("p", `Install approved ${label}.`, "attention"),
     ...(item.notes ? [node("p", item.notes, "muted")] : []),
     currentLabel,
     submit,
@@ -4876,8 +4879,15 @@ function renderCliInstallApproval(plan) {
     idle = node("input"),
     currentLabel = node("label", "Enter the current access key again"),
     currentKey = node("input"),
-    submit = node("button", "Install Cursor package", "primary"),
-    confirmLabel = node("label", "I understand this replaces the managed Cursor binary"),
+    adapterNames = { claude: "Claude", codex: "Codex", cursor: "Cursor" },
+    title = (adapterNames[plan.adapter] ?? plan.adapter ?? "CLI") + " " + plan.version,
+    submit = node("button", "Install " + title, "primary"),
+    confirmLabel = node(
+      "label",
+      "I understand this replaces the managed " +
+        (adapterNames[plan.adapter] ?? plan.adapter ?? "CLI") +
+        " binary",
+    ),
     idleLabel = node(
       "label",
       "Current work, account changes and preparations are stopped",
@@ -4896,7 +4906,7 @@ function renderCliInstallApproval(plan) {
   currentLabel.append(currentKey);
   submit.type = "submit";
   form.append(
-    node("p", `Install Cursor ${plan.version}.`, "attention"),
+    node("p", `Install ${title}.`, "attention"),
     confirmLabel,
     ...(plan.requiresIdle ? [idleLabel] : []),
     currentLabel,
@@ -4915,7 +4925,7 @@ function renderCliInstallApproval(plan) {
         confirmed: true,
         ...(plan.requiresIdle ? { confirmedIdle: true } : {}),
       });
-      notice("Cursor install started. Refresh versions after it finishes.");
+      notice(title + " install started. Refresh versions after it finishes.");
       await renderCliSettings();
     } catch (error) {
       notice(error.message);
