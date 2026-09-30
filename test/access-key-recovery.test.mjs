@@ -3,10 +3,7 @@ import assert from "node:assert/strict";
 import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import {
-  accessKeyRecoveryStatus,
-  deleteAccessKeyRecovery,
-} from "../src/admin-helper.ts";
+import { accessKeyRecoveryStatus, deleteAccessKeyRecovery } from "../src/admin-helper.ts";
 import { accessKeyHash } from "../src/access-key.ts";
 
 test("access-key recovery status and delete", () => {
