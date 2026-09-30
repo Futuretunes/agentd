@@ -1552,3 +1552,16 @@ test("appearance theme exposes a visible label", () => {
     "Appearance theme",
   );
 });
+
+test("history filter exposes a visible label", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="history-filter"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Show");
+  assert.equal(
+    document.getElementById("history-filter").getAttribute("aria-label"),
+    "History filter",
+  );
+});
