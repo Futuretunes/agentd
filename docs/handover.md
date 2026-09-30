@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.129.0 — Conversation image link names (Cursor)
 
-Conversation attached-image links expose Open attached image labels. See [handover](handovers/2026-09-30-cursor-gui-image-link-labels.md). Not installed.
+Conversation attached-image links expose Open attached image labels. See [handover](handovers/2026-09-30-cursor-gui-image-link-labels.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.128.0 — Phone header safe-area (Cursor)
 
