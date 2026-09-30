@@ -24,6 +24,8 @@ import {
   brandMarkElement,
   disabledOptionReason,
   openDialog,
+  setTextWithTitle,
+  emptyConversationList,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -1046,7 +1048,7 @@ function empty() {
   d.append(intro);
 }
 function renderThread(data) {
-  $("thread-title").textContent = data.conversation.title;
+  setTextWithTitle($("thread-title"), data.conversation.title);
   document.title = data.conversation.title + " · agentd";
   const d = $("detail"),
     nearBottom = d.scrollHeight - d.scrollTop - d.clientHeight < 120;
@@ -1380,8 +1382,10 @@ async function refresh() {
         }),
       );
     }
-    $("project-name").textContent =
-      projects.find((p) => p.id === projectId)?.name ?? "Workspace";
+    setTextWithTitle(
+      $("project-name"),
+      projects.find((p) => p.id === projectId)?.name ?? "Workspace",
+    );
     const threads = projectId
       ? await api("/api/projects/" + projectId + "/conversations")
       : [];
@@ -1402,10 +1406,11 @@ async function refresh() {
           return b;
         }),
       );
-      if (!threads.length)
-        $("tasks").append(
-          node("p", "Your conversations will appear here.", "empty-list"),
-        );
+      if (!threads.length) {
+        const empty = emptyConversationList();
+        empty.start.onclick = () => $("new").click();
+        $("tasks").append(empty.wrap);
+      }
     }
     if (draftLocation !== draftKey()) {
       saveDraft();
@@ -1443,7 +1448,7 @@ async function refresh() {
       );
       if (epoch !== generation) return;
       archivedView = !!data.conversation.archived || !!data.project.archived;
-      $("project-name").textContent = data.project.name;
+      setTextWithTitle($("project-name"), data.project.name);
       latest = data.messages.at(-1);
       const next = JSON.stringify(data);
       if (next !== fingerprint) {
@@ -1452,7 +1457,7 @@ async function refresh() {
       }
     } else {
       archivedView = false;
-      $("thread-title").textContent = "New conversation";
+      setTextWithTitle($("thread-title"), "New conversation");
       document.title = "agentd";
       latest = null;
       if (!fingerprint) {

@@ -27,6 +27,8 @@ import {
   brandMarkElement,
   disabledOptionReason,
   openDialog,
+  setTextWithTitle,
+  emptyConversationList,
 } from "../public/ui.js";
 test("operationsSummaryCounts keeps pending reviews out of Completed", () => {
   assert.deepEqual(
@@ -499,6 +501,28 @@ test("workspace offers a skip link into the conversation region", () => {
   assert.match(html, /id="detail"[^>]*tabindex="-1"/);
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(css, /\.skip-link:focus/);
+});
+test("setTextWithTitle keeps truncated labels discoverable", () => {
+  const el = {
+    textContent: "",
+    title: "",
+    removeAttribute(name) {
+      if (name === "title") this.title = "";
+    },
+  };
+  assert.equal(setTextWithTitle(el, "Long project name"), "Long project name");
+  assert.equal(el.title, "Long project name");
+  setTextWithTitle(el, "");
+  assert.equal(el.title, "");
+});
+test("emptyConversationList offers a New conversation control", () => {
+  const { document } = parseHTML("<!doctype html><html><body></body></html>");
+  const empty = emptyConversationList(document);
+  assert.equal(empty.copy.textContent, "Your conversations will appear here.");
+  assert.equal(empty.start.textContent, "＋ New conversation");
+  assert.match(empty.start.className, /empty-list-cta/);
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(css, /\.empty-list-cta/);
 });
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
