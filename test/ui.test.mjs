@@ -1834,3 +1834,17 @@ test("saved access key confirmation exposes a stable accessible name", () => {
   const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(source, /aria-label", "I saved the new access key securely"/);
 });
+
+test("project name eyebrow exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("project-name").getAttribute("aria-label"),
+    "Active project",
+  );
+  assert.equal(
+    document.getElementById("thread-title").getAttribute("aria-describedby"),
+    "project-name",
+  );
+});
