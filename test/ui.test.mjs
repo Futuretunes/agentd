@@ -660,6 +660,15 @@ test("login section exposes a sign-in landmark name", () => {
     "Sign in to agentd",
   );
 });
+test("signed-in workspace exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("workspace").getAttribute("aria-label"),
+    "agentd workspace",
+  );
+});
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(app, /Open Activity to start/);
