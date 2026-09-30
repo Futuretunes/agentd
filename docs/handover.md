@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.79.0 — ntfy approval and completion delivery (Cursor)
 
-When an ntfy destination is configured, AgentD sends best-effort pushes for approval waits and terminal run statuses. See [handover](handovers/2026-09-30-cursor-ntfy-delivery.md). Not installed.
+When an ntfy destination is configured, AgentD sends best-effort pushes for approval waits and terminal run statuses. See [handover](handovers/2026-09-30-cursor-ntfy-delivery.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.78.0 — ntfy destination configuration (Cursor)
 
