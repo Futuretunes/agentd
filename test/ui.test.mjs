@@ -2131,4 +2131,3 @@ test("configuration dialog heading exposes a stable accessible name", () => {
   assert.equal(head.getAttribute("role"), "group");
   assert.equal(head.getAttribute("aria-label"), "Configuration heading");
 });
-
