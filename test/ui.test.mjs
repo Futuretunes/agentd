@@ -431,11 +431,19 @@ test("workspace has unique controls, keyboard-accessible attachment input and na
   assert.equal(attach.getAttribute("aria-controls"), "files");
   assert.equal(files.className, "sr-only");
   assert.equal(files.getAttribute("tabindex"), "-1");
+  assert.equal(files.getAttribute("aria-hidden"), "true");
   assert.equal(files.hasAttribute("hidden"), false);
   assert.equal(
     document.getElementById("drawer-open").getAttribute("aria-controls"),
     "sidebar",
   );
+  for (const id of ["drawer-open", "drawer-close", "conversation-menu"]) {
+    const el =
+      id === "conversation-menu"
+        ? document.querySelector("#conversation-menu > summary")
+        : document.getElementById(id);
+    assert.ok(el.querySelector('[aria-hidden="true"]'), id);
+  }
   assert.match(
     document.getElementById("project-form").textContent,
     /only after supported npm checks pass/,
