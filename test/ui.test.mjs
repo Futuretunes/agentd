@@ -501,6 +501,11 @@ test("phone review footer respects the home-indicator safe area", () => {
   assert.match(phone, /#review-actions \{[^}]*safe-area-inset-bottom/s);
   assert.match(phone, /#review-actions \{[^}]*bottom: 0/s);
 });
+test("phone header respects the status-bar safe area", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+  assert.match(phone, /header \{[^}]*safe-area-inset-top/s);
+});
 test("status and outcome classes keep non-colour cues", () => {
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(css, /\.status\.running[\s\S]*font-weight: 600/);
