@@ -997,3 +997,13 @@ test("review stats announce updates politely", () => {
     "polite",
   );
 });
+
+test("history results expose a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("history-results").getAttribute("aria-label"),
+    "Search results",
+  );
+});
