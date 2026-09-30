@@ -5,8 +5,8 @@
 - Status: implemented
 - Release: 0.95.0
 - Branch and base: `feat/gui-new-project-layout` on `main` (0.94.0)
-- Implementation commit(s): (filled after commit)
-- PR: (filled after open)
+- Implementation commit(s): 14355e3
+- PR: (pending)
 
 ## Changes and relevant files
 
