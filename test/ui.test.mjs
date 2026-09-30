@@ -532,6 +532,14 @@ test("dialog close buttons expose accessible names", () => {
   const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
   const closes = [...html.matchAll(/aria-label="Close[^"]*"/g)];
   assert.ok(closes.length >= 8, "expected several Close aria-labels");
+  const glyphCloses = [
+    ...html.matchAll(
+      /aria-label="Close[^"]*"[^>]*>\s*<span aria-hidden="true">×<\/span>/g,
+    ),
+  ];
+  assert.ok(glyphCloses.length >= 8, "Close × glyphs should be decorative");
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /Close account dialog[\s\S]*aria-hidden[\s\S]*×/);
 });
 test("selected sidebar items keep a non-colour cue", () => {
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
