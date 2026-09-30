@@ -12,7 +12,7 @@ Pending change review sticky footer shows one primary step (Set up checks / Run 
 
 ## Candidate 0.86.0 — Composer Stop/Cancel while active (Cursor)
 
-Composer Send swaps to ■ Stop while queued/running, Cancel while waiting for approval, and disabled Stopping… while cancelling. See [handover](handovers/2026-09-30-cursor-gui-composer-stop.md). Not installed.
+Composer Send swaps to ■ Stop while queued/running, Cancel while waiting for approval, and disabled Stopping… while cancelling. See [handover](handovers/2026-09-30-cursor-gui-composer-stop.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.85.0 — Bounded live output while running (Cursor)
 
