@@ -1363,6 +1363,8 @@ function renderThread(data) {
     d.append(turn);
   }
   const pages = node("div", undefined, "actions history-navigation");
+  pages.setAttribute("role", "group");
+  pages.setAttribute("aria-label", "Turn history navigation");
   if (data.olderBefore)
     pages.append(
       button("Earlier turns", () => {
