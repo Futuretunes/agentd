@@ -618,6 +618,10 @@ test("history pagination exposes a stable accessible name", () => {
     document.getElementById("history-pages").getAttribute("aria-label"),
     "History pagination",
   );
+  assert.equal(
+    document.getElementById("archived-projects").getAttribute("aria-label"),
+    "Archived projects",
+  );
 });
 test("welcome suggestion chips expose stable accessible names", () => {
   const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
