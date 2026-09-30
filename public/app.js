@@ -17,6 +17,8 @@ import {
   reviewCommittedProgression,
   formatTerminalStatusLabel,
   operationsSummaryCounts,
+  adapterAccountActionLabel,
+  adapterAccountStatusLine,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -50,7 +52,7 @@ function renderPicker() {
           a.reason ??
           "unavailable"),
     );
-  if (agent?.id === "cursor")
+  if (agent?.id === "cursor" && agent.available)
     reasons.push("Cursor accepts text only; images are unavailable.");
   $("agent-reasons").textContent = reasons.join(" · ");
   $("agent-reasons").hidden = !reasons.length;
@@ -377,21 +379,13 @@ function accountsSection(data) {
       "Adapter disabled by security policy": "Not enabled for runs on this server",
       "CLI is missing or not executable": "Not installed on this server",
     };
+    const statusLine = adapterAccountStatusLine({
+      account,
+      enabled: value.enabled,
+    });
     card.append(
       node("strong", value.name),
-      node(
-        "p",
-        account.state === "signed_in"
-          ? `Signed in${account.method ? " · " + account.method : ""}`
-          : account.state === "unavailable"
-            ? ""
-            : account.message,
-        account.state === "signed_in"
-          ? "good"
-          : account.state === "signed_out"
-            ? "attention"
-            : "muted",
-      ),
+      node("p", statusLine.text, statusLine.className),
       node(
         "p",
         value.available
@@ -479,16 +473,20 @@ function accountsSection(data) {
           value.renewal.state === "reconnect_required" ? "attention" : "muted",
         ),
       );
-    if (value.installed && !value.enabled)
+    if (value.installed && !value.enabled && account.state !== "signed_in")
       card.append(
         node(
           "p",
-          "Not enabled for runs on this server. You can still sign in ahead of time.",
+          "Signing in now only prepares the account; enable the adapter before runs.",
           "muted",
         ),
       );
     const login = button(
-      account.state === "signed_in" ? "Reconnect account" : "Sign in",
+      adapterAccountActionLabel({
+        enabled: value.enabled,
+        installed: value.installed,
+        accountState: account.state,
+      }),
       () => startAccount(value.id, "login"),
     );
     login.hidden = !value.installed;

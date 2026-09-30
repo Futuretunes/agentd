@@ -20,6 +20,8 @@ import {
   reviewCommittedProgression,
   formatTerminalStatusLabel,
   operationsSummaryCounts,
+  adapterAccountActionLabel,
+  adapterAccountStatusLine,
 } from "../public/ui.js";
 test("operationsSummaryCounts keeps pending reviews out of Completed", () => {
   assert.deepEqual(
@@ -68,6 +70,62 @@ test("formatTerminalStatusLabel keeps Ask answers distinct from reviews", () => 
   assert.equal(
     formatTerminalStatusLabel({ status: "failed" }, { failed: "Failed" }),
     "Failed",
+  );
+});
+test("adapterAccountActionLabel distinguishes disabled adapters from Sign in", () => {
+  assert.equal(
+    adapterAccountActionLabel({
+      enabled: false,
+      installed: true,
+      accountState: "signed_out",
+    }),
+    "Sign in for later",
+  );
+  assert.equal(
+    adapterAccountActionLabel({
+      enabled: true,
+      installed: true,
+      accountState: "signed_out",
+    }),
+    "Sign in",
+  );
+  assert.equal(
+    adapterAccountActionLabel({
+      enabled: false,
+      installed: true,
+      accountState: "signed_in",
+    }),
+    "Reconnect account",
+  );
+});
+test("adapterAccountStatusLine keeps disabled signed-out muted", () => {
+  assert.deepEqual(
+    adapterAccountStatusLine({
+      enabled: false,
+      account: { state: "signed_out", message: "Sign-in required" },
+    }),
+    { text: "Account not signed in", className: "muted" },
+  );
+  assert.deepEqual(
+    adapterAccountStatusLine({
+      enabled: true,
+      account: { state: "signed_out", message: "Sign-in required" },
+    }),
+    { text: "Sign-in required", className: "attention" },
+  );
+  assert.deepEqual(
+    adapterAccountStatusLine({
+      enabled: false,
+      account: { state: "signed_in", method: "Cursor account" },
+    }),
+    { text: "Signed in · Cursor account", className: "good" },
+  );
+  assert.deepEqual(
+    adapterAccountStatusLine({
+      enabled: true,
+      account: { state: "unavailable", message: "" },
+    }),
+    { text: "Account status unavailable", className: "muted" },
   );
 });
 test("reviewCommittedProgression prefers publish after fresh checks", () => {
