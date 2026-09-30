@@ -5,7 +5,7 @@
 - Status: implemented
 - Release: 0.101.0
 - Branch and base: `feat/gui-composer-send-row` on `main` (0.100.0)
-- Implementation commit(s): (filled after commit)
+- Implementation commit(s): 42b33c8
 - PR: (filled after open)
 
 ## Changes and relevant files
