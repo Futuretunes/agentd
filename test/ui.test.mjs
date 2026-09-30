@@ -1086,3 +1086,13 @@ test("publishing form exposes a stable accessible name", () => {
     "Publish to GitHub",
   );
 });
+
+test("publication confirm form exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("publication-confirm-form").getAttribute("aria-label"),
+    "Confirm publication",
+  );
+});
