@@ -1096,3 +1096,13 @@ test("publication confirm form exposes a stable accessible name", () => {
     "Confirm publication",
   );
 });
+
+test("login form exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("loginform").getAttribute("aria-label"),
+    "Sign in",
+  );
+});
