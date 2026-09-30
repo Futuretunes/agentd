@@ -1412,7 +1412,11 @@ async function refresh() {
           if (p.id === projectId) b.setAttribute("aria-current", "page");
           const count = node("small", nav.countLabel);
           count.title = nav.countLabel;
-          b.append(node("span", "▱ " + nav.title), count);
+          const label = node("span");
+          const glyph = node("span", "▱ ");
+          glyph.setAttribute("aria-hidden", "true");
+          label.append(glyph, document.createTextNode(nav.title));
+          b.append(label, count);
           return b;
         }),
       );

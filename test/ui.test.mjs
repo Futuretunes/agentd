@@ -612,6 +612,7 @@ test("welcome suggestion chips expose stable accessible names", () => {
   assert.match(source, /Use suggestion: " \+ text/);
   assert.match(source, /welcome-icon[\s\S]*aria-hidden[\s\S]*brandMarkElement/s);
   assert.match(source, /agentGlyph\.setAttribute\("aria-hidden", "true"\)/);
+  assert.match(source, /"▱ "[\s\S]*aria-hidden[\s\S]*nav\.title/s);
 });
 test("Escape closes run-picker and conversation menus outside dialogs", () => {
   const source = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
