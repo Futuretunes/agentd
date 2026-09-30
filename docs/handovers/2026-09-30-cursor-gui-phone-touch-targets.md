@@ -5,7 +5,7 @@
 - Status: implemented
 - Release: 0.99.0
 - Branch and base: `feat/gui-phone-touch-targets` on `main` (0.98.0)
-- Implementation commit(s): (filled after commit)
+- Implementation commit(s): 492637a
 - PR: (filled after open)
 
 ## Changes and relevant files
