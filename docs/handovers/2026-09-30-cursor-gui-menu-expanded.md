@@ -6,7 +6,7 @@
 - Release: 0.125.0
 - Branch and base: `feat/gui-menu-expanded` on `main` (0.124.0)
 - Implementation commit(s): 2319b71
-- PR: pending
+- PR: #191
 
 ## Changes and relevant files
 
