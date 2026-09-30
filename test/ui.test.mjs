@@ -588,6 +588,11 @@ test("welcome suggestion chips expose stable accessible names", () => {
   assert.match(source, /aria-label", "Suggested prompts"/);
   assert.match(source, /Use suggestion: " \+ text/);
 });
+test("Escape closes run-picker and conversation menus outside dialogs", () => {
+  const source = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(source, /keydown[\s\S]*Escape[\s\S]*run-picker[\s\S]*conversation-menu/s);
+  assert.match(source, /dialog\[open\]/);
+});
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(app, /Open Activity to start/);

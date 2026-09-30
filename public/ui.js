@@ -764,6 +764,19 @@ export function setupShell() {
     if (!e.target.closest("#run-picker")) $("run-picker").open = false;
     else if (e.target.closest("#run-options")) $("run-picker").open = false;
   });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (document.querySelector("dialog[open]")) return;
+    let closed = false;
+    for (const id of ["run-picker", "conversation-menu"]) {
+      const menu = $(id);
+      if (menu?.open) {
+        menu.open = false;
+        closed = true;
+      }
+    }
+    if (closed) e.preventDefault();
+  });
   // Native dialogs supply modality and focus restoration. Give dynamic dialogs names too.
   const nameDialogs = () => {
     for (const dialog of document.querySelectorAll("dialog")) {
