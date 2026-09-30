@@ -2214,3 +2214,12 @@ test("Request revisions actions expose a stable accessible name", () => {
   assert.equal(actions.getAttribute("role"), "group");
   assert.equal(actions.getAttribute("aria-label"), "Request revisions actions");
 });
+
+test("Confirm publication actions expose a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const actions = document.querySelector("#publication-confirm-form .actions");
+  assert.equal(actions.getAttribute("role"), "group");
+  assert.equal(actions.getAttribute("aria-label"), "Confirm publication actions");
+});
