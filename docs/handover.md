@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.84.0 — Active-run elapsed time (Cursor)
 
-Active run statuses show compact elapsed time since the current state began (waiting/queued/working/stopping). See [handover](handovers/2026-09-30-cursor-gui-run-elapsed.md). Not installed.
+Active run statuses show compact elapsed time since the current state began (waiting/queued/working/stopping). See [handover](handovers/2026-09-30-cursor-gui-run-elapsed.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.83.1 — settings restart flake hardening (Cursor)
 
