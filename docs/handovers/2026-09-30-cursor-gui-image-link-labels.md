@@ -6,7 +6,7 @@
 - Release: 0.129.0
 - Branch and base: `feat/gui-image-link-labels` on `main` (0.128.0)
 - Implementation commit(s): 6081e37
-- PR: pending
+- PR: #199
 
 ## Changes and relevant files
 
