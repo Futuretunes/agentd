@@ -2232,3 +2232,11 @@ test("History filter actions expose a stable accessible name", () => {
   assert.equal(actions.getAttribute("role"), "group");
   assert.equal(actions.getAttribute("aria-label"), "History filter actions");
 });
+
+test("Sign out settings section exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const section = document.querySelector("#logout").closest(".settings-section");
+  assert.equal(section.getAttribute("aria-label"), "Sign out");
+});
