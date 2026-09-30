@@ -520,6 +520,12 @@ test("phone header respects the status-bar safe area", () => {
   const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
   assert.match(phone, /header \{[^}]*safe-area-inset-top/s);
 });
+test("phone login respects safe-area insets", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+  assert.match(phone, /\.login \{[^}]*safe-area-inset-top/s);
+  assert.match(phone, /\.login \{[^}]*safe-area-inset-bottom/s);
+});
 test("status and outcome classes keep non-colour cues", () => {
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(css, /\.status\.running[\s\S]*font-weight: 600/);
