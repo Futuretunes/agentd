@@ -115,6 +115,8 @@ type Config = {
   ) => Promise<{ started: true; target: string }>;
   adminAccessKeyRecovery?: () => Promise<any>;
   deleteAccessKeyRecovery?: (currentKey: string) => Promise<{ deleted: true }>;
+  adminNotifications?: () => Promise<any>;
+  applyNotifications?: (settings: object) => Promise<any>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -1701,6 +1703,18 @@ export function runner(c: Config) {
         return result;
       });
     }
+    if (input.op === "admin-notifications-apply") {
+      if (!c.applyNotifications) throw Error("Notification settings are not installed.");
+      if (!input.settings || typeof input.settings !== "object")
+        throw Error("Notification settings request is invalid.");
+      return c.applyNotifications(input.settings).then((result) => {
+        audit("notifications-apply", null, {
+          configured: result.configured === true,
+          clear: input.settings?.clear === true,
+        });
+        return result;
+      });
+    }
     requireNoReviewPreparationMutation(input);
     if (typeof input.op === "string" && input.op.startsWith("feedback-"))
       return publicationManager.feedback(input);
@@ -1781,6 +1795,10 @@ export function runner(c: Config) {
       if (!c.adminAccessKeyRecovery)
         throw Error("Access-key recovery status is not installed.");
       return c.adminAccessKeyRecovery();
+    }
+    if (input.op === "admin-notifications") {
+      if (!c.adminNotifications) throw Error("Notification settings are not installed.");
+      return c.adminNotifications();
     }
     if (input.op === "admin-configuration") {
       if (!c.adminConfiguration) throw Error("Configuration overview is not installed.");

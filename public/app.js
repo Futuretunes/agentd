@@ -3693,11 +3693,12 @@ async function openConfigurationSettings() {
   }
 }
 async function renderConfigurationSettings() {
-  const [report, adapters, runtime, profiles] = await Promise.all([
+  const [report, adapters, runtime, profiles, notifications] = await Promise.all([
       api("/api/configuration"),
       api("/api/adapters").catch(() => null),
       api("/api/runtime-flags").catch(() => null),
       api("/api/profiles").catch(() => null),
+      api("/api/notifications").catch(() => null),
     ]),
     flags = report.configuration,
     yesNo = (value) => (value ? "Yes" : "No"),
@@ -3841,6 +3842,36 @@ async function renderConfigurationSettings() {
       ),
     );
   }
+  const notificationsSection = node("section", undefined, "operation-section");
+  notificationsSection.append(node("h3", "Mobile notifications"));
+  if (!notifications) {
+    notificationsSection.append(
+      node("p", "Notification settings are not available on this install yet.", "muted"),
+    );
+  } else if (notifications.configured) {
+    notificationsSection.append(
+      node(
+        "p",
+        `ntfy destination saved: ${notifications.server}/…/${notifications.topic}.`,
+        "good",
+      ),
+    );
+    notificationsSection.append(
+      node(
+        "p",
+        "Delivery of approval and completion alerts is not enabled yet; only the destination is stored.",
+        "muted",
+      ),
+    );
+  } else {
+    notificationsSection.append(
+      node(
+        "p",
+        "No ntfy destination is configured. Save a server and topic here before delivery can be enabled later.",
+        "muted",
+      ),
+    );
+  }
   const actions = [];
   if (profiles?.canEnableResource)
     actions.push(
@@ -3860,6 +3891,17 @@ async function renderConfigurationSettings() {
     );
   if (runtime)
     actions.push(button("Change runtime flags", () => renderRuntimeFlagsForm(runtime)));
+  if (notifications)
+    actions.push(
+      button(
+        notifications.configured ? "Change ntfy destination" : "Set ntfy destination",
+        () => renderNotificationsForm(notifications),
+      ),
+    );
+  if (notifications?.configured)
+    actions.push(
+      button("Clear ntfy destination", () => renderNotificationsClearForm(notifications)),
+    );
   actions.push(button("Replace TLS certificate", () => renderTlsReplaceForm(report.tls)));
   if (adapters) {
     const liveEnabled = (policy.enabledAdapters ?? []).slice().sort().join(", "),
@@ -3892,6 +3934,7 @@ async function renderConfigurationSettings() {
     tls,
     policySection,
     runtimeSection,
+    notificationsSection,
     guidance,
     ...actions,
     node(
@@ -3900,6 +3943,153 @@ async function renderConfigurationSettings() {
       "muted",
     ),
   );
+}
+function renderNotificationsForm(current) {
+  const form = node("form"),
+    server = node("input"),
+    topic = node("input"),
+    currentLabel = node("label", "Current access key"),
+    currentKey = node("input"),
+    submit = node("button", "Review ntfy destination", "primary"),
+    section = node("section", undefined, "operation-section");
+  section.append(node("h3", "Set ntfy destination"));
+  section.append(
+    node(
+      "p",
+      "Stores an https ntfy server and topic for later approval and completion alerts. Delivery is not enabled in this release.",
+      "muted",
+    ),
+  );
+  server.type = "url";
+  server.required = true;
+  server.placeholder = "https://ntfy.sh";
+  server.value = current?.server || "https://ntfy.sh";
+  topic.required = true;
+  topic.placeholder = "agentd-alerts";
+  topic.value = current?.topic || "";
+  topic.pattern = "[A-Za-z0-9_-]{1,64}";
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  const serverLabel = node("label", "ntfy server URL");
+  serverLabel.append(server);
+  const topicLabel = node("label", "Topic");
+  topicLabel.append(topic);
+  form.append(
+    section,
+    serverLabel,
+    topicLabel,
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/notifications", {
+        action: "preview",
+        server: server.value,
+        topic: topic.value,
+        currentKey: currentKey.value,
+      });
+      currentKey.value = "";
+      renderNotificationsApproval(plan);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
+}
+function renderNotificationsClearForm(current) {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    currentKey = node("input"),
+    submit = node("button", "Review clear destination", "primary");
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      `Remove the saved ntfy destination (${current.server}/…/${current.topic}).`,
+      "attention",
+    ),
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/notifications", {
+        action: "preview",
+        clear: true,
+        currentKey: currentKey.value,
+      });
+      currentKey.value = "";
+      renderNotificationsApproval(plan);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
+}
+function renderNotificationsApproval(plan) {
+  const form = node("form"),
+    confirm = node("input"),
+    currentLabel = node("label", "Enter the current access key again"),
+    currentKey = node("input"),
+    submit = node("button", "Save notification settings", "primary"),
+    confirmLabel = node("label", "I understand this updates the saved ntfy destination"),
+    settings = plan.settings ?? {};
+  confirm.type = "checkbox";
+  confirm.required = true;
+  confirmLabel.prepend(confirm);
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      settings.clear
+        ? "Clear the saved ntfy destination."
+        : `Save ntfy destination ${settings.server}/…/${settings.topic}.`,
+      "attention",
+    ),
+    confirmLabel,
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      await api("/api/notifications", {
+        action: "apply",
+        fingerprint: plan.fingerprint,
+        settings,
+        currentKey: currentKey.value,
+        confirmed: true,
+      });
+      notice("Notification settings saved.");
+      await renderConfigurationSettings();
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
 }
 function renderProfileEnableForm(target, label) {
   const form = node("form"),

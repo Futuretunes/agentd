@@ -1,4 +1,5 @@
 import { accessKeyMatches } from "./access-key.ts";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   chownSync,
@@ -138,6 +139,130 @@ export function deleteAccessKeyRecovery(
     throw Error("Access-key recovery file is not present");
   unlinkSync(path);
   return { deleted: true as const, format: 1 as const };
+}
+
+const ntfyServer =
+  /^https:\/\/[a-z0-9.-]{1,253}(?::[0-9]{2,5})?(?:\/[a-zA-Z0-9._~/-]{0,200})?$/;
+const ntfyTopic = /^[A-Za-z0-9_-]{1,64}$/;
+
+function readMobileConfig(path: string, expectedUid = 0) {
+  const info = lstatSync(path);
+  if (
+    !info.isFile() ||
+    info.isSymbolicLink() ||
+    info.size > 65536 ||
+    info.uid !== expectedUid
+  )
+    throw Error("Invalid access configuration");
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    return {
+      info,
+      value: JSON.parse(readFileSync(fd, "utf8")) as Record<string, unknown>,
+    };
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function writeMobileConfig(
+  path: string,
+  value: Record<string, unknown>,
+  info: { mode: number; uid: number; gid: number },
+) {
+  const temporary = join(dirname(path), `.mobile.json.${process.pid}.tmp`);
+  try {
+    writeFileSync(temporary, JSON.stringify(value) + "\n", {
+      mode: info.mode & 0o777,
+      flag: "wx",
+    });
+    chownSync(temporary, info.uid, info.gid);
+    chmodSync(temporary, info.mode & 0o777);
+    const temporaryFd = openSync(temporary, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+      fsyncSync(temporaryFd);
+    } finally {
+      closeSync(temporaryFd);
+    }
+    renameSync(temporary, path);
+    const directoryFd = openSync(dirname(path), constants.O_RDONLY);
+    try {
+      fsyncSync(directoryFd);
+    } finally {
+      closeSync(directoryFd);
+    }
+  } finally {
+    try {
+      unlinkSync(temporary);
+    } catch {}
+  }
+}
+
+function notificationsView(value: Record<string, unknown>) {
+  const notifications =
+    value.notifications && typeof value.notifications === "object"
+      ? (value.notifications as Record<string, unknown>)
+      : null;
+  const ntfy =
+    notifications?.ntfy && typeof notifications.ntfy === "object"
+      ? (notifications.ntfy as Record<string, unknown>)
+      : null;
+  const server = typeof ntfy?.server === "string" ? ntfy.server : null;
+  const topic = typeof ntfy?.topic === "string" ? ntfy.topic : null;
+  const configured = !!(
+    server &&
+    topic &&
+    ntfyServer.test(server) &&
+    ntfyTopic.test(topic)
+  );
+  const fingerprint = createHash("sha256")
+    .update(
+      JSON.stringify({
+        server: configured ? server : null,
+        topic: configured ? topic : null,
+      }),
+    )
+    .digest("hex");
+  return {
+    format: 1 as const,
+    configured,
+    server: configured ? server : null,
+    topic: configured ? topic : null,
+    fingerprint,
+    deliveryEnabled: false,
+  };
+}
+
+export function notificationSettings(
+  mobileConfig = "/etc/agentd-web/mobile.json",
+  expectedUid = 0,
+) {
+  return notificationsView(readMobileConfig(mobileConfig, expectedUid).value);
+}
+
+export function applyNotificationSettings(
+  input: unknown,
+  mobileConfig = "/etc/agentd-web/mobile.json",
+  expectedUid = 0,
+) {
+  if (!input || typeof input !== "object") throw Error("Invalid notification settings");
+  const request = input as { clear?: unknown; server?: unknown; topic?: unknown };
+  const { info, value } = readMobileConfig(mobileConfig, expectedUid);
+  if (request.clear === true) {
+    if ("notifications" in value) delete value.notifications;
+    writeMobileConfig(mobileConfig, value, info);
+    return notificationsView(value);
+  }
+  if (typeof request.server !== "string" || typeof request.topic !== "string")
+    throw Error("Invalid notification settings");
+  const server = request.server.replace(/\/+$/, "");
+  const topic = request.topic.trim();
+  if (!ntfyServer.test(server) || server.includes("@") || server.includes("?"))
+    throw Error("Use an https ntfy server URL without credentials.");
+  if (!ntfyTopic.test(topic)) throw Error("Choose a valid ntfy topic name.");
+  value.notifications = { ntfy: { server, topic } };
+  writeMobileConfig(mobileConfig, value, info);
+  return notificationsView(value);
 }
 
 export function diagnostics(command = "/opt/agentd/scripts/admin_diagnostics.py") {
@@ -601,6 +726,8 @@ export function handleAdminRequest(
     startProfile?: (target: unknown) => { started: true; target: string };
     accessKeyRecovery?: () => unknown;
     deleteAccessKeyRecovery?: (currentKey: unknown) => { deleted: true };
+    notifications?: () => unknown;
+    applyNotifications?: (input: unknown) => unknown;
   },
 ) {
   if (input?.op === "rotate-access-key") {
@@ -618,6 +745,16 @@ export function handleAdminRequest(
       config.deleteAccessKeyRecovery ??
       ((currentKey: unknown) => deleteAccessKeyRecovery(currentKey, config.mobileConfig))
     )(input.currentKey);
+  }
+  if (input?.op === "notifications" && Object.keys(input).join(" ") === "op")
+    return (config.notifications ?? (() => notificationSettings(config.mobileConfig)))();
+  if (input?.op === "notifications-apply") {
+    if (Object.keys(input).sort().join(" ") !== "op settings")
+      throw Error("Unsupported admin operation");
+    return (
+      config.applyNotifications ??
+      ((settings: unknown) => applyNotificationSettings(settings, config.mobileConfig))
+    )(input.settings);
   }
   if (input?.op === "diagnostics" && Object.keys(input).join(" ") === "op")
     return (config.diagnostics ?? diagnostics)();
