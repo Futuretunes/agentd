@@ -2687,6 +2687,7 @@ async function updateGithub() {
       );
     else if (!data.busy) {
       const access = document.createElement("select");
+      access.id = "github-access-ceiling";
       access.setAttribute("aria-label", "GitHub access ceiling");
       for (const choice of data.authorization.choices) {
         const option = document.createElement("option");
