@@ -1046,3 +1046,13 @@ test("revision status announces updates politely", () => {
   assert.equal(el.getAttribute("role"), "status");
   assert.equal(el.getAttribute("aria-live"), "polite");
 });
+
+test("repository form exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("repository-form").getAttribute("aria-label"),
+    "Find GitHub repository",
+  );
+});
