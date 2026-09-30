@@ -5,7 +5,7 @@
 - Status: implemented; live-installed on 192.168.1.20
 - Release: 0.85.0
 - Branch and base: `feat/gui-live-output` on `main` (0.84.0)
-- Implementation commit(s): 
+- Implementation commit(s): c6b5076
 - PR: #111
 
 ## Changes and relevant files
