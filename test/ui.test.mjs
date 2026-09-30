@@ -1440,3 +1440,13 @@ test("picker mode exposes a stable accessible name", () => {
     "Selected mode",
   );
 });
+
+test("review stats expose a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("review-stats").getAttribute("aria-label"),
+    "Review change stats",
+  );
+});
