@@ -15,7 +15,7 @@ import {
 } from "./credentials.ts";
 const margin = 20 * 60 * 1000;
 export const renewalFailure =
-  "Account renewal could not finish. Open Operations and reconnect the account, then retry this run.";
+  "Account renewal could not finish. Open Activity and reconnect the account, then retry this run.";
 type View = {
   state: "ready" | "renewing" | "reconnect_required" | "unavailable";
   message: string;
@@ -104,8 +104,8 @@ export function renewals(c: Config) {
         return {
           state: ready ? "ready" : "reconnect_required",
           message: ready
-            ? "Cursor session ready. Reconnect in Operations when it expires."
-            : "Reconnect Cursor in Operations. Automatic subscription renewal is not exposed by the tested CLI.",
+            ? "Cursor session ready. Reconnect in Activity when it expires."
+            : "Reconnect Cursor in Activity. Automatic subscription renewal is not exposed by the tested CLI.",
           expiresAt: expiry === null ? null : new Date(expiry).toISOString(),
         };
       } catch {
@@ -195,7 +195,7 @@ export function renewals(c: Config) {
     if (closed || running) throw Error("Account renewal is busy");
     if (id === "cursor") {
       if (view(id).state !== "ready")
-        throw Error("Reconnect Cursor in Operations before approving work.");
+        throw Error("Reconnect Cursor in Activity before approving work.");
       return;
     }
     credentialFile(id);

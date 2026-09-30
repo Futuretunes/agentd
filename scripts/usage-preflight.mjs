@@ -15,7 +15,7 @@ try {
   );
 } catch {
   console.log(
-    "codex: usage unavailable; check CLI compatibility and reconnect in Operations if needed. No model request was submitted.",
+    "codex: usage unavailable; check CLI compatibility and reconnect in Activity if needed. No model request was submitted.",
   );
   process.exitCode = 1;
 }

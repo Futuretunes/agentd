@@ -480,6 +480,19 @@ test("app opens dialogs through openDialog for focus restoration", () => {
   assert.match(app, /openDialog/);
   assert.equal([...app.matchAll(/\.showModal\(/g)].length, 0);
 });
+test("user-facing copy names the Activity surface, not Operations", () => {
+  const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(app, /Open Activity to start/);
+  assert.match(app, /reconnect in Activity if it reports/);
+  assert.equal(app.includes("Open Operations"), false);
+  assert.equal(app.includes("in Operations"), false);
+  const errors = readFileSync(
+    new URL("../src/public-error-messages.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(errors, /in Activity/);
+  assert.equal(errors.includes("in Operations"), false);
+});
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
   globalThis.document = document;

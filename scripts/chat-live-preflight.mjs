@@ -29,7 +29,7 @@ try {
   assert.equal(
     result.status,
     0,
-    "Chat subscription check did not complete. Reconnect Codex in Operations on the existing release, then retry.",
+    "Chat subscription check did not complete. Reconnect Codex in Activity on the existing release, then retry.",
   );
   assert.equal(
     result.stdout.trim(),

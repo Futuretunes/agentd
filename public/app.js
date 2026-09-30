@@ -868,7 +868,7 @@ async function updateAccount() {
           "p",
           value.busy
             ? "Account setup is open in another browser. Return there or wait for it to expire."
-            : "No sign-in is in progress. Open Operations to start.",
+            : "No sign-in is in progress. Open Activity to start.",
           "muted",
         ),
       );
@@ -1256,7 +1256,7 @@ function renderThread(data) {
             ? "The service stopped before the run finished."
             : t.status === "cancelled"
               ? "This run was stopped."
-              : "The agent could not complete this run. Check its output above; reconnect in Operations if it reports a sign-in problem.";
+              : "The agent could not complete this run. Check its output above; reconnect in Activity if it reports a sign-in problem.";
       response.append(node("p", reason, "attention"));
       if (t.review === "pending")
         response.append(
