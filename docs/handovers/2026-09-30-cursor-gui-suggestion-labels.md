@@ -6,7 +6,7 @@
 - Release: 0.122.0
 - Branch and base: `feat/gui-suggestion-labels` on `main` (0.121.0)
 - Implementation commit(s): 538b43a
-- PR: pending
+- PR: #185
 
 ## Changes and relevant files
 
