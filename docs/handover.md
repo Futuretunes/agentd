@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.97.0 — Consistent disclosure chevrons (Cursor)
 
-Approval and file-review disclosures use a shared CSS chevron instead of browser-default triangles. See [handover](handovers/2026-09-30-cursor-gui-disclosure-chevrons.md). Not installed.
+Approval and file-review disclosures use a shared CSS chevron instead of browser-default triangles. See [handover](handovers/2026-09-30-cursor-gui-disclosure-chevrons.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.96.0 — Sidebar project badge + accessible nav names (Cursor)
 
