@@ -2,9 +2,10 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: next administration slice after 0.73 backups rollback entry
-- Status: implemented; not installed
+- Status: implemented; live-installed (superseded by 0.74.1 compatibility fix)
 - Release: 0.74.0
 - Branch and base: `feat/gui-backup-restore-selected` on `main` (0.73.0)
+- PR: #86
 
 ## Changes and relevant files
 
