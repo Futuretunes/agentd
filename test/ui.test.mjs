@@ -630,10 +630,7 @@ test("compose form is named and described by composer hints", () => {
   );
   const form = document.getElementById("compose");
   assert.equal(form.getAttribute("aria-label"), "Compose message");
-  assert.equal(
-    form.getAttribute("aria-describedby"),
-    "hint policy-hint draft-hint",
-  );
+  assert.equal(form.getAttribute("aria-describedby"), "hint policy-hint draft-hint");
 });
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");

@@ -6,7 +6,7 @@
 - Release: 0.127.0
 - Branch and base: `feat/gui-compose-label` on `main` (0.126.0)
 - Implementation commit(s): 2d97433
-- PR: pending
+- PR: #195
 
 ## Changes and relevant files
 
