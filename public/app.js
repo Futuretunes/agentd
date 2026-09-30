@@ -1559,7 +1559,10 @@ $("new").onclick = () => {
   refresh();
   $("prompt").focus();
 };
-$("add-project").onclick = () => openDialog($("project-dialog"));
+$("add-project").onclick = () => {
+  openDialog($("project-dialog"));
+  $("project-input").focus();
+};
 $("project-close").onclick = () => $("project-dialog").close();
 $("project-form").onsubmit = async (e) => {
   e.preventDefault();
@@ -2345,6 +2348,7 @@ async function loadHistory(before = null) {
 }
 $("history-menu").onclick = () => {
   openDialog($("history-dialog"));
+  $("history-query").focus();
   void loadHistory();
 };
 $("history-close").onclick = () => {
