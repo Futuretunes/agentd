@@ -1860,3 +1860,10 @@ test("remaining allowance progress exposes a stable accessible name", () => {
   const source = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
   assert.match(source, /aria-label", label \+ " remaining allowance"/);
 });
+
+test("dynamic field labels use muted dialog-label styling", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(css, /\.field-label \{[\s\S]*color: var\(--muted\)/);
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /field-label/);
+});
