@@ -1380,3 +1380,13 @@ test("draft hint exposes a stable accessible name", () => {
     "Saved draft",
   );
 });
+
+test("policy hint exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("policy-hint").getAttribute("aria-label"),
+    "Capability policy",
+  );
+});
