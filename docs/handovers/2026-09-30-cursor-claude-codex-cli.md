@@ -2,9 +2,10 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: next administration slice after selected backup restore
-- Status: implemented; not installed
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.75.0
 - Branch and base: `feat/gui-claude-cli-helper` on `main` (0.74.1)
+- PR: #89
 
 ## Changes and relevant files
 
