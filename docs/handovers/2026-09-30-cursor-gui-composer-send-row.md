@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: On phone, Send must not wrap to its own row under the composer tools
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.101.0
 - Branch and base: `feat/gui-composer-send-row` on `main` (0.100.0)
 - Implementation commit(s): 42b33c8
@@ -15,13 +15,15 @@
 
 ## Validation evidence
 
+- CI green on #143; live-installed on 192.168.1.20 (0.101.0 / aa7166533db5).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.100.0 / revert of #143.
 
 ## Constraints and known issues
 
@@ -30,5 +32,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #143 and live-installed 0.101.0.
 2. Continue UX polish or admin slices as operator priority allows.
