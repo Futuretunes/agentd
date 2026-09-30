@@ -3693,10 +3693,11 @@ async function openConfigurationSettings() {
   }
 }
 async function renderConfigurationSettings() {
-  const [report, adapters, runtime] = await Promise.all([
+  const [report, adapters, runtime, profiles] = await Promise.all([
       api("/api/configuration"),
       api("/api/adapters").catch(() => null),
       api("/api/runtime-flags").catch(() => null),
+      api("/api/profiles").catch(() => null),
     ]),
     flags = report.configuration,
     yesNo = (value) => (value ? "Yes" : "No"),
@@ -3726,6 +3727,19 @@ async function renderConfigurationSettings() {
         value && label !== "Recovery pending" ? "good" : "muted",
       ),
     );
+  if (profiles) {
+    overview.append(
+      node(
+        "p",
+        profiles.running
+          ? "A profile apply job is running."
+          : profiles.jobsEnabled
+            ? "Enable jobs are installed for missing profiles (one-way)."
+            : "Profile enable jobs are not installed on this host yet.",
+        profiles.running ? "attention" : "muted",
+      ),
+    );
+  }
   const tls = node("section", undefined, "operation-section");
   tls.append(node("h3", "TLS certificate"));
   tls.append(
@@ -3828,6 +3842,18 @@ async function renderConfigurationSettings() {
     );
   }
   const actions = [];
+  if (profiles?.canEnableResource)
+    actions.push(
+      button("Enable standard resource profile", () =>
+        renderProfileEnableForm("resource", "Standard resource profile"),
+      ),
+    );
+  if (profiles?.canEnableHardening)
+    actions.push(
+      button("Enable gateway hardening", () =>
+        renderProfileEnableForm("hardening", "Gateway hardening profile"),
+      ),
+    );
   if (adapters)
     actions.push(
       button("Change agent adapters", () => renderAdapterPolicyForm(adapters)),
@@ -3874,6 +3900,106 @@ async function renderConfigurationSettings() {
       "muted",
     ),
   );
+}
+function renderProfileEnableForm(target, label) {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    currentKey = node("input"),
+    submit = node("button", "Review " + label, "primary"),
+    section = node("section", undefined, "operation-section");
+  section.append(node("h3", "Enable " + label));
+  section.append(
+    node(
+      "p",
+      "This is a one-way managed migration. Services restart while the profile is applied. Profiles cannot be disabled from the UI.",
+      "attention",
+    ),
+  );
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  form.append(
+    section,
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/profiles", {
+        action: "preview",
+        target,
+        currentKey: currentKey.value,
+      });
+      currentKey.value = "";
+      renderProfileEnableApproval(plan);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
+}
+function renderProfileEnableApproval(plan) {
+  const form = node("form"),
+    confirm = node("input"),
+    idle = node("input"),
+    currentLabel = node("label", "Enter the current access key again"),
+    currentKey = node("input"),
+    submit = node("button", "Enable " + (plan.label || "profile"), "primary"),
+    confirmLabel = node(
+      "label",
+      "I understand this one-way enable restarts services and cannot be undone from the UI",
+    ),
+    idleLabel = node(
+      "label",
+      "Current work, account changes and preparations are stopped",
+    );
+  confirm.type = "checkbox";
+  confirm.required = true;
+  confirmLabel.prepend(confirm);
+  idle.type = "checkbox";
+  if (plan.requiresIdle) {
+    idle.required = true;
+    idleLabel.prepend(idle);
+  }
+  currentKey.type = "password";
+  currentKey.autocomplete = "current-password";
+  currentKey.required = true;
+  currentLabel.append(currentKey);
+  submit.type = "submit";
+  form.append(
+    node("p", `Enable ${plan.label || "configuration profile"}.`, "attention"),
+    confirmLabel,
+    ...(plan.requiresIdle ? [idleLabel] : []),
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderConfigurationSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      await api("/api/profiles", {
+        action: "enable",
+        target: plan.target,
+        fingerprint: plan.fingerprint,
+        currentKey: currentKey.value,
+        confirmed: true,
+        ...(plan.requiresIdle ? { confirmedIdle: true } : {}),
+      });
+      notice((plan.label || "Profile") + " enable started.");
+      await renderConfigurationSettings();
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  configurationContent.replaceChildren(form);
 }
 function renderTlsReplaceForm(current) {
   const form = node("form"),

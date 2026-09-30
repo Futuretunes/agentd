@@ -1,0 +1,11 @@
+[Unit]
+Description=AgentD apply standard resource profile
+# Started only by the administration helper when resourceProfile is not yet set.
+# Re-runs verify-only when the profile is already installed.
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/python3 -B /opt/agentd/scripts/apply_resources.py --config /etc/agentd/update.json
+TimeoutStartSec=30min
+UMask=0077

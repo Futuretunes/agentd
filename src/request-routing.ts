@@ -39,6 +39,7 @@ export const managedOperationOperations = [
   "admin-adapters-apply",
   "admin-runtime-flags-apply",
   "admin-tls-replace",
+  "admin-profiles-enable",
   "feedback-targets",
   "feedback-status",
   // Local compatibility name used by publication lifecycle tests and admin clients.
@@ -79,6 +80,7 @@ export const serviceReadOperations = [
   "admin-cli",
   "admin-adapters",
   "admin-runtime-flags",
+  "admin-profiles",
 ] as const;
 
 export const workspaceReadOperations = [

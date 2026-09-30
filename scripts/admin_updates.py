@@ -12,7 +12,7 @@ CONFIG=Path('/etc/agentd/update.json')
 DEPLOYMENT=Path('/var/lib/agentd-deployment')
 STATES={'running','succeeded','failed'}
 
-def running(patterns=('agentd-update@*','agentd-rollback@*','agentd-restore@*')):
+def running(patterns=('agentd-update@*','agentd-rollback@*','agentd-restore@*','agentd-apply-resources.service','agentd-apply-gateway-hardening.service')):
     # A job counts as running while systemd reports any update or rollback instance active or starting.
     result=subprocess.run(['/usr/bin/systemctl','list-units','--no-legend','--plain','--all',*patterns],check=True,text=True,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,timeout=5)
     return any(len(line.split())>=3 and line.split()[2] in ('active','activating','reloading','deactivating') for line in result.stdout.splitlines())

@@ -382,6 +382,58 @@ export function applyRuntimeFlags(
   return value;
 }
 
+export function configurationProfiles(command = "/opt/agentd/scripts/admin_profiles.py") {
+  const output = execFileSync("/usr/bin/python3", ["-B", command], {
+    cwd: "/opt/agentd",
+    encoding: "utf8",
+    timeout: 10000,
+    maxBuffer: 8192,
+    env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const value = JSON.parse(output);
+  if (
+    value?.format !== 1 ||
+    typeof value.jobsEnabled !== "boolean" ||
+    typeof value.running !== "boolean" ||
+    typeof value.canEnableResource !== "boolean" ||
+    typeof value.canEnableHardening !== "boolean" ||
+    value.error
+  )
+    throw Error("Configuration profiles unavailable");
+  return value;
+}
+
+const profileTarget = /^(resource|hardening)$/;
+
+export function startProfileEnable(
+  target: unknown,
+  list: () => any = configurationProfiles,
+  start: (command: string, args: string[]) => void = (command, args) => {
+    execFileSync("/usr/bin/python3", ["-B", command, ...args], {
+      cwd: "/opt/agentd",
+      encoding: "utf8",
+      timeout: 15000,
+      maxBuffer: 8192,
+      env: { PATH: "/usr/bin:/bin", LANG: "C", HOME: "/nonexistent" },
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  },
+  command = "/opt/agentd/scripts/admin_profiles.py",
+) {
+  if (typeof target !== "string" || !profileTarget.test(target))
+    throw Error("Invalid profile enable request");
+  const value = list();
+  if (value.running) throw Error("A profile apply job is already running");
+  if (!value.jobsEnabled) throw Error("Configuration profile jobs are not enabled");
+  if (target === "resource" && !value.canEnableResource)
+    throw Error("Standard resource profile is not available to enable");
+  if (target === "hardening" && !value.canEnableHardening)
+    throw Error("Gateway hardening is not available to enable");
+  start(command, ["start", target]);
+  return { started: true as const, target };
+}
+
 export function replaceTlsCertificate(
   certificate: unknown,
   key: unknown,
@@ -484,6 +536,8 @@ export function handleAdminRequest(
     runtimeFlags?: () => unknown;
     applyRuntimeFlags?: (flags: unknown) => unknown;
     replaceTls?: (certificate: unknown, key: unknown) => unknown;
+    profiles?: () => unknown;
+    startProfile?: (target: unknown) => { started: true; target: string };
   },
 ) {
   if (input?.op === "rotate-access-key") {
@@ -560,6 +614,13 @@ export function handleAdminRequest(
     if (Object.keys(input).sort().join(" ") !== "certificate key op")
       throw Error("Unsupported admin operation");
     return (config.replaceTls ?? replaceTlsCertificate)(input.certificate, input.key);
+  }
+  if (input?.op === "profiles" && Object.keys(input).join(" ") === "op")
+    return (config.profiles ?? configurationProfiles)();
+  if (input?.op === "profiles-enable") {
+    if (Object.keys(input).sort().join(" ") !== "op target")
+      throw Error("Unsupported admin operation");
+    return (config.startProfile ?? startProfileEnable)(input.target);
   }
   throw Error("Unsupported admin operation");
 }

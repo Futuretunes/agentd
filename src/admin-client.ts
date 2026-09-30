@@ -252,3 +252,28 @@ export async function replaceTls(
     throw Error("TLS certificate change was refused.");
   return value;
 }
+
+export async function readProfiles(socket: string): Promise<any> {
+  const value: any = await request(socket, { op: "profiles" });
+  if (
+    value?.format !== 1 ||
+    typeof value.jobsEnabled !== "boolean" ||
+    typeof value.running !== "boolean" ||
+    typeof value.canEnableResource !== "boolean" ||
+    typeof value.canEnableHardening !== "boolean"
+  )
+    throw Error("Configuration profiles response is invalid.");
+  return value;
+}
+
+export async function startProfileEnable(
+  socket: string,
+  target: "resource" | "hardening",
+): Promise<{ started: true; target: string }> {
+  if (target !== "resource" && target !== "hardening")
+    throw Error("Profile enable request is invalid.");
+  const value: any = await request(socket, { op: "profiles-enable", target }, 15000);
+  if (value?.started !== true || value.target !== target)
+    throw Error("Profile enable was refused.");
+  return { started: true, target };
+}

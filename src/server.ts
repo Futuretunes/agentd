@@ -24,6 +24,8 @@ import {
   startRollback,
   startUpdate,
   startRestore,
+  readProfiles,
+  startProfileEnable,
 } from "./admin-client.ts";
 
 const version: string = JSON.parse(
@@ -142,6 +144,12 @@ export function start(options: Options) {
           replaceTlsCertificate: process.env.AGENTD_ADMIN_SOCKET
             ? (certificate, key) =>
                 replaceTls(process.env.AGENTD_ADMIN_SOCKET!, certificate, key)
+            : undefined,
+          adminProfiles: process.env.AGENTD_ADMIN_SOCKET
+            ? () => readProfiles(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          startProfileEnable: process.env.AGENTD_ADMIN_SOCKET
+            ? (target) => startProfileEnable(process.env.AGENTD_ADMIN_SOCKET!, target)
             : undefined,
           gateway: process.env.AGENTD_GATEWAY_SOCKET
             ? {
