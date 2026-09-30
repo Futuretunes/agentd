@@ -96,6 +96,16 @@ Settings > Updates > Roll back returns to the **newest completed managed backup 
 
 To enable rollback on a host with in-app updates already enabled, run `apply_updates.py` again; it adds only the missing unit.
 
+### Selected backup restore (since 0.74.0)
+
+Settings > Backups can restore a **specific older compatible managed backup** (not only the newest older target). The same save-current-first job path is used.
+
+- **Compatibility and gates:** same as rollback (older release, accepts today's configuration, idle admission, clean configuration).
+- **Approval:** step-up access key, a separate 5-minute restore preview, confirmation.
+- **Job unit:** the helper starts fixed `agentd-restore@<backup-id>.service`, which runs `run_rollback.py --backup-id …`.
+
+Run `apply_updates.py` again after installing 0.74+ to enable `restoreUnit` if it is missing.
+
 ## Database compatibility
 
 `tasks.sqlite` uses `PRAGMA user_version=2` from release 0.32. Historical unversioned layouts (version 0) and the verified version-1 baseline migrate in one transaction, including legacy project/conversation ancestry, durable creation receipts and startup recovery. Invalid ancestry, schema validation or recovery failure rolls back schema/data/version together. Versioned schemas are validated and never silently repaired. A future version is refused before task recovery or worker-directory cleanup. Releases supporting only schema 1 refuse a schema-2 database; rollback requires the matching pre-update application and task-state backup, never merely replacing the code. Health retains metadata `schemaVersion: 1` and separately reports `taskSchemaVersion` (null with no runner).

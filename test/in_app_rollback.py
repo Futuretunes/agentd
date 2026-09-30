@@ -41,10 +41,11 @@ class RollbackTests(unittest.TestCase):
         self.assertEqual(rollback.candidate(self.c,manifest('0.62.0'),'/cfg',self.ok),(None,'No earlier version backup is available.'))
 
     def run_rollback(self,version,**overrides):
+        backup_id=overrides.pop('backup_id',None)
         stubs=dict(run=lambda *a,**k:None,control_idle=lambda *a:None,idle=lambda *a:None,ready=lambda *a:None,
                    inventory=lambda *a:{'same':True},same_filesystem=lambda *a:None,config=lambda *a:self.c,canonical=lambda v:Path(v))
         stubs.update(overrides)
-        with patch.multiple(update,**stubs):return rollback.run(version,'/cfg',self.ok)
+        with patch.multiple(update,**stubs):return rollback.run(version,'/cfg',self.ok,backup_id=backup_id)
 
     def status(self):return json.loads((self.deployment/job.STATUS).read_text())
 
@@ -77,5 +78,16 @@ class RollbackTests(unittest.TestCase):
         self.assertEqual((self.app/'VERSION').read_text(),'0.63.1')
         self.assertEqual((self.status()['failedStage'],self.status()['kind']),('verifying','rollback'))
         self.assertFalse((self.deployment/'rollback-pending.json').exists())
+
+    def test_by_id_restores_selected_older_backup(self):
+        older=self.backup('0.62.3',300,state='selected older');self.backup('0.63.0',100)
+        target,reason=rollback.by_id(self.c,self.record['release'],'/cfg',older.name,self.ok)
+        self.assertEqual((target['version'],target['backupId'],reason),('0.62.3',older.name,None))
+        self.assertEqual(rollback.by_id(self.c,self.record['release'],'/cfg','agentd-backup-missing',self.ok)[0],None)
+        self.assertIn(older.name,rollback.restorable(self.c,self.record['release'],'/cfg',self.ok))
+        self.run_rollback('0.62.3',backup_id=older.name)
+        self.assertEqual((self.app/'VERSION').read_text(),'0.62.3')
+        self.assertEqual((self.state/'tasks.sqlite').read_text(),'selected older')
+        self.assertEqual(self.status()['backupId'],older.name)
 
 if __name__=='__main__':unittest.main()

@@ -2,7 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { handleAdminRequest, startRollback, startUpdate } from "../src/admin-helper.ts";
+import {
+  handleAdminRequest,
+  startRollback,
+  startRestore,
+  startUpdate,
+} from "../src/admin-helper.ts";
 
 test("approved-release job, approval and listing preserve update safeguards", () => {
   execFileSync(
@@ -126,5 +131,110 @@ test("administration helper starts rollback only for the offered target", () => 
   assert.equal(
     handleAdminRequest({ op: "rollback-start", version: "0.63.0" }, config).started,
     true,
+  );
+});
+
+test("administration helper starts restore only for a restorable managed backup", () => {
+  const backups = (overrides = {}) => ({
+    format: 1,
+    restoreEnabled: true,
+    items: [
+      {
+        id: "agentd-backup-older1",
+        version: "0.62.3",
+        restorable: true,
+        completedAt: 1700000000,
+      },
+      {
+        id: "agentd-backup-newer1",
+        version: "0.63.0",
+        restorable: false,
+        completedAt: 1700000100,
+      },
+    ],
+    ...overrides,
+  });
+  const updates = (overrides = {}) => ({
+    format: 1,
+    running: false,
+    configuration: "ok",
+    ...overrides,
+  });
+  const started = [];
+  const start = (unit) => started.push(unit);
+  assert.deepEqual(
+    startRestore(
+      "agentd-backup-older1",
+      () => backups(),
+      () => updates(),
+      start,
+    ),
+    { started: true, id: "agentd-backup-older1", version: "0.62.3" },
+  );
+  assert.deepEqual(started, ["agentd-restore@agentd-backup-older1.service"]);
+  assert.throws(
+    () =>
+      startRestore(
+        "agentd-backup-newer1",
+        () => backups(),
+        () => updates(),
+        start,
+      ),
+    /cannot be restored/,
+  );
+  assert.throws(
+    () =>
+      startRestore(
+        "agentd-backup-older1",
+        () => backups({ restoreEnabled: false }),
+        () => updates(),
+        start,
+      ),
+    /not enabled/,
+  );
+  assert.throws(
+    () =>
+      startRestore(
+        "agentd-backup-older1",
+        () => backups(),
+        () => updates({ running: true }),
+        start,
+      ),
+    /running/,
+  );
+  for (const bad of ["agentd-backup-", "../agentd-backup-x", "agentd-cli-backup-x"])
+    assert.throws(
+      () =>
+        startRestore(
+          bad,
+          () => backups(),
+          () => updates(),
+          start,
+        ),
+      /Invalid restore/,
+    );
+  assert.equal(started.length, 1);
+  const config = {
+    mobileConfig: "/nonexistent",
+    backups: () => backups(),
+    updates: () => updates(),
+    startRestore: (id) =>
+      startRestore(
+        id,
+        () => backups(),
+        () => updates(),
+        start,
+      ),
+  };
+  assert.equal(
+    handleAdminRequest({ op: "backups-restore", id: "agentd-backup-older1" }, config)
+      .started,
+    true,
+  );
+  assert.throws(() =>
+    handleAdminRequest(
+      { op: "backups-restore", id: "agentd-backup-older1", path: "/opt" },
+      config,
+    ),
   );
 });

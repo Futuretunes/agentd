@@ -144,6 +144,18 @@ export async function pruneBackups(
   return { removed: value.removed };
 }
 
+export async function startRestore(
+  socket: string,
+  id: string,
+): Promise<{ started: true; id: string; version: string }> {
+  if (typeof id !== "string" || !/^agentd-backup-[a-z0-9_]{4,32}$/.test(id))
+    throw Error("Backup restore request is invalid.");
+  const value: any = await request(socket, { op: "backups-restore", id }, 15000);
+  if (value?.started !== true || value.id !== id || typeof value.version !== "string")
+    throw Error("Backup restore was refused.");
+  return { started: true, id, version: value.version };
+}
+
 export async function readCliApprovals(socket: string): Promise<any> {
   const value: any = await request(socket, { op: "cli" }, 15000);
   if (value?.format !== 1 || !Array.isArray(value.items))

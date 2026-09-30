@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Enable Settings > Updates: install the fixed update and rollback job units and the
-approved-releases directory. Installs only the units that are missing.
+"""Enable Settings > Updates: install the fixed update, rollback and restore job units
+and the approved-releases directory. Installs only the units that are missing.
 
 No service is restarted. The administration helper can then start
-agentd-update@<version>.service or agentd-rollback@<version>.service; nothing else changes.
+agentd-update@<version>.service, agentd-rollback@<version>.service or
+agentd-restore@<backup-id>.service; nothing else changes.
 """
 import argparse,fcntl,json,os,subprocess,sys,tempfile
 from pathlib import Path
@@ -14,7 +15,8 @@ import run_approved_update as job
 from separate_gateway import atomic
 # Configuration key -> (unit template, script the installed release must contain).
 UNITS={'updateUnit':('agentd-update@.service','scripts/run_approved_update.py'),
-       'rollbackUnit':('agentd-rollback@.service','scripts/run_rollback.py')}
+       'rollbackUnit':('agentd-rollback@.service','scripts/run_rollback.py'),
+       'restoreUnit':('agentd-restore@.service','scripts/run_rollback.py')}
 
 def unit_path(unit):return Path('/etc/systemd/system')/unit
 
@@ -55,7 +57,7 @@ def main():
     path=update.canonical(a.config);c=update.config(path)
     if not c.get('adminUnit'):raise ValueError('The administration helper is required first')
     missing=[key for key in UNITS if not c.get(key)]
-    if not missing:verify(c);print('In-app updates and rollback already enabled and verified.');return
+    if not missing:verify(c);print('In-app updates, rollback and restore already enabled and verified.');return
     root=Path(c['deployment']);s=root.stat()
     if root.is_symlink() or s.st_uid!=0 or s.st_mode&0o077:raise ValueError('Invalid private deployment directory')
     with (root/'update.lock').open('w') as lock:
@@ -65,7 +67,7 @@ def main():
         if current!=previous['configuration']:raise ValueError('Installed configuration drifted')
         installed=json.loads((Path(c['app'])/'release-manifest.json').read_text())
         if installed!=previous['release'] or any(UNITS[key][1] not in installed.get('files',{}) for key in missing):
-            raise ValueError('Install a release containing in-app updates and rollback first')
+            raise ValueError('Install a release containing in-app updates, rollback and restore first')
         for key in missing:
             if unit_path(UNITS[key][0]).exists():raise ValueError('A job unit already exists; review it first: '+UNITS[key][0])
         backup=Path(tempfile.mkdtemp(prefix='agentd-updates-backup-',dir=Path(c['app']).parent));apply(c,path,previous,current,backup,missing)
