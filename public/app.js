@@ -585,6 +585,7 @@ function renderOperations(data) {
     queueDepth: data.service.queueDepth,
   });
   const summary = node("section", undefined, "operation-summary");
+  summary.setAttribute("aria-label", "Activity summary");
   for (const [value, label] of [
     [summaryCounts.active, "Active or waiting"],
     [summaryCounts.completed, "Completed"],
