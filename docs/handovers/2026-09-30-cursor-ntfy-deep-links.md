@@ -2,9 +2,10 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: click opens the relevant signed-in work; restart does not re-notify the same task+status
-- Status: implemented; pending merge and live-install
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.80.0
 - Branch and base: `feat/gui-ntfy-deep-links` on `main` (0.79.0)
+- PR: #99
 
 ## Changes and relevant files
 
@@ -16,9 +17,9 @@
 ## Validation evidence
 
 - `node --test test/notifications-delivery.test.mjs test/notifications.test.mjs`
-- typecheck / format (run with commit)
+- CI green on #99; live-installed on 192.168.1.20 (0.80.0 / a37dcd14a023).
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20; click an approval push and confirm the correct conversation opens.
+1. Configure a topic and click an approval push to confirm the correct conversation opens.
 2. Remaining Configuration polish / other backlog items.
