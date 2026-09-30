@@ -109,6 +109,10 @@ type Config = {
     codexChat: boolean;
   }) => Promise<any>;
   replaceTlsCertificate?: (certificate: string, key: string) => Promise<any>;
+  adminProfiles?: () => Promise<any>;
+  startProfileEnable?: (
+    target: "resource" | "hardening",
+  ) => Promise<{ started: true; target: string }>;
   reviewPrepare?: typeof prepareReview;
   usageProbe?: typeof probeUsage;
   prepareWorktree?: typeof prepareWorktree;
@@ -1671,6 +1675,20 @@ export function runner(c: Config) {
         return result;
       });
     }
+    if (input.op === "admin-profiles-enable") {
+      if (!c.startProfileEnable)
+        throw Error("Configuration profile enable is not installed.");
+      if (input.target !== "resource" && input.target !== "hardening")
+        throw Error("Profile enable request is invalid.");
+      if (blocked("update"))
+        throw Error(
+          "Finish or stop current work, account changes and preparations before enabling a configuration profile.",
+        );
+      return c.startProfileEnable(input.target).then((result) => {
+        audit("profiles-enable", null, { target: input.target });
+        return result;
+      });
+    }
     requireNoReviewPreparationMutation(input);
     if (typeof input.op === "string" && input.op.startsWith("feedback-"))
       return publicationManager.feedback(input);
@@ -1742,6 +1760,10 @@ export function runner(c: Config) {
     if (input.op === "admin-runtime-flags") {
       if (!c.adminRuntimeFlags) throw Error("Runtime flags are not installed.");
       return c.adminRuntimeFlags();
+    }
+    if (input.op === "admin-profiles") {
+      if (!c.adminProfiles) throw Error("Configuration profiles are not installed.");
+      return c.adminProfiles();
     }
     if (input.op === "admin-configuration") {
       if (!c.adminConfiguration) throw Error("Configuration overview is not installed.");

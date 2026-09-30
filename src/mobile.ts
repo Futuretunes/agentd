@@ -103,6 +103,16 @@ export function mobile(c: Config) {
         id: string;
         requiresIdle: boolean;
       }
+    >(),
+    profilePreviews = new Map<
+      string,
+      {
+        fingerprint: string;
+        inventory: string;
+        expires: number;
+        target: "resource" | "hardening";
+        requiresIdle: boolean;
+      }
     >();
   let accessHash = c.accessHash;
   const bridge = (input: unknown) =>
@@ -1027,6 +1037,116 @@ export function mobile(c: Config) {
             return;
           }
           throw Error("Unsupported TLS action.");
+        }
+        if (path === "/api/profiles" && req.method === "GET") {
+          send(200, await call({ op: "admin-profiles" }));
+          return;
+        }
+        if (path === "/api/profiles" && req.method === "POST") {
+          const limitKey = "profiles:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now();
+          for (const [owner, preview] of profilePreviews)
+            if (preview.expires < now) profilePreviews.delete(owner);
+          if (!accessKeyMatches(input.currentKey, accessHash))
+            throw Error("Current access key did not match.");
+          if (input.target !== "resource" && input.target !== "hardening")
+            throw Error("Choose a configuration profile to enable.");
+          if (input.action === "preview") {
+            const current = await call({ op: "admin-profiles" }),
+              plan = await call({
+                op: "admin-service-restart-plan",
+                target: "runner",
+              });
+            if (current.running) throw Error("A profile apply job is already running.");
+            if (!current.jobsEnabled)
+              throw Error("Configuration profile jobs are not enabled.");
+            if (input.target === "resource" && !current.canEnableResource)
+              throw Error("Standard resource profile is not available to enable.");
+            if (input.target === "hardening" && !current.canEnableHardening)
+              throw Error("Gateway hardening is not available to enable.");
+            const inventory = createHash("sha256")
+                .update(
+                  JSON.stringify({
+                    resourceProfile: current.resourceProfile,
+                    gatewayHardening: current.gatewayHardening,
+                    jobsEnabled: current.jobsEnabled,
+                  }),
+                )
+                .digest("hex"),
+              expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-profiles-enable-preview:${accountOwner}:${inventory}:${input.target}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            profilePreviews.set(accountOwner, {
+              fingerprint,
+              inventory,
+              expires,
+              target: input.target,
+              requiresIdle: !plan.idle,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              target: input.target,
+              label:
+                input.target === "resource"
+                  ? "Standard resource profile"
+                  : "Gateway hardening profile",
+              requiresIdle: !plan.idle,
+            });
+            return;
+          }
+          if (input.action === "enable") {
+            const preview = profilePreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint ||
+              input.target !== preview.target
+            )
+              throw Error("Configuration profile preview expired. Review it again.");
+            if (preview.requiresIdle && input.confirmedIdle !== true)
+              throw Error(
+                "Confirm that current work is stopped before enabling a configuration profile.",
+              );
+            if (input.confirmed !== true)
+              throw Error("Confirm the configuration profile enable.");
+            const current = await call({ op: "admin-profiles" }),
+              inventory = createHash("sha256")
+                .update(
+                  JSON.stringify({
+                    resourceProfile: current.resourceProfile,
+                    gatewayHardening: current.gatewayHardening,
+                    jobsEnabled: current.jobsEnabled,
+                  }),
+                )
+                .digest("hex");
+            if (inventory !== preview.inventory)
+              throw Error("Configuration profiles changed. Review it again.");
+            if (current.running) throw Error("A profile apply job is already running.");
+            profilePreviews.delete(accountOwner);
+            const result = await call({
+              op: "admin-profiles-enable",
+              target: preview.target,
+            });
+            send(202, result);
+            return;
+          }
+          throw Error("Unsupported profiles action.");
         }
         if (path === "/api/storage" && req.method === "POST") {
           const input = await body(req);
