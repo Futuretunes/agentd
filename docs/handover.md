@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.119.0 — History and New project field focus (Cursor)
 
-Search & history and New project land focus in their primary fields. See [handover](handovers/2026-09-30-cursor-gui-history-focus.md). Not installed.
+Search & history and New project land focus in their primary fields. See [handover](handovers/2026-09-30-cursor-gui-history-focus.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.118.0 — Code copy feedback + theme-color (Cursor)
 
