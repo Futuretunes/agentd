@@ -6,7 +6,7 @@
 - Release: 0.111.0
 - Branch and base: `feat/gui-new-conversation-reason` on `main` (0.110.0)
 - Implementation commit(s): d7cf722
-- PR: (filled after open)
+- PR: #163
 
 ## Changes and relevant files
 
