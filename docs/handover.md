@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.98.0 — SVG brand mark (Cursor)
 
-Login, sidebar and welcome use an SVG diamond mark instead of the text ◈ glyph. See [handover](handovers/2026-09-30-cursor-gui-brand-mark-svg.md). Not installed.
+Login, sidebar and welcome use an SVG diamond mark instead of the text ◈ glyph. See [handover](handovers/2026-09-30-cursor-gui-brand-mark-svg.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.97.0 — Consistent disclosure chevrons (Cursor)
 
