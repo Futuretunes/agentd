@@ -23,6 +23,7 @@ import {
   conversationNavLabel,
   brandMarkElement,
   disabledOptionReason,
+  openDialog,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -733,7 +734,7 @@ function renderOperations(data) {
           preview.disabled = false;
         });
         document.body.append(dialog);
-        dialog.showModal();
+        openDialog(dialog);
       } catch (e) {
         notice(e.message);
         preview.disabled = false;
@@ -789,7 +790,7 @@ async function loadOperations(show = true) {
   if (operationsBusy) return;
   operationsBusy = true;
   try {
-    if (show && !$("operations-dialog").open) $("operations-dialog").showModal();
+    if (show) openDialog($("operations-dialog"));
     if (show)
       $("operations-content").replaceChildren(
         node("p", "Loading workspace status…", "muted"),
@@ -848,7 +849,7 @@ async function startAccount(adapter, operation) {
 }
 async function showAccount() {
   accountFingerprint = "";
-  if (!accountDialog.open) accountDialog.showModal();
+  openDialog(accountDialog);
   await updateAccount();
 }
 async function updateAccount() {
@@ -1539,7 +1540,7 @@ $("new").onclick = () => {
   refresh();
   $("prompt").focus();
 };
-$("add-project").onclick = () => $("project-dialog").showModal();
+$("add-project").onclick = () => openDialog($("project-dialog"));
 $("project-close").onclick = () => $("project-dialog").close();
 $("project-form").onsubmit = async (e) => {
   e.preventDefault();
@@ -1619,7 +1620,7 @@ $("project-menu").onclick = () => {
               kind: "update",
               project: p.id,
             });
-            $("repository-dialog").showModal();
+            openDialog($("repository-dialog"));
             await updateRepositories();
           }),
         ]
@@ -1726,7 +1727,7 @@ async function openReview(id) {
     node("p", "You can cancel while the project changes are inspected."),
   );
   document.body.append(progress);
-  progress.showModal();
+  openDialog(progress);
   let cancelled = false,
     job;
   const stop = async () => {
@@ -2049,7 +2050,7 @@ async function openReview(id) {
       $("revision-prompt").value = "";
       $("revision-status").textContent = "";
       $("revision-close").textContent = "Cancel";
-      $("revision-dialog").showModal();
+      openDialog($("revision-dialog"));
     });
     revise.disabled = value.truncated || !!value.blocked.length;
     if (step.primary === "revise") revise.classList.add("primary");
@@ -2148,7 +2149,7 @@ async function openReview(id) {
       button("GitHub feedback and conflicts", () => openFeedback(id, value.project)),
     );
   }
-  if (!$("review-dialog").open) $("review-dialog").showModal();
+  openDialog($("review-dialog"));
 }
 
 async function startValidation(id, tree, actions, checksBox) {
@@ -2320,7 +2321,7 @@ async function loadHistory(before = null) {
   }
 }
 $("history-menu").onclick = () => {
-  $("history-dialog").showModal();
+  openDialog($("history-dialog"));
   void loadHistory();
 };
 $("history-close").onclick = () => {
@@ -2338,7 +2339,7 @@ let runId = null,
 async function openRun(id) {
   runId = id;
   runFingerprint = "";
-  $("run-dialog").showModal();
+  openDialog($("run-dialog"));
   $("run-content").replaceChildren(node("p", "Loading activity…", "muted"));
   await updateRun();
 }
@@ -2416,7 +2417,7 @@ let repositorySource = null,
   githubPolling = false;
 $("import-open").onclick = () => {
   $("project-dialog").close();
-  $("repository-dialog").showModal();
+  openDialog($("repository-dialog"));
   void updateRepositories();
 };
 $("repository-close").onclick = () => $("repository-dialog").close();
@@ -2545,7 +2546,7 @@ async function updateRepositories() {
   }
 }
 $("github-open").onclick = () => {
-  $("github-dialog").showModal();
+  openDialog($("github-dialog"));
   githubRendered = "";
   void updateGithub();
 };
@@ -2661,7 +2662,7 @@ let setupTarget = null,
 async function openCheckSetup(project, task) {
   setupTarget = { project, task };
   setupSignature = "";
-  $("check-setup-dialog").showModal();
+  openDialog($("check-setup-dialog"));
   await updateCheckSetup();
 }
 $("check-setup-close").onclick = () => {
@@ -2801,7 +2802,7 @@ async function openPublishing(task, project) {
   )) {
     $("publishing-target").append(new Option("Update " + target.url, target.id));
   }
-  $("publishing-dialog").showModal();
+  openDialog($("publishing-dialog"));
   await updatePublishing();
 }
 $("publishing-close").onclick = () => {
@@ -2954,7 +2955,7 @@ async function updatePublishing() {
                 : " and create the draft PR shown in the preview") +
               ". GitHub Actions and notifications may run.";
             $("publication-confirm-error").textContent = "";
-            $("publication-confirm-dialog").showModal();
+            openDialog($("publication-confirm-dialog"));
           },
           "primary",
         ),
@@ -3067,7 +3068,7 @@ async function openFeedback(task, project) {
   for (const t of await api("/api/feedback?targets=1&task=" + encodeURIComponent(task)))
     $("feedback-target").append(new Option(t.url, t.id));
   $("feedback-load").disabled = !$("feedback-target").options.length;
-  $("feedback-dialog").showModal();
+  openDialog($("feedback-dialog"));
   await updateFeedback();
 }
 $("feedback-close").onclick = () => {
@@ -3385,7 +3386,7 @@ async function openSettings(scope) {
   settingsScope.value = scope ?? (selected ? "conversation-agent" : "project-agent");
   for (const o of settingsScope.options)
     o.disabled = o.value.startsWith("conversation") && !selected;
-  settingsDialog.showModal();
+  openDialog(settingsDialog);
   await loadSettings();
 }
 settingsScope.onchange = settingsAgent.onchange = () => loadSettings();
@@ -3750,7 +3751,7 @@ $("stop-current").onclick = async () => {
   }
 };
 function openPreferences() {
-  if (!$("preferences-dialog").open) $("preferences-dialog").showModal();
+  openDialog($("preferences-dialog"));
   void loadAccounts();
 }
 $("preferences-menu").onclick = openPreferences;
@@ -3760,7 +3761,7 @@ $("access-key-close").onclick = () => accessKeyDialog.close();
 $("access-key-settings").onclick = () => {
   $("preferences-dialog").close();
   renderAccessKeyForm();
-  accessKeyDialog.showModal();
+  openDialog(accessKeyDialog);
 };
 const configurationDialog = $("configuration-dialog"),
   configurationContent = $("configuration-content");
@@ -3773,7 +3774,7 @@ async function openConfigurationSettings() {
   configurationContent.replaceChildren(
     node("p", "Loading configuration overview…", "muted"),
   );
-  configurationDialog.showModal();
+  openDialog(configurationDialog);
   try {
     await renderConfigurationSettings();
   } catch (error) {
@@ -5029,7 +5030,7 @@ $("backups-settings").onclick = () => {
 };
 async function openBackupsSettings() {
   backupsContent.replaceChildren(node("p", "Loading managed backups…", "muted"));
-  backupsDialog.showModal();
+  openDialog(backupsDialog);
   try {
     await renderBackupsSettings();
   } catch (error) {
@@ -5142,7 +5143,7 @@ async function openUpdatesWithRollback(target) {
     $("updates-settings").click();
     return;
   }
-  $("updates-dialog").showModal();
+  openDialog($("updates-dialog"));
   renderRollbackReview(value.rollback);
 }
 function renderBackupRestoreForm(item) {
@@ -5227,7 +5228,7 @@ function renderBackupRestoreApproval(plan) {
       });
       backupsDialog.close();
       $("preferences-dialog").close();
-      $("updates-dialog").showModal();
+      openDialog($("updates-dialog"));
       renderUpdateProgress({
         job: {
           kind: "rollback",
@@ -5341,7 +5342,7 @@ $("cli-settings").onclick = () => {
 };
 async function openCliSettings() {
   cliContent.replaceChildren(node("p", "Checking installed CLI versions…", "muted"));
-  cliDialog.showModal();
+  openDialog(cliDialog);
   try {
     await renderCliSettings();
   } catch (error) {
@@ -5575,7 +5576,7 @@ $("diagnostics-close").onclick = () => diagnosticsDialog.close();
 $("diagnostics-settings").onclick = async () => {
   $("preferences-dialog").close();
   diagnosticsContent.replaceChildren(node("p", "Checking server health…", "muted"));
-  diagnosticsDialog.showModal();
+  openDialog(diagnosticsDialog);
   try {
     const report = await api("/api/diagnostics"),
       bytes = (value) =>
@@ -6035,7 +6036,7 @@ const projectSettingsAction = $("project-menu").onclick;
 $("project-menu").onclick = () => {
   $("project-info").hidden = true;
   projectSettingsAction();
-  $("project-settings-dialog").showModal();
+  openDialog($("project-settings-dialog"));
 };
 $("project-settings-close").onclick = () => $("project-settings-dialog").close();
 
@@ -6060,7 +6061,7 @@ $("updates-close").onclick = () => {
 };
 $("updates-settings").onclick = () => {
   $("preferences-dialog").close();
-  updatesDialog.showModal();
+  openDialog(updatesDialog);
   void renderUpdates();
 };
 function lastUpdate(job) {

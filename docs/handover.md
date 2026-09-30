@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.105.0 — Dialog focus restoration (Cursor)
+
+Modals restore keyboard focus to the opener on close via `openDialog`. See [handover](handovers/2026-09-30-cursor-gui-dialog-focus-restore.md). Not installed.
+
 ## Candidate 0.104.0 — Selected nav non-colour cue (Cursor)
 
 Selected project/conversation rows use weight + inset accent bar and `aria-current="page"`. See [handover](handovers/2026-09-30-cursor-gui-selected-nav-cue.md). **Live-installed on 192.168.1.20.**
