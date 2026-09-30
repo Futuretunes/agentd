@@ -12,7 +12,47 @@ import {
   formatActiveStatusLabel,
   liveOutputPreview,
   composerStopControl,
+  reviewProgression,
 } from "../public/ui.js";
+test("reviewProgression exposes one primary step with honest guidance", () => {
+  assert.equal(
+    reviewProgression({
+      conflicts: ["a"],
+      blocked: [],
+      checksReady: true,
+      passed: false,
+      filesLength: 1,
+    }).primary,
+    "revise",
+  );
+  assert.equal(
+    reviewProgression({
+      blocked: [],
+      checksReady: false,
+      passed: false,
+      filesLength: 1,
+    }).primary,
+    "setup",
+  );
+  assert.equal(
+    reviewProgression({
+      blocked: [],
+      checksReady: true,
+      passed: false,
+      filesLength: 2,
+    }).primary,
+    "checks",
+  );
+  const ready = reviewProgression({
+    blocked: [],
+    checksReady: true,
+    passed: true,
+    filesLength: 1,
+  });
+  assert.equal(ready.primary, "commit");
+  assert.equal(ready.commitReady, true);
+  assert.match(ready.next, /Commit when the message/);
+});
 test("composerStopControl replaces Send while a run is active", () => {
   assert.deepEqual(composerStopControl("running"), {
     visible: true,

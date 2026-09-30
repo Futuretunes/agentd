@@ -310,6 +310,51 @@ export function composerStopControl(status) {
   return { visible: false, label: "■ Stop", disabled: true, mode: "idle" };
 }
 
+/**
+ * Pending-review footer: one primary step plus honest guidance.
+ * Secondary actions (revisions, discard) stay available but are not primary.
+ */
+export function reviewProgression(state = {}) {
+  const conflicts = !!(state.conflicts && state.conflicts.length);
+  const blocked = !!(state.blocked && state.blocked.length);
+  const truncatedIncomplete = !!state.truncated && !state.largeReviewComplete;
+  const checksReady = !!state.checksReady;
+  const passed = !!state.passed;
+  const hasChanges = !!(state.filesLength || state.mergeParent);
+  const reviewReady = !blocked && !truncatedIncomplete;
+  const commitReady = hasChanges && !conflicts && reviewReady && passed && checksReady;
+  let next = "";
+  let primary = "setup";
+  if (conflicts) {
+    next = "Resolve the conflicts first. Use Request revisions to ask your agent.";
+    primary = "revise";
+  } else if (blocked) {
+    next = "Resolve the warnings above before committing.";
+    primary = "revise";
+  } else if (truncatedIncomplete) {
+    next = "Review and mark every changed file page before running checks.";
+    primary = "setup";
+  } else if (!checksReady) {
+    next = state.setupError
+      ? "This project has no supported checks yet: " + state.setupError
+      : "Prepare this project’s dependencies, then run checks on these changes.";
+    primary = "setup";
+  } else if (!passed) {
+    next = "Run checks on these exact changes. A pass is required before you can commit.";
+    primary = "checks";
+  } else if (commitReady) {
+    next = "Checks passed for this exact snapshot. Commit when the message looks right.";
+    primary = "commit";
+  }
+  return {
+    primary,
+    next,
+    commitReady,
+    reviewReady,
+    checksDisabled: conflicts || !checksReady || !reviewReady,
+  };
+}
+
 export function setupShell() {
   const $ = (id) => document.getElementById(id),
     mobile = matchMedia("(max-width: 760px)");

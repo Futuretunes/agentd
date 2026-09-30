@@ -8,6 +8,7 @@ import {
   formatActiveStatusLabel,
   liveOutputPreview,
   composerStopControl,
+  reviewProgression,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -1973,6 +1974,18 @@ async function openReview(id) {
       );
     } catch {}
     const checksReady = !!setup?.plan?.ready;
+    const passed = value.checks?.status === "passed" && value.checks?.tree === value.tree;
+    const step = reviewProgression({
+      conflicts: value.conflicts,
+      blocked: value.blocked,
+      truncated: value.truncated,
+      largeReviewComplete: value.largeReviewComplete,
+      checksReady,
+      passed,
+      filesLength: value.files.length,
+      mergeParent: value.mergeParent,
+      setupError: setup?.error,
+    });
     const revise = button("Request revisions", () => {
       revisionTarget = { id, tree: value.tree };
       revisionJob = null;
@@ -1982,33 +1995,9 @@ async function openReview(id) {
       $("revision-dialog").showModal();
     });
     revise.disabled = value.truncated || !!value.blocked.length;
-    const setUp = button("Set up checks", () => openCheckSetup(value.project, id));
-    const check = button("Run checks", async () => {
-      await startValidation(id, value.tree, actions, checksBox);
-    });
-    const reviewReady =
-      !value.blocked.length && (!value.truncated || value.largeReviewComplete);
-    check.disabled = !!value.conflicts?.length || !checksReady || !reviewReady;
-    const passed = value.checks?.status === "passed" && value.checks?.tree === value.tree;
-    const commitReady =
-      (value.files.length || value.mergeParent) &&
-      !value.conflicts?.length &&
-      reviewReady &&
-      passed;
-    let next;
-    if (value.conflicts?.length)
-      next = "Resolve the conflicts first. Use Request revisions to ask your agent.";
-    else if (value.blocked.length) next = "Resolve the warnings above before committing.";
-    else if (value.truncated && !value.largeReviewComplete)
-      next = "Review and mark every changed file page before running checks.";
-    else if (!checksReady)
-      next = setup?.error
-        ? "This project has no supported checks yet: " + setup.error
-        : "Prepare this project’s dependencies, then run checks on these changes.";
-    else if (!passed)
-      next =
-        "Run checks on these exact changes. A pass is required before you can commit.";
-    if (commitReady) {
+    if (step.primary === "revise") revise.classList.add("primary");
+    if (step.next) actions.append(node("p", step.next, "next-step"));
+    if (step.commitReady) {
       const field = node("div", undefined, "commit-field");
       const label = node("label", "Commit message"),
         input = node("input");
@@ -2017,7 +2006,7 @@ async function openReview(id) {
       input.value = "Apply reviewed changes";
       label.htmlFor = input.id;
       field.append(label, input);
-      checksBox.append(field);
+      actions.append(field);
       const commit = button(
         "Commit",
         async () => {
@@ -2031,14 +2020,24 @@ async function openReview(id) {
         },
         "primary",
       );
-      actions.append(commit, revise);
-    } else {
-      (checksReady ? check : setUp).classList.add("primary");
-      actions.append(checksReady ? check : setUp, checksReady ? setUp : check, revise);
+      actions.append(commit);
+    } else if (step.primary === "checks") {
+      const check = button(
+        "Run checks",
+        async () => {
+          await startValidation(id, value.tree, actions, checksBox);
+        },
+        "primary",
+      );
+      check.disabled = step.checksDisabled;
+      actions.append(check);
+    } else if (step.primary === "setup") {
+      actions.append(
+        button("Set up checks", () => openCheckSetup(value.project, id), "primary"),
+      );
     }
-    if (next) checksBox.append(node("p", next, "next-step"));
-
     actions.append(
+      revise,
       button(
         "Discard review",
         async () => {
