@@ -2,11 +2,11 @@
 
 - Author/agent: Cursor
 - Requested outcome: Pending change review shows one primary progression control with honest next-step copy in the sticky footer; do not present equal competing check buttons
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.87.0
 - Branch and base: `feat/gui-review-primary-step` on `main` (0.86.0)
-- Implementation commit(s): (filled after commit)
-- PR: (filled after open)
+- Implementation commit(s): 08f3bd2
+- PR: #115
 
 ## Changes and relevant files
 
@@ -17,13 +17,15 @@
 
 ## Validation evidence
 
+- CI green on #115; live-installed on 192.168.1.20 (0.87.0 / 9e1d4ec0d809).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.86.0 / revert of #115.
 
 ## Constraints and known issues
 
@@ -32,5 +34,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
-2. Remaining UX-3: file-list phone sheet polish / publish progression as separately scoped work.
+1. Done: merged #115 and live-installed 0.87.0.
+2. Remaining UX: notice auto-dismiss / publish progression as separately scoped work.
