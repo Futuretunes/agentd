@@ -5179,6 +5179,19 @@ $("diagnostics-settings").onclick = async () => {
   }
 };
 function renderAccessKeyForm() {
+  void openAccessKeySettings();
+}
+async function openAccessKeySettings() {
+  try {
+    const recovery = await api("/api/access-key-recovery").catch(() => null);
+    renderAccessKeySettings(recovery);
+  } catch (error) {
+    accessKeyContent.replaceChildren(
+      node("p", error.message || "Access key settings are unavailable.", "error"),
+    );
+  }
+}
+function renderAccessKeySettings(recovery) {
   const form = node("form"),
     currentLabel = node("label", "Current access key"),
     current = node("input"),
@@ -5186,7 +5199,8 @@ function renderAccessKeyForm() {
     mode = node("select"),
     customLabel = node("label", "Choose a new access key"),
     custom = node("input"),
-    submit = node("button", "Review change", "primary");
+    submit = node("button", "Review change", "primary"),
+    actions = [];
   current.type = custom.type = "password";
   current.autocomplete = "current-password";
   custom.autocomplete = "new-password";
@@ -5236,6 +5250,101 @@ function renderAccessKeyForm() {
         newKey = plan.generatedKey ?? custom.value;
       current.value = "";
       renderAccessKeyApproval(plan, newKey);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  if (recovery?.present) {
+    actions.push(
+      node(
+        "p",
+        "A leftover root-only plaintext recovery file is still on this host. It is not used for sign-in after rotation.",
+        "attention",
+      ),
+      button("Review recovery file deletion", () => renderAccessKeyRecoveryForm()),
+    );
+  } else if (recovery) {
+    actions.push(
+      node("p", "No leftover plaintext access-key recovery file is present.", "good"),
+    );
+  }
+  accessKeyContent.replaceChildren(form, ...actions);
+}
+function renderAccessKeyRecoveryForm() {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    current = node("input"),
+    submit = node("button", "Review deletion", "primary");
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      "Deletes the fixed leftover recovery file used only for initial host setup. This does not change the current access key.",
+      "attention",
+    ),
+    currentLabel,
+    submit,
+    button("Cancel", () => void openAccessKeySettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/access-key-recovery", {
+        action: "preview",
+        currentKey: current.value,
+      });
+      current.value = "";
+      renderAccessKeyRecoveryApproval(plan);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  accessKeyContent.replaceChildren(form);
+}
+function renderAccessKeyRecoveryApproval(plan) {
+  const form = node("form"),
+    confirm = node("input"),
+    currentLabel = node("label", "Enter the current access key again"),
+    current = node("input"),
+    submit = node("button", "Delete recovery file", "danger"),
+    confirmLabel = node(
+      "label",
+      "I understand this permanently deletes the leftover plaintext recovery file",
+    );
+  confirm.type = "checkbox";
+  confirm.required = true;
+  confirmLabel.prepend(confirm);
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  submit.type = "submit";
+  form.append(
+    node("p", "Delete the leftover access-key recovery file.", "attention"),
+    confirmLabel,
+    currentLabel,
+    submit,
+    button("Cancel", () => void openAccessKeySettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      await api("/api/access-key-recovery", {
+        action: "delete",
+        fingerprint: plan.fingerprint,
+        currentKey: current.value,
+        confirmed: true,
+      });
+      notice("Access-key recovery file deleted.");
+      await openAccessKeySettings();
     } catch (error) {
       notice(error.message);
       submit.disabled = false;

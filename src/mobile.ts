@@ -113,6 +113,13 @@ export function mobile(c: Config) {
         target: "resource" | "hardening";
         requiresIdle: boolean;
       }
+    >(),
+    recoveryPreviews = new Map<
+      string,
+      {
+        fingerprint: string;
+        expires: number;
+      }
     >();
   let accessHash = c.accessHash;
   const bridge = (input: unknown) =>
@@ -439,6 +446,69 @@ export function mobile(c: Config) {
             return;
           }
           throw Error("Unsupported access-key action.");
+        }
+        if (path === "/api/access-key-recovery" && req.method === "GET") {
+          send(200, await call({ op: "admin-access-key-recovery" }));
+          return;
+        }
+        if (path === "/api/access-key-recovery" && req.method === "POST") {
+          const limitKey =
+              "access-key-recovery:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          const input = await body(req),
+            now = Date.now();
+          for (const [owner, preview] of recoveryPreviews)
+            if (preview.expires < now) recoveryPreviews.delete(owner);
+          if (!accessKeyMatches(input.currentKey, accessHash))
+            throw Error("Current access key did not match.");
+          if (input.action === "preview") {
+            const current = await call({ op: "admin-access-key-recovery" });
+            if (!current.present) throw Error("Access-key recovery file is not present.");
+            const expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-access-key-recovery-preview:${accountOwner}:${accessHash}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            recoveryPreviews.set(accountOwner, { fingerprint, expires });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              present: true,
+            });
+            return;
+          }
+          if (input.action === "delete") {
+            const preview = recoveryPreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint
+            )
+              throw Error("Access-key recovery preview expired. Review it again.");
+            if (input.confirmed !== true)
+              throw Error("Confirm deletion of the access-key recovery file.");
+            const current = await call({ op: "admin-access-key-recovery" });
+            if (!current.present) throw Error("Access-key recovery file is not present.");
+            recoveryPreviews.delete(accountOwner);
+            const result = await call({
+              op: "admin-access-key-recovery-delete",
+              currentKey: input.currentKey,
+            });
+            send(200, result);
+            return;
+          }
+          throw Error("Unsupported access-key recovery action.");
         }
         if (path === "/api/service-restart" && req.method === "POST") {
           const limitKey = "service-restart:" + (req.socket.remoteAddress ?? "unknown"),

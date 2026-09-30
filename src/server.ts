@@ -26,6 +26,8 @@ import {
   startRestore,
   readProfiles,
   startProfileEnable,
+  readAccessKeyRecovery,
+  deleteAccessKeyRecoveryFile,
 } from "./admin-client.ts";
 
 const version: string = JSON.parse(
@@ -150,6 +152,13 @@ export function start(options: Options) {
             : undefined,
           startProfileEnable: process.env.AGENTD_ADMIN_SOCKET
             ? (target) => startProfileEnable(process.env.AGENTD_ADMIN_SOCKET!, target)
+            : undefined,
+          adminAccessKeyRecovery: process.env.AGENTD_ADMIN_SOCKET
+            ? () => readAccessKeyRecovery(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          deleteAccessKeyRecovery: process.env.AGENTD_ADMIN_SOCKET
+            ? (currentKey) =>
+                deleteAccessKeyRecoveryFile(process.env.AGENTD_ADMIN_SOCKET!, currentKey)
             : undefined,
           gateway: process.env.AGENTD_GATEWAY_SOCKET
             ? {
