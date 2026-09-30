@@ -1538,3 +1538,17 @@ test("phone drawer width clears left safe-area", () => {
     /#sidebar\s*\{[\s\S]*?width:\s*min\(310px,\s*calc\(85vw\s*-\s*env\(safe-area-inset-left\)\)\)/,
   );
 });
+
+test("appearance theme exposes a visible label", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="theme"]');
+  assert.ok(label);
+  assert.equal(label.classList.contains("sr-only"), false);
+  assert.equal(label.textContent.trim(), "Theme");
+  assert.equal(
+    document.getElementById("theme").getAttribute("aria-label"),
+    "Appearance theme",
+  );
+});
