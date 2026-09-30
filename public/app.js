@@ -10,6 +10,9 @@ import {
   composerStopControl,
   reviewProgression,
   noticeDismissMs,
+  approvalSentence,
+  approvalModelLine,
+  approvalDurationLabel,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -1089,7 +1092,7 @@ function renderThread(data) {
           "muted",
         ),
       );
-    else
+    else if (!(t.status === "waiting_for_approval" && t.execution))
       response.append(
         node(
           "p",
@@ -1110,8 +1113,16 @@ function renderThread(data) {
     }
     if (t.execution) {
       const execution = JSON.parse(t.execution);
-      if (t.status === "waiting_for_approval")
-        response.append(node("p", executionSummary(execution), "approval-summary"));
+      if (t.status === "waiting_for_approval") {
+        response.append(
+          node(
+            "p",
+            approvalSentence(execution, { adapter: t.adapter, mode: t.mode }),
+            "approval-summary",
+          ),
+          node("p", approvalModelLine(execution.selection), "muted approval-model"),
+        );
+      }
       response.append(executionDetails(execution));
     }
     if (t.settings_error)
@@ -3292,14 +3303,10 @@ const plainPlace = (text) =>
     .replace(/isolated worktree/gi, "isolated copy of the project")
     .replace(/worktree/gi, "project copy");
 function plainDuration(ms) {
-  const seconds = Math.round(ms / 1000);
-  return seconds < 90 ? seconds + " seconds" : Math.round(seconds / 60) + " min";
+  return approvalDurationLabel(ms) || "0 seconds";
 }
 function plainModel(selection) {
-  return (
-    (selection.model === "provider" ? "Provider default model" : selection.model) +
-    (selection.effort === "provider" ? "" : " · " + selection.effort + " effort")
-  );
+  return approvalModelLine(selection);
 }
 function executionSummary(value) {
   return `${plainPlace(value.permissions.filesystem)} · ${plainModel(value.selection)} · up to ${plainDuration(value.timeoutMs)}`;
