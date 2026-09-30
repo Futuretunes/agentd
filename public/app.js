@@ -1371,6 +1371,7 @@ async function refresh() {
             "project" + (p.id === projectId ? " selected" : ""),
           );
           b.setAttribute("aria-label", nav.accessibleName);
+          if (p.id === projectId) b.setAttribute("aria-current", "page");
           const count = node("small", nav.countLabel);
           count.title = nav.countLabel;
           b.append(node("span", "▱ " + nav.title), count);
@@ -1395,6 +1396,7 @@ async function refresh() {
             "thread" + (selected === t.id ? " selected" : ""),
           );
           b.setAttribute("aria-label", nav.accessibleName);
+          if (selected === t.id) b.setAttribute("aria-current", "page");
           b.append(node("span", nav.title), node("small", nav.statusLabel));
           return b;
         }),

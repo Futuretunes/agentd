@@ -442,6 +442,11 @@ test("dialog close buttons expose accessible names", () => {
   const closes = [...html.matchAll(/aria-label="Close[^"]*"/g)];
   assert.ok(closes.length >= 8, "expected several Close aria-labels");
 });
+test("selected sidebar items keep a non-colour cue", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(css, /\.selected \{[\s\S]*font-weight: 600/);
+  assert.match(css, /\.selected \{[\s\S]*box-shadow: inset 3px 0 0/);
+});
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
   globalThis.document = document;
