@@ -223,7 +223,8 @@ export function listCliApprovals(command = "/opt/agentd/scripts/admin_cli.py") {
   return value;
 }
 
-const cliApprovalId = /^cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}$/;
+const cliApprovalId =
+  /^(?:cursor_[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[a-f0-9]{7,12}|claude_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}|codex_[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4})$/;
 
 export function startCliInstall(
   id: unknown,

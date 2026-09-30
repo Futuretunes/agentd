@@ -75,6 +75,7 @@ export const publicMessages = new Set<string>([
   "Choose a published PR from this conversation.",
   "Choose a supported GitHub access level.",
   "Choose a valid branch name.",
+  "Choose an approved CLI package.",
   "Choose at least one supported agent adapter.",
   "Choose previous saved answer or no previous context",
   "Choose supported effort for a specific agent",

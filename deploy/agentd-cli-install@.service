@@ -1,8 +1,8 @@
 [Unit]
-Description=AgentD approved Cursor CLI install %i
+Description=AgentD approved CLI install %i
 # Started only by the administration helper for a validated approval id.
-# Runs outside the helper sandbox because installing writes under /opt/cursor-agent
-# and the service-user symlink; the command is fixed and the instance is only an id.
+# Runs outside the helper sandbox because installing writes under /opt and
+# the service-user symlink; the command is fixed and the instance is only an id.
 ConditionPathExists=/var/lib/agentd-cli/%i.json
 
 [Service]
