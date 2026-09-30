@@ -1411,7 +1411,8 @@ a {
   }
   #review-actions {
     bottom: 0;
-    padding: 16px 0 max(16px, env(safe-area-inset-bottom));
+    padding: 16px max(16px, env(safe-area-inset-right))
+      max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   }
   #review-dialog {
     margin: 0;
