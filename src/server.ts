@@ -30,6 +30,8 @@ import {
   deleteAccessKeyRecoveryFile,
   readNotifications,
   applyNotifications as writeNotifications,
+  readOrigin,
+  applyOrigin as writeOrigin,
 } from "./admin-client.ts";
 
 const version: string = JSON.parse(
@@ -167,6 +169,12 @@ export function start(options: Options) {
             : undefined,
           applyNotifications: process.env.AGENTD_ADMIN_SOCKET
             ? (settings) => writeNotifications(process.env.AGENTD_ADMIN_SOCKET!, settings)
+            : undefined,
+          adminOrigin: process.env.AGENTD_ADMIN_SOCKET
+            ? () => readOrigin(process.env.AGENTD_ADMIN_SOCKET!)
+            : undefined,
+          applyOrigin: process.env.AGENTD_ADMIN_SOCKET
+            ? (settings) => writeOrigin(process.env.AGENTD_ADMIN_SOCKET!, settings)
             : undefined,
           gateway: process.env.AGENTD_GATEWAY_SOCKET
             ? {

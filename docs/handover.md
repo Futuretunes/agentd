@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-ntfy-deep-links.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-origin-config.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.81.0 — signed-in HTTPS origin configuration (Cursor)
+
+Settings > Configuration shows and can change the managed signed-in https origin with step-up preview; phone gateway restart is required afterward. See [handover](handovers/2026-09-30-cursor-origin-config.md). Not installed.
 
 ## Candidate 0.80.0 — ntfy authenticated deep links and durable dedupe (Cursor)
 

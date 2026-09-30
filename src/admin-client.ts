@@ -322,3 +322,23 @@ export async function applyNotifications(socket: string, settings: object): Prom
     throw Error("Notification settings change was refused.");
   return value;
 }
+
+export async function readOrigin(socket: string): Promise<any> {
+  const value: any = await request(socket, { op: "origin" });
+  if (
+    value?.format !== 1 ||
+    typeof value.valid !== "boolean" ||
+    typeof value.fingerprint !== "string" ||
+    !/^[a-f0-9]{64}$/.test(value.fingerprint) ||
+    (value.origin !== null && typeof value.origin !== "string")
+  )
+    throw Error("Origin settings response is invalid.");
+  return value;
+}
+
+export async function applyOrigin(socket: string, settings: object): Promise<any> {
+  const value: any = await request(socket, { op: "origin-apply", settings }, 15000);
+  if (value?.format !== 1 || typeof value.fingerprint !== "string")
+    throw Error("Origin settings change was refused.");
+  return value;
+}
