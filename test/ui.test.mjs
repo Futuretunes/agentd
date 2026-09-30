@@ -2140,3 +2140,12 @@ test("backups dialog heading exposes a stable accessible name", () => {
   assert.equal(head.getAttribute("role"), "group");
   assert.equal(head.getAttribute("aria-label"), "Backups heading");
 });
+
+test("CLI dialog heading exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const head = document.querySelector("#cli-dialog .review-head");
+  assert.equal(head.getAttribute("role"), "group");
+  assert.equal(head.getAttribute("aria-label"), "CLI heading");
+});
