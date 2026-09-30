@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.112.0 — Connection bullet + login focus (Cursor)
 
-Connection ● is decorative; login autofocuses the access key and refocuses after logout/401. See [handover](handovers/2026-09-30-cursor-gui-connection-bullet.md). Not installed.
+Connection ● is decorative; login autofocuses the access key and refocuses after logout/401. See [handover](handovers/2026-09-30-cursor-gui-connection-bullet.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.111.0 — Honest no-project New/Send reasons (Cursor)
 
