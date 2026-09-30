@@ -6048,6 +6048,7 @@ function renderAccessKeyApproval(plan, newKey) {
   keyLabel.append(key);
   saved.type = "checkbox";
   saved.required = true;
+  saved.setAttribute("aria-label", "I saved the new access key securely");
   savedLabel.append(saved, document.createTextNode(" I saved the new key securely"));
   current.type = "password";
   current.autocomplete = "current-password";

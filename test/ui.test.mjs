@@ -1829,3 +1829,8 @@ test("GitHub access ceiling exposes a stable accessible name", () => {
   assert.match(source, /aria-label", "GitHub access ceiling"/);
   assert.match(source, /AgentD access ceiling/);
 });
+
+test("saved access key confirmation exposes a stable accessible name", () => {
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /aria-label", "I saved the new access key securely"/);
+});
