@@ -102,7 +102,11 @@
           aria-busy="false"
         ></div>
         <div class="composer-wrap">
-          <form id="compose">
+          <form
+            id="compose"
+            aria-label="Compose message"
+            aria-describedby="hint policy-hint draft-hint"
+          >
             <label class="sr-only" for="prompt">Message your agent</label
             ><textarea
               id="prompt"

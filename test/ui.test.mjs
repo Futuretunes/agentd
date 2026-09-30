@@ -624,6 +624,14 @@ test("attachment chips expose remove accessible names", () => {
   const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(source, /Remove attachment: " \+ item\.name/);
 });
+test("compose form is named and described by composer hints", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const form = document.getElementById("compose");
+  assert.equal(form.getAttribute("aria-label"), "Compose message");
+  assert.equal(form.getAttribute("aria-describedby"), "hint policy-hint draft-hint");
+});
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(app, /Open Activity to start/);
