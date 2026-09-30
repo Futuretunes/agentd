@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-composer-stop.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-review-primary-step.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.87.0 — One primary review step (Cursor)
+
+Pending change review sticky footer shows one primary step (Set up checks / Run checks / Commit) with next-step guidance; Request revisions and Discard stay secondary. See [handover](handovers/2026-09-30-cursor-gui-review-primary-step.md). Not installed.
 
 ## Candidate 0.86.0 — Composer Stop/Cancel while active (Cursor)
 
