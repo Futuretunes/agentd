@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.131.0 — Login landmark name (Cursor)
 
-Login section is labeled Sign in to agentd. See [handover](handovers/2026-09-30-cursor-gui-login-landmark.md). Not installed.
+Login section is labeled Sign in to agentd. See [handover](handovers/2026-09-30-cursor-gui-login-landmark.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.130.0 — Main desk landmark name (Cursor)
 
