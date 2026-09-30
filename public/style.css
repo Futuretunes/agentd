@@ -1003,8 +1003,8 @@ a {
 }
 .skip-link {
   position: absolute;
-  left: 12px;
-  top: 12px;
+  left: max(12px, env(safe-area-inset-left));
+  top: max(12px, env(safe-area-inset-top));
   z-index: 50;
   padding: 10px 14px;
   border-radius: 10px;

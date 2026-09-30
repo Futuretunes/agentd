@@ -1499,3 +1499,11 @@ test("phone dialogs clear top safe-area inset", () => {
     /dialog\s*\{[\s\S]*?padding:\s*max\(20px,\s*env\(safe-area-inset-top\)\)\s+max\(16px,\s*env\(safe-area-inset-right\)\)\s+max\(20px,\s*env\(safe-area-inset-bottom\)\)\s+max\(16px,\s*env\(safe-area-inset-left\)\)/,
   );
 });
+
+test("skip link clears top and left safe-area insets", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /\.skip-link\s*\{\s*position:\s*absolute;\s*left:\s*max\(12px,\s*env\(safe-area-inset-left\)\);\s*top:\s*max\(12px,\s*env\(safe-area-inset-top\)\)/,
+  );
+});
