@@ -546,6 +546,17 @@ test("noProjectActionReason explains blocked new/send without a project", () => 
   assert.match(noProjectActionReason("new"), /project first/i);
   assert.match(noProjectActionReason("send"), /project to send/i);
 });
+test("connection status hides the decorative bullet from assistive tech", () => {
+  const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
+  assert.match(html, /class="connection"[^>]*>[\s\S]*aria-hidden="true">●/);
+  assert.match(html, /Connected to your workspace/);
+});
+test("login access key is autofocused", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(document.getElementById("key").hasAttribute("autofocus"), true);
+});
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
   globalThis.document = document;

@@ -28,6 +28,7 @@
           id="key"
           type="password"
           autocomplete="current-password"
+          autofocus
           required
         /><button class="primary">Open workspace</button>
       </form>
@@ -60,7 +61,9 @@
         <div class="sidebar-foot">
           <button id="operations-menu" class="nav-action">Activity</button
           ><button id="preferences-menu" class="nav-action">Settings</button
-          ><span class="connection" aria-live="polite">● Connected to your workspace</span>
+          ><span class="connection" aria-live="polite"
+            ><span aria-hidden="true">● </span>Connected to your workspace</span
+          >
         </div>
       </aside>
       <main class="desk">
