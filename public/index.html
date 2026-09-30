@@ -33,6 +33,7 @@
       </form>
     </section>
     <div id="workspace" hidden>
+      <a class="skip-link" href="#detail">Skip to conversation</a>
       <button id="drawer-backdrop" hidden aria-label="Close navigation"></button>
       <aside id="sidebar" aria-label="Workspace navigation">
         <div class="sidebar-head">
@@ -86,7 +87,7 @@
             </div>
           </details>
         </header>
-        <div id="detail" role="region" aria-label="Conversation"></div>
+        <div id="detail" role="region" aria-label="Conversation" tabindex="-1"></div>
         <div class="composer-wrap">
           <form id="compose">
             <label class="sr-only" for="prompt">Message your agent</label
