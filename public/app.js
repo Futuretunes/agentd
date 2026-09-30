@@ -14,6 +14,7 @@ import {
   approvalModelLine,
   approvalDurationLabel,
   applySuggestionPrompt,
+  reviewCommittedProgression,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -2100,14 +2101,16 @@ async function openReview(id) {
       ),
     );
   } else if (value.commit) {
-    if (value.checks?.input !== "git-tree-v1" || value.checks?.status !== "passed") {
-      content.append(
-        node(
-          "p",
-          "These committed files need fresh snapshot checks before publication. Earlier checks are no longer accepted.",
-          "attention",
-        ),
-      );
+    const committed = reviewCommittedProgression({
+      checksInput: value.checks?.input,
+      checksStatus: value.checks?.status,
+    });
+    content.append(
+      node("p", `Committed on ${value.branch}`, "muted"),
+      node("p", value.commit, "path"),
+    );
+    if (committed.next) actions.append(node("p", committed.next, "next-step"));
+    if (committed.primary === "recheck") {
       actions.append(
         button(
           "Recheck committed files",
@@ -2117,12 +2120,12 @@ async function openReview(id) {
           "primary",
         ),
       );
+    } else {
+      actions.append(
+        button("Publish to GitHub", () => openPublishing(id, value.project), "primary"),
+      );
     }
-
-    content.append(
-      node("p", `Committed on ${value.branch}`, "muted"),
-      node("p", value.commit, "path"),
-      button("Publish to GitHub", () => openPublishing(id, value.project)),
+    actions.append(
       button("GitHub feedback and conflicts", () => openFeedback(id, value.project)),
     );
   }

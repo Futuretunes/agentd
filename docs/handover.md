@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-suggestion-focus.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-publish-primary.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.91.0 — Primary Publish after commit (Cursor)
+
+After a local commit, the review sticky footer promotes Publish to GitHub (or Recheck when snapshot checks are stale); feedback stays secondary. See [handover](handovers/2026-09-30-cursor-gui-publish-primary.md). Not installed.
 
 ## Candidate 0.90.0 — Suggestion chip fill + focus (Cursor)
 

@@ -411,6 +411,24 @@ export function approvalSentence(execution = {}, { adapter, mode } = {}) {
  * Fill a composer prompt from a suggestion without auto-submitting.
  * Returns short hint copy; caller focuses/saves draft.
  */
+/**
+ * After a local commit, one primary next step: recheck or publish.
+ */
+export function reviewCommittedProgression(state = {}) {
+  const needsRecheck =
+    state.checksInput !== "git-tree-v1" || state.checksStatus !== "passed";
+  if (needsRecheck) {
+    return {
+      primary: "recheck",
+      next: "These committed files need fresh snapshot checks before publication.",
+    };
+  }
+  return {
+    primary: "publish",
+    next: "Committed locally. Nothing was pushed. Publish to GitHub when you are ready.",
+  };
+}
+
 export function applySuggestionPrompt(field, text) {
   const value = String(text ?? "");
   if (!field) return { text: value, hint: "" };
