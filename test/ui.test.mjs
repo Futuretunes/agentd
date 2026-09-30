@@ -1900,3 +1900,17 @@ test("empty list copy exposes stable accessible names", () => {
   assert.match(source, /aria-label", "Empty conversations"/);
   assert.match(source, /aria-label", "Empty projects"/);
 });
+
+test("conversation title exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("thread-title").getAttribute("aria-label"),
+    "Conversation title",
+  );
+  assert.equal(
+    document.getElementById("thread-title").getAttribute("aria-describedby"),
+    "project-name",
+  );
+});
