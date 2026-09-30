@@ -6,7 +6,7 @@
 - Release: 0.97.0
 - Branch and base: `feat/gui-disclosure-chevrons` on `main` (0.96.0)
 - Implementation commit(s): 8fa2538
-- PR: (filled after open)
+- PR: #135
 
 ## Changes and relevant files
 
