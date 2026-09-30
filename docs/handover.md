@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.127.0 — Compose form accessible name (Cursor)
 
-Compose form is named and described by composer hints. See [handover](handovers/2026-09-30-cursor-gui-compose-label.md). Not installed.
+Compose form is named and described by composer hints. See [handover](handovers/2026-09-30-cursor-gui-compose-label.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.126.0 — Attachment remove accessible names (Cursor)
 
