@@ -457,11 +457,20 @@ test("workspace has unique controls, keyboard-accessible attachment input and na
     (n) => n.id || n.tagName.toLowerCase(),
   );
   assert.deepEqual(projectFields.slice(0, 4), [
-    "project-heading",
+    "project-heading-group",
     "label",
     "project-input",
     "p",
   ]);
+  assert.equal(
+    document.getElementById("project-heading-group").getAttribute("role"),
+    "group",
+  );
+  assert.equal(
+    document.getElementById("project-heading-group").getAttribute("aria-label"),
+    "New project heading",
+  );
+  assert.ok(document.getElementById("project-heading"));
   assert.ok(
     projectFields.indexOf("import-open") > projectFields.indexOf("project-input"),
   );
