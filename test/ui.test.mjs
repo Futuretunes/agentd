@@ -763,6 +763,11 @@ test("composer hints announce changes politely", () => {
     assert.ok(tag, id);
     assert.match(tag[0], /aria-live="polite"/);
   }
+  for (const id of ["mode", "adapter"]) {
+    const tag = html.match(new RegExp(`<select[^>]*id="${id}"[^>]*>`));
+    assert.ok(tag, id);
+    assert.match(tag[0], /aria-describedby="agent-reasons"/);
+  }
 });
 test("noProjectActionReason explains blocked new/send without a project", () => {
   assert.match(noProjectActionReason("new"), /project first/i);
