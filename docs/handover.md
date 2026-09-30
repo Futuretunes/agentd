@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.125.0 — Menu aria-expanded sync (Cursor)
 
-Conversation and agent picker summaries keep `aria-expanded` in sync. See [handover](handovers/2026-09-30-cursor-gui-menu-expanded.md). Not installed.
+Conversation and agent picker summaries keep `aria-expanded` in sync. See [handover](handovers/2026-09-30-cursor-gui-menu-expanded.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.124.0 — Conversation region busy state (Cursor)
 
