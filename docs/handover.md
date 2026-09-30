@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.122.0 — Suggestion chip accessible names (Cursor)
 
-Welcome suggestions are a named group with per-chip Use suggestion labels. See [handover](handovers/2026-09-30-cursor-gui-suggestion-labels.md). Not installed.
+Welcome suggestions are a named group with per-chip Use suggestion labels. See [handover](handovers/2026-09-30-cursor-gui-suggestion-labels.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.121.0 — Review footer safe-area (Cursor)
 
