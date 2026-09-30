@@ -1628,3 +1628,16 @@ test("publishing target exposes a stable accessible name", () => {
     "Publication target",
   );
 });
+
+test("feedback target exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="feedback-target"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Published pull request");
+  assert.equal(
+    document.getElementById("feedback-target").getAttribute("aria-label"),
+    "Published pull request",
+  );
+});
