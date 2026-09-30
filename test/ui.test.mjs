@@ -757,7 +757,7 @@ test("sidebar New conversation exposes a stable accessible name", () => {
 });
 test("composer hints announce changes politely", () => {
   const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
-  for (const id of ["draft-hint", "policy-hint", "hint"]) {
+  for (const id of ["draft-hint", "policy-hint", "hint", "agent-reasons"]) {
     const tag = html.match(new RegExp(`<p[^>]*id="${id}"[^>]*>`));
     assert.ok(tag, id);
     assert.match(tag[0], /aria-live="polite"/);
