@@ -1719,3 +1719,16 @@ test("repository url exposes a stable accessible name", () => {
     "Repository URL",
   );
 });
+
+test("repository name exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="repository-name"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Project name");
+  assert.equal(
+    document.getElementById("repository-name").getAttribute("aria-label"),
+    "Import project name",
+  );
+});
