@@ -1941,3 +1941,12 @@ test("composer actions group exposes a stable accessible name", () => {
   assert.equal(group.getAttribute("role"), "group");
   assert.equal(group.getAttribute("aria-label"), "Composer actions");
 });
+
+test("conversation actions menu panel exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const panel = document.querySelector("#conversation-menu .menu-panel");
+  assert.equal(panel.getAttribute("role"), "group");
+  assert.equal(panel.getAttribute("aria-label"), "Conversation actions");
+});
