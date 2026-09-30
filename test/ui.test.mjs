@@ -1855,3 +1855,8 @@ test("answer copy code control exposes a stable accessible name", () => {
   assert.match(source, /copy\.setAttribute\("aria-live", "polite"\)/);
   assert.match(source, /copy\.textContent = "Copied"/);
 });
+
+test("remaining allowance progress exposes a stable accessible name", () => {
+  const source = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(source, /aria-label", label \+ " remaining allowance"/);
+});
