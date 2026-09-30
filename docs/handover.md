@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-account-head-label.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-agent-settings-head-label.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.289.0 — Agent settings dialog heading accessible name (Cursor)
+
+Agent settings dialog heading is labeled Agent settings heading. See [handover](handovers/2026-09-30-cursor-gui-agent-settings-head-label.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.288.0 — Account dialog heading accessible name (Cursor)
 
