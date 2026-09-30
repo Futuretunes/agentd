@@ -2266,3 +2266,11 @@ test("Agent settings form is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /settingsForm\.setAttribute\("aria-label", "Agent settings form"\)/);
 });
+
+test("Agent settings close control is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /settingsClose\.setAttribute\("aria-label", "Close agent settings"\)/,
+  );
+});
