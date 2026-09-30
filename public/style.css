@@ -1352,6 +1352,9 @@ a {
       max(28px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
     margin: max(6vh, env(safe-area-inset-top)) auto;
   }
+  #notice {
+    bottom: max(16px, env(safe-area-inset-bottom));
+  }
   .turn,
   .muted,
   .status {
