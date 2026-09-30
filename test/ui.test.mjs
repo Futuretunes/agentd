@@ -773,6 +773,12 @@ test("composer hints announce changes politely", () => {
     html.match(/<span[^>]*id="selection-summary"[^>]*>/)[0],
     /aria-live="polite"/,
   );
+  for (const id of ["picker-summary", "picker-mode"]) {
+    assert.match(
+      html.match(new RegExp(`<span[^>]*id="${id}"[^>]*>`))[0],
+      /aria-live="polite"/,
+    );
+  }
   for (const id of ["mode", "adapter"]) {
     const tag = html.match(new RegExp(`<select[^>]*id="${id}"[^>]*>`));
     assert.ok(tag, id);
