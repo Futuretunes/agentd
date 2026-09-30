@@ -6,7 +6,7 @@
 - Release: 0.131.0
 - Branch and base: `feat/gui-login-landmark` on `main` (0.130.0)
 - Implementation commit(s): be1d504
-- PR: pending
+- PR: #203
 
 ## Changes and relevant files
 
