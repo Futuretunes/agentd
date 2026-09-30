@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.102.0 — Non-colour status cues (Cursor)
 
-Active/failure statuses and good/attention outcomes use weight (and underline for failures) in addition to colour. See [handover](handovers/2026-09-30-cursor-gui-status-noncolour-cues.md). Not installed.
+Active/failure statuses and good/attention outcomes use weight (and underline for failures) in addition to colour. See [handover](handovers/2026-09-30-cursor-gui-status-noncolour-cues.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.101.0 — Phone Send stays on the tools row (Cursor)
 

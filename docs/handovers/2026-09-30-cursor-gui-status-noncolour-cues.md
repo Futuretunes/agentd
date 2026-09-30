@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Status and outcome styles must not rely on colour alone
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.102.0
 - Branch and base: `feat/gui-status-noncolour-cues` on `main` (0.101.0)
 - Implementation commit(s): 26f78aa
@@ -15,13 +15,15 @@
 
 ## Validation evidence
 
+- CI green on #145; live-installed on 192.168.1.20 (0.102.0 / e5e2313840fa).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.101.0 / revert of #145.
 
 ## Constraints and known issues
 
@@ -30,5 +32,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #145 and live-installed 0.102.0.
 2. Continue UX polish or admin slices as operator priority allows.
