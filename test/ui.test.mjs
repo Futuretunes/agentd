@@ -1326,3 +1326,11 @@ test("phone conversation header clears horizontal safe-area insets", () => {
     /header\s*\{\s*padding:\s*max\(12px,\s*env\(safe-area-inset-top\)\)\s+max\(12px,\s*env\(safe-area-inset-right\)\)\s+12px\s+max\(12px,\s*env\(safe-area-inset-left\)\)/,
   );
 });
+
+test("phone notice toast clears horizontal safe-area insets", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /#notice\s*\{[\s\S]*?max-width:\s*min\(\s*600px,\s*calc\(100vw\s*-\s*32px\s*-\s*env\(safe-area-inset-left\)\s*-\s*env\(safe-area-inset-right\)\)/,
+  );
+});
