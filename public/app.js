@@ -5012,6 +5012,7 @@ function openConfigurationServiceRestart(target, label) {
   current.type = "password";
   current.autocomplete = "current-password";
   current.required = true;
+  current.setAttribute("aria-label", "Current access key");
   currentLabel.append(current);
   submit.type = "submit";
   form.append(
