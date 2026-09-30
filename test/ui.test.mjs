@@ -1516,3 +1516,16 @@ test("phone conversation menu panel clears bottom safe-area", () => {
     /\.menu-panel\s*\{[\s\S]*?max-height:\s*calc\(\s*var\(--viewport-height,\s*100dvh\)\s*-\s*72px\s*-\s*env\(safe-area-inset-bottom\)\s*\)/,
   );
 });
+
+test("picker panel clears phone safe-area insets", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /\.picker-panel\s*\{[\s\S]*?width:\s*min\(\s*360px,\s*calc\(100vw\s*-\s*32px\s*-\s*env\(safe-area-inset-left\)\s*-\s*env\(safe-area-inset-right\)\)\s*\)/,
+  );
+  const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+  assert.match(
+    phone,
+    /\.picker-panel\s*\{[\s\S]*?max-height:\s*calc\(\s*var\(--viewport-height,\s*100dvh\)\s*-\s*120px\s*-\s*env\(safe-area-inset-top\)\s*-\s*env\(safe-area-inset-bottom\)\s*\)/,
+  );
+});

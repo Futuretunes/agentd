@@ -1077,7 +1077,10 @@ a {
   bottom: calc(100% + 10px);
   left: 0;
   z-index: 15;
-  width: min(360px, calc(100vw - 32px));
+  width: min(
+    360px,
+    calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right))
+  );
   padding: 14px 16px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1445,6 +1448,13 @@ a {
   }
   .menu-panel {
     max-height: calc(var(--viewport-height, 100dvh) - 72px - env(safe-area-inset-bottom));
+    overflow: auto;
+  }
+  .picker-panel {
+    max-height: calc(
+      var(--viewport-height, 100dvh) - 120px - env(safe-area-inset-top) -
+        env(safe-area-inset-bottom)
+    );
     overflow: auto;
   }
 }
