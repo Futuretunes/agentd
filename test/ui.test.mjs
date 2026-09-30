@@ -1106,3 +1106,13 @@ test("login form exposes a stable accessible name", () => {
     "Sign in",
   );
 });
+
+test("access key content announces updates politely", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("access-key-content").getAttribute("aria-live"),
+    "polite",
+  );
+});
