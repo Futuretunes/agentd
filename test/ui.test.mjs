@@ -1076,3 +1076,13 @@ test("revision form exposes a stable accessible name", () => {
     "Request revisions",
   );
 });
+
+test("publishing form exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("publishing-form").getAttribute("aria-label"),
+    "Publish to GitHub",
+  );
+});
