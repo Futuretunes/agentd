@@ -493,6 +493,33 @@ export function adapterAccountStatusLine({ account = {}, enabled = true } = {}) 
   };
 }
 
+/**
+ * Sidebar project row: explain the numeric badge and expose an accessible name (U17/U19).
+ */
+export function projectNavLabel(name, conversations) {
+  const title = String(name ?? "Project");
+  const n = Math.max(0, Number(conversations) || 0);
+  const countLabel = n === 1 ? "1 conversation" : `${n} conversations`;
+  return {
+    title,
+    countLabel,
+    accessibleName: `${title}, ${countLabel}`,
+  };
+}
+
+/**
+ * Sidebar conversation row: title plus status with an accessible name (U19).
+ */
+export function conversationNavLabel(title, statusLabel) {
+  const name = String(title ?? "Conversation");
+  const status = String(statusLabel ?? "New");
+  return {
+    title: name,
+    statusLabel: status,
+    accessibleName: `${name}, ${status}`,
+  };
+}
+
 export function reviewCommittedProgression(state = {}) {
   const needsRecheck =
     state.checksInput !== "git-tree-v1" || state.checksStatus !== "passed";

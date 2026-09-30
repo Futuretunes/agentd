@@ -51,14 +51,14 @@ Priority: high; start alongside UX-1 and validate in every subsequent item.
 
 - Semantic light/dark tokens for colour, typography, spacing, radii and focus. Verify contrast for actual text/control states; do not copy unverified prototype colours. Use system or locally served fonts and consistent icons without external font/CDN dependencies.
 - Phone drawer, compact top bar, keyboard-aware composer, safe-area handling and usable dialogs/sheets. Use generous touch targets and prevent input zoom where appropriate.
-- Keyboard-operable attachment control, named controls, visible focus, focus restoration, non-colour status cues and explanations for disabled choices. Respect reduced motion.
+- Keyboard-operable attachment control, named controls, visible focus, focus restoration, non-colour status cues and explanations for disabled choices. Respect reduced motion. **Candidate 0.96.0:** project and conversation sidebar buttons set accessible names.
 - Acceptance: automated accessibility checks plus manual keyboard, screen-reader, zoom/reflow and actual phone keyboard testing. Target WCAG 2.2 AA; record remaining exceptions honestly. Current sidebar names and sampled passing contrast are regression baselines, not confirmed defects.
 
 ### UX-5 — Remaining visual consistency (U17)
 
 Priority: normal, after core flows.
 
-- Fix crowded import/label/composer layouts; explain or remove ambiguous badges; make disclosure and icon treatments consistent. **Candidate 0.95.0:** New project name/create precede Import; composer top fade softens scroll under the sticky compose area.
+- Fix crowded import/label/composer layouts; explain or remove ambiguous badges; make disclosure and icon treatments consistent. **Candidate 0.95.0:** New project name/create precede Import; composer top fade softens scroll under the sticky compose area. **Candidate 0.96.0:** Project badges say “N conversation(s)” and sidebar rows expose aria-labels.
 - Logo/font/style preferences require visual review, not a backend change. Do not remove useful native semantics solely to imitate another app.
 - Acceptance: coherent desktop and phone screenshots with long titles, empty states, errors and loading states; no clipped controls or inaccessible replacement widgets.
 
