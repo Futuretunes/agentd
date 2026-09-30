@@ -1914,3 +1914,12 @@ test("conversation title exposes a stable accessible name", () => {
     "project-name",
   );
 });
+
+test("conversation identity group exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const group = document.querySelector(".conversation-heading");
+  assert.equal(group.getAttribute("role"), "group");
+  assert.equal(group.getAttribute("aria-label"), "Conversation identity");
+});
