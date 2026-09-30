@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.117.0 — Phone drawer and sheet motion (Cursor)
 
-Phone drawer slides and dialogs sheet-up briefly; reduced motion disables both. See [handover](handovers/2026-09-30-cursor-gui-drawer-sheet-motion.md). Not installed.
+Phone drawer slides and dialogs sheet-up briefly; reduced motion disables both. See [handover](handovers/2026-09-30-cursor-gui-drawer-sheet-motion.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.116.0 — Keyboard Attach control (Cursor)
 

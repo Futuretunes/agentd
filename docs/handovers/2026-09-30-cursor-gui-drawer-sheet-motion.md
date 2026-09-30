@@ -2,10 +2,10 @@
 
 - Author/agent: Cursor
 - Requested outcome: Phone navigation drawer and dialog sheets should open with a short motion that respects reduced-motion
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.117.0
 - Branch and base: `feat/gui-drawer-sheet-motion` on `main` (0.116.0)
-- Implementation commit(s): 131013c
+- Implementation commit(s): 00d9006
 - PR: #175
 
 ## Changes and relevant files
@@ -17,13 +17,15 @@
 
 ## Validation evidence
 
+- CI green on #175; live-installed on 192.168.1.20 (0.117.0 / 2cd9a5e).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check`
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.116.0 / revert of #175.
 
 ## Constraints and known issues
 
@@ -31,5 +33,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #175 and live-installed 0.117.0.
 2. Continue UX polish or admin slices as operator priority allows.
