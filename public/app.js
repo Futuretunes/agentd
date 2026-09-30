@@ -22,6 +22,7 @@ import {
   projectNavLabel,
   conversationNavLabel,
   brandMarkElement,
+  disabledOptionReason,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -78,15 +79,27 @@ function applyPolicy() {
       $("adapter").dataset.options = signature;
     }
   }
-  for (const option of $("adapter").options)
-    option.disabled = !policy.enabledAdapters.includes(option.value);
+  for (const option of $("adapter").options) {
+    const adapter = (policy.adapters ?? []).find((a) => a.id === option.value);
+    const enabled = policy.enabledAdapters.includes(option.value);
+    option.disabled = !enabled;
+    option.title = enabled
+      ? ""
+      : disabledOptionReason("adapter", adapter?.reason ?? "unavailable");
+  }
   if (!policy.enabledAdapters.includes($("adapter").value))
     $("adapter").value = policy.enabledAdapters[0] ?? "";
   const modes =
     composerPolicy?.key === composerKey()
       ? composerPolicy.allowedModes
       : (policy.adapters?.find((a) => a.id === $("adapter").value)?.modes ?? ["ask"]);
-  for (const option of $("mode").options) option.disabled = !modes.includes(option.value);
+  const agentName =
+    policy.adapters?.find((a) => a.id === $("adapter").value)?.name ?? "this agent";
+  for (const option of $("mode").options) {
+    const allowed = modes.includes(option.value);
+    option.disabled = !allowed;
+    option.title = allowed ? "" : disabledOptionReason("mode", agentName);
+  }
   if (!modes.includes($("mode").value)) $("mode").value = modes[0] ?? "ask";
   const chat = $("mode").value === "chat",
     textOnly =
