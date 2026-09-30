@@ -19,7 +19,31 @@ import {
   applySuggestionPrompt,
   reviewCommittedProgression,
   formatTerminalStatusLabel,
+  operationsSummaryCounts,
 } from "../public/ui.js";
+test("operationsSummaryCounts keeps pending reviews out of Completed", () => {
+  assert.deepEqual(
+    operationsSummaryCounts({
+      waiting_for_approval: 1,
+      queued: 0,
+      running: 0,
+      cancelling: 0,
+      succeeded: 2,
+      review_pending: 1,
+      succeeded_complete: 1,
+      failed: 0,
+      timed_out: 0,
+      interrupted: 0,
+    }),
+    {
+      active: 1,
+      completed: 1,
+      awaitingReview: 1,
+      problems: 0,
+      queued: 0,
+    },
+  );
+});
 test("formatTerminalStatusLabel keeps Ask answers distinct from reviews", () => {
   assert.equal(
     formatTerminalStatusLabel({ status: "succeeded", mode: "ask", review: null }),

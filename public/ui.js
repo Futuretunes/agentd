@@ -418,6 +418,31 @@ export function approvalSentence(execution = {}, { adapter, mode } = {}) {
  * Honest terminal status for a finished turn (U10).
  * Ask/chat successes are answers, not reviews; pending edits stay explicit.
  */
+/**
+ * Operations summary metrics: pending reviews are not "Completed".
+ */
+export function operationsSummaryCounts(counts = {}) {
+  const awaitingReview = Number(counts.review_pending ?? 0);
+  const completed = Number(
+    counts.succeeded_complete ??
+      Math.max(0, Number(counts.succeeded ?? 0) - awaitingReview),
+  );
+  return {
+    active:
+      Number(counts.waiting_for_approval ?? 0) +
+      Number(counts.queued ?? 0) +
+      Number(counts.running ?? 0) +
+      Number(counts.cancelling ?? 0),
+    completed,
+    awaitingReview,
+    problems:
+      Number(counts.failed ?? 0) +
+      Number(counts.timed_out ?? 0) +
+      Number(counts.interrupted ?? 0),
+    queued: Number(counts.queued ?? counts.queueDepth ?? 0),
+  };
+}
+
 export function formatTerminalStatusLabel(task = {}, fallbackLabels = {}) {
   const status = task.status;
   if (status === "succeeded" && task.review === "pending")

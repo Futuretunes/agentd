@@ -227,6 +227,8 @@ test("operations summarizes global work and sanitized account health without pro
     app.request({ op: "operations" });
     assert.equal(value.service.state, "healthy");
     assert.equal(value.counts.succeeded, 1);
+    assert.equal(value.counts.succeeded_complete, 1);
+    assert.equal(value.counts.review_pending, 0);
     assert.equal(value.counts.waiting_for_approval, 1);
     assert.equal(value.counts.failed, 1);
     assert.equal(value.tasks.length, 3);
