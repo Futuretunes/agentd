@@ -30,6 +30,7 @@ import {
   openDialog,
   setTextWithTitle,
   emptyConversationList,
+  noProjectActionReason,
 } from "../public/ui.js";
 test("operationsSummaryCounts keeps pending reviews out of Completed", () => {
   assert.deepEqual(
@@ -540,6 +541,10 @@ test("composer hints announce changes politely", () => {
     assert.ok(tag, id);
     assert.match(tag[0], /aria-live="polite"/);
   }
+});
+test("noProjectActionReason explains blocked new/send without a project", () => {
+  assert.match(noProjectActionReason("new"), /project first/i);
+  assert.match(noProjectActionReason("send"), /project to send/i);
 });
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
