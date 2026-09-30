@@ -1815,3 +1815,11 @@ test("current access key confirmation exposes a stable accessible name", () => {
   assert.match(source, /aria-label", "New access key"/);
   assert.match(source, /aria-label", "Current access key"/);
 });
+
+test("agent settings content exposes a stable accessible name", () => {
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /settingsContent\.setAttribute\("aria-label", "Agent settings"\)/);
+  assert.match(source, /settingsContent\.setAttribute\("aria-live", "polite"\)/);
+  assert.match(source, /aria-label", "Settings scope"/);
+  assert.match(source, /aria-label", "Settings agent"/);
+});
