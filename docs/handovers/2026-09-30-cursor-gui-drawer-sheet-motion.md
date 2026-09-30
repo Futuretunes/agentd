@@ -6,7 +6,7 @@
 - Release: 0.117.0
 - Branch and base: `feat/gui-drawer-sheet-motion` on `main` (0.116.0)
 - Implementation commit(s): 131013c
-- PR: pending
+- PR: #175
 
 ## Changes and relevant files
 
