@@ -2261,3 +2261,8 @@ test("account dialog content is named and announces politely in app bootstrap", 
   assert.match(src, /accountContent\.setAttribute\("aria-label", "Account connection"\)/);
   assert.match(src, /accountContent\.setAttribute\("aria-live", "polite"\)/);
 });
+
+test("Agent settings form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /settingsForm\.setAttribute\("aria-label", "Agent settings form"\)/);
+});
