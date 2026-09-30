@@ -554,19 +554,22 @@
           <span aria-hidden="true">×</span>
         </button>
       </div>
-      <label for="feedback-target">Published pull request</label
-      ><select id="feedback-target"></select
-      ><button id="feedback-load">Load review comments</button
-      ><label for="feedback-base">Base branch to integrate</label
-      ><input id="feedback-base" value="main" maxlength="200" /><button
-        id="feedback-integrate"
-      >
-        Preview base integration
-      </button>
-      <p class="muted">
-        Previews read GitHub without changing it. Integration preserves your published
-        history and requires fresh checks and commit approval.
-      </p>
+      <form id="feedback-form" aria-label="GitHub feedback">
+        <label for="feedback-target">Published pull request</label
+        ><select id="feedback-target"></select
+        ><button type="button" id="feedback-load">Load review comments</button
+        ><label for="feedback-base">Base branch to integrate</label
+        ><input id="feedback-base" value="main" maxlength="200" /><button
+          type="button"
+          id="feedback-integrate"
+        >
+          Preview base integration
+        </button>
+        <p class="muted">
+          Previews read GitHub without changing it. Integration preserves your published
+          history and requires fresh checks and commit approval.
+        </p>
+      </form>
       <div id="feedback-content" aria-live="polite"></div>
     </dialog>
   </body>

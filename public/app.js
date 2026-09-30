@@ -3141,6 +3141,7 @@ async function openFeedback(task, project) {
   openDialog($("feedback-dialog"));
   await updateFeedback();
 }
+$("feedback-form").onsubmit = (e) => e.preventDefault();
 $("feedback-close").onclick = () => {
   $("feedback-dialog").close();
   feedbackTask = null;
