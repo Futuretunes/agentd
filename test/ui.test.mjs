@@ -1986,3 +1986,12 @@ test("model and effort row exposes a stable accessible name", () => {
   assert.equal(row.getAttribute("role"), "group");
   assert.equal(row.getAttribute("aria-label"), "Model and effort");
 });
+
+test("projects section heading exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const section = document.querySelector('.section-label[aria-label="Projects section"]');
+  assert.equal(section.getAttribute("role"), "group");
+  assert.equal(section.getAttribute("aria-label"), "Projects section");
+});
