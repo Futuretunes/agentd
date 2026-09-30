@@ -354,6 +354,13 @@ test("workspace has unique controls, keyboard-accessible attachment input and na
     document.getElementById("project-form").textContent,
     /only after supported npm checks pass/,
   );
+  const projectFields = [...document.getElementById("project-form").children].map(
+    (n) => n.id || n.tagName.toLowerCase(),
+  );
+  assert.deepEqual(projectFields.slice(0, 4), ["h2", "label", "project-input", "p"]);
+  assert.ok(
+    projectFields.indexOf("import-open") > projectFields.indexOf("project-input"),
+  );
 });
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");

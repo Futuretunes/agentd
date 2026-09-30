@@ -274,9 +274,8 @@
     <dialog id="project-dialog">
       <form id="project-form">
         <h2>New project</h2>
-        <button type="button" id="import-open">Import from GitHub</button
-        ><label for="project-input">Project name</label
-        ><input
+        <label for="project-input">Project name</label>
+        <input
           id="project-input"
           maxlength="100"
           placeholder="My next project"
@@ -288,9 +287,11 @@
           profiles are not available yet.
         </p>
         <div class="actions">
-          <button type="button" id="project-close">Cancel</button
-          ><button class="primary">Create project</button>
+          <button type="button" id="project-close">Cancel</button>
+          <button class="primary">Create project</button>
         </div>
+        <p class="muted project-import-alt">Or bring in an existing GitHub repository.</p>
+        <button type="button" id="import-open">Import from GitHub</button>
       </form>
     </dialog>
     <dialog id="operations-dialog">

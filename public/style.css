@@ -400,9 +400,20 @@ header h1 {
   font-size: 13px;
 }
 .composer-wrap {
+  position: relative;
   padding: 12px max(24px, calc((100% - 760px) / 2))
     max(14px, env(safe-area-inset-bottom));
   background: var(--bg);
+}
+.composer-wrap::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -28px;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--bg));
 }
 #compose {
   border: 1px solid var(--line);
@@ -873,14 +884,18 @@ a {
 #repository-form,
 #repository-import:not([hidden]),
 #publishing-form,
-#settings-content {
+#settings-content,
+#project-form {
   display: grid;
   gap: 8px;
+}
+#project-form .project-import-alt {
+  margin: 8px 0 0;
 }
 #import-open {
   display: block;
   width: 100%;
-  margin: 8px 0 22px;
+  margin: 0;
 }
 #settings-confirm {
   padding: 16px;
