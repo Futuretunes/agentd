@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.124.0 — Conversation region busy state (Cursor)
 
-`#detail` toggles `aria-busy` during workspace refresh. See [handover](handovers/2026-09-30-cursor-gui-detail-busy.md). Not installed.
+`#detail` toggles `aria-busy` during workspace refresh. See [handover](handovers/2026-09-30-cursor-gui-detail-busy.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.123.0 — Escape closes composer menus (Cursor)
 
