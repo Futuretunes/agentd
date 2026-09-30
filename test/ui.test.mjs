@@ -17,7 +17,24 @@ import {
   approvalSentence,
   approvalModelLine,
   applySuggestionPrompt,
+  reviewCommittedProgression,
 } from "../public/ui.js";
+test("reviewCommittedProgression prefers publish after fresh checks", () => {
+  assert.deepEqual(
+    reviewCommittedProgression({ checksInput: "other", checksStatus: "passed" }),
+    {
+      primary: "recheck",
+      next: "These committed files need fresh snapshot checks before publication.",
+    },
+  );
+  assert.equal(
+    reviewCommittedProgression({
+      checksInput: "git-tree-v1",
+      checksStatus: "passed",
+    }).primary,
+    "publish",
+  );
+});
 test("applySuggestionPrompt fills without submitting and parks the caret", () => {
   const field = {
     value: "",
