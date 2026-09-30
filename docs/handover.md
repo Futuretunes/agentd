@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.80.0 — ntfy authenticated deep links and durable dedupe (Cursor)
 
-ntfy click URLs deep-link to project/conversation on the signed-in HTTPS origin (no secrets in the URL). Notified task+status keys persist under stateDir across runner restarts. See [handover](handovers/2026-09-30-cursor-ntfy-deep-links.md). Not installed.
+ntfy click URLs deep-link to project/conversation on the signed-in HTTPS origin (no secrets in the URL). Notified task+status keys persist under stateDir across runner restarts. See [handover](handovers/2026-09-30-cursor-ntfy-deep-links.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.79.0 — ntfy approval and completion delivery (Cursor)
 
