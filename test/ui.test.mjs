@@ -1589,3 +1589,11 @@ test("dialog labels use muted color", () => {
     /dialog label\s*\{[\s\S]*?color:\s*var\(--muted\);[\s\S]*?font-size:\s*13px/,
   );
 });
+
+test("login labels use muted color", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /\.login label\s*\{[\s\S]*?color:\s*var\(--muted\);[\s\S]*?font-size:\s*13px/,
+  );
+});
