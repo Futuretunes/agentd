@@ -404,6 +404,13 @@ test("conversation disclosures replace browser-default triangles", () => {
   assert.match(css, /\.turn summary::before/);
   assert.match(css, /prefers-reduced-motion: reduce/);
 });
+test("phone layout keeps primary controls at least 44px tall", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+  assert.match(phone, /#send/);
+  assert.match(phone, /min-height: 44px/);
+  assert.match(phone, /#prompt \{\s*font-size: 16px;/);
+});
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
   globalThis.document = document;

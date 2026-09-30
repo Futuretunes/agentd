@@ -50,7 +50,7 @@ Priority: high. Dependencies: R4/R11 and R14/R15 for reliable snapshots and boun
 Priority: high; start alongside UX-1 and validate in every subsequent item.
 
 - Semantic light/dark tokens for colour, typography, spacing, radii and focus. Verify contrast for actual text/control states; do not copy unverified prototype colours. Use system or locally served fonts and consistent icons without external font/CDN dependencies.
-- Phone drawer, compact top bar, keyboard-aware composer, safe-area handling and usable dialogs/sheets. Use generous touch targets and prevent input zoom where appropriate.
+- Phone drawer, compact top bar, keyboard-aware composer, safe-area handling and usable dialogs/sheets. Use generous touch targets and prevent input zoom where appropriate. **Candidate 0.99.0:** phone primary controls ≥ 44px; prompt 16px; turn/status copy 15px.
 - Keyboard-operable attachment control, named controls, visible focus, focus restoration, non-colour status cues and explanations for disabled choices. Respect reduced motion. **Candidate 0.96.0:** project and conversation sidebar buttons set accessible names.
 - Acceptance: automated accessibility checks plus manual keyboard, screen-reader, zoom/reflow and actual phone keyboard testing. Target WCAG 2.2 AA; record remaining exceptions honestly. Current sidebar names and sampled passing contrast are regression baselines, not confirmed defects.
 
