@@ -32,7 +32,7 @@ Priority: high; depends on shared frontend foundations.
 - Conversation-first workspace; project menu for project actions; Settings for Agents/accounts, GitHub and defaults; Activity for operational work. **Candidate 0.106.0:** user-facing errors and guidance say Activity (matching the nav label), not Operations.
 - Combine next-run agent, mode, model and effort choices in the composer, showing effective permissions and override origin in plain language. Keep advanced per-project/conversation/agent inheritance available.
 - Give every setting one canonical editing home with contextual links. Preserve account-versus-policy distinctions, pending approval invalidation, active-run immutability and unsupported capability explanations.
-- Acceptance: a new user can create/import a project, connect an account, choose a model, run work, find history and restore an archive without hunting through unrelated dialogs. **Candidate 0.119.0:** Search & history and New project autofocus their primary fields. Existing pagination, drafts and audit access survive navigation changes.
+- Acceptance: a new user can create/import a project, connect an account, choose a model, run work, find history and restore an archive without hunting through unrelated dialogs. **Candidate 0.119.0:** Search & history and New project autofocus their primary fields. **Candidate 0.120.0:** history results announce searching via `aria-busy`/`aria-live`; login form is described; project name autofocuses. Existing pagination, drafts and audit access survive navigation changes.
 
 ### UX-3 — Guided execution and change review (U7, U12, U13)
 

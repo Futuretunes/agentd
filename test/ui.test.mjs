@@ -562,6 +562,20 @@ test("history search field is ready for immediate typing", () => {
     readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
   );
   assert.ok(document.getElementById("history-query").hasAttribute("autofocus"));
+  assert.ok(document.getElementById("project-input").hasAttribute("autofocus"));
+  const results = document.getElementById("history-results");
+  assert.equal(results.getAttribute("aria-live"), "polite");
+  assert.equal(results.getAttribute("aria-busy"), "false");
+  assert.equal(
+    document.getElementById("loginform").getAttribute("aria-describedby"),
+    "login-blurb",
+  );
+  assert.ok(document.getElementById("login-blurb"));
+});
+test("history search marks results busy while loading", () => {
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /results\.setAttribute\("aria-busy", "true"\)/);
+  assert.match(source, /results\.setAttribute\("aria-busy", "false"\)/);
 });
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");

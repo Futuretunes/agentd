@@ -21,8 +21,8 @@
       </div>
       <p class="eyebrow">YOUR WORKSPACE</p>
       <h1>Projects, with you<br />in control.</h1>
-      <p class="muted">A place to work with your agents.</p>
-      <form id="loginform">
+      <p class="muted" id="login-blurb">A place to work with your agents.</p>
+      <form id="loginform" aria-describedby="login-blurb">
         <label for="key">Access key</label
         ><input
           id="key"
@@ -307,6 +307,7 @@
           maxlength="100"
           placeholder="My next project"
           required
+          autofocus
         />
         <p class="muted">
           Creates an empty local Git repository. You can plan and ask questions here.
@@ -362,7 +363,7 @@
           ><button class="primary">Search</button>
         </div>
       </form>
-      <div id="history-results"></div>
+      <div id="history-results" aria-live="polite" aria-busy="false"></div>
       <div id="history-pages" class="actions"></div>
       <section id="archived-projects"></section>
     </dialog>

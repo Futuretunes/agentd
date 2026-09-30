@@ -2260,8 +2260,10 @@ let historyEpoch = 0,
 async function loadHistory(before = null) {
   const epoch = ++historyEpoch,
     query = $("history-query").value,
-    filter = $("history-filter").value;
-  $("history-results").replaceChildren(node("p", "Searching…", "muted"));
+    filter = $("history-filter").value,
+    results = $("history-results");
+  results.setAttribute("aria-busy", "true");
+  results.replaceChildren(node("p", "Searching…", "muted"));
   $("history-pages").replaceChildren();
   try {
     const [result, archived] = await Promise.all([
@@ -2275,7 +2277,8 @@ async function loadHistory(before = null) {
       api("/api/archived-projects"),
     ]);
     if (epoch !== historyEpoch || !$("history-dialog").open) return;
-    $("history-results").replaceChildren();
+    results.setAttribute("aria-busy", "false");
+    results.replaceChildren();
     for (const item of result.items) {
       const card = node("article", undefined, "operation-task");
       card.append(
@@ -2342,8 +2345,10 @@ async function loadHistory(before = null) {
         );
     }
   } catch (e) {
-    if (epoch === historyEpoch)
-      $("history-results").replaceChildren(node("p", e.message, "error"));
+    if (epoch === historyEpoch) {
+      results.setAttribute("aria-busy", "false");
+      results.replaceChildren(node("p", e.message, "error"));
+    }
   }
 }
 $("history-menu").onclick = () => {
