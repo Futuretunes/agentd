@@ -1315,7 +1315,7 @@ test("phone dialogs clear horizontal safe-area insets", () => {
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(
     css,
-    /dialog\s*\{[\s\S]*?padding:\s*20px\s+max\(16px,\s*env\(safe-area-inset-right\)\)\s+max\(20px,\s*env\(safe-area-inset-bottom\)\)\s+max\(16px,\s*env\(safe-area-inset-left\)\)/,
+    /dialog\s*\{[\s\S]*?padding:\s*max\(20px,\s*env\(safe-area-inset-top\)\)\s+max\(16px,\s*env\(safe-area-inset-right\)\)\s+max\(20px,\s*env\(safe-area-inset-bottom\)\)\s+max\(16px,\s*env\(safe-area-inset-left\)\)/,
   );
 });
 
