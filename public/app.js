@@ -3347,6 +3347,8 @@ const settingsDialog = node("dialog");
 settingsDialog.id = "settings-dialog";
 settingsDialog.setAttribute("aria-labelledby", "settings-heading");
 const settingsHead = node("div", undefined, "review-head");
+settingsHead.setAttribute("role", "group");
+settingsHead.setAttribute("aria-label", "Agent settings heading");
 settingsHead.append(node("h2", "Agent settings"));
 settingsHead.firstChild.id = "settings-heading";
 settingsHead.append(button("Close", () => settingsDialog.close()));
