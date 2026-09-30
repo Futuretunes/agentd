@@ -5,7 +5,7 @@
 - Status: implemented
 - Release: 0.98.0
 - Branch and base: `feat/gui-brand-mark-svg` on `main` (0.97.0)
-- Implementation commit(s): (filled after commit)
+- Implementation commit(s): 7ffd556
 - PR: (filled after open)
 
 ## Changes and relevant files
