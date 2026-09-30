@@ -12,7 +12,7 @@ Finished Ask/chat turns say “Answer ready”; pending edits stay “Changes re
 
 ## Candidate 0.91.0 — Primary Publish after commit (Cursor)
 
-After a local commit, the review sticky footer promotes Publish to GitHub (or Recheck when snapshot checks are stale); feedback stays secondary. See [handover](handovers/2026-09-30-cursor-gui-publish-primary.md). Not installed.
+After a local commit, the review sticky footer promotes Publish to GitHub (or Recheck when snapshot checks are stale); feedback stays secondary. See [handover](handovers/2026-09-30-cursor-gui-publish-primary.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.90.0 — Suggestion chip fill + focus (Cursor)
 
