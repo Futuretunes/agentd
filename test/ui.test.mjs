@@ -2240,3 +2240,9 @@ test("Sign out settings section exposes a stable accessible name", () => {
   const section = document.querySelector("#logout").closest(".settings-section");
   assert.equal(section.getAttribute("aria-label"), "Sign out");
 });
+
+test("account dialog heading group is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /accountHead\.setAttribute\("role", "group"\)/);
+  assert.match(src, /accountHead\.setAttribute\("aria-label", "Account heading"\)/);
+});
