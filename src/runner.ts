@@ -277,13 +277,26 @@ export function runner(c: Config) {
     db.prepare("INSERT INTO events(task,status,at) VALUES(?,?,?)").run(id, status, at);
     void notifyTaskStatus(id, status, error);
   };
-  const notified = new Set<string>();
+  const notifiedPath = join(c.stateDir, "notifications-sent.json");
+  let notified = new Set<string>();
+  let notifiedLoaded = false;
   async function notifyTaskStatus(id: string, status: string, error: string | null) {
     if (!c.adminNotifications) return;
     const key = `${id}:${status}`;
-    if (notified.has(key)) return;
     try {
-      const { taskNotificationCopy, publishNtfy } = await import("./notifications.ts");
+      const {
+        taskNotificationCopy,
+        publishNtfy,
+        taskNotificationClick,
+        loadNotifiedKeys,
+        saveNotifiedKeys,
+        rememberNotifiedKey,
+      } = await import("./notifications.ts");
+      if (!notifiedLoaded) {
+        notified = loadNotifiedKeys(notifiedPath);
+        notifiedLoaded = true;
+      }
+      if (notified.has(key)) return;
       const row = get(id) as any;
       const project = row?.project
         ? (db.prepare("SELECT name FROM projects WHERE id=?").get(row.project) as any)
@@ -296,10 +309,7 @@ export function runner(c: Config) {
       if (!detail) return;
       const settings = await c.adminNotifications();
       if (!settings?.configured || !settings.server || !settings.topic) return;
-      notified.add(key);
-      if (notified.size > 500)
-        for (const old of [...notified].slice(0, notified.size - 400))
-          notified.delete(old);
+      rememberNotifiedKey(notified, key);
       await publishNtfy(
         {
           server: settings.server,
@@ -309,10 +319,17 @@ export function runner(c: Config) {
         {
           title: detail.title,
           message: `${detail.message} Task ${id}.`,
-          click: settings.origin || undefined,
+          click: taskNotificationClick(settings.origin, {
+            project: row?.project,
+            conversation: row?.conversation,
+            task: id,
+          }),
           tags: detail.tags,
         },
       );
+      try {
+        saveNotifiedKeys(notifiedPath, notified);
+      } catch {}
     } catch {
       notified.delete(key);
     }
