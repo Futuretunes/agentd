@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Transient page/dialog notices expose alert for errors and status for confirmations
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.110.0
 - Branch and base: `feat/gui-notice-role` on `main` (0.109.0)
 - Implementation commit(s): 672adae
@@ -16,13 +16,15 @@
 
 ## Validation evidence
 
+- CI green on #161; live-installed on 192.168.1.20 (0.110.0 / 2a13a81).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.109.0 / revert of #161.
 
 ## Constraints and known issues
 
@@ -31,5 +33,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #161 and live-installed 0.110.0.
 2. Continue UX polish or admin slices as operator priority allows.

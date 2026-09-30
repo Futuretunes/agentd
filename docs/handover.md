@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.110.0 — Notice roles for errors vs info (Cursor)
 
-Page/dialog notices use `role="alert"` for errors and `role="status"` for info. See [handover](handovers/2026-09-30-cursor-gui-notice-role.md). Not installed.
+Page/dialog notices use `role="alert"` for errors and `role="status"` for info. See [handover](handovers/2026-09-30-cursor-gui-notice-role.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.109.0 — Live composer hints (Cursor)
 
