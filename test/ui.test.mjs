@@ -2324,3 +2324,8 @@ test("activity storage is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /storage\.setAttribute\("aria-label", "Activity storage"\)/);
 });
+
+test("activity agent accounts are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /agents\.setAttribute\("aria-label", "Activity agent accounts"\)/);
+});

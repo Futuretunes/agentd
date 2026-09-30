@@ -396,6 +396,7 @@ function operationTask(item) {
 }
 function accountsSection(data) {
   const agents = node("div");
+  agents.setAttribute("aria-label", "Activity agent accounts");
   for (const value of data.adapters) {
     const card = node("div", undefined, "operation-agent"),
       account = value.account ?? {
