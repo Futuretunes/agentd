@@ -834,6 +834,8 @@ accountDialog.id = "account-dialog";
 accountDialog.setAttribute("aria-labelledby", "account-heading");
 const accountHead = node("div", undefined, "review-head"),
   accountHeading = node("h2", "Connect your account");
+accountHead.setAttribute("role", "group");
+accountHead.setAttribute("aria-label", "Account heading");
 accountHeading.id = "account-heading";
 const accountClose = node("button");
 accountClose.type = "button";
