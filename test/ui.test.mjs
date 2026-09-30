@@ -1706,3 +1706,16 @@ test("revision prompt exposes a stable accessible name", () => {
     "Revision request",
   );
 });
+
+test("repository url exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="repository-url"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Repository URL");
+  assert.equal(
+    document.getElementById("repository-url").getAttribute("aria-label"),
+    "Repository URL",
+  );
+});
