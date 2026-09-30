@@ -1136,3 +1136,13 @@ test("project info exposes a stable accessible name", () => {
     "Project information",
   );
 });
+
+test("settings accounts expose a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("settings-accounts").getAttribute("aria-label"),
+    "Agent accounts",
+  );
+});
