@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Closing a modal returns keyboard focus to the control that opened it
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.105.0
 - Branch and base: `feat/gui-dialog-focus-restore` on `main` (0.104.0)
 - Implementation commit(s): 8a4b81e
@@ -16,13 +16,15 @@
 
 ## Validation evidence
 
+- CI green on #151; live-installed on 192.168.1.20 (0.105.0 / 843d0ea).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.104.0 / revert of #151.
 
 ## Constraints and known issues
 
@@ -31,5 +33,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #151 and live-installed 0.105.0.
 2. Continue UX polish or admin slices as operator priority allows.
