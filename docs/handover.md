@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.93.0 — Operations awaiting-review count (Cursor)
 
-Operations summary adds “Awaiting review” and excludes pending-review succeeds from “Completed”. See [handover](handovers/2026-09-30-cursor-gui-operations-review-count.md). Not installed.
+Operations summary adds “Awaiting review” and excludes pending-review succeeds from “Completed”. See [handover](handovers/2026-09-30-cursor-gui-operations-review-count.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.92.0 — Honest finished-status labels (Cursor)
 
