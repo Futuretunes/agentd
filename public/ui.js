@@ -414,6 +414,21 @@ export function approvalSentence(execution = {}, { adapter, mode } = {}) {
 /**
  * After a local commit, one primary next step: recheck or publish.
  */
+/**
+ * Honest terminal status for a finished turn (U10).
+ * Ask/chat successes are answers, not reviews; pending edits stay explicit.
+ */
+export function formatTerminalStatusLabel(task = {}, fallbackLabels = {}) {
+  const status = task.status;
+  if (status === "succeeded" && task.review === "pending")
+    return "Changes ready for review";
+  if (status === "succeeded" && task.review === "committed") return "Committed";
+  if (status === "succeeded" && (task.mode === "ask" || task.mode === "chat"))
+    return "Answer ready";
+  if (status === "succeeded" && task.mode === "edit") return "Finished";
+  return fallbackLabels[status] ?? status;
+}
+
 export function reviewCommittedProgression(state = {}) {
   const needsRecheck =
     state.checksInput !== "git-tree-v1" || state.checksStatus !== "passed";

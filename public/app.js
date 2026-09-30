@@ -15,6 +15,7 @@ import {
   approvalDurationLabel,
   applySuggestionPrompt,
   reviewCommittedProgression,
+  formatTerminalStatusLabel,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -1043,12 +1044,9 @@ function renderThread(data) {
     turn.append(user);
     const response = node("div", undefined, "agent-message");
     const head = node("div", undefined, "message-head");
-    const statusLabel =
-      t.status === "succeeded" && t.review === "pending"
-        ? "Changes ready for review"
-        : pending(t.status)
-          ? formatActiveStatusLabel(t.status, t.updated || t.created)
-          : (labels[t.status] ?? t.status);
+    const statusLabel = pending(t.status)
+      ? formatActiveStatusLabel(t.status, t.updated || t.created)
+      : formatTerminalStatusLabel(t, labels);
     const status = node("span", statusLabel, "status " + t.status);
     if (pending(t.status)) {
       // updated is set on each status transition; no separate started_at field exists.
