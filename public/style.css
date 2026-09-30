@@ -1393,7 +1393,8 @@ a {
     width: 100vw;
   }
   #review-actions {
-    bottom: -20px;
+    bottom: 0;
+    padding: 16px 0 max(16px, env(safe-area-inset-bottom));
   }
   #review-dialog {
     margin: 0;
