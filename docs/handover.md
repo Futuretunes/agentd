@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.115.0 — Dialog labelled-by headings (Cursor)
 
-All workspace dialogs expose `aria-labelledby` to their heading. See [handover](handovers/2026-09-30-cursor-gui-dialog-labelledby.md). Not installed.
+All workspace dialogs expose `aria-labelledby` to their heading. See [handover](handovers/2026-09-30-cursor-gui-dialog-labelledby.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.114.0 — Send/Stop accessible names (Cursor)
 
