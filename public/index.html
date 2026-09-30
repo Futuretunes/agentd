@@ -60,7 +60,7 @@
         <div class="sidebar-foot">
           <button id="operations-menu" class="nav-action">Activity</button
           ><button id="preferences-menu" class="nav-action">Settings</button
-          ><span class="connection">● Connected to your workspace</span>
+          ><span class="connection" aria-live="polite">● Connected to your workspace</span>
         </div>
       </aside>
       <main class="desk">
@@ -143,9 +143,9 @@
               ><button class="primary" id="send">Send ↑</button>
             </div>
           </form>
-          <p class="hint" id="draft-hint"></p>
-          <p class="hint" id="policy-hint" hidden></p>
-          <p class="hint" id="hint"></p>
+          <p class="hint" id="draft-hint" aria-live="polite"></p>
+          <p class="hint" id="policy-hint" hidden aria-live="polite"></p>
+          <p class="hint" id="hint" aria-live="polite"></p>
         </div>
       </main>
     </div>
