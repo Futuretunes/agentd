@@ -1809,3 +1809,9 @@ test("live run output exposes a stable accessible name and announces politely", 
   assert.match(source, /aria-label", "Current run output"/);
   assert.match(source, /aria-label", "Current run output"[\s\S]*?aria-live", "polite"/);
 });
+
+test("current access key confirmation exposes a stable accessible name", () => {
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /aria-label", "New access key"/);
+  assert.match(source, /aria-label", "Current access key"/);
+});
