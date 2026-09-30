@@ -1949,6 +1949,22 @@ export function runner(c: Config) {
         .prepare("SELECT status,count(*) AS count FROM tasks GROUP BY status")
         .all())
         counts[String(row.status)] = Number(row.count);
+      counts.review_pending = Number(
+        (
+          db
+            .prepare("SELECT count(*) AS count FROM tasks WHERE review='pending'")
+            .get() as { count: number }
+        ).count,
+      );
+      counts.succeeded_complete = Number(
+        (
+          db
+            .prepare(
+              "SELECT count(*) AS count FROM tasks WHERE status='succeeded' AND IFNULL(review,'')!='pending'",
+            )
+            .get() as { count: number }
+        ).count,
+      );
       const tasks = db
         .prepare(
           `SELECT t.id,t.adapter,t.mode,t.status,t.created,t.updated,t.error,t.review,t.project,t.conversation,

@@ -16,6 +16,7 @@ import {
   applySuggestionPrompt,
   reviewCommittedProgression,
   formatTerminalStatusLabel,
+  operationsSummaryCounts,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -552,20 +553,16 @@ function accountsSection(data) {
 function renderOperations(data) {
   const content = $("operations-content");
   content.replaceChildren();
-  const active =
-      (data.counts.waiting_for_approval ?? 0) +
-      (data.counts.queued ?? 0) +
-      (data.counts.running ?? 0) +
-      (data.counts.cancelling ?? 0),
-    problems =
-      (data.counts.failed ?? 0) +
-      (data.counts.timed_out ?? 0) +
-      (data.counts.interrupted ?? 0);
+  const summaryCounts = operationsSummaryCounts({
+    ...data.counts,
+    queueDepth: data.service.queueDepth,
+  });
   const summary = node("section", undefined, "operation-summary");
   for (const [value, label] of [
-    [active, "Active or waiting"],
-    [data.counts.succeeded ?? 0, "Completed"],
-    [problems, "Need attention"],
+    [summaryCounts.active, "Active or waiting"],
+    [summaryCounts.completed, "Completed"],
+    [summaryCounts.awaitingReview, "Awaiting review"],
+    [summaryCounts.problems, "Need attention"],
     [data.service.queueDepth, "Queued"],
   ]) {
     const card = node("div", undefined, "metric-card");
