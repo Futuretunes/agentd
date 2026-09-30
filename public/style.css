@@ -1306,7 +1306,8 @@ a {
     font-size: 30px;
   }
   .composer-wrap {
-    padding: 8px 12px max(10px, env(safe-area-inset-bottom));
+    padding: 8px max(12px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
   #compose {
     padding: 10px;
