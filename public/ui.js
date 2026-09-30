@@ -648,7 +648,10 @@ export function emptyConversationList(documentRef = document) {
   const start = documentRef.createElement("button");
   start.type = "button";
   start.className = "new-chat empty-list-cta";
-  start.textContent = "＋ New conversation";
+  const glyph = documentRef.createElement("span");
+  glyph.setAttribute("aria-hidden", "true");
+  glyph.textContent = "＋";
+  start.append(glyph, documentRef.createTextNode(" New conversation"));
   start.setAttribute("aria-label", "New conversation");
   wrap.append(copy, start);
   return { wrap, copy, start };
@@ -667,7 +670,10 @@ export function emptyProjectList(documentRef = document) {
   const start = documentRef.createElement("button");
   start.type = "button";
   start.className = "new-chat empty-list-cta";
-  start.textContent = "＋ New project";
+  const glyph = documentRef.createElement("span");
+  glyph.setAttribute("aria-hidden", "true");
+  glyph.textContent = "＋";
+  start.append(glyph, documentRef.createTextNode(" New project"));
   start.setAttribute("aria-label", "Create or import project");
   wrap.append(copy, start);
   return { wrap, copy, start };
