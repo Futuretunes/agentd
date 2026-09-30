@@ -2,9 +2,10 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: Settings > Configuration can save/clear an https ntfy server + topic
-- Status: implemented; pending merge and live-install
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.78.0
 - Branch and base: `feat/gui-ntfy-config` on `main` (0.77.0)
+- PR: #95
 
 ## Changes and relevant files
 
@@ -15,9 +16,8 @@
 ## Validation evidence
 
 - `node --test test/notifications.test.mjs`
-- typecheck / format (run with commit)
+- CI green on #95; live-installed on 192.168.1.20.
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
-2. Next: deliver approval/completion/failure ntfy pushes with authenticated links and duplicate prevention.
+1. Next: deliver approval/completion/failure ntfy pushes with authenticated links and duplicate prevention.

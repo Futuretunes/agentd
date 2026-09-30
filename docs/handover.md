@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.78.0 — ntfy destination configuration (Cursor)
 
-Settings > Configuration can save or clear an https ntfy server and topic with step-up preview. Push delivery remains a follow-up. See [handover](handovers/2026-09-30-cursor-ntfy-config.md). Not installed.
+Settings > Configuration can save or clear an https ntfy server and topic with step-up preview. Push delivery remains a follow-up. See [handover](handovers/2026-09-30-cursor-ntfy-config.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.77.0 — Access-key recovery file deletion (Cursor)
 
