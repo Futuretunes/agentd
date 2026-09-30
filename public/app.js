@@ -607,6 +607,7 @@ function renderOperations(data) {
       ),
     );
   const service = node("section", undefined, "operation-section");
+  service.setAttribute("aria-label", "Activity service");
   service.append(
     node("h3", "Service"),
     node(
