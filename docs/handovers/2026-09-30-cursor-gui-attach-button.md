@@ -5,8 +5,8 @@
 - Status: implemented
 - Release: 0.116.0
 - Branch and base: `feat/gui-attach-button` on `main` (0.115.0)
-- Implementation commit(s): 495a608
-- PR: pending
+- Implementation commit(s): 25d2a08
+- PR: #173
 
 ## Changes and relevant files
 
