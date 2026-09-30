@@ -1598,10 +1598,10 @@ test("login labels use muted color", () => {
   );
 });
 
-test("dialog first labels drop top margin after headings", () => {
+test("dialog form first labels drop top margin", () => {
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(
     css,
-    /dialog \.review-head \+ form > label:first-of-type,[\s\S]*?dialog form > h2 \+ label\s*\{[\s\S]*?margin-top:\s*0/,
+    /dialog form > label:first-of-type\s*\{[\s\S]*?margin-top:\s*0/,
   );
 });

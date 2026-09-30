@@ -785,8 +785,7 @@ dialog label {
   color: var(--muted);
   font-size: 13px;
 }
-dialog .review-head + form > label:first-of-type,
-dialog form > h2 + label {
+dialog form > label:first-of-type {
   margin-top: 0;
 }
 
