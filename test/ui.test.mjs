@@ -664,6 +664,10 @@ test("attachment chips expose remove accessible names", () => {
     document.getElementById("attachments").getAttribute("aria-label"),
     "Attached images",
   );
+  assert.equal(
+    document.getElementById("attachments").getAttribute("aria-live"),
+    "polite",
+  );
   const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(source, /Remove attachment: " \+ item\.name/);
 });
