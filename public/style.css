@@ -1140,6 +1140,16 @@ a {
 .settings-section .muted {
   margin: 0 0 10px;
 }
+.settings-section label {
+  display: block;
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.settings-section select {
+  margin-top: 0;
+}
+
 #preferences-dialog {
   width: min(680px, 94vw);
 }

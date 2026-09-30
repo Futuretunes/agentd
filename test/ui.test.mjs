@@ -1573,3 +1573,11 @@ test("action row labels use compact muted spacing", () => {
     /\.actions label\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?color:\s*var\(--muted\);[\s\S]*?font-size:\s*13px/,
   );
 });
+
+test("settings section labels use compact muted spacing", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /\.settings-section label\s*\{[\s\S]*?color:\s*var\(--muted\);[\s\S]*?font-size:\s*13px/,
+  );
+});
