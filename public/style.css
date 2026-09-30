@@ -785,6 +785,11 @@ dialog label {
   color: var(--muted);
   font-size: 13px;
 }
+dialog .review-head + form > label:first-of-type,
+dialog form > h2 + label {
+  margin-top: 0;
+}
+
 dialog input,
 dialog select,
 dialog textarea {
