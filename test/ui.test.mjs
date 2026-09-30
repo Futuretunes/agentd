@@ -376,6 +376,10 @@ test("untrusted answers render as inert text with bounded Markdown and no remote
       answer.querySelector(".code-block code").textContent,
       '<iframe src="https://example.com"></iframe>',
     );
+    const copy = answer.querySelector(".code-head button");
+    assert.equal(copy.textContent, "Copy code");
+    assert.equal(copy.getAttribute("aria-label"), "Copy code");
+    assert.equal(copy.getAttribute("aria-live"), "polite");
     assert.ok(markdownBlocks("a".repeat(300000))[0].text.length <= 200000);
     assert.equal(
       renderMarkdown("```js\nunclosed").querySelector("code").textContent,
@@ -461,6 +465,19 @@ test("phone layout keeps primary controls at least 44px tall", () => {
   assert.match(phone, /#send/);
   assert.match(phone, /min-height: 44px/);
   assert.match(phone, /#prompt \{\s*font-size: 16px;/);
+  assert.match(phone, /\.code-head button \{[^}]*min-height: 44px/s);
+});
+test("theme-color meta stays in the document head", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const meta = document.querySelector('meta[name="theme-color"]');
+  assert.ok(meta);
+  assert.equal(meta.getAttribute("content"), "#f7f6f3");
+  assert.match(
+    readFileSync(new URL("../public/ui.js", import.meta.url), "utf8"),
+    /themeColor\.content = dark \? "#1b1a18" : "#f7f6f3"/,
+  );
 });
 test("phone composer keeps Send on the same row as tools", () => {
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");

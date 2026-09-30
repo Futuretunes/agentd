@@ -66,6 +66,8 @@ export function renderMarkdown(text) {
         head = el("div", undefined, "code-head"),
         copy = el("button", "Copy code");
       copy.type = "button";
+      copy.setAttribute("aria-label", "Copy code");
+      copy.setAttribute("aria-live", "polite");
       copy.onclick = async () => {
         try {
           await navigator.clipboard.writeText(block.text);
@@ -73,6 +75,10 @@ export function renderMarkdown(text) {
         } catch {
           copy.textContent = "Select code to copy";
         }
+        clearTimeout(copy.__agentdCopyReset);
+        copy.__agentdCopyReset = setTimeout(() => {
+          copy.textContent = "Copy code";
+        }, 2000);
       };
       head.append(el("span", block.language || "Code"), copy);
       const pre = el("pre");
@@ -735,13 +741,22 @@ export function setupShell() {
   try {
     appearance.value = localStorage.getItem("agentd-theme") || "system";
   } catch {}
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  const systemDark = matchMedia("(prefers-color-scheme: dark)");
   const theme = () => {
     document.documentElement.dataset.theme = appearance.value;
     try {
       localStorage.setItem("agentd-theme", appearance.value);
     } catch {}
+    const dark =
+      appearance.value === "dark" ||
+      (appearance.value === "system" && systemDark.matches);
+    if (themeColor) themeColor.content = dark ? "#1b1a18" : "#f7f6f3";
   };
   appearance.onchange = theme;
+  systemDark.addEventListener("change", () => {
+    if (appearance.value === "system") theme();
+  });
   theme();
   document.addEventListener("click", (e) => {
     if (!e.target.closest("#conversation-menu")) $("conversation-menu").open = false;
