@@ -1790,3 +1790,16 @@ test("history query exposes a stable accessible name", () => {
     "History search",
   );
 });
+
+test("prompt exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="prompt"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Message your agent");
+  assert.equal(
+    document.getElementById("prompt").getAttribute("aria-label"),
+    "Message your agent",
+  );
+});
