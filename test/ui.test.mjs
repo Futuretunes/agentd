@@ -1867,3 +1867,8 @@ test("dynamic field labels use muted dialog-label styling", () => {
   const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(source, /field-label/);
 });
+
+test("feedback comment checkboxes expose stable accessible names", () => {
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /aria-label", "Select " \+ item\.key/);
+});
