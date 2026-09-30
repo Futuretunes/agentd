@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.99.0 — Phone touch targets + readable type (Cursor)
 
-Phone primary controls are at least 44×44; prompt stays 16px; turn status copy is 15px. See [handover](handovers/2026-09-30-cursor-gui-phone-touch-targets.md). Not installed.
+Phone primary controls are at least 44×44; prompt stays 16px; turn status copy is 15px. See [handover](handovers/2026-09-30-cursor-gui-phone-touch-targets.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.98.0 — SVG brand mark (Cursor)
 

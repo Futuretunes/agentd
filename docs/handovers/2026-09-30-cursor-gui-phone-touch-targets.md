@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Phone primary controls ≥ 44×44; composer input stays 16px to avoid iOS zoom; body status copy ≥ 15px
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.99.0
 - Branch and base: `feat/gui-phone-touch-targets` on `main` (0.98.0)
 - Implementation commit(s): 492637a
@@ -16,13 +16,15 @@
 
 ## Validation evidence
 
+- CI green on #139; live-installed on 192.168.1.20 (0.99.0 / 0bab013afc73).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.98.0 / revert of #139.
 
 ## Constraints and known issues
 
@@ -31,5 +33,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #139 and live-installed 0.99.0.
 2. Continue UX polish or admin slices as operator priority allows.
