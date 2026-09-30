@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.108.0 — Empty conversation CTA + title tooltips (Cursor)
 
-Empty conversation lists offer New conversation; project/thread headings keep a title for ellipsis. See [handover](handovers/2026-09-30-cursor-gui-empty-conversation-cta.md). Not installed.
+Empty conversation lists offer New conversation; project/thread headings keep a title for ellipsis. See [handover](handovers/2026-09-30-cursor-gui-empty-conversation-cta.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.107.0 — Skip link to conversation (Cursor)
 
