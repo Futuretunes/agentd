@@ -2,11 +2,11 @@
 
 - Author/agent: Cursor
 - Requested outcome: Waiting-for-approval turns lead with one honest sentence plus Run/Cancel; model/effort on one line; other facts behind Details
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.89.0
 - Branch and base: `feat/gui-approval-summary` on `main` (0.88.0)
-- Implementation commit(s): (filled after commit)
-- PR: (filled after open)
+- Implementation commit(s): a63cb6c
+- PR: #119
 
 ## Changes and relevant files
 
@@ -16,13 +16,15 @@
 
 ## Validation evidence
 
+- CI green on #119; live-installed on 192.168.1.20 (0.89.0 / cef1b208b714).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.88.0 / revert of #119.
 
 ## Constraints and known issues
 
@@ -31,5 +33,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
-2. Remaining UX-1: dictate honesty / suggestion focus feedback as separately scoped work.
+1. Done: merged #119 and live-installed 0.89.0.
+2. Remaining UX-1: suggestion focus feedback / dictate honesty as separately scoped work.
