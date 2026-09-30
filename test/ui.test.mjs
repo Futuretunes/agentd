@@ -430,7 +430,12 @@ test("workspace has unique controls, keyboard-accessible attachment input and na
   const projectFields = [...document.getElementById("project-form").children].map(
     (n) => n.id || n.tagName.toLowerCase(),
   );
-  assert.deepEqual(projectFields.slice(0, 4), ["h2", "label", "project-input", "p"]);
+  assert.deepEqual(projectFields.slice(0, 4), [
+    "project-heading",
+    "label",
+    "project-input",
+    "p",
+  ]);
   assert.ok(
     projectFields.indexOf("import-open") > projectFields.indexOf("project-input"),
   );
@@ -583,6 +588,18 @@ test("login access key is autofocused", () => {
     readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
   );
   assert.equal(document.getElementById("key").hasAttribute("autofocus"), true);
+});
+test("workspace dialogs expose labelled headings", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const dialogs = [...document.querySelectorAll("dialog[id]")];
+  assert.ok(dialogs.length >= 12);
+  for (const dialog of dialogs) {
+    const labelledby = dialog.getAttribute("aria-labelledby");
+    assert.ok(labelledby, dialog.id);
+    assert.ok(document.getElementById(labelledby), `${dialog.id} -> ${labelledby}`);
+  }
 });
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");

@@ -291,9 +291,9 @@
       <section id="project-info" hidden></section>
       <button id="project-defaults">Agent defaults for this project</button>
     </dialog>
-    <dialog id="project-dialog">
+    <dialog id="project-dialog" aria-labelledby="project-heading">
       <form id="project-form">
-        <h2>New project</h2>
+        <h2 id="project-heading">New project</h2>
         <label for="project-input">Project name</label>
         <input
           id="project-input"
@@ -314,17 +314,17 @@
         <button type="button" id="import-open">Import from GitHub</button>
       </form>
     </dialog>
-    <dialog id="operations-dialog">
+    <dialog id="operations-dialog" aria-labelledby="operations-heading">
       <div class="review-head">
-        <h2>Activity</h2>
+        <h2 id="operations-heading">Activity</h2>
         <button id="operations-close" aria-label="Close activity">×</button>
       </div>
       <div id="operations-content" aria-live="polite"></div>
     </dialog>
-    <dialog id="review-dialog">
+    <dialog id="review-dialog" aria-labelledby="review-heading">
       <div class="review-head">
         <div>
-          <h2>Review changes</h2>
+          <h2 id="review-heading">Review changes</h2>
           <p id="review-stats" class="muted"></p>
         </div>
         <button id="review-close" aria-label="Close review">×</button>
@@ -332,9 +332,9 @@
       <div id="review-content"></div>
       <div id="review-actions" class="actions"></div>
     </dialog>
-    <dialog id="history-dialog">
+    <dialog id="history-dialog" aria-labelledby="history-heading">
       <div class="review-head">
-        <h2>Find your work</h2>
+        <h2 id="history-heading">Find your work</h2>
         <button id="history-close" aria-label="Close history">×</button>
       </div>
       <form id="history-form">
@@ -358,16 +358,16 @@
       <div id="history-pages" class="actions"></div>
       <section id="archived-projects"></section>
     </dialog>
-    <dialog id="run-dialog">
+    <dialog id="run-dialog" aria-labelledby="run-heading">
       <div class="review-head">
-        <h2>Run activity</h2>
+        <h2 id="run-heading">Run activity</h2>
         <button id="run-close" aria-label="Close run activity">×</button>
       </div>
       <div id="run-content"></div>
     </dialog>
-    <dialog id="repository-dialog">
+    <dialog id="repository-dialog" aria-labelledby="repository-heading">
       <div class="review-head">
-        <h2>GitHub repositories</h2>
+        <h2 id="repository-heading">GitHub repositories</h2>
         <button id="repository-close" aria-label="Close repositories">×</button>
       </div>
       <button id="github-open">GitHub connection</button>
@@ -396,9 +396,9 @@
       </p>
       <div id="repository-status" aria-live="polite"></div>
     </dialog>
-    <dialog id="github-dialog">
+    <dialog id="github-dialog" aria-labelledby="github-heading">
       <div class="review-head">
-        <h2>GitHub connection</h2>
+        <h2 id="github-heading">GitHub connection</h2>
         <button id="github-close" aria-label="Close GitHub connection">×</button>
       </div>
       <p class="muted">
@@ -408,16 +408,16 @@
       </p>
       <div id="github-content" aria-live="polite"></div>
     </dialog>
-    <dialog id="check-setup-dialog">
+    <dialog id="check-setup-dialog" aria-labelledby="check-setup-heading">
       <div class="review-head">
-        <h2>Set up checks</h2>
+        <h2 id="check-setup-heading">Set up checks</h2>
         <button id="check-setup-close" aria-label="Close check setup">×</button>
       </div>
       <div id="check-setup-content" aria-live="polite"></div>
     </dialog>
-    <dialog id="publishing-dialog">
+    <dialog id="publishing-dialog" aria-labelledby="publishing-heading">
       <div class="review-head">
-        <h2>Publish reviewed changes</h2>
+        <h2 id="publishing-heading">Publish reviewed changes</h2>
         <button id="publishing-close" aria-label="Close publishing">×</button>
       </div>
       <p class="muted">
@@ -448,9 +448,9 @@
       </form>
       <div id="publishing-content" aria-live="polite"></div>
     </dialog>
-    <dialog id="revision-dialog">
+    <dialog id="revision-dialog" aria-labelledby="revision-heading">
       <form id="revision-form">
-        <h2>Request revisions</h2>
+        <h2 id="revision-heading">Request revisions</h2>
         <p class="muted">
           The current edits are kept. Your agent continues from them after you approve the
           run, and the result needs fresh checks and commit approval.
@@ -464,9 +464,9 @@
         </div>
       </form>
     </dialog>
-    <dialog id="publication-confirm-dialog">
+    <dialog id="publication-confirm-dialog" aria-labelledby="publication-confirm-heading">
       <form id="publication-confirm-form">
-        <h2>Confirm GitHub publication</h2>
+        <h2 id="publication-confirm-heading">Confirm GitHub publication</h2>
         <p id="publication-confirm-text" class="path"></p>
         <p id="publication-confirm-error" class="error" role="alert"></p>
         <div class="actions">
@@ -475,9 +475,9 @@
         </div>
       </form>
     </dialog>
-    <dialog id="feedback-dialog">
+    <dialog id="feedback-dialog" aria-labelledby="feedback-heading">
       <div class="review-head">
-        <h2>GitHub feedback and conflicts</h2>
+        <h2 id="feedback-heading">GitHub feedback and conflicts</h2>
         <button id="feedback-close" aria-label="Close GitHub feedback">×</button>
       </div>
       <label for="feedback-target">Published pull request</label
