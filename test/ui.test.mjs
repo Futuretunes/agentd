@@ -1342,3 +1342,11 @@ test("phone review sticky footer clears horizontal safe-area insets", () => {
     /#review-actions\s*\{\s*bottom:\s*0;\s*padding:\s*16px\s+max\(16px,\s*env\(safe-area-inset-right\)\)\s+max\(16px,\s*env\(safe-area-inset-bottom\)\)\s+max\(16px,\s*env\(safe-area-inset-left\)\)/,
   );
 });
+
+test("phone drawer clears right safe-area inset", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /#sidebar\s*\{[\s\S]*?padding-right:\s*max\(0px,\s*env\(safe-area-inset-right\)\)/,
+  );
+});
