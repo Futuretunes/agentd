@@ -6,7 +6,7 @@
 - Release: 0.115.0
 - Branch and base: `feat/gui-dialog-labelledby` on `main` (0.114.0)
 - Implementation commit(s): 8f81fa1
-- PR: (filled after open)
+- PR: #171
 
 ## Changes and relevant files
 
