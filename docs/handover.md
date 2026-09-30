@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.109.0 — Live composer hints (Cursor)
 
-Draft, policy and composer hints use `aria-live="polite"`. See [handover](handovers/2026-09-30-cursor-gui-draft-hint-live.md). Not installed.
+Draft, policy and composer hints use `aria-live="polite"`. See [handover](handovers/2026-09-30-cursor-gui-draft-hint-live.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.108.0 — Empty conversation CTA + title tooltips (Cursor)
 
