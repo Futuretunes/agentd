@@ -1017,3 +1017,13 @@ test("history form exposes a stable accessible name", () => {
     "Search history",
   );
 });
+
+test("review actions expose a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("review-actions").getAttribute("aria-label"),
+    "Review next steps",
+  );
+});
