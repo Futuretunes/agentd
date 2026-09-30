@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.121.0 — Review footer safe-area (Cursor)
 
-Phone review sticky footer clears the home indicator. See [handover](handovers/2026-09-30-cursor-gui-review-safe-area.md). Not installed.
+Phone review sticky footer clears the home indicator. See [handover](handovers/2026-09-30-cursor-gui-review-safe-area.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.120.0 — History busy state + login description (Cursor)
 
