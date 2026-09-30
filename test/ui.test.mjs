@@ -2255,3 +2255,9 @@ test("Agent settings dialog heading group is named in app bootstrap", () => {
     /settingsHead\.setAttribute\("aria-label", "Agent settings heading"\)/,
   );
 });
+
+test("account dialog content is named and announces politely in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /accountContent\.setAttribute\("aria-label", "Account connection"\)/);
+  assert.match(src, /accountContent\.setAttribute\("aria-live", "polite"\)/);
+});
