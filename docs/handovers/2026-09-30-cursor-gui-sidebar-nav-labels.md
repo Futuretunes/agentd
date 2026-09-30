@@ -6,7 +6,7 @@
 - Release: 0.96.0
 - Branch and base: `feat/gui-sidebar-nav-labels` on `main` (0.95.0)
 - Implementation commit(s): b44d366
-- PR: (filled after open)
+- PR: #133
 
 ## Changes and relevant files
 
