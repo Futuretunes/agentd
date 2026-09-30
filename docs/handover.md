@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.120.0 — History busy state + login description (Cursor)
 
-History search announces loading; login form is described; New project autofocuses. See [handover](handovers/2026-09-30-cursor-gui-history-busy-login.md). Not installed.
+History search announces loading; login form is described; New project autofocuses. See [handover](handovers/2026-09-30-cursor-gui-history-busy-login.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.119.0 — History and New project field focus (Cursor)
 
