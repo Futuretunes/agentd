@@ -583,6 +583,11 @@ test("history search marks results busy while loading", () => {
   assert.match(source, /results\.setAttribute\("aria-busy", "true"\)/);
   assert.match(source, /results\.setAttribute\("aria-busy", "false"\)/);
 });
+test("welcome suggestion chips expose stable accessible names", () => {
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /aria-label", "Suggested prompts"/);
+  assert.match(source, /Use suggestion: " \+ text/);
+});
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(app, /Open Activity to start/);
