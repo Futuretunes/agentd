@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-29-claude-0.64.1.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-backup-restore-selected.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.74.0 — selected backup restore (Cursor)
+
+Settings > Backups can restore a selected older compatible managed backup via `agentd-restore@<backup-id>.service`, with step-up preview. Default rollback target remains available. See [handover](handovers/2026-09-30-cursor-backup-restore-selected.md). Not installed.
 
 ## Candidate 0.68.0 — configuration overview (Cursor)
 

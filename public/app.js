@@ -4436,12 +4436,18 @@ async function renderBackupsSettings() {
         "p",
         item.rollbackTarget
           ? "Current rollback target"
-          : item.pinned
-            ? "Pinned · kept"
-            : item.eligible
-              ? "Eligible for cleanup"
-              : "Retained",
-        item.rollbackTarget ? "good" : item.eligible ? "attention" : "muted",
+          : item.restorable
+            ? "Older backup · restorable"
+            : item.pinned
+              ? "Pinned · kept"
+              : item.eligible
+                ? "Eligible for cleanup"
+                : "Retained",
+        item.rollbackTarget || item.restorable
+          ? "good"
+          : item.eligible
+            ? "attention"
+            : "muted",
       ),
     );
     if (item.rollbackTarget && report.rollback?.available)
@@ -4450,6 +4456,10 @@ async function renderBackupsSettings() {
           backupsDialog.close();
           void openUpdatesWithRollback(report.rollback);
         }),
+      );
+    else if (item.restorable)
+      card.append(
+        button(`Review restore to ${item.version}`, () => renderBackupRestoreForm(item)),
       );
     list.append(card);
   }
@@ -4478,9 +4488,11 @@ async function renderBackupsSettings() {
     ...actions,
     node(
       "p",
-      report.rollback?.available
-        ? "The marked backup is the managed rollback target. Confirming starts the same Settings > Updates rollback job."
-        : report.rollback?.reason ||
+      report.restoreEnabled
+        ? "Restorable older backups can be restored from here. The marked rollback target uses the same Settings > Updates rollback job. Confirming a restore restarts services and sets newer task data aside in a new backup first."
+        : report.rollback?.available
+          ? "The marked backup is the managed rollback target. Confirming starts the same Settings > Updates rollback job."
+          : report.rollback?.reason ||
             "Restoring an older AgentD version and its task data uses Settings > Updates (Roll back). Worktree cleanup stays under Activity.",
       "muted",
     ),
@@ -4497,6 +4509,103 @@ async function openUpdatesWithRollback(target) {
   }
   $("updates-dialog").showModal();
   renderRollbackReview(value.rollback);
+}
+function renderBackupRestoreForm(item) {
+  const form = node("form"),
+    currentLabel = node("label", "Current access key"),
+    current = node("input"),
+    submit = node("button", "Preview restore", "primary");
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  submit.type = "submit";
+  form.append(
+    node(
+      "p",
+      `Restore AgentD ${item.version} from ${new Date(item.completedAt * 1000).toLocaleString()}. The current version and task data are saved first.`,
+      "attention",
+    ),
+    currentLabel,
+    submit,
+    button("Cancel", () => void renderBackupsSettings()),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      const plan = await api("/api/backups", {
+        action: "restore-preview",
+        id: item.id,
+        currentKey: current.value,
+      });
+      current.value = "";
+      renderBackupRestoreApproval(plan);
+    } catch (error) {
+      notice(error.message);
+      submit.disabled = false;
+    }
+  };
+  backupsContent.replaceChildren(form);
+}
+function renderBackupRestoreApproval(plan) {
+  const form = node("form"),
+    currentLabel = node("label", "Enter the current access key again"),
+    current = node("input"),
+    confirmLabel = node("label"),
+    confirmed = node("input"),
+    approve = node("button", `Restore ${plan.restore.version}`, "danger");
+  current.type = "password";
+  current.autocomplete = "current-password";
+  current.required = true;
+  currentLabel.append(current);
+  confirmed.type = "checkbox";
+  confirmed.required = true;
+  confirmLabel.append(
+    confirmed,
+    document.createTextNode(
+      " I understand that services restart, I will be signed out, and tasks since this backup are set aside.",
+    ),
+  );
+  approve.type = "submit";
+  form.append(
+    node(
+      "p",
+      `From ${plan.installed.version} back to ${plan.restore.version}, saved ${new Date(plan.restore.completedAt * 1000).toLocaleString()}.`,
+    ),
+    node("p", "Review expires in five minutes.", "attention"),
+    currentLabel,
+    confirmLabel,
+    approve,
+    button("Start over", () => renderBackupRestoreForm(plan.restore)),
+  );
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    approve.disabled = true;
+    try {
+      await api("/api/backups", {
+        action: "restore",
+        id: plan.restore.id,
+        fingerprint: plan.fingerprint,
+        currentKey: current.value,
+        confirmed: confirmed.checked,
+      });
+      backupsDialog.close();
+      $("preferences-dialog").close();
+      $("updates-dialog").showModal();
+      renderUpdateProgress({
+        job: {
+          kind: "rollback",
+          version: plan.restore.version,
+          stage: "verifying",
+        },
+      });
+    } catch (error) {
+      notice(error.message);
+      approve.disabled = false;
+    }
+  };
+  backupsContent.replaceChildren(form);
 }
 function renderBackupCleanupForm(eligible) {
   const form = node("form"),

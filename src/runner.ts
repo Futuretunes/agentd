@@ -88,6 +88,7 @@ type Config = {
   adminUpdates?: () => Promise<any>;
   startUpdate?: (version: string) => Promise<{ started: true; version: string }>;
   startRollback?: (version: string) => Promise<{ started: true; version: string }>;
+  startRestore?: (id: string) => Promise<{ started: true; id: string; version: string }>;
   restartService?: (
     target: "runner" | "gateway",
   ) => Promise<{ restarted: true; target: "runner" | "gateway" }>;
@@ -1577,6 +1578,22 @@ export function runner(c: Config) {
         throw Error("Finish or stop current work before cleaning managed backups.");
       return c.pruneManagedBackups(input.fingerprint).then((result) => {
         audit("backups-prune", null, { removed: result.removed });
+        return result;
+      });
+    }
+    if (input.op === "admin-backups-restore") {
+      if (!c.startRestore) throw Error("Selected backup restore is not installed.");
+      if (
+        typeof input.id !== "string" ||
+        !/^agentd-backup-[a-z0-9_]{4,32}$/.test(input.id)
+      )
+        throw Error("Backup restore request is invalid.");
+      if (blocked("update"))
+        throw Error(
+          "Finish or stop current work, account changes and preparations before restoring a backup.",
+        );
+      return c.startRestore(input.id).then((result) => {
+        audit("backups-restore", null, { id: input.id, version: result.version });
         return result;
       });
     }

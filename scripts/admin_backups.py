@@ -11,7 +11,7 @@ import run_rollback as rollback
 CONFIG=Path('/etc/agentd/update.json')
 DEPLOYMENT=Path('/var/lib/agentd-deployment')
 
-def public_item(item,rollback_id=None):
+def public_item(item,rollback_id=None,restorable_ids=None):
     name=Path(item['path']).name
     if not name.startswith('agentd-backup-'):raise ValueError('Unexpected backup name')
     return {
@@ -22,12 +22,14 @@ def public_item(item,rollback_id=None):
         'pinned':bool(item.get('pinned')),
         'eligible':bool(item.get('eligible')),
         'rollbackTarget':bool(rollback_id and name==rollback_id),
+        'restorable':bool(restorable_ids and name in restorable_ids),
     }
 
 def snapshot():
     c=update.config(CONFIG)
     value=backup_retention.plan(c)
     rollback_id=None
+    restorable_ids=set()
     rollback_view={'available':False,'reason':'Rollback target is unavailable.','backupId':None}
     try:
         installed=json.loads((DEPLOYMENT/'installed.json').read_text())['release']
@@ -44,6 +46,9 @@ def snapshot():
             }
         else:
             rollback_view={'available':False,'reason':reason or 'No earlier version backup is available.','backupId':None}
+        # Selected restore requires the dedicated job unit; listing stays cheap when it is absent.
+        if c.get('restoreUnit'):
+            restorable_ids=rollback.restorable(c,installed,CONFIG)
     except Exception:
         pass
     return {
@@ -53,7 +58,8 @@ def snapshot():
         'blocked':bool(value['blocked']),
         'fingerprint':value['fingerprint'],
         'rollback':rollback_view,
-        'items':[public_item(item,rollback_id) for item in value['items']],
+        'restoreEnabled':bool(c.get('restoreUnit')),
+        'items':[public_item(item,rollback_id,restorable_ids) for item in value['items']],
     }
 
 def prune(fingerprint):

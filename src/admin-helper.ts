@@ -433,6 +433,33 @@ export function startRollback(
   return { started: true as const, version };
 }
 
+const backupId = /^agentd-backup-[a-z0-9_]{4,32}$/;
+
+export function startRestore(
+  id: unknown,
+  list: () => any = listBackups,
+  updatesList: () => any = updates,
+  start: (unit: string) => void = (unit) => {
+    execFileSync("/usr/bin/systemctl", ["start", "--no-block", unit], {
+      timeout: 10000,
+      stdio: "ignore",
+      env: { PATH: "/usr/bin:/bin", LANG: "C" },
+    });
+  },
+) {
+  if (typeof id !== "string" || !backupId.test(id))
+    throw Error("Invalid restore request");
+  const value = list();
+  if (!value.restoreEnabled) throw Error("Selected backup restore is not enabled");
+  const item = value.items?.find((entry: any) => entry.id === id);
+  if (!item?.restorable) throw Error("That managed backup cannot be restored");
+  const updateState = updatesList();
+  if (updateState.running) throw Error("An update or rollback is already running");
+  if (updateState.configuration !== "ok") throw Error("Configuration needs review first");
+  start(`agentd-restore@${id}.service`);
+  return { started: true as const, id, version: item.version as string };
+}
+
 export function handleAdminRequest(
   input: any,
   config: {
@@ -444,6 +471,7 @@ export function handleAdminRequest(
     restart?: (target: unknown) => { restarted: true; target: "runner" | "gateway" };
     backups?: () => unknown;
     pruneBackups?: (fingerprint: unknown) => { removed: number };
+    startRestore?: (id: unknown) => { started: true; id: string; version: string };
     cliApprovals?: () => unknown;
     startCliInstall?: (id: unknown) => { started: true; id: string };
     adapters?: () => unknown;
@@ -490,6 +518,17 @@ export function handleAdminRequest(
     if (Object.keys(input).sort().join(" ") !== "fingerprint op")
       throw Error("Unsupported admin operation");
     return (config.pruneBackups ?? pruneBackups)(input.fingerprint);
+  }
+  if (input?.op === "backups-restore") {
+    if (Object.keys(input).sort().join(" ") !== "id op")
+      throw Error("Unsupported admin operation");
+    if (config.startRestore) return config.startRestore(input.id);
+    return startRestore(
+      input.id,
+      config.backups ?? listBackups,
+      config.updates ?? updates,
+      config.startUnit,
+    );
   }
   if (input?.op === "cli" && Object.keys(input).join(" ") === "op")
     return (config.cliApprovals ?? listCliApprovals)();

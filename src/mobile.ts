@@ -47,6 +47,16 @@ export function mobile(c: Config) {
       string,
       { fingerprint: string; inventory: string; expires: number; eligible: number }
     >(),
+    restorePreviews = new Map<
+      string,
+      {
+        fingerprint: string;
+        id: string;
+        version: string;
+        completedAt: number;
+        expires: number;
+      }
+    >(),
     adapterPreviews = new Map<
       string,
       {
@@ -562,6 +572,67 @@ export function mobile(c: Config) {
               fingerprint: preview.inventory,
             });
             send(200, result);
+            return;
+          }
+          if (input.action === "restore-preview") {
+            if (
+              typeof input.id !== "string" ||
+              !/^agentd-backup-[a-z0-9_]{4,32}$/.test(input.id)
+            )
+              throw Error("Backup restore request is invalid.");
+            const value = await call({ op: "admin-backups" }),
+              item = (value.items ?? []).find((entry: any) => entry.id === input.id);
+            if (!value.restoreEnabled)
+              throw Error("Selected backup restore is not installed.");
+            if (!item?.restorable) throw Error("That managed backup cannot be restored");
+            const updates = await call({ op: "admin-updates" });
+            if (updates.configuration !== "ok")
+              throw Error("Server configuration needs review before restoring a backup.");
+            if (updates.running) throw Error("An update or rollback is already running.");
+            const expires = now + 300000,
+              nonce = randomBytes(24).toString("hex"),
+              fingerprint = createHash("sha256")
+                .update(
+                  `agentd-backups-restore-preview:${accountOwner}:${item.id}:${item.version}:${item.completedAt}:${expires}:${nonce}`,
+                )
+                .digest("hex");
+            restorePreviews.set(accountOwner, {
+              fingerprint,
+              id: item.id,
+              version: item.version,
+              completedAt: item.completedAt,
+              expires,
+            });
+            send(200, {
+              fingerprint,
+              expiresAt: new Date(expires).toISOString(),
+              installed: updates.installed,
+              restore: {
+                id: item.id,
+                version: item.version,
+                completedAt: item.completedAt,
+                bytes: item.bytes,
+                rollbackTarget: item.rollbackTarget === true,
+              },
+            });
+            return;
+          }
+          if (input.action === "restore") {
+            const preview = restorePreviews.get(accountOwner);
+            if (
+              !preview ||
+              preview.expires < now ||
+              input.fingerprint !== preview.fingerprint ||
+              input.id !== preview.id
+            )
+              throw Error("Backup restore preview expired. Review it again.");
+            if (input.confirmed !== true)
+              throw Error(
+                "Confirm that services restart and newer task data is set aside during the restore.",
+              );
+            restorePreviews.delete(accountOwner);
+            const result = await call({ op: "admin-backups-restore", id: preview.id });
+            send(202, result);
             return;
           }
           throw Error("Unsupported backups action.");

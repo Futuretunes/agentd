@@ -23,6 +23,7 @@ import {
   rotateAccessKey,
   startRollback,
   startUpdate,
+  startRestore,
 } from "./admin-client.ts";
 
 const version: string = JSON.parse(
@@ -90,6 +91,9 @@ export function start(options: Options) {
             : undefined,
           startRollback: process.env.AGENTD_ADMIN_SOCKET
             ? (version) => startRollback(process.env.AGENTD_ADMIN_SOCKET!, version)
+            : undefined,
+          startRestore: process.env.AGENTD_ADMIN_SOCKET
+            ? (id) => startRestore(process.env.AGENTD_ADMIN_SOCKET!, id)
             : undefined,
           startUpdate: process.env.AGENTD_ADMIN_SOCKET
             ? (version) => startUpdate(process.env.AGENTD_ADMIN_SOCKET!, version)

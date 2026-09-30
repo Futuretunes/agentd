@@ -1,0 +1,12 @@
+[Unit]
+Description=AgentD restore managed backup %i
+# Started only by the administration helper after it confirmed that %i is an
+# older compatible completed managed backup. The job re-derives and re-checks
+# the target and restores what was running on failure.
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/python3 -B /opt/agentd/scripts/run_rollback.py --backup-id %i --config /etc/agentd/update.json
+TimeoutStartSec=30min
+UMask=0077
