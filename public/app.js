@@ -850,6 +850,8 @@ accountClose.onclick = () => {
 accountHead.append(accountHeading, accountClose);
 const accountContent = node("div");
 accountContent.id = "account-content";
+accountContent.setAttribute("aria-label", "Account connection");
+accountContent.setAttribute("aria-live", "polite");
 accountDialog.append(accountHead, accountContent);
 document.body.append(accountDialog);
 let accountFingerprint = "",
