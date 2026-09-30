@@ -1037,3 +1037,12 @@ test("project form exposes a stable accessible name", () => {
     "Create project",
   );
 });
+
+test("revision status announces updates politely", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const el = document.getElementById("revision-status");
+  assert.equal(el.getAttribute("role"), "status");
+  assert.equal(el.getAttribute("aria-live"), "polite");
+});
