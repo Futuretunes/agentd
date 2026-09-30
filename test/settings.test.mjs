@@ -114,6 +114,14 @@ async function wait(f, id, state) {
   }
   throw Error("Waiting for " + state);
 }
+/** Wait up to ~20s for a hang-fixture side effect file (known CI flake under load). */
+async function waitForFile(path, label = path) {
+  for (let i = 0; i < 2000; i++) {
+    if (existsSync(path)) return;
+    await sleep(10);
+  }
+  assert.fail(`timed out waiting for ${label}`);
+}
 const save = (f, values, scope = "project", conversation = null, agentScope = "claude") =>
   f.app.request({
     op: "settings-save",
@@ -283,9 +291,10 @@ test("running attempts retain settings; restart preserves partial edits and requ
     });
     f.app.request({ op: "approve", id: task.id });
     const running = await wait(f, task.id, "running");
-    for (let i = 0; i < 400 && !existsSync(join(running.worktree, "partial.txt")); i++)
-      await sleep(10);
-    assert.equal(existsSync(join(running.worktree, "partial.txt")), true);
+    await waitForFile(
+      join(running.worktree, "partial.txt"),
+      "partial.txt after first hang",
+    );
     save(f, { model: "sonnet", effort: "high" }, "conversation", task.conversation);
     assert.equal(
       f.app.request({ op: "show", id: task.id }).task.execution,
@@ -304,12 +313,10 @@ test("running attempts retain settings; restart preserves partial edits and requ
     assert.equal(f.app.request({ op: "show", id: task.id }).task.review, "superseded");
     f.app.request({ op: "approve", id: next.id });
     const nextRunning = await wait(f, next.id, "running");
-    for (
-      let i = 0;
-      i < 400 && !existsSync(join(nextRunning.worktree, "partial.txt"));
-      i++
-    )
-      await sleep(10);
+    await waitForFile(
+      join(nextRunning.worktree, "partial.txt"),
+      "partial.txt after restart hang",
+    );
     assert.equal(
       readFileSync(join(nextRunning.worktree, "partial.txt"), "utf8"),
       "keep me",
@@ -352,8 +359,10 @@ test("background restart preparation is owner-bound, cancellable and recovers it
     });
     f.app.request({ op: "approve", id: task.id });
     const running = await wait(f, task.id, "running");
-    for (let i = 0; i < 400 && !existsSync(join(running.worktree, "partial.txt")); i++)
-      await sleep(10);
+    await waitForFile(
+      join(running.worktree, "partial.txt"),
+      "partial.txt before restart-start",
+    );
     f.app.request({ op: "cancel", id: task.id });
     await wait(f, task.id, "cancelled");
 
