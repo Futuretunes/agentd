@@ -1040,6 +1040,7 @@ function empty() {
   d.replaceChildren();
   const intro = node("div", undefined, "welcome");
   const icon = node("div", undefined, "welcome-icon");
+  icon.setAttribute("aria-hidden", "true");
   icon.append(brandMarkElement());
   intro.append(
     icon,
