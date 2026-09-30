@@ -524,6 +524,14 @@ test("emptyConversationList offers a New conversation control", () => {
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(css, /\.empty-list-cta/);
 });
+test("composer hints announce changes politely", () => {
+  const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
+  for (const id of ["draft-hint", "policy-hint", "hint"]) {
+    const tag = html.match(new RegExp(`<p[^>]*id="${id}"[^>]*>`));
+    assert.ok(tag, id);
+    assert.match(tag[0], /aria-live="polite"/);
+  }
+});
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");
   globalThis.document = document;
