@@ -8,7 +8,32 @@ import {
   markdownBlocks,
   diffFiles,
   diffStats,
+  formatCompactDuration,
+  formatActiveStatusLabel,
 } from "../public/ui.js";
+test("compact duration and active status labels stay honest and short", () => {
+  assert.equal(formatCompactDuration(0), "0s");
+  assert.equal(formatCompactDuration(45), "45s");
+  assert.equal(formatCompactDuration(72), "1m 12s");
+  assert.equal(formatCompactDuration(3600), "1h 0m");
+  const now = Date.parse("2026-09-30T12:00:45.000Z");
+  assert.equal(
+    formatActiveStatusLabel("waiting_for_approval", "2026-09-30T12:00:00.000Z", now),
+    "Ready for your approval · waiting 45s",
+  );
+  assert.equal(
+    formatActiveStatusLabel("running", "2026-09-30T11:59:33.000Z", now),
+    "Working · 1m 12s",
+  );
+  assert.equal(
+    formatActiveStatusLabel("queued", "2026-09-30T11:59:50.000Z", now),
+    "Queued · 55s",
+  );
+  assert.equal(
+    formatActiveStatusLabel("cancelling", "2026-09-30T12:00:40.000Z", now),
+    "Stopping · 5s",
+  );
+});
 test("untrusted answers render as inert text with bounded Markdown and no remote resources", () => {
   const { document } = parseHTML("<html><body></body></html>");
   globalThis.document = document;

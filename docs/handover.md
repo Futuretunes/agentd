@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-settings-restart-flake.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-run-elapsed.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.84.0 — Active-run elapsed time (Cursor)
+
+Active run statuses show compact elapsed time since the current state began (waiting/queued/working/stopping). See [handover](handovers/2026-09-30-cursor-gui-run-elapsed.md). Not installed.
 
 ## Candidate 0.83.1 — settings restart flake hardening (Cursor)
 
