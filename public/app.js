@@ -3356,6 +3356,7 @@ settingsHead.firstChild.id = "settings-heading";
 settingsHead.append(button("Close", () => settingsDialog.close()));
 const settingsForm = node("form"),
   settingsContent = node("div");
+settingsForm.setAttribute("aria-label", "Agent settings form");
 settingsContent.id = "settings-content";
 settingsContent.setAttribute("aria-label", "Agent settings");
 settingsContent.setAttribute("aria-live", "polite");
