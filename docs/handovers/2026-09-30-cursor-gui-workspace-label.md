@@ -6,7 +6,7 @@
 - Release: 0.132.0
 - Branch and base: `feat/gui-workspace-label` on `main` (0.131.0)
 - Implementation commit(s): 1edd975
-- PR: pending
+- PR: #205
 
 ## Changes and relevant files
 
