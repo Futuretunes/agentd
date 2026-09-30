@@ -6,9 +6,13 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.115.0 — Dialog labelled-by headings (Cursor)
+
+All workspace dialogs expose `aria-labelledby` to their heading. See [handover](handovers/2026-09-30-cursor-gui-dialog-labelledby.md). Not installed.
+
 ## Candidate 0.114.0 — Send/Stop accessible names (Cursor)
 
-Send and Stop/Cancel expose aria-labels without relying on ↑ / ■ glyphs. See [handover](handovers/2026-09-30-cursor-gui-send-stop-labels.md). Not installed.
+Send and Stop/Cancel expose aria-labels without relying on ↑ / ■ glyphs. See [handover](handovers/2026-09-30-cursor-gui-send-stop-labels.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.113.0 — New conversation accessible name (Cursor)
 
