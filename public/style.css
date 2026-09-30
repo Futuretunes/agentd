@@ -777,6 +777,7 @@ dialog::backdrop {
 dialog label {
   display: block;
   margin-top: 14px;
+  color: var(--muted);
   font-size: 13px;
 }
 dialog input,
