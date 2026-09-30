@@ -364,6 +364,11 @@ export function noticeDismissMs(kind = "info") {
   return 5000;
 }
 
+/** ARIA role for transient notices: errors interrupt; info stays polite status. */
+export function noticeRole(kind = "info") {
+  return kind === "error" ? "alert" : "status";
+}
+
 export function approvalDurationLabel(ms) {
   const seconds = Math.round(Number(ms) / 1000);
   if (!Number.isFinite(seconds) || seconds <= 0) return "";

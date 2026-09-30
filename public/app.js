@@ -10,6 +10,7 @@ import {
   composerStopControl,
   reviewProgression,
   noticeDismissMs,
+  noticeRole,
   approvalSentence,
   approvalModelLine,
   approvalDurationLabel,
@@ -278,6 +279,7 @@ function notice(text = "", kind = "info") {
     kind === "error" || /\berror\b|failed|refused|denied/i.test(message) ? "error" : kind;
   target.textContent = message;
   target.hidden = !message;
+  target.setAttribute("role", noticeRole(tone));
   target.classList.toggle("error", !!message && tone === "error");
   target.classList.toggle("notice-info", !!message && tone !== "error");
   if (active && message) target.scrollIntoView({ block: "nearest" });
@@ -288,6 +290,7 @@ function notice(text = "", kind = "info") {
     clearFor.textContent = "";
     clearFor.hidden = true;
     clearFor.classList.remove("error", "notice-info");
+    clearFor.setAttribute("role", "status");
     noticeTimer = 0;
   }, noticeDismissMs(tone));
 }

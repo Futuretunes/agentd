@@ -14,6 +14,7 @@ import {
   composerStopControl,
   reviewProgression,
   noticeDismissMs,
+  noticeRole,
   approvalSentence,
   approvalModelLine,
   applySuggestionPrompt,
@@ -233,6 +234,14 @@ test("noticeDismissMs keeps confirmations short and errors readable", () => {
   assert.equal(noticeDismissMs("info"), 5000);
   assert.equal(noticeDismissMs(), 5000);
   assert.equal(noticeDismissMs("error"), 8000);
+});
+test("noticeRole marks errors as alerts and info as status", () => {
+  assert.equal(noticeRole("info"), "status");
+  assert.equal(noticeRole("error"), "alert");
+});
+test("page notice starts as a polite status region", () => {
+  const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
+  assert.match(html, /id="notice"[^>]*role="status"/);
 });
 test("reviewProgression exposes one primary step with honest guidance", () => {
   assert.equal(
