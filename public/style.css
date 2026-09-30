@@ -647,6 +647,14 @@ pre {
   flex-wrap: wrap;
   margin-top: 16px;
 }
+.actions label {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
 .actions button {
   font-size: 13px;
 }
