@@ -6,7 +6,7 @@
 - Release: 0.100.0
 - Branch and base: `feat/gui-disabled-option-reasons` on `main` (0.99.0)
 - Implementation commit(s): 246c0f6
-- PR: (filled after open)
+- PR: #141
 
 ## Changes and relevant files
 
