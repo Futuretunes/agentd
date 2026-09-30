@@ -6,7 +6,7 @@
 - Release: 0.124.0
 - Branch and base: `feat/gui-detail-busy` on `main` (0.123.0)
 - Implementation commit(s): d79666c
-- PR: pending
+- PR: #189
 
 ## Changes and relevant files
 
