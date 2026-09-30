@@ -1470,3 +1470,13 @@ test("connection status exposes a stable accessible name", () => {
     "Connection status",
   );
 });
+
+test("publication confirm error exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("publication-confirm-error").getAttribute("aria-label"),
+    "Publication error",
+  );
+});
