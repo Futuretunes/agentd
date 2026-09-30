@@ -2304,3 +2304,8 @@ test("history result actions are named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /actions\.setAttribute\("aria-label", "History result actions"\)/);
 });
+
+test("adapter account actions are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /actions\.setAttribute\("aria-label", "Adapter account actions"\)/);
+});
