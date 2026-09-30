@@ -13,6 +13,7 @@ import {
   approvalSentence,
   approvalModelLine,
   approvalDurationLabel,
+  applySuggestionPrompt,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -1015,9 +1016,14 @@ function empty() {
     : ["Explain this project", "Review the architecture", "Plan the next milestone"])
     ideas.append(
       button(text, () => {
-        $("prompt").value = text;
+        const prompt = $("prompt");
+        const applied = applySuggestionPrompt(prompt, text);
         saveDraft();
-        $("prompt").focus();
+        prompt.focus();
+        if (applied.hint) {
+          $("draft-hint").textContent = applied.hint;
+          $("draft-hint").hidden = false;
+        }
       }),
     );
   intro.append(ideas);

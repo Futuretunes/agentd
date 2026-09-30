@@ -407,6 +407,26 @@ export function approvalSentence(execution = {}, { adapter, mode } = {}) {
   return action + "." + (limit ? " Runs up to " + limit + "." : "");
 }
 
+/**
+ * Fill a composer prompt from a suggestion without auto-submitting.
+ * Returns short hint copy; caller focuses/saves draft.
+ */
+export function applySuggestionPrompt(field, text) {
+  const value = String(text ?? "");
+  if (!field) return { text: value, hint: "" };
+  field.value = value;
+  try {
+    const end = value.length;
+    field.setSelectionRange(end, end);
+  } catch {
+    /* some inputs reject selection APIs */
+  }
+  return {
+    text: value,
+    hint: value ? "Suggestion filled — edit it, then Send when ready." : "",
+  };
+}
+
 export function setupShell() {
   const $ = (id) => document.getElementById(id),
     mobile = matchMedia("(max-width: 760px)");
