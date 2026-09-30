@@ -1745,3 +1745,16 @@ test("project input exposes a stable accessible name", () => {
     "New project name",
   );
 });
+
+test("mode select exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="mode"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Mode");
+  assert.equal(
+    document.getElementById("mode").getAttribute("aria-label"),
+    "Conversation mode",
+  );
+});
