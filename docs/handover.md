@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.116.0 — Keyboard Attach control (Cursor)
 
-Composer Attach is a named button that opens the image picker. See [handover](handovers/2026-09-30-cursor-gui-attach-button.md). Not installed.
+Composer Attach is a named button that opens the image picker. See [handover](handovers/2026-09-30-cursor-gui-attach-button.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.115.0 — Dialog labelled-by headings (Cursor)
 
