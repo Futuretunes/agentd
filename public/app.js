@@ -316,6 +316,7 @@ async function api(path, data) {
     if ($("account-content")) $("account-content").replaceChildren();
     $("workspace").hidden = true;
     $("login").hidden = false;
+    $("key").focus();
   }
   if (!res.ok) throw Error(value.error ?? "Request failed");
   return value;
@@ -1545,6 +1546,7 @@ $("logout").onclick = async () => {
     projectId = null;
     $("workspace").hidden = true;
     $("login").hidden = false;
+    $("key").focus();
   } catch (e) {
     notice(e.message);
   }
