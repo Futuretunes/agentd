@@ -6,7 +6,7 @@
 - Release: 0.107.0
 - Branch and base: `feat/gui-skip-link` on `main` (0.106.0)
 - Implementation commit(s): 25c730f
-- PR: (filled after open)
+- PR: #155
 
 ## Changes and relevant files
 
