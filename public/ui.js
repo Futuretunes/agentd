@@ -584,6 +584,34 @@ export function applySuggestionPrompt(field, text) {
   };
 }
 
+/** Set visible text and a matching title so ellipsized labels stay readable (U17). */
+export function setTextWithTitle(el, text) {
+  const value = String(text ?? "");
+  if (!el) return value;
+  el.textContent = value;
+  if (value) el.title = value;
+  else el.removeAttribute("title");
+  return value;
+}
+
+/**
+ * Empty conversation list copy plus a primary New conversation control (U17).
+ * Caller wires the button action; this only builds the nodes.
+ */
+export function emptyConversationList(documentRef = document) {
+  const wrap = documentRef.createElement("div");
+  wrap.className = "empty-list-wrap";
+  const copy = documentRef.createElement("p");
+  copy.className = "empty-list";
+  copy.textContent = "Your conversations will appear here.";
+  const start = documentRef.createElement("button");
+  start.type = "button";
+  start.className = "new-chat empty-list-cta";
+  start.textContent = "＋ New conversation";
+  wrap.append(copy, start);
+  return { wrap, copy, start };
+}
+
 /**
  * Open a modal dialog and restore focus to the trigger when it closes (U19).
  * Re-opening an already-open dialog is a no-op so refresh paths keep the trigger.

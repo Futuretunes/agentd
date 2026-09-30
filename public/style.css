@@ -308,6 +308,16 @@ h3 {
   color: var(--muted);
   padding: 12px;
 }
+.empty-list-wrap {
+  padding: 4px 0 12px;
+}
+.empty-list-wrap .empty-list {
+  padding-bottom: 8px;
+}
+.empty-list-cta {
+  width: calc(100% - 8px);
+  margin: 0 4px;
+}
 .sidebar-foot {
   margin-top: auto;
   border-top: 1px solid var(--line);

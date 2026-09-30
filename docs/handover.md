@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.108.0 — Empty conversation CTA + title tooltips (Cursor)
+
+Empty conversation lists offer New conversation; project/thread headings keep a title for ellipsis. See [handover](handovers/2026-09-30-cursor-gui-empty-conversation-cta.md). Not installed.
+
 ## Candidate 0.107.0 — Skip link to conversation (Cursor)
 
 Signed-in workspace offers a keyboard skip link into `#detail`. See [handover](handovers/2026-09-30-cursor-gui-skip-link.md). **Live-installed on 192.168.1.20.**
