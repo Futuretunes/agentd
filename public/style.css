@@ -784,6 +784,21 @@ dialog .muted {
 }
 .review-head button {
   flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  line-height: 1;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.review-head button:hover,
+.review-head button:focus-visible {
+  color: var(--text);
 }
 .settings-grid {
   display: grid;
