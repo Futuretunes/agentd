@@ -3353,7 +3353,9 @@ settingsHead.setAttribute("role", "group");
 settingsHead.setAttribute("aria-label", "Agent settings heading");
 settingsHead.append(node("h2", "Agent settings"));
 settingsHead.firstChild.id = "settings-heading";
-settingsHead.append(button("Close", () => settingsDialog.close()));
+const settingsClose = button("Close", () => settingsDialog.close());
+settingsClose.setAttribute("aria-label", "Close agent settings");
+settingsHead.append(settingsClose);
 const settingsForm = node("form"),
   settingsContent = node("div");
 settingsForm.setAttribute("aria-label", "Agent settings form");
