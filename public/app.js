@@ -1138,6 +1138,7 @@ function renderThread(data) {
         );
       const live = node("pre", preview.text, "result live-output");
       live.setAttribute("aria-label", "Current run output");
+      live.setAttribute("aria-live", "polite");
       response.append(live);
     } else if (t.output)
       response.append(

@@ -1803,3 +1803,9 @@ test("prompt exposes a stable accessible name", () => {
     "Message your agent",
   );
 });
+
+test("live run output exposes a stable accessible name and announces politely", () => {
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /aria-label", "Current run output"/);
+  assert.match(source, /aria-label", "Current run output"[\s\S]*?aria-live", "polite"/);
+});
