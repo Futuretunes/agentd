@@ -302,12 +302,36 @@ export function liveOutputPreview(text, maxChars = 6000) {
  */
 export function composerStopControl(status) {
   if (status === "cancelling")
-    return { visible: true, label: "Stopping…", disabled: true, mode: "stopping" };
+    return {
+      visible: true,
+      label: "Stopping…",
+      accessibleName: "Stopping",
+      disabled: true,
+      mode: "stopping",
+    };
   if (status === "queued" || status === "running")
-    return { visible: true, label: "■ Stop", disabled: false, mode: "stop" };
+    return {
+      visible: true,
+      label: "■ Stop",
+      accessibleName: "Stop run",
+      disabled: false,
+      mode: "stop",
+    };
   if (status === "waiting_for_approval")
-    return { visible: true, label: "Cancel", disabled: false, mode: "cancel" };
-  return { visible: false, label: "■ Stop", disabled: true, mode: "idle" };
+    return {
+      visible: true,
+      label: "Cancel",
+      accessibleName: "Cancel approval",
+      disabled: false,
+      mode: "cancel",
+    };
+  return {
+    visible: false,
+    label: "■ Stop",
+    accessibleName: "Stop run",
+    disabled: true,
+    mode: "idle",
+  };
 }
 
 /**

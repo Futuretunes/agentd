@@ -1478,6 +1478,7 @@ async function refresh() {
     const stopBtn = $("stop-current");
     stopBtn.hidden = !stop.visible;
     stopBtn.textContent = stop.label;
+    stopBtn.setAttribute("aria-label", stop.accessibleName);
     stopBtn.disabled = stop.disabled;
     stopBtn.dataset.mode = stop.mode;
     $("send").hidden = stop.visible;
