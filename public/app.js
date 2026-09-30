@@ -3350,6 +3350,8 @@ settingsHead.append(button("Close", () => settingsDialog.close()));
 const settingsForm = node("form"),
   settingsContent = node("div");
 settingsContent.id = "settings-content";
+settingsContent.setAttribute("aria-label", "Agent settings");
+settingsContent.setAttribute("aria-live", "polite");
 const settingsScope = node("select");
 settingsScope.id = "settings-scope";
 settingsScope.setAttribute("aria-label", "Settings scope");
