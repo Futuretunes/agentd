@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.101.0 — Phone Send stays on the tools row (Cursor)
+
+Phone composer keeps Send beside tools instead of wrapping under them. See [handover](handovers/2026-09-30-cursor-gui-composer-send-row.md). Not installed.
+
 ## Candidate 0.100.0 — Disabled option reasons (Cursor)
 
 Disabled agent and mode options expose a title reason. See [handover](handovers/2026-09-30-cursor-gui-disabled-option-reasons.md). Not installed.
