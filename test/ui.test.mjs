@@ -287,28 +287,45 @@ test("composerStopControl replaces Send while a run is active", () => {
   assert.deepEqual(composerStopControl("running"), {
     visible: true,
     label: "■ Stop",
+    accessibleName: "Stop run",
     disabled: false,
     mode: "stop",
   });
   assert.deepEqual(composerStopControl("queued"), {
     visible: true,
     label: "■ Stop",
+    accessibleName: "Stop run",
     disabled: false,
     mode: "stop",
   });
   assert.deepEqual(composerStopControl("cancelling"), {
     visible: true,
     label: "Stopping…",
+    accessibleName: "Stopping",
     disabled: true,
     mode: "stopping",
   });
   assert.deepEqual(composerStopControl("waiting_for_approval"), {
     visible: true,
     label: "Cancel",
+    accessibleName: "Cancel approval",
     disabled: false,
     mode: "cancel",
   });
   assert.equal(composerStopControl("succeeded").visible, false);
+});
+test("composer Send and Stop expose stable accessible names", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("send").getAttribute("aria-label"),
+    "Send message",
+  );
+  assert.equal(
+    document.getElementById("stop-current").getAttribute("aria-label"),
+    "Stop run",
+  );
 });
 test("liveOutputPreview keeps a trailing bounded plain-text window", () => {
   assert.deepEqual(liveOutputPreview(""), { text: "", truncated: false });
