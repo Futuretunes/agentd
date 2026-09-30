@@ -1258,10 +1258,17 @@ a {
     transform: translateX(-100%);
     height: var(--viewport-height, 100dvh);
     visibility: hidden;
+    padding-top: max(22px, env(safe-area-inset-top));
+    transition:
+      transform 0.24s ease-out,
+      visibility 0s linear 0.24s;
   }
   #sidebar.open {
     transform: none;
     visibility: visible;
+    transition:
+      transform 0.24s ease-out,
+      visibility 0s;
   }
   #drawer-open,
   #drawer-close {
@@ -1370,6 +1377,9 @@ a {
     max-height: calc(var(--viewport-height, 100dvh) - 16px);
     padding: 20px 16px max(20px, env(safe-area-inset-bottom));
   }
+  dialog[open] {
+    animation: agentd-sheet-up 0.24s ease-out;
+  }
   #review-dialog,
   #operations-dialog,
   #history-dialog,
@@ -1415,6 +1425,15 @@ a {
     scroll-behavior: auto !important;
     animation: none !important;
     transition: none !important;
+  }
+}
+
+@keyframes agentd-sheet-up {
+  from {
+    transform: translateY(18px);
+  }
+  to {
+    transform: none;
   }
 }
 

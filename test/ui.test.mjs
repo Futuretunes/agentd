@@ -468,6 +468,16 @@ test("phone composer keeps Send on the same row as tools", () => {
   assert.match(phone, /\.compose-foot \{[^}]*flex-wrap: nowrap/);
   assert.match(phone, /#send \{[^}]*white-space: nowrap/);
 });
+test("phone drawer and sheets animate with reduced-motion respect", () => {
+  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+  assert.match(phone, /#sidebar \{[^}]*transition:/s);
+  assert.match(phone, /transform 0\.24s ease-out/);
+  assert.match(phone, /safe-area-inset-top/);
+  assert.match(phone, /dialog\[open\] \{[^}]*animation: agentd-sheet-up/s);
+  assert.match(css, /@keyframes agentd-sheet-up/);
+  assert.match(css, /prefers-reduced-motion: reduce[\s\S]*transition: none !important/);
+});
 test("status and outcome classes keep non-colour cues", () => {
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(css, /\.status\.running[\s\S]*font-weight: 600/);
