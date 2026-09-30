@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.83.0 — Pause ntfy delivery (Cursor)
 
-Settings > Configuration can pause or resume ntfy pushes without clearing the saved destination. Paused destinations stay in Configuration; approval/completion pushes are skipped until resumed. See [handover](handovers/2026-09-30-cursor-ntfy-pause.md). Not installed.
+Settings > Configuration can pause or resume ntfy pushes without clearing the saved destination. Paused destinations stay in Configuration; approval/completion pushes are skipped until resumed. See [handover](handovers/2026-09-30-cursor-ntfy-pause.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.82.0 — GitHub connection status in Configuration (Cursor)
 

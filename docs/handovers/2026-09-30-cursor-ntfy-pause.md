@@ -2,8 +2,9 @@
 
 - Author/agent: Cursor (operator authorized continuous backlog commits)
 - Requested outcome: Settings > Configuration can pause/resume ntfy pushes while keeping the saved destination
-- Status: implemented; pending merge and live-install
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.83.0
+- PR: #105
 - Branch and base: `feat/gui-ntfy-pause` on `main` (0.82.0)
 
 ## Changes and relevant files
@@ -16,6 +17,8 @@
 - Mobile `/api/notifications` preview/apply accepts paused settings (top-level or settings object).
 
 ## Validation evidence
+
+- CI green on #105; live-installed on 192.168.1.20 (0.83.0 / 7ab6950).
 
 - `node --test test/notifications.test.mjs`
 - typecheck / format (run with commit)
