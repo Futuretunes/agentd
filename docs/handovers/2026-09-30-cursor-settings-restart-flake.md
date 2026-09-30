@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: stop live-install flakes on `running attempts retain settings; restart preserves partial edits and requires a separate approval` after 0.83.0 host isolation failure
-- Status: implemented; pending merge and live-install
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.83.1
 - Branch and base: `fix/settings-restart-flake` on `main` (0.83.0)
 - Implementation commit(s): `786b3cd`
@@ -16,6 +16,8 @@
 - `package.json` → 0.83.1.
 
 ## Validation evidence
+
+- CI green on #107; live-installed on 192.168.1.20 (0.83.1 / 6fae2d3690c6).
 
 - `npm run format` / `npm run typecheck`
 - Repeated `node --test --test-name-pattern='running attempts retain settings' test/settings.test.mjs` (and related hang wait coverage via the same file’s restart-start test when run)

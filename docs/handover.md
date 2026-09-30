@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.83.1 — settings restart flake hardening (Cursor)
 
-Known CI flake: `running attempts retain settings; restart preserves partial edits…` could time out waiting for hang-fixture `partial.txt` under host isolation load. Test wait budget raised (~20s) with a clearer failure message; no product change. See [handover](handovers/2026-09-30-cursor-settings-restart-flake.md). Not installed.
+Known CI flake: `running attempts retain settings; restart preserves partial edits…` could time out waiting for hang-fixture `partial.txt` under host isolation load. Test wait budget raised (~20s) with a clearer failure message; no product change. See [handover](handovers/2026-09-30-cursor-settings-restart-flake.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.83.0 — Pause ntfy delivery (Cursor)
 
