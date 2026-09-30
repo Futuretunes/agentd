@@ -613,6 +613,17 @@ test("composer menus sync aria-expanded on their summaries", () => {
   const source = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
   assert.match(source, /aria-expanded", String\(menu\.open\)/);
 });
+test("attachment chips expose remove accessible names", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("attachments").getAttribute("aria-label"),
+    "Attached images",
+  );
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /Remove attachment: " \+ item\.name/);
+});
 test("user-facing copy names the Activity surface, not Operations", () => {
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(app, /Open Activity to start/);
