@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.96.0 — Sidebar project badge + accessible nav names (Cursor)
 
-Project rows show conversation counts in words; project and conversation buttons expose aria-labels. See [handover](handovers/2026-09-30-cursor-gui-sidebar-nav-labels.md). Not installed.
+Project rows show conversation counts in words; project and conversation buttons expose aria-labels. See [handover](handovers/2026-09-30-cursor-gui-sidebar-nav-labels.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.95.0 — New project layout + composer fade (Cursor)
 
