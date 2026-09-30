@@ -1,14 +1,18 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-ntfy-delivery.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-ntfy-deep-links.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.80.0 — ntfy authenticated deep links and durable dedupe (Cursor)
+
+ntfy click URLs deep-link to project/conversation on the signed-in HTTPS origin (no secrets in the URL). Notified task+status keys persist under stateDir across runner restarts. See [handover](handovers/2026-09-30-cursor-ntfy-deep-links.md). Not installed.
+
 ## Candidate 0.79.0 — ntfy approval and completion delivery (Cursor)
 
-When an ntfy destination is configured, AgentD sends best-effort pushes for approval waits and terminal run statuses. See [handover](handovers/2026-09-30-cursor-ntfy-delivery.md). **Live-installed on 192.168.1.20.**
+When an ntfy destination is configured, AgentD sends best-effort pushes for approval waits and terminal run statuses. See [handover](handovers/2026-09-30-cursor-ntfy-delivery.md). **Live-installed on 192.168.1.20.** Deep links and durable dedupe follow in 0.80.0.
 
 ## Candidate 0.78.0 — ntfy destination configuration (Cursor)
 

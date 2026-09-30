@@ -12,7 +12,7 @@
 - `src/notifications.ts`: bounded ntfy JSON publish helper and status copy.
 - `src/runner.ts`: best-effort notify on `waiting_for_approval`, `succeeded`, `failed`, `timed_out`, `interrupted`.
 - Configuration UI reflects that delivery is enabled when a destination is saved.
-- Authenticated deep links remain a follow-up; click opens the configured origin.
+- Authenticated deep links and durable dedupe follow in 0.80.0; click opened the configured origin only.
 
 ## Validation evidence
 
@@ -21,5 +21,4 @@
 
 ## Next steps
 
-1. Configure a topic and exercise one approval wait on the live host.
-2. Next: authenticated task deep links / duplicate persistence across restarts.
+1. Done for delivery scope; see [0.80.0 deep links handover](2026-09-30-cursor-ntfy-deep-links.md).

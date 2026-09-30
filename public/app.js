@@ -97,12 +97,21 @@ let pageBefore = null,
   archivedView = false,
   submitting = false;
 try {
-  const location = JSON.parse(
-    sessionStorage.getItem("agentd-draft-v1:location") ?? "null",
-  );
-  if (location) {
-    projectId = location.project;
-    selected = location.conversation;
+  const params = new URLSearchParams(window.location.search);
+  const linkedProject = params.get("project");
+  const linkedConversation = params.get("conversation");
+  if (linkedProject) {
+    projectId = linkedProject;
+    selected = linkedConversation || null;
+    history.replaceState(null, "", window.location.pathname + window.location.hash);
+  } else {
+    const location = JSON.parse(
+      sessionStorage.getItem("agentd-draft-v1:location") ?? "null",
+    );
+    if (location) {
+      projectId = location.project;
+      selected = location.conversation;
+    }
   }
 } catch {}
 let projects = [],
