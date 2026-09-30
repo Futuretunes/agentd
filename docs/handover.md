@@ -6,9 +6,13 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.113.0 — New conversation accessible name (Cursor)
+
+New conversation controls set `aria-label="New conversation"`. See [handover](handovers/2026-09-30-cursor-gui-new-chat-label.md). Not installed.
+
 ## Candidate 0.112.0 — Connection bullet + login focus (Cursor)
 
-Connection ● is decorative; login autofocuses the access key and refocuses after logout/401. See [handover](handovers/2026-09-30-cursor-gui-connection-bullet.md). Not installed.
+Connection ● is decorative; login autofocuses the access key and refocuses after logout/401. See [handover](handovers/2026-09-30-cursor-gui-connection-bullet.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.111.0 — Honest no-project New/Send reasons (Cursor)
 
