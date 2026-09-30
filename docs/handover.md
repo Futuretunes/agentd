@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.114.0 — Send/Stop accessible names (Cursor)
 
-Send and Stop/Cancel expose aria-labels without relying on ↑ / ■ glyphs. See [handover](handovers/2026-09-30-cursor-gui-send-stop-labels.md). Not installed.
+Send and Stop/Cancel expose aria-labels without relying on ↑ / ■ glyphs. See [handover](handovers/2026-09-30-cursor-gui-send-stop-labels.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.113.0 — New conversation accessible name (Cursor)
 

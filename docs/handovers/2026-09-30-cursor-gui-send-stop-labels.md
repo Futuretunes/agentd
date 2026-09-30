@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Composer Send and Stop/Cancel expose names that do not depend on ↑ / ■ glyphs
-- Status: implemented
+- Status: implemented; live-installed on 192.168.1.20
 - Release: 0.114.0
 - Branch and base: `feat/gui-send-stop-labels` on `main` (0.113.0)
 - Implementation commit(s): 925990f
@@ -16,13 +16,15 @@
 
 ## Validation evidence
 
+- CI green on #169; live-installed on 192.168.1.20 (0.114.0 / baed961).
+
 - `node --test test/ui.test.mjs`
 - `npm run typecheck`
 - `npm run format:check` (after format)
 
 ## Deployment and rollback
 
-Not installed. Candidate only. Rollback is revert of the PR / prior package version.
+Live-installed on 192.168.1.20. Rollback is prior 0.113.0 / revert of #169.
 
 ## Constraints and known issues
 
@@ -30,5 +32,5 @@ Not installed. Candidate only. Rollback is revert of the PR / prior package vers
 
 ## Next steps
 
-1. Merge when CI is green; live-install on 192.168.1.20.
+1. Done: merged #169 and live-installed 0.114.0.
 2. Continue UX polish or admin slices as operator priority allows.
