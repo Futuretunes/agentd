@@ -1615,3 +1615,16 @@ test("repository branch exposes a stable accessible name", () => {
     "Repository branch",
   );
 });
+
+test("publishing target exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  const label = document.querySelector('label[for="publishing-target"]');
+  assert.ok(label);
+  assert.equal(label.textContent.trim(), "Publication");
+  assert.equal(
+    document.getElementById("publishing-target").getAttribute("aria-label"),
+    "Publication target",
+  );
+});
