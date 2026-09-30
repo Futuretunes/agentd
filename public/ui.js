@@ -494,6 +494,22 @@ export function adapterAccountStatusLine({ account = {}, enabled = true } = {}) 
 }
 
 /**
+ * Inline SVG diamond mark for brand/welcome (U17). Decorative; pass aria-hidden from caller.
+ */
+export function brandMarkElement(documentRef = document) {
+  const svg = documentRef.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "brand-mark");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  const path = documentRef.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("fill", "currentColor");
+  path.setAttribute("d", "M8 1.25 14.75 8 8 14.75 1.25 8Z");
+  svg.append(path);
+  return svg;
+}
+
+/**
  * Sidebar project row: explain the numeric badge and expose an accessible name (U17/U19).
  */
 export function projectNavLabel(name, conversations) {

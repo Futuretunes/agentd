@@ -174,11 +174,20 @@ h3 {
   color: var(--muted);
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 22px;
   font-weight: 650;
   color: var(--text);
   text-decoration: none;
   letter-spacing: -0.6px;
+}
+.brand-mark {
+  width: 0.85em;
+  height: 0.85em;
+  flex-shrink: 0;
+  display: block;
 }
 .eyebrow,
 .section-label {
@@ -382,6 +391,12 @@ header h1 {
   font-size: 40px;
   color: var(--accent);
   margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+.welcome-icon .brand-mark {
+  width: 40px;
+  height: 40px;
 }
 .welcome h2 {
   font:

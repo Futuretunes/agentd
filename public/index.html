@@ -13,7 +13,12 @@
   </head>
   <body>
     <section id="login" class="login">
-      <div class="brand">◈ agentd</div>
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M8 1.25 14.75 8 8 14.75 1.25 8Z" />
+        </svg>
+        agentd
+      </div>
       <p class="eyebrow">YOUR WORKSPACE</p>
       <h1>Projects, with you<br />in control.</h1>
       <p class="muted">A place to work with your agents.</p>
@@ -31,7 +36,15 @@
       <button id="drawer-backdrop" hidden aria-label="Close navigation"></button>
       <aside id="sidebar" aria-label="Workspace navigation">
         <div class="sidebar-head">
-          <a href="/" class="brand">◈ agentd</a
+          <a href="/" class="brand"
+            ><svg
+              class="brand-mark"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path fill="currentColor" d="M8 1.25 14.75 8 8 14.75 1.25 8Z" /></svg
+            >agentd</a
           ><button id="drawer-close" aria-label="Close navigation">×</button>
         </div>
         <button id="new" class="new-chat">＋ New conversation</button>
