@@ -79,6 +79,67 @@ export function rotateAccessFile(
   return { rotated: true as const };
 }
 
+export const ACCESS_KEY_RECOVERY = "/etc/agentd/mobile-access.txt";
+
+export function accessKeyRecoveryStatus(path = ACCESS_KEY_RECOVERY, expectedUid = 0) {
+  try {
+    const info = lstatSync(path);
+    if (
+      !info.isFile() ||
+      info.isSymbolicLink() ||
+      info.uid !== expectedUid ||
+      info.size < 1 ||
+      info.size > 4096 ||
+      info.mode & 0o077
+    )
+      return { format: 1 as const, present: false };
+    return { format: 1 as const, present: true };
+  } catch {
+    return { format: 1 as const, present: false };
+  }
+}
+
+export function deleteAccessKeyRecovery(
+  currentKey: unknown,
+  mobileConfig: string,
+  path = ACCESS_KEY_RECOVERY,
+  expectedUid = 0,
+) {
+  if (typeof currentKey !== "string" || currentKey.length > 256)
+    throw Error("Invalid access-key recovery request");
+  const status = accessKeyRecoveryStatus(path, expectedUid);
+  if (!status.present) throw Error("Access-key recovery file is not present");
+  const info = lstatSync(mobileConfig);
+  if (
+    !info.isFile() ||
+    info.isSymbolicLink() ||
+    info.size > 65536 ||
+    info.uid !== expectedUid
+  )
+    throw Error("Invalid access configuration");
+  const fd = openSync(mobileConfig, constants.O_RDONLY | constants.O_NOFOLLOW);
+  let value: Record<string, unknown>;
+  try {
+    value = JSON.parse(readFileSync(fd, "utf8"));
+  } finally {
+    closeSync(fd);
+  }
+  if (!accessKeyMatches(currentKey, String(value.accessHash ?? "")))
+    throw Error("Current access key did not match");
+  const recovery = lstatSync(path);
+  if (
+    !recovery.isFile() ||
+    recovery.isSymbolicLink() ||
+    recovery.uid !== expectedUid ||
+    recovery.size < 1 ||
+    recovery.size > 4096 ||
+    recovery.mode & 0o077
+  )
+    throw Error("Access-key recovery file is not present");
+  unlinkSync(path);
+  return { deleted: true as const, format: 1 as const };
+}
+
 export function diagnostics(command = "/opt/agentd/scripts/admin_diagnostics.py") {
   const output = execFileSync("/usr/bin/python3", ["-B", command], {
     cwd: "/opt/agentd",
@@ -538,6 +599,8 @@ export function handleAdminRequest(
     replaceTls?: (certificate: unknown, key: unknown) => unknown;
     profiles?: () => unknown;
     startProfile?: (target: unknown) => { started: true; target: string };
+    accessKeyRecovery?: () => unknown;
+    deleteAccessKeyRecovery?: (currentKey: unknown) => { deleted: true };
   },
 ) {
   if (input?.op === "rotate-access-key") {
@@ -545,6 +608,16 @@ export function handleAdminRequest(
       throw Error("Unsupported admin operation");
     rotateAccessFile(config.mobileConfig, input.currentKey, input.newHash);
     return { rotated: true };
+  }
+  if (input?.op === "access-key-recovery" && Object.keys(input).join(" ") === "op")
+    return (config.accessKeyRecovery ?? accessKeyRecoveryStatus)();
+  if (input?.op === "access-key-recovery-delete") {
+    if (Object.keys(input).sort().join(" ") !== "currentKey op")
+      throw Error("Unsupported admin operation");
+    return (
+      config.deleteAccessKeyRecovery ??
+      ((currentKey: unknown) => deleteAccessKeyRecovery(currentKey, config.mobileConfig))
+    )(input.currentKey);
   }
   if (input?.op === "diagnostics" && Object.keys(input).join(" ") === "op")
     return (config.diagnostics ?? diagnostics)();

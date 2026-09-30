@@ -277,3 +277,25 @@ export async function startProfileEnable(
     throw Error("Profile enable was refused.");
   return { started: true, target };
 }
+
+export async function readAccessKeyRecovery(socket: string): Promise<any> {
+  const value: any = await request(socket, { op: "access-key-recovery" });
+  if (value?.format !== 1 || typeof value.present !== "boolean")
+    throw Error("Access-key recovery response is invalid.");
+  return value;
+}
+
+export async function deleteAccessKeyRecoveryFile(
+  socket: string,
+  currentKey: string,
+): Promise<{ deleted: true }> {
+  if (typeof currentKey !== "string" || currentKey.length > 256)
+    throw Error("Access-key recovery request is invalid.");
+  const value: any = await request(
+    socket,
+    { op: "access-key-recovery-delete", currentKey },
+    15000,
+  );
+  if (value?.deleted !== true) throw Error("Access-key recovery deletion was refused.");
+  return { deleted: true };
+}
