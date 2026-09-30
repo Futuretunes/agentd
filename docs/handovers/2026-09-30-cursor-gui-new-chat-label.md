@@ -6,7 +6,7 @@
 - Release: 0.113.0
 - Branch and base: `feat/gui-new-chat-label` on `main` (0.112.0)
 - Implementation commit(s): 384f1d2
-- PR: (filled after open)
+- PR: #167
 
 ## Changes and relevant files
 
