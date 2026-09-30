@@ -3702,14 +3702,16 @@ async function openConfigurationSettings() {
   }
 }
 async function renderConfigurationSettings() {
-  const [report, adapters, runtime, profiles, notifications, origin] = await Promise.all([
-      api("/api/configuration"),
-      api("/api/adapters").catch(() => null),
-      api("/api/runtime-flags").catch(() => null),
-      api("/api/profiles").catch(() => null),
-      api("/api/notifications").catch(() => null),
-      api("/api/origin").catch(() => null),
-    ]),
+  const [report, adapters, runtime, profiles, notifications, origin, github] =
+      await Promise.all([
+        api("/api/configuration"),
+        api("/api/adapters").catch(() => null),
+        api("/api/runtime-flags").catch(() => null),
+        api("/api/profiles").catch(() => null),
+        api("/api/notifications").catch(() => null),
+        api("/api/origin").catch(() => null),
+        api("/api/github").catch(() => null),
+      ]),
     flags = report.configuration,
     yesNo = (value) => (value ? "Yes" : "No"),
     state =
@@ -3908,6 +3910,35 @@ async function renderConfigurationSettings() {
       ),
     );
   }
+  const githubSection = node("section", undefined, "operation-section");
+  githubSection.append(node("h3", "GitHub connection"));
+  if (!github) {
+    githubSection.append(
+      node("p", "GitHub status is not available on this install yet.", "muted"),
+    );
+  } else if (github.connected) {
+    const currentAccess = github.access?.level,
+      ceiling = !github.access?.valid
+        ? "invalid policy; reconnect before using this connection"
+        : github.access?.configured
+          ? github.authorization.choices.find((v) => v.level === currentAccess)
+              ?.description
+          : "repository-only compatibility for an older connection; reconnect to choose an explicit ceiling";
+    githubSection.append(node("p", "Connected.", "good"));
+    if (ceiling)
+      githubSection.append(node("p", "AgentD access ceiling: " + ceiling + ".", "muted"));
+  } else {
+    githubSection.append(node("p", "Not connected.", "attention"));
+  }
+  if (github) {
+    githubSection.append(
+      node(
+        "p",
+        "Connect, reconnect, or change the access ceiling in GitHub settings.",
+        "muted",
+      ),
+    );
+  }
   const actions = [];
   if (profiles?.canEnableResource)
     actions.push(
@@ -3974,6 +4005,7 @@ async function renderConfigurationSettings() {
   configurationContent.replaceChildren(
     overview,
     originSection,
+    githubSection,
     tls,
     policySection,
     runtimeSection,
