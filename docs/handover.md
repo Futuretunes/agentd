@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.89.0 — Distilled approval sentence (Cursor)
 
-Waiting-for-approval turns lead with one honest sentence (what the agent will do / whether files change / time limit), a model·effort line, and Details collapsed. See [handover](handovers/2026-09-30-cursor-gui-approval-summary.md). Not installed.
+Waiting-for-approval turns lead with one honest sentence (what the agent will do / whether files change / time limit), a model·effort line, and Details collapsed. See [handover](handovers/2026-09-30-cursor-gui-approval-summary.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.88.0 — Auto-dismiss notices (Cursor)
 
