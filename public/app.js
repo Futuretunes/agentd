@@ -27,6 +27,7 @@ import {
   openDialog,
   setTextWithTitle,
   emptyConversationList,
+  emptyProjectList,
   noProjectActionReason,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
@@ -1399,6 +1400,11 @@ async function refresh() {
           return b;
         }),
       );
+      if (!projects.length) {
+        const empty = emptyProjectList();
+        empty.start.onclick = () => $("add-project").click();
+        $("projects").append(empty.wrap);
+      }
     }
     setTextWithTitle(
       $("project-name"),
