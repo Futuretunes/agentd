@@ -296,6 +296,20 @@ export function liveOutputPreview(text, maxChars = 6000) {
   return { text: body, truncated: true };
 }
 
+/**
+ * Composer primary control while a run is active: Stop replaces Send.
+ * waiting_for_approval uses Cancel; cancelling shows a disabled Stopping label.
+ */
+export function composerStopControl(status) {
+  if (status === "cancelling")
+    return { visible: true, label: "Stopping…", disabled: true, mode: "stopping" };
+  if (status === "queued" || status === "running")
+    return { visible: true, label: "■ Stop", disabled: false, mode: "stop" };
+  if (status === "waiting_for_approval")
+    return { visible: true, label: "Cancel", disabled: false, mode: "cancel" };
+  return { visible: false, label: "■ Stop", disabled: true, mode: "idle" };
+}
+
 export function setupShell() {
   const $ = (id) => document.getElementById(id),
     mobile = matchMedia("(max-width: 760px)");
