@@ -1,10 +1,18 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-github-content-label.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-updates-content-label.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.177.0 — Updates panel content accessible name (Cursor)
+
+Updates panel content is labeled Updates. See [handover](handovers/2026-09-30-cursor-gui-updates-content-label.md). **Live-installed on 192.168.1.20.**
+
+## Candidate 0.176.0 — Check setup content accessible name (Cursor)
+
+Check setup content is labeled Check setup. See [handover](handovers/2026-09-30-cursor-gui-check-setup-content-label.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.175.0 — GitHub connection status accessible name (Cursor)
 
@@ -24,7 +32,7 @@ Project settings info region is labeled Project information. See [handover](hand
 
 ## Candidate 0.171.0 — GitHub feedback form accessible name (Cursor)
 
-GitHub feedback form is labeled GitHub feedback. See [handover](handovers/2026-09-30-cursor-gui-settings-accounts-label.md). **Live-installed on 192.168.1.20.**
+GitHub feedback form is labeled GitHub feedback. See [handover](handovers/2026-09-30-cursor-gui-feedback-form-label.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.170.0 — Access-key settings live region (Cursor)
 
