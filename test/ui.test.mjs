@@ -1370,3 +1370,13 @@ test("revision status exposes a stable accessible name", () => {
     "Revision status",
   );
 });
+
+test("draft hint exposes a stable accessible name", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("draft-hint").getAttribute("aria-label"),
+    "Saved draft",
+  );
+});
