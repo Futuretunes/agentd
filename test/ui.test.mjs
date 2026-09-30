@@ -1823,3 +1823,9 @@ test("agent settings content exposes a stable accessible name", () => {
   assert.match(source, /aria-label", "Settings scope"/);
   assert.match(source, /aria-label", "Settings agent"/);
 });
+
+test("GitHub access ceiling exposes a stable accessible name", () => {
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /aria-label", "GitHub access ceiling"/);
+  assert.match(source, /AgentD access ceiling/);
+});
