@@ -6,6 +6,7 @@ import {
   setupShell,
   renderUsage,
   formatActiveStatusLabel,
+  liveOutputPreview,
 } from "./ui.js";
 const $ = (id) => document.getElementById(id);
 let nextRun = {},
@@ -1036,7 +1037,7 @@ function renderThread(data) {
       status,
     );
     response.append(head);
-    if (t.outputTruncated)
+    if (t.outputTruncated && !(pending(t.status) && String(t.output || "").trim()))
       response.append(
         node(
           "p",
@@ -1049,7 +1050,16 @@ function renderThread(data) {
         node("p", "Answer excerpt only. View log for more output.", "muted"),
       );
     if (t.answer) response.append(renderMarkdown(t.answer));
-    else if (t.output)
+    else if (pending(t.status) && String(t.output || "").trim()) {
+      const preview = liveOutputPreview(t.output);
+      if (preview.truncated || t.outputTruncated)
+        response.append(
+          node("p", "Showing the latest output. Open View log for more.", "muted"),
+        );
+      const live = node("pre", preview.text, "result live-output");
+      live.setAttribute("aria-label", "Current run output");
+      response.append(live);
+    } else if (t.output)
       response.append(
         node(
           "p",
