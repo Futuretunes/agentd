@@ -6,7 +6,7 @@
 - Release: 0.103.0
 - Branch and base: `feat/gui-dialog-close-targets` on `main` (0.102.0)
 - Implementation commit(s): 82a57af
-- PR: (filled after open)
+- PR: #147
 
 ## Changes and relevant files
 
