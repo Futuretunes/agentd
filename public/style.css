@@ -528,9 +528,34 @@ header h1 {
   color: var(--muted);
   font-size: 12px;
 }
+/* U19: status is never colour-only — weight/style reinforce the text label. */
 .status.running,
-.status.waiting_for_approval {
+.status.waiting_for_approval,
+.status.queued,
+.status.cancelling {
   color: var(--accent);
+  font-weight: 600;
+}
+.status.failed,
+.status.timed_out,
+.status.interrupted,
+.status.cancelled {
+  color: var(--danger);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.status.succeeded {
+  font-weight: 500;
+}
+.good {
+  color: var(--good);
+  font-weight: 600;
+}
+.attention {
+  color: var(--warn);
+  font-weight: 600;
 }
 .answer {
   font:
@@ -621,12 +646,6 @@ pre {
 .danger,
 .error {
   color: var(--danger);
-}
-.good {
-  color: var(--good);
-}
-.attention {
-  color: var(--warn);
 }
 .next-step,
 .dialog-notice {
