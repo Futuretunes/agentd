@@ -26,6 +26,7 @@ import {
   conversationNavLabel,
   brandMarkElement,
   disabledOptionReason,
+  openDialog,
 } from "../public/ui.js";
 test("operationsSummaryCounts keeps pending reviews out of Completed", () => {
   assert.deepEqual(
@@ -446,6 +447,38 @@ test("selected sidebar items keep a non-colour cue", () => {
   const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(css, /\.selected \{[\s\S]*font-weight: 600/);
   assert.match(css, /\.selected \{[\s\S]*box-shadow: inset 3px 0 0/);
+});
+test("openDialog restores focus to the trigger when the dialog closes", () => {
+  const listeners = {};
+  const trigger = {
+    focused: 0,
+    focus() {
+      this.focused += 1;
+    },
+  };
+  const dialog = {
+    open: false,
+    showModal() {
+      this.open = true;
+    },
+    addEventListener(type, fn) {
+      listeners[type] = fn;
+    },
+  };
+  openDialog(dialog, trigger);
+  assert.equal(dialog.open, true);
+  assert.equal(dialog.__agentdReturnFocus, trigger);
+  openDialog(dialog, { focus() {} });
+  assert.equal(dialog.__agentdReturnFocus, trigger, "re-open keeps original trigger");
+  dialog.open = false;
+  listeners.close();
+  assert.equal(trigger.focused, 1);
+  assert.equal(dialog.__agentdReturnFocus, null);
+});
+test("app opens dialogs through openDialog for focus restoration", () => {
+  const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(app, /openDialog/);
+  assert.equal([...app.matchAll(/\.showModal\(/g)].length, 0);
 });
 test("file review shows every hunk line, including content that looks like a patch header", () => {
   const { document } = parseHTML("<html><body></body></html>");

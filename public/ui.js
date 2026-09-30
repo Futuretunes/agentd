@@ -584,6 +584,41 @@ export function applySuggestionPrompt(field, text) {
   };
 }
 
+/**
+ * Open a modal dialog and restore focus to the trigger when it closes (U19).
+ * Re-opening an already-open dialog is a no-op so refresh paths keep the trigger.
+ */
+export function openDialog(dialog, trigger) {
+  if (!dialog) return dialog;
+  const doc = typeof document !== "undefined" ? document : null;
+  if (!dialog.__agentdFocusBound) {
+    dialog.__agentdFocusBound = true;
+    dialog.addEventListener("close", () => {
+      const el = dialog.__agentdReturnFocus;
+      dialog.__agentdReturnFocus = null;
+      if (!el || typeof el.focus !== "function") return;
+      try {
+        if (doc && typeof doc.contains === "function" && !doc.contains(el)) return;
+        el.focus();
+      } catch {
+        /* detached or inert */
+      }
+    });
+  }
+  if (!dialog.open) {
+    const candidate =
+      trigger !== undefined
+        ? trigger
+        : doc && doc.activeElement && doc.activeElement !== doc.body
+          ? doc.activeElement
+          : null;
+    dialog.__agentdReturnFocus =
+      candidate && typeof candidate.focus === "function" ? candidate : null;
+    dialog.showModal();
+  }
+  return dialog;
+}
+
 export function setupShell() {
   const $ = (id) => document.getElementById(id),
     mobile = matchMedia("(max-width: 760px)");
