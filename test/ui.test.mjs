@@ -2658,3 +2658,11 @@ test("Set ntfy destination form is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /form\.setAttribute\("aria-label", "Set ntfy destination form"\)/);
 });
+
+test("Replace managed TLS certificate form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /form\.setAttribute\("aria-label", "Replace managed TLS certificate form"\)/,
+  );
+});
