@@ -453,6 +453,12 @@ dialog a:focus-visible {
   outline-offset: 2px;
 }
 @media (max-width: 720px) {
+  #login button,
+  #loginform button {
+    min-height: 44px;
+  }
+}
+@media (max-width: 720px) {
   #history-pages button {
     min-height: 44px;
     min-width: 44px;
