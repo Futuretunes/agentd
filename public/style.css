@@ -327,6 +327,13 @@ header.conversation-head button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#check-setup-dialog button:focus-visible,
+#check-setup-dialog input:focus-visible,
+#check-setup-dialog select:focus-visible,
+#check-setup-dialog textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 input,
 select,
 textarea {
