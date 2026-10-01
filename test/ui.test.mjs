@@ -3534,3 +3534,8 @@ test("Phone run picker touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /run-picker > summary \{\n    min-height: 44px/);
 });
+
+test("Phone conversation menu touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /conversation-menu > summary[\s\S]*min-height: 44px/);
+});
