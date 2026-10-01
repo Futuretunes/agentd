@@ -3270,6 +3270,7 @@ async function updateFeedback() {
         const card = node("section"),
           label = node("label"),
           check = document.createElement("input");
+        card.setAttribute("aria-label", "Feedback item " + item.key);
         check.type = "checkbox";
         check.disabled = item.truncated || job.state !== "ready";
         check.setAttribute("aria-label", "Select " + item.key);
