@@ -3742,3 +3742,8 @@ test("Phone workspace tools touch target is named in app bootstrap", () => {
     /#history-menu,\n  #operations-menu,\n  #preferences-menu \{\n    min-height: 44px/,
   );
 });
+
+test("Phone prompt min-height is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /#prompt \{\n    min-height: 72px/);
+});
