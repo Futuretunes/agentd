@@ -2971,3 +2971,8 @@ test("Sidebar nav focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#sidebar button:focus-visible/);
 });
+
+test("Sidebar foot focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.sidebar-foot button:focus-visible/);
+});
