@@ -438,6 +438,13 @@ dialog a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#notice button:focus-visible,
+#notice input:focus-visible,
+#notice select:focus-visible,
+#notice textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 input,
 select,
 textarea {
