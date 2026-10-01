@@ -3289,3 +3289,8 @@ test("CLI content focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#cli-content button:focus-visible/);
 });
+
+test("Diagnostics content focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#diagnostics-content button:focus-visible/);
+});
