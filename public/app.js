@@ -3018,14 +3018,18 @@ async function updatePublishing() {
         $("publishing-title").value = plan.title;
         $("publishing-body").value = plan.body;
       }
+      const pubBody = node("pre", plan.body || "(No description)", "diff");
+      pubBody.setAttribute("aria-label", "Publication description");
+      const pubStat = node("pre", plan.stat, "diff");
+      pubStat.setAttribute("aria-label", "Publication file stats");
       box.append(
         node("p", "Repository: " + plan.destination, "path"),
         node("p", plan.branch + " → " + plan.base, "path"),
         node("p", "Commit: " + plan.head, "path"),
         node("p", "Reviewed base: " + plan.baseSha, "path"),
         node("strong", plan.title),
-        node("pre", plan.body || "(No description)", "diff"),
-        node("pre", plan.stat, "diff"),
+        pubBody,
+        pubStat,
       );
       for (const commit of plan.commits) {
         const details = node("details"),
