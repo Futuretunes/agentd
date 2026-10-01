@@ -3787,3 +3787,8 @@ test("Eyebrow section font size is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.eyebrow,\n\.section-label \{\n  font-size: 13px/);
 });
+
+test("Danger error underline is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.danger,\n\.error \{\n  text-decoration: underline/);
+});
