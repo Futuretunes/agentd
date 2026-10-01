@@ -464,6 +464,10 @@ dialog a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#prompt:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 #selection-summary button:focus-visible,
 #selection-summary input:focus-visible,
 #selection-summary select:focus-visible,
