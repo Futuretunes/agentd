@@ -458,6 +458,11 @@ dialog a:focus-visible {
   text-underline-offset: 2px;
 }
 @media (max-width: 720px) {
+  .empty-list-cta {
+    min-height: 44px;
+  }
+}
+@media (max-width: 720px) {
   #prompt {
     min-height: 72px;
   }
