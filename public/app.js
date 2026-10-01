@@ -4112,6 +4112,7 @@ async function renderConfigurationSettings() {
     );
   }
   const githubSection = node("section", undefined, "operation-section");
+  githubSection.setAttribute("aria-label", "Configuration GitHub connection");
   githubSection.append(node("h3", "GitHub connection"));
   if (!github) {
     githubSection.append(
