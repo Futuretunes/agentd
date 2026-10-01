@@ -2817,3 +2817,8 @@ test("Turn status is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /status\.setAttribute\("aria-label", "Turn status"\)/);
 });
+
+test("Latest run output is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /outputPre\.setAttribute\("aria-label", "Latest run output"\)/);
+});

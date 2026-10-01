@@ -2487,6 +2487,8 @@ async function updateRun() {
     }
     box.append(timeline);
     if (data.task.error) box.append(node("p", data.task.error, "error"));
+    const outputPre = node("pre", data.output || "No output recorded yet.", "result");
+    outputPre.setAttribute("aria-label", "Latest run output");
     box.append(
       node("h3", "Latest output"),
       node(
@@ -2494,7 +2496,7 @@ async function updateRun() {
         "The live view shows up to 60 KB. Downloads contain the latest 512 KB and identify omitted output.",
         "muted",
       ),
-      node("pre", data.output || "No output recorded yet.", "result"),
+      outputPre,
     );
     const link = node("a", "Download latest output", "output-download");
     link.href = "/api/tasks/" + id + "/output";
