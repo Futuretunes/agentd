@@ -6542,6 +6542,7 @@ function renderRollbackReview(target) {
 function renderUpdateProgress(value) {
   stopUpdatesPoll();
   const status = node("p", undefined, "run-progress");
+  status.setAttribute("aria-live", "polite");
   const show = (job) => {
     status.textContent = `${job?.kind === "rollback" ? "Rolling back" : "Updating"} to ${job?.version ?? "the new version"}: ${stageLabels[job?.stage] ?? "starting"}…`;
   };
