@@ -2625,3 +2625,11 @@ test("Apply runtime flags approval form is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /form\.setAttribute\("aria-label", "Apply runtime flags approval"\)/);
 });
+
+test("Configuration restart approval form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /form\.setAttribute\("aria-label", "Configuration restart approval " \+ label\)/,
+  );
+});
