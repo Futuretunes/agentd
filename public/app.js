@@ -3448,6 +3448,7 @@ function executionSummary(value) {
 function executionDetails(value) {
   const details = node("details"),
     summary = node("summary", "Details");
+  details.setAttribute("aria-label", "Execution details");
   const list = node("dl", undefined, "run-facts");
   const row = (term, text) => list.append(node("dt", term), node("dd", text));
   row("Files", plainPlace(value.permissions.filesystem));
