@@ -2615,3 +2615,8 @@ test("Confirm delete access-key recovery form is named in app bootstrap", () => 
     /form\.setAttribute\("aria-label", "Confirm delete access-key recovery file"\)/,
   );
 });
+
+test("Enable profile approval form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /form\.setAttribute\("aria-label", "Enable profile approval"\)/);
+});
