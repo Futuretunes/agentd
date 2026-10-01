@@ -1100,6 +1100,7 @@ function renderThread(data) {
     user.append(node("div", t.prompt, "message-text"), images(t.images ?? []));
     turn.append(user);
     const response = node("div", undefined, "agent-message");
+    response.setAttribute("aria-label", "Agent message");
     const head = node("div", undefined, "message-head");
     const statusLabel = pending(t.status)
       ? formatActiveStatusLabel(t.status, t.updated || t.created)
