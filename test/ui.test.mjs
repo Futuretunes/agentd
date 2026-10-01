@@ -3319,3 +3319,8 @@ test("Publishing form focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#publishing-form button:focus-visible/);
 });
+
+test("Revision form focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#revision-form button:focus-visible/);
+});
