@@ -3294,3 +3294,8 @@ test("Diagnostics content focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#diagnostics-content button:focus-visible/);
 });
+
+test("Access key content focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#access-key-content button:focus-visible/);
+});
