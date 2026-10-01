@@ -87,6 +87,10 @@ export function renderMarkdown(text) {
       };
       head.append(el("span", block.language || "Code"), copy);
       const pre = el("pre");
+      pre.setAttribute(
+        "aria-label",
+        "Code" + (block.language ? " " + block.language : ""),
+      );
       pre.append(el("code", block.text));
       wrap.append(head, pre);
       box.append(wrap);

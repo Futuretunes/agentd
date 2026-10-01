@@ -2911,3 +2911,8 @@ test("Code block is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
   assert.match(src, /wrap\.setAttribute\(\s*"aria-label",\s*"Code block"/);
 });
+
+test("Code pre is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(src, /pre\.setAttribute\(\s*"aria-label",\s*"Code"/);
+});
