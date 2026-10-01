@@ -2997,6 +2997,10 @@ async function updatePublishing() {
       for (const commit of plan.commits) {
         const details = node("details"),
           summary = node("summary", commit.subject + " · " + commit.sha.slice(0, 12));
+        details.setAttribute(
+          "aria-label",
+          "Publication commit " + commit.sha.slice(0, 12),
+        );
         details.append(summary, node("pre", commit.patch, "diff"));
         box.append(details);
       }

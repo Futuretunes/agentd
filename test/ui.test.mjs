@@ -2464,3 +2464,8 @@ test("execution details are named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /details\.setAttribute\("aria-label", "Execution details"\)/);
 });
+
+test("publication commit disclosures are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /"Publication commit " \+ commit\.sha\.slice\(0, 12\)/);
+});
