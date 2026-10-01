@@ -452,6 +452,12 @@ dialog a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+@media (max-width: 720px) {
+  .output-download,
+  .provider-login {
+    min-height: 44px;
+  }
+}
 .danger,
 .error {
   text-decoration: underline;
