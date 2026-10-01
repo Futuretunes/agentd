@@ -3608,3 +3608,8 @@ test("Status label font size is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.status \{\n  color: var\(--muted\);\n  font-size: 13px/);
 });
+
+test("Phone input font size is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /#key,\n  #history-query,\n  #login input \{\n    font-size: 16px/);
+});
