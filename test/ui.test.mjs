@@ -3169,3 +3169,8 @@ test("Conversations list focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#tasks button:focus-visible/);
 });
+
+test("Run picker focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#run-picker button:focus-visible/);
+});
