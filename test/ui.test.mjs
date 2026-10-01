@@ -3479,3 +3479,8 @@ test("Attach control focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#attach:focus-visible/);
 });
+
+test("New conversation focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#new:focus-visible/);
+});
