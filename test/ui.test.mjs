@@ -2802,3 +2802,8 @@ test("Turn message heading is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /head\.setAttribute\("aria-label", "Turn message heading"\)/);
 });
+
+test("Storage cleanup dialog is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /dialog\.setAttribute\("aria-label", "Review storage cleanup"\)/);
+});
