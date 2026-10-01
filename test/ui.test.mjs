@@ -2901,3 +2901,8 @@ test("File review summary is named in app bootstrap", () => {
     /summary\.setAttribute\("aria-label", "File summary " \+ file\.name\)/,
   );
 });
+
+test("Agent answer is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(src, /box\.setAttribute\("aria-label", "Agent answer"\)/);
+});
