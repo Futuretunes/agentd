@@ -2870,3 +2870,8 @@ test("Update progress live region is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /status\.setAttribute\("aria-live", "polite"\)/);
 });
+
+test("Update progress is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /status\.setAttribute\("aria-label", "Update progress"\)/);
+});
