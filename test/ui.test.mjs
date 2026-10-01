@@ -3184,3 +3184,8 @@ test("Attachments focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#attachments button:focus-visible/);
 });
+
+test("Workspace links focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#workspace\ a:focus-visible/);
+});
