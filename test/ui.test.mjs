@@ -3349,3 +3349,8 @@ test("Access key settings focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#access-key-settings button:focus-visible/);
 });
+
+test("CLI settings focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#cli-settings button:focus-visible/);
+});
