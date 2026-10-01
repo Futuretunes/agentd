@@ -2350,3 +2350,12 @@ test("large review files are named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /files\.setAttribute\("aria-label", "Large review files"\)/);
 });
+
+test("paginated review controls are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /panel\.setAttribute\("aria-label", "Paginated review"\)/);
+  assert.match(
+    src,
+    /controls\.setAttribute\("aria-label", "Paginated review controls"\)/,
+  );
+});
