@@ -2787,3 +2787,8 @@ test("User message is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /user\.setAttribute\("aria-label", "Your message"\)/);
 });
+
+test("Agent message is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /response\.setAttribute\("aria-label", "Agent message"\)/);
+});
