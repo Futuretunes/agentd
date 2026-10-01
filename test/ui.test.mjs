@@ -2914,5 +2914,5 @@ test("Code block is named in app bootstrap", () => {
 
 test("Code pre is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
-  assert.match(src, /pre\.setAttribute\("aria-label", "Code"/);
+  assert.match(src, /pre\.setAttribute\(\s*"aria-label",\s*"Code"/);
 });
