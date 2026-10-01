@@ -5215,6 +5215,7 @@ async function renderBackupsSettings() {
     list.append(node("p", "No managed update backups are recorded yet.", "muted"));
   for (const item of report.items ?? []) {
     const card = node("div", undefined, "operation-card");
+    card.setAttribute("aria-label", "Update backup " + item.version);
     card.append(
       node(
         "p",
