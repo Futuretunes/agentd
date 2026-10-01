@@ -5979,6 +5979,7 @@ function renderAccessKeyRecoveryApproval(plan) {
       "label",
       "I understand this permanently deletes the leftover plaintext recovery file",
     );
+  form.setAttribute("aria-label", "Confirm delete access-key recovery file");
   confirm.type = "checkbox";
   confirm.required = true;
   confirmLabel.prepend(confirm);
