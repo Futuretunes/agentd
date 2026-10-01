@@ -2535,3 +2535,8 @@ test("backup restore form is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /form\.setAttribute\("aria-label", "Backup restore"\)/);
 });
+
+test("clear ntfy destination form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /form\.setAttribute\("aria-label", "Clear ntfy destination"\)/);
+});
