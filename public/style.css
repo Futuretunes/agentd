@@ -478,6 +478,11 @@ dialog label {
   line-height: 1.4;
 }
 @media (max-width: 720px) {
+  .file-summary {
+    min-height: 44px;
+  }
+}
+@media (max-width: 720px) {
   .suggestions button {
     min-height: 44px;
   }
