@@ -193,6 +193,7 @@ export function diffStats(patch) {
 }
 export function renderDiff(patch) {
   const box = el("div", undefined, "file-review");
+  box.setAttribute("aria-label", "File review");
   for (const file of diffFiles(patch)) {
     const details = el("details"),
       summary = el("summary", undefined, "file-summary");
