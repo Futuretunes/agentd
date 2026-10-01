@@ -1,29 +1,28 @@
-# 2026-09-30 — 0.331.0: Managed runtime flags form accessible name (UX-4 / U19)
+# 2026-09-30 — 0.362.0: Managed runtime flags form accessible name (UX-4 / U19)
 
 - Author/agent: Cursor
-- Requested outcome: Managed runtime flags form section exposes a stable accessible name
+- Requested outcome: Managed runtime flags form accessible name
 - Status: implemented; live-installed on 192.168.1.20
-- Release: 0.331.0
-- Branch and base: `feat/gui-runtime-flags-form-label` on `main` (0.330.0)
-- Implementation commit(s): aff56e8
-- PR: #603
+- Release: 0.362.0
+- Implementation commit(s): a39adcc
+- PR: #665
 
 ## Changes and relevant files
 
-- Managed runtime flags form section sets `aria-label="Managed runtime flags"`.
-- Package 0.331.0; source assertion in `test/ui.test.mjs`.
+- See feature PR #665.
+- Package 0.362.0; source assertion in `test/ui.test.mjs`.
 
 ## Validation evidence
 
-- CI green on #603; live-installed on 192.168.1.20 (0.331.0 / aff56e8aae8ae4a4fd3e9e87c3ca57221f28ac8f).
-- Archive SHA-256: `5807f7c6806f1afb0d2351d53d37118930b65b4a952e8250f69807710381dd46`
-- Revision: `aff56e8aae8ae4a4fd3e9e87c3ca57221f28ac8f`
+- CI green on #665; live-installed on 192.168.1.20 (0.362.0 / a39adccdde8d68f6c72bf0f030aec07b202f20eb).
+- Archive SHA-256: `c9c1d1685cf70c7b0c6fe3e3eadde996809e873f11b16674bd8d6b1dae092e1a`
+- Revision: `a39adccdde8d68f6c72bf0f030aec07b202f20eb`
 
 - `node --test test/ui.test.mjs`
 
 ## Deployment and rollback
 
-Live-installed on 192.168.1.20. Rollback is prior 0.330.0 / revert of #603.
+Live-installed on 192.168.1.20. Rollback is prior release / revert of #665.
 
 ## Constraints and known issues
 
@@ -31,5 +30,5 @@ None beyond ordinary accessible naming.
 
 ## Next steps
 
-1. Done: merged #603 and live-installed 0.331.0.
-2. Label Enabled adapters next.
+1. Done: merged #665 and live-installed 0.362.0.
+2. Continue a11y form labels.
