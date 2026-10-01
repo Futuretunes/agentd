@@ -5668,6 +5668,7 @@ function renderCliInstallApproval(plan) {
       "label",
       "Current work, account changes and preparations are stopped",
     );
+  form.setAttribute("aria-label", "CLI install approval " + title);
   confirm.type = "checkbox";
   confirm.required = true;
   confirmLabel.prepend(confirm);
