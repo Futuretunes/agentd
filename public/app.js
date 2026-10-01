@@ -1096,6 +1096,7 @@ function renderThread(data) {
     const turn = node("article", undefined, "turn");
     turn.setAttribute("aria-label", "Conversation turn");
     const user = node("div", undefined, "user-message");
+    user.setAttribute("aria-label", "Your message");
     user.append(node("div", t.prompt, "message-text"), images(t.images ?? []));
     turn.append(user);
     const response = node("div", undefined, "agent-message");

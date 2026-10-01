@@ -2782,3 +2782,8 @@ test("Run timeline is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /timeline\.setAttribute\("aria-label", "Run timeline"\)/);
 });
+
+test("User message is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /user\.setAttribute\("aria-label", "Your message"\)/);
+});
