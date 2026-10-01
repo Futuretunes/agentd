@@ -320,6 +320,13 @@ header.conversation-head button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#repository-dialog button:focus-visible,
+#repository-dialog input:focus-visible,
+#repository-dialog select:focus-visible,
+#repository-dialog textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 input,
 select,
 textarea {
