@@ -2540,3 +2540,11 @@ test("clear ntfy destination form is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /form\.setAttribute\("aria-label", "Clear ntfy destination"\)/);
 });
+
+test("pause ntfy notifications form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /form\.setAttribute\(\s*"aria-label",\s*pause \? "Pause ntfy notifications" : "Resume ntfy notifications",\s*\)/,
+  );
+});
