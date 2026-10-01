@@ -4921,6 +4921,7 @@ function renderAdapterPolicyForm(current) {
   editing.type = "checkbox";
   editing.checked = !!current.editing;
   editingLabel.prepend(editing);
+  editSection.setAttribute("aria-label", "Edit permissions");
   editSection.append(node("h3", "Edit permissions"));
   editSection.append(editingLabel);
   editSection.append(

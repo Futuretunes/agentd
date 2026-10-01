@@ -2497,3 +2497,8 @@ test("enabled adapters section is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /enabledSection\.setAttribute\("aria-label", "Enabled adapters"\)/);
 });
+
+test("edit permissions section is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /editSection\.setAttribute\("aria-label", "Edit permissions"\)/);
+});
