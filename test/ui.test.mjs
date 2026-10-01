@@ -2740,3 +2740,11 @@ test("Installed CLI card is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /card\.setAttribute\("aria-label", "Installed CLI " \+ title\)/);
 });
+
+test("Approved CLI package row is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /row\.setAttribute\("aria-label", "Approved CLI package " \+ title\)/,
+  );
+});

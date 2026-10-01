@@ -5586,6 +5586,7 @@ async function renderCliSettings() {
     for (const item of approved.items) {
       const row = node("div", undefined, "operation-card"),
         title = (names[item.adapter] ?? item.adapter) + " " + item.version;
+      row.setAttribute("aria-label", "Approved CLI package " + title);
       row.append(node("h4", title));
       if (item.notes) row.append(node("p", item.notes, "muted"));
       row.append(button("Review install", () => renderCliInstallForm(item)));
