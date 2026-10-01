@@ -5754,6 +5754,7 @@ $("diagnostics-settings").onclick = async () => {
       services.append(restartSection);
     }
     const failures = node("section", undefined, "operation-section");
+    failures.setAttribute("aria-label", "Recent failed runs");
     failures.append(node("h3", "Recent failed runs"));
     if (!report.runner.recentFailures.length)
       failures.append(
