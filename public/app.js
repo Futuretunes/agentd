@@ -1103,6 +1103,7 @@ function renderThread(data) {
     const response = node("div", undefined, "agent-message");
     response.setAttribute("aria-label", "Agent message");
     const head = node("div", undefined, "message-head");
+    head.setAttribute("aria-label", "Turn message heading");
     const statusLabel = pending(t.status)
       ? formatActiveStatusLabel(t.status, t.updated || t.created)
       : formatTerminalStatusLabel(t, labels);
