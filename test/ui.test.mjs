@@ -3419,3 +3419,8 @@ test("Draft hint focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#draft\-hint:focus-visible/);
 });
+
+test("Policy hint focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#policy\-hint:focus-visible/);
+});
