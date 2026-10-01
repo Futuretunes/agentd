@@ -227,8 +227,11 @@ export function renderDiff(patch) {
     details.append(summary);
     const pre = el("pre", undefined, "diff");
     pre.setAttribute("aria-label", "Diff for " + file.name);
-    if (file.binary)
-      pre.append(el("span", "Binary file changed. Review it locally.", "diff-line"));
+    if (file.binary) {
+      const binary = el("span", "Binary file changed. Review it locally.", "diff-line");
+      binary.setAttribute("aria-label", "Binary file changed");
+      pre.append(binary);
+    }
     let old = 0,
       next = 0;
     for (const line of file.lines) {
