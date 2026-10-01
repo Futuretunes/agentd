@@ -3229,3 +3229,8 @@ test("Review head links focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.review\-head\ a:focus-visible/);
 });
+
+test("Review content focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#review-content button:focus-visible/);
+});
