@@ -748,6 +748,7 @@ function renderOperations(data) {
           details.append(approve);
         }
         const dialog = node("dialog");
+        dialog.setAttribute("aria-label", "Review storage cleanup");
         dialog.append(node("h2", "Review storage cleanup"), details);
         const close = button("Close", () => dialog.close());
         dialog.append(close);
