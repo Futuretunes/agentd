@@ -2638,3 +2638,8 @@ test("Backup restore approval form is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /form\.setAttribute\("aria-label", "Backup restore approval"\)/);
 });
+
+test("Diagnostics restart approval form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /form\.setAttribute\("aria-label", "Restart approval " \+ label\)/);
+});
