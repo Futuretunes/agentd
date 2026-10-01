@@ -459,6 +459,13 @@ dialog a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#history-pages button:focus-visible,
+#history-pages input:focus-visible,
+#history-pages select:focus-visible,
+#history-pages textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 #github-settings button:focus-visible,
 #github-settings input:focus-visible,
 #github-settings select:focus-visible,
