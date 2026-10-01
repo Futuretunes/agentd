@@ -229,6 +229,13 @@ header.conversation-head button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#publishing-dialog button:focus-visible,
+#publishing-dialog input:focus-visible,
+#publishing-dialog select:focus-visible,
+#publishing-dialog textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 input,
 select,
 textarea {
