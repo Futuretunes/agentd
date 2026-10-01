@@ -5717,6 +5717,7 @@ $("diagnostics-settings").onclick = async () => {
           )
         : null;
     const services = node("section", undefined, "operation-section");
+    services.setAttribute("aria-label", "Diagnostics services");
     services.append(node("h3", "Services"));
     for (const [name, service] of Object.entries(report.services))
       services.append(
