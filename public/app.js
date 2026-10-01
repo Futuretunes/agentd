@@ -2561,6 +2561,7 @@ async function updateRepositories() {
     box.replaceChildren();
     for (const job of jobs) {
       const item = node("section");
+      item.setAttribute("aria-label", "Repository job " + job.kind + " " + job.state);
       item.append(
         node(
           "strong",
@@ -2846,7 +2847,7 @@ async function updateCheckSetup() {
     }
     for (const job of value.jobs) {
       const item = node("section");
-      item.setAttribute("aria-label", "Repository job " + job.kind + " " + job.state);
+      item.setAttribute("aria-label", "Check setup " + job.state);
       item.append(
         node(
           "strong",
