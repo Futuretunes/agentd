@@ -3734,3 +3734,11 @@ test("Phone logout touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#logout \{\n    min-height: 44px/);
 });
+
+test("Phone workspace tools touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /#history-menu,\n  #operations-menu,\n  #preferences-menu \{\n    min-height: 44px/,
+  );
+});
