@@ -5734,6 +5734,7 @@ $("diagnostics-settings").onclick = async () => {
       report.services.gateway
     ) {
       const restartSection = node("section", undefined, "operation-section");
+      restartSection.setAttribute("aria-label", "Restart services");
       restartSection.append(node("h3", "Restart services"));
       restartSection.append(
         node(

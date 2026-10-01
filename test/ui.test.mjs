@@ -2418,3 +2418,8 @@ test("diagnostics services are named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /services\.setAttribute\("aria-label", "Diagnostics services"\)/);
 });
+
+test("restart services are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /restartSection\.setAttribute\("aria-label", "Restart services"\)/);
+});
