@@ -4495,6 +4495,7 @@ function renderNotificationsApproval(plan) {
     submit = node("button", "Save notification settings", "primary"),
     confirmLabel = node("label", "I understand this updates the saved ntfy destination"),
     settings = plan.settings ?? {};
+  form.setAttribute("aria-label", "Save notification settings");
   confirm.type = "checkbox";
   confirm.required = true;
   confirmLabel.prepend(confirm);
