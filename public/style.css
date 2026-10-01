@@ -465,6 +465,11 @@ dialog a:focus-visible {
     font-size: 14px;
   }
 }
+@media (max-width: 720px) {
+  .answer {
+    line-height: 1.8;
+  }
+}
 dialog .muted {
   line-height: 1.5;
 }
