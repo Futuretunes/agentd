@@ -2847,3 +2847,8 @@ test("Feedback comment body is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /commentBody\.setAttribute\("aria-label", "Feedback comment body"\)/);
 });
+
+test("Feedback plan summary is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /planSummary\.setAttribute\("aria-label", "Feedback plan summary"\)/);
+});
