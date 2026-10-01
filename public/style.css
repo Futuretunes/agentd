@@ -1310,7 +1310,7 @@ header h1 {
 }
 .status {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 /* U19: status is never colour-only — weight/style reinforce the text label. */
 .status.running,
