@@ -2931,3 +2931,8 @@ test("Checkbox focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /input\[type="checkbox"\]:focus-visible/);
 });
+
+test("Dialog muted text weight is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /dialog \.muted \{[\s\S]*?font-weight: 500/);
+});
