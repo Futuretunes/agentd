@@ -487,6 +487,13 @@ dialog a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#agent-reasons button:focus-visible,
+#agent-reasons input:focus-visible,
+#agent-reasons select:focus-visible,
+#agent-reasons textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 #github-settings button:focus-visible,
 #github-settings input:focus-visible,
 #github-settings select:focus-visible,
