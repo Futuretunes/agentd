@@ -3009,3 +3009,8 @@ test("History dialog focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#history-dialog button:focus-visible/);
 });
+
+test("Settings dialog focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /#settings-dialog button:focus-visible/);
+});
