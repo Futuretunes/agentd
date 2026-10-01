@@ -3757,3 +3757,8 @@ test("Phone code-block touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.code-block button \{\n    min-height: 44px/);
 });
+
+test("Phone turn status font size is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.turn \.status \{\n    font-size: 14px/);
+});
