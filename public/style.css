@@ -458,6 +458,11 @@ dialog a:focus-visible {
   }
 }
 @media (max-width: 720px) {
+  #settings-confirm button {
+    min-height: 44px;
+  }
+}
+@media (max-width: 720px) {
   .output-download,
   .provider-login {
     min-height: 44px;
