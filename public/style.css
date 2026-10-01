@@ -470,6 +470,11 @@ dialog a:focus-visible {
     line-height: 1.8;
   }
 }
+@media (max-width: 720px) {
+  #logout {
+    min-height: 44px;
+  }
+}
 dialog .muted {
   line-height: 1.5;
 }
