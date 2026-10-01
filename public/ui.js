@@ -66,6 +66,10 @@ export function renderMarkdown(text) {
       const wrap = el("div", undefined, "code-block"),
         head = el("div", undefined, "code-head"),
         copy = el("button", "Copy code");
+      wrap.setAttribute(
+        "aria-label",
+        "Code block" + (block.language ? " " + block.language : ""),
+      );
       copy.type = "button";
       copy.setAttribute("aria-label", "Copy code");
       copy.setAttribute("aria-live", "polite");

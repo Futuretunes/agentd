@@ -2906,3 +2906,8 @@ test("Agent answer is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
   assert.match(src, /box\.setAttribute\("aria-label", "Agent answer"\)/);
 });
+
+test("Code block is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(src, /wrap\.setAttribute\(\s*"aria-label",\s*"Code block"/);
+});
