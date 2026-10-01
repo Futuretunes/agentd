@@ -1924,11 +1924,14 @@ async function openReview(id) {
                 if (page.paginated) {
                   const showPage = async (current) => {
                     row.querySelector(".paginated-review")?.remove();
-                    const panel = node("section", undefined, "paginated-review"),
-                      pageStatus = node("span", undefined, "muted"),
+                    const panel = node("section", undefined, "paginated-review");
+                    panel.setAttribute("aria-label", "Paginated review");
+                    const pageStatus = node("span", undefined, "muted"),
                       seen = new Set(current.acknowledgedPages),
-                      controls = node("div", undefined, "paginated-controls"),
-                      previous = button("Previous page", async () => {
+                      controls = node("div", undefined, "paginated-controls");
+                    controls.setAttribute("role", "group");
+                    controls.setAttribute("aria-label", "Paginated review controls");
+                    const previous = button("Previous page", async () => {
                         previous.disabled = true;
                         try {
                           await showPage(
