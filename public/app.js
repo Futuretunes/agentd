@@ -1817,6 +1817,8 @@ $("compose").onsubmit = async (e) => {
 };
 async function openReview(id) {
   const progress = document.createElement("dialog");
+  progress.id = "review-progress-dialog";
+  progress.setAttribute("aria-label", "Preparing change preview");
   progress.append(
     node("h2", "Preparing change preview"),
     node("p", "You can cancel while the project changes are inspected."),
