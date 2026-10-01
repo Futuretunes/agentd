@@ -197,6 +197,7 @@ export function renderDiff(patch) {
   for (const file of diffFiles(patch)) {
     const details = el("details"),
       summary = el("summary", undefined, "file-summary");
+    details.setAttribute("aria-label", "Review file " + file.name);
     details.open = true;
     summary.append(el("span", file.name, "file-name"));
     if (file.status !== "modified")
