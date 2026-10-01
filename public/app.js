@@ -4293,6 +4293,7 @@ function renderOriginApproval(plan) {
       "I understand browsers must use this origin and the phone gateway needs a restart",
     ),
     settings = plan.settings ?? {};
+  form.setAttribute("aria-label", "Signed-in origin approval");
   confirm.type = "checkbox";
   confirm.required = true;
   confirmLabel.prepend(confirm);
