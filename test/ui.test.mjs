@@ -3004,3 +3004,8 @@ test("Login control focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#login input:focus-visible/);
 });
+
+test("History dialog focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /#history-dialog button:focus-visible/);
+});
