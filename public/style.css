@@ -477,6 +477,12 @@ dialog a:focus-visible {
     min-width: 44px;
   }
 }
+@media (max-width: 720px) {
+  dialog form button,
+  dialog .review-head button {
+    min-height: 44px;
+  }
+}
 dialog .body,
 dialog .content,
 dialog [id$="-content"] {
