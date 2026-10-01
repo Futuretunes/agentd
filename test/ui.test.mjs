@@ -2507,3 +2507,8 @@ test("update backups section is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /list\.setAttribute\("aria-label", "Update backups"\)/);
 });
+
+test("profile enable section is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /section\.setAttribute\("aria-label", "Enable " \+ label\)/);
+});

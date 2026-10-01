@@ -4538,6 +4538,7 @@ function renderProfileEnableForm(target, label) {
     currentKey = node("input"),
     submit = node("button", "Review " + label, "primary"),
     section = node("section", undefined, "operation-section");
+  section.setAttribute("aria-label", "Enable " + label);
   section.append(node("h3", "Enable " + label));
   section.append(
     node(
