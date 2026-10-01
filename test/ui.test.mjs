@@ -2487,3 +2487,8 @@ test("replace managed TLS certificate section is named in app bootstrap", () => 
     /section\.setAttribute\("aria-label", "Replace managed TLS certificate"\)/,
   );
 });
+
+test("managed runtime flags form section is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /section\.setAttribute\("aria-label", "Managed runtime flags"\)/);
+});

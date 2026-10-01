@@ -4778,6 +4778,7 @@ function renderRuntimeFlagsForm(current) {
     currentKey = node("input"),
     submit = node("button", "Review runtime flags", "primary"),
     section = node("section", undefined, "operation-section");
+  section.setAttribute("aria-label", "Managed runtime flags");
   section.append(node("h3", "Managed runtime flags"));
   for (const [key, label] of [
     ["strictWorkers", "Hardened workers (required for renewal and Codex chat)"],
