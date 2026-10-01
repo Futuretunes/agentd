@@ -2951,3 +2951,8 @@ test("File summary focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.file-summary:focus-visible/);
 });
+
+test("Code copy focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.code-block button:focus-visible/);
+});
