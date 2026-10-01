@@ -5424,6 +5424,7 @@ function renderBackupCleanupApproval(plan) {
     confirmLabel = node("label"),
     confirmed = node("input"),
     approve = node("button", "Remove eligible backups", "danger");
+  form.setAttribute("aria-label", "Backup cleanup approval");
   current.type = "password";
   current.autocomplete = "current-password";
   current.required = true;
