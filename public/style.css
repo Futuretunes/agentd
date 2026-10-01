@@ -467,6 +467,14 @@ dialog a:focus-visible {
     min-width: 44px;
   }
 }
+@media (prefers-contrast: more) {
+  .status.failed,
+  .status.timed_out,
+  .status.interrupted,
+  .status.cancelled {
+    text-decoration-thickness: 3px;
+  }
+}
 @media (max-width: 720px) {
   .output-download,
   .provider-login {
