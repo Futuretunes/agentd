@@ -2671,3 +2671,8 @@ test("Managed runtime flags form is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /form\.setAttribute\("aria-label", "Managed runtime flags form"\)/);
 });
+
+test("Adapter policy form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /form\.setAttribute\("aria-label", "Adapter policy form"\)/);
+});

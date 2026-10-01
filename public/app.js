@@ -4921,6 +4921,7 @@ function renderAdapterPolicyForm(current) {
     submit = node("button", "Review adapter policy", "primary"),
     enabledSection = node("section", undefined, "operation-section"),
     editSection = node("section", undefined, "operation-section");
+  form.setAttribute("aria-label", "Adapter policy form");
   enabledSection.setAttribute("aria-label", "Enabled adapters");
   enabledSection.append(node("h3", "Enabled adapters"));
   enabledSection.append(node("p", "At least one adapter must stay enabled.", "muted"));
