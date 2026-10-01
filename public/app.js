@@ -4850,6 +4850,7 @@ function renderRuntimeFlagsApproval(plan) {
       "Current work, account changes and preparations are stopped",
     ),
     flags = plan.flags ?? {};
+  form.setAttribute("aria-label", "Apply runtime flags approval");
   confirm.type = "checkbox";
   confirm.required = true;
   confirmLabel.prepend(confirm);
