@@ -3099,3 +3099,8 @@ test("Check setup dialog focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#check-setup-dialog button:focus-visible/);
 });
+
+test("Revision dialog focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#revision-dialog button:focus-visible/);
+});
