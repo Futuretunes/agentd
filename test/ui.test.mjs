@@ -2684,3 +2684,16 @@ test("Repository job section is named in app bootstrap", () => {
     /item\.setAttribute\("aria-label", "Repository job " \+ job\.kind \+ " " \+ job\.state\)/,
   );
 });
+
+test("repository job section is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /item\.setAttribute\("aria-label", "Repository job " \+ job\.kind \+ " " \+ job\.state\)/,
+  );
+});
+
+test("check setup job section is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /item\.setAttribute\("aria-label", "Check setup " \+ job\.state\)/);
+});
