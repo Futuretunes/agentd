@@ -2852,3 +2852,11 @@ test("Feedback plan summary is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /planSummary\.setAttribute\("aria-label", "Feedback plan summary"\)/);
 });
+
+test("Publication commit patch is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /commitPatch\.setAttribute\("aria-label", "Publication commit patch"\)/,
+  );
+});

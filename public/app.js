@@ -3034,7 +3034,9 @@ async function updatePublishing() {
           "aria-label",
           "Publication commit " + commit.sha.slice(0, 12),
         );
-        details.append(summary, node("pre", commit.patch, "diff"));
+        const commitPatch = node("pre", commit.patch, "diff");
+        commitPatch.setAttribute("aria-label", "Publication commit patch");
+        details.append(summary, commitPatch);
         box.append(details);
       }
       if (plan.previousHead)
