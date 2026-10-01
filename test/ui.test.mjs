@@ -3244,3 +3244,8 @@ test("Activity content focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#operations-content button:focus-visible/);
 });
+
+test("Run content focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#run-content button:focus-visible/);
+});
