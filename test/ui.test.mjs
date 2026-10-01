@@ -2459,3 +2459,8 @@ test("available update cards are named in app bootstrap", () => {
     /card\.setAttribute\("aria-label", `Available update AgentD \$\{release\.version\}`\)/,
   );
 });
+
+test("execution details are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /details\.setAttribute\("aria-label", "Execution details"\)/);
+});
