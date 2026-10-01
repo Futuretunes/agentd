@@ -2397,3 +2397,11 @@ test("mobile notifications are named in app bootstrap", () => {
     /notificationsSection\.setAttribute\("aria-label", "Mobile notifications"\)/,
   );
 });
+
+test("configuration github connection is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /githubSection\.setAttribute\("aria-label", "Configuration GitHub connection"\)/,
+  );
+});
