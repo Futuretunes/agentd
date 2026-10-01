@@ -2893,3 +2893,11 @@ test("File review disclosure is named in app bootstrap", () => {
     /details\.setAttribute\("aria-label", "Review file " \+ file\.name\)/,
   );
 });
+
+test("File review summary is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /summary\.setAttribute\("aria-label", "File summary " \+ file\.name\)/,
+  );
+});
