@@ -5479,6 +5479,7 @@ async function renderCliSettings() {
         !value.nativeVersion?.version || value.nativeVersion?.state === "unavailable",
     );
   const list = node("section", undefined, "operation-section");
+  list.setAttribute("aria-label", "Installed vs tested");
   list.append(node("h3", "Installed vs tested"));
   for (const value of adapters) {
     const version = value.nativeVersion,
