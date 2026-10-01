@@ -3588,3 +3588,8 @@ test("Phone history filter touch target is named in app bootstrap", () => {
     /#history-form button,\n  #history-filter,\n  #history-query \{\n    min-height: 44px/,
   );
 });
+
+test("Phone mode adapter touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /#mode,\n  #adapter \{\n    min-height: 44px/);
+});
