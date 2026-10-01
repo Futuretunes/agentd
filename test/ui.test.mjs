@@ -3857,3 +3857,11 @@ test("Forced-colors good underline is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /forced-colors: active[\s\S]*\.good/);
 });
+
+test("Phone operation task touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /\.operation-task button,\n  \.operation-agent button \{\n    min-height: 44px/,
+  );
+});
