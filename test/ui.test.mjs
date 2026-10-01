@@ -3865,3 +3865,8 @@ test("Phone operation task touch target is named in app bootstrap", () => {
     /\.operation-task button,\n  \.operation-agent button \{\n    min-height: 44px/,
   );
 });
+
+test("Empty list line-height is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.empty-list \{\n  line-height: 1\.5/);
+});
