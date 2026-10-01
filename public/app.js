@@ -5529,6 +5529,7 @@ async function renderCliSettings() {
     const version = value.nativeVersion,
       title = names[value.id] ?? value.id,
       card = node("div", undefined, "operation-card");
+    card.setAttribute("aria-label", "Installed CLI " + title);
     card.append(node("h4", title));
     card.append(
       node(
