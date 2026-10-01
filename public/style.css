@@ -480,6 +480,13 @@ dialog a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#history-form button:focus-visible,
+#history-form input:focus-visible,
+#history-form select:focus-visible,
+#history-form textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 #github-content button:focus-visible,
 #github-content input:focus-visible,
 #github-content select:focus-visible,
