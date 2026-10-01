@@ -5333,6 +5333,7 @@ function renderBackupRestoreApproval(plan) {
     confirmLabel = node("label"),
     confirmed = node("input"),
     approve = node("button", `Restore ${plan.restore.version}`, "danger");
+  form.setAttribute("aria-label", "Backup restore approval");
   current.type = "password";
   current.autocomplete = "current-password";
   current.required = true;
