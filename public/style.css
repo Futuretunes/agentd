@@ -809,6 +809,7 @@ dialog textarea {
 }
 dialog .muted {
   font-size: 13px;
+  font-weight: 500;
 }
 .review-head {
   display: flex;
