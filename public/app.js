@@ -5548,6 +5548,7 @@ async function renderCliSettings() {
     }
   }
   const guide = node("section", undefined, "operation-section");
+  guide.setAttribute("aria-label", "Guided CLI update");
   guide.append(node("h3", "Guided CLI update"));
   guide.append(
     node(
