@@ -2479,3 +2479,11 @@ test("set ntfy destination section is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /section\.setAttribute\("aria-label", "Set ntfy destination"\)/);
 });
+
+test("replace managed TLS certificate section is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /section\.setAttribute\("aria-label", "Replace managed TLS certificate"\)/,
+  );
+});
