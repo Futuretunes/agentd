@@ -453,6 +453,11 @@ dialog a:focus-visible {
   outline-offset: 2px;
 }
 @media (max-width: 720px) {
+  #prompt {
+    min-height: 72px;
+  }
+}
+@media (max-width: 720px) {
   .suggestions button {
     min-height: 44px;
   }
