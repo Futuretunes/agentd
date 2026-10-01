@@ -595,6 +595,7 @@ function renderOperations(data) {
     [data.service.queueDepth, "Queued"],
   ]) {
     const card = node("div", undefined, "metric-card");
+    card.setAttribute("aria-label", label);
     card.append(node("strong", String(value)), node("span", label));
     summary.append(card);
   }
