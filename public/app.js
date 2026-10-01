@@ -4999,6 +4999,7 @@ function renderAdapterPolicyApproval(plan) {
       "label",
       "Current work, account changes and preparations are stopped",
     );
+  form.setAttribute("aria-label", "Adapter policy approval");
   confirm.type = "checkbox";
   confirm.required = true;
   confirmLabel.prepend(confirm);

@@ -2592,3 +2592,8 @@ test("Replace TLS certificate approval form is named in app bootstrap", () => {
     /form\.setAttribute\("aria-label", "Replace TLS certificate approval"\)/,
   );
 });
+
+test("Adapter policy approval form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /form\.setAttribute\("aria-label", "Adapter policy approval"\)/);
+});
