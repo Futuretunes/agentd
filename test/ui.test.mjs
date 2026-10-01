@@ -2717,3 +2717,8 @@ test("large review file row is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /row\.setAttribute\("aria-label", "Review file " \+ file\)/);
 });
+
+test("Large review file row is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /row\.setAttribute\("aria-label", "Review file " \+ file\)/);
+});
