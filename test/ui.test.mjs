@@ -3399,3 +3399,8 @@ test("Project information focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#project-info button:focus-visible/);
 });
+
+test("Project defaults focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#project-defaults button:focus-visible/);
+});
