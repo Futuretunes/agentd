@@ -457,6 +457,12 @@ dialog a:focus-visible {
     min-height: 44px;
   }
 }
+@media (max-width: 720px) {
+  #attachments button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
 .suggestions button:focus-visible,
 .suggestions input:focus-visible,
 .suggestions select:focus-visible,
