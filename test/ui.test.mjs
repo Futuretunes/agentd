@@ -3204,3 +3204,8 @@ test("Run options focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#run-options button:focus-visible/);
 });
+
+test("Picker mode focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#picker-mode button:focus-visible/);
+});
