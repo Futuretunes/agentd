@@ -313,6 +313,13 @@ header.conversation-head button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#project-dialog button:focus-visible,
+#project-dialog input:focus-visible,
+#project-dialog select:focus-visible,
+#project-dialog textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 input,
 select,
 textarea {
