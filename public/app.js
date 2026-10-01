@@ -5519,6 +5519,7 @@ async function renderCliSettings() {
     list.append(card);
   }
   const approvedSection = node("section", undefined, "operation-section");
+  approvedSection.setAttribute("aria-label", "Approved CLI packages");
   approvedSection.append(node("h3", "Approved CLI packages"));
   if (!approved) {
     approvedSection.append(
