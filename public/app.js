@@ -1357,6 +1357,7 @@ function renderThread(data) {
     actions.append(button(t.log ? "View log" : "Activity", () => openRun(t.id)));
     response.append(actions);
     const meta = node("details");
+    meta.setAttribute("aria-label", "Run history");
     meta.append(
       node("summary", "Run history"),
       node(

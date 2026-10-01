@@ -2335,3 +2335,8 @@ test("activity work lists are named in app bootstrap", () => {
   assert.match(src, /section\.setAttribute\("aria-label", title\)/);
   assert.match(src, /\["Current work", current,/);
 });
+
+test("run history disclosure is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /meta\.setAttribute\("aria-label", "Run history"\)/);
+});
