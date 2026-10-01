@@ -6118,6 +6118,7 @@ function renderAccessKeyApproval(plan, newKey) {
     currentLabel = node("label", "Enter the current access key again"),
     current = node("input"),
     approve = node("button", "Change access key", "danger");
+  form.setAttribute("aria-label", "Confirm access key change");
   key.value = newKey;
   key.readOnly = true;
   key.setAttribute("aria-label", "New access key");
