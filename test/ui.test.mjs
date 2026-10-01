@@ -3159,3 +3159,8 @@ test("Projects list focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#projects button:focus-visible/);
 });
+
+test("Sign-in links focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#login\ a:focus-visible/);
+});
