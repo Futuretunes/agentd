@@ -3910,6 +3910,7 @@ async function renderConfigurationSettings() {
             ? "Interrupted update needs recovery"
             : "Changed outside the managed installer";
   const overview = node("section", undefined, "operation-section");
+  overview.setAttribute("aria-label", "Managed status");
   overview.append(node("h3", "Managed status"));
   overview.append(node("p", state, flags.state === "ok" ? "good" : "attention"));
   for (const [label, value] of [
