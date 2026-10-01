@@ -3598,3 +3598,8 @@ test("Phone theme touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#theme \{\n    min-height: 44px/);
 });
+
+test("Phone account dialog touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /#account-dialog button \{\n    min-height: 44px/);
+});
