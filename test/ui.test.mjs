@@ -2697,3 +2697,8 @@ test("check setup job section is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /item\.setAttribute\("aria-label", "Check setup " \+ job\.state\)/);
 });
+
+test("Feedback item card is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /card\.setAttribute\("aria-label", "Feedback item " \+ item\.key\)/);
+});
