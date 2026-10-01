@@ -2721,7 +2721,9 @@ async function updateGithub() {
         link.href = session.url;
         link.target = "_blank";
         link.rel = "noopener noreferrer";
-        box.append(node("pre", session.code), link);
+        const deviceCode = node("pre", session.code);
+        deviceCode.setAttribute("aria-label", "GitHub device code");
+        box.append(deviceCode, link);
       }
       if (data.busy)
         box.append(button("Cancel sign-in", () => githubAction("cancel", session.id)));
