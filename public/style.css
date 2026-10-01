@@ -482,6 +482,12 @@ dialog a:focus-visible {
   }
 }
 @media (max-width: 720px) {
+  .operation-task button,
+  .operation-agent button {
+    min-height: 44px;
+  }
+}
+@media (max-width: 720px) {
   .output-download,
   .provider-login {
     min-height: 44px;
