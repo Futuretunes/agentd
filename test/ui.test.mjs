@@ -3524,3 +3524,8 @@ test("Phone focus outline offset is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /max-width: 720px[\s\S]*:focus-visible[\s\S]*outline-offset: 3px/);
 });
+
+test("Succeeded status weight is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.status\.succeeded \{\n  font-weight: 600/);
+});

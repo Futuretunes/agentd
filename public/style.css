@@ -1255,7 +1255,7 @@ header h1 {
   text-underline-offset: 2px;
 }
 .status.succeeded {
-  font-weight: 500;
+  font-weight: 600;
 }
 .good {
   color: var(--good);
