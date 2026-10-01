@@ -3334,3 +3334,8 @@ test("Feedback form focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#feedback-form button:focus-visible/);
 });
+
+test("Sign-in form focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#loginform button:focus-visible/);
+});
