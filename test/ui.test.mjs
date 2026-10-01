@@ -3636,3 +3636,8 @@ test("History menu focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#history\-menu:focus-visible/);
 });
+
+test("Activity menu focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#operations\-menu:focus-visible/);
+});
