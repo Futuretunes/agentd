@@ -2936,3 +2936,8 @@ test("Dialog muted text weight is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /dialog \.muted \{[\s\S]*?font-weight: 500/);
 });
+
+test("Summary focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /summary:focus-visible \{/);
+});
