@@ -2119,7 +2119,11 @@ async function openReview(id) {
         : "muted",
     ),
   );
-  if (value.checks?.output) checksBox.append(node("pre", value.checks.output, "result"));
+  if (value.checks?.output) {
+    const checksOutput = node("pre", value.checks.output, "result");
+    checksOutput.setAttribute("aria-label", "Review checks output");
+    checksBox.append(checksOutput);
+  }
   content.prepend(checksBox);
   const actions = $("review-actions");
   actions.replaceChildren();
