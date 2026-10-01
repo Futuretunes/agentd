@@ -2880,3 +2880,8 @@ test("File review box is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
   assert.match(src, /box\.setAttribute\("aria-label", "File review"\)/);
 });
+
+test("File review diff is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(src, /pre\.setAttribute\("aria-label", "Diff for " \+ file\.name\)/);
+});

@@ -214,6 +214,7 @@ export function renderDiff(patch) {
     summary.append(el("span", `+${file.additions} −${file.deletions}`, "file-counts"));
     details.append(summary);
     const pre = el("pre", undefined, "diff");
+    pre.setAttribute("aria-label", "Diff for " + file.name);
     if (file.binary)
       pre.append(el("span", "Binary file changed. Review it locally.", "diff-line"));
     let old = 0,
