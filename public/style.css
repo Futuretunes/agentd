@@ -465,6 +465,12 @@ dialog a:focus-visible {
 summary {
   line-height: 1.4;
 }
+@media (max-width: 720px) {
+  .turn summary,
+  .file-review summary {
+    min-height: 44px;
+  }
+}
 .danger,
 .error {
   text-decoration: underline;
