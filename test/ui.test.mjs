@@ -3554,3 +3554,11 @@ test("Phone sidebar row touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#projects button,\n  #tasks button \{\n    min-height: 44px/);
 });
+
+test("Phone review actions touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /#review-actions button,\n  \.review-head button \{\n    min-height: 44px/,
+  );
+});
