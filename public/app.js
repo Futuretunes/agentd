@@ -2089,6 +2089,7 @@ async function openReview(id) {
         }[value.checks.status] ?? value.checks.status)
     : "Not run yet";
   const checksBox = node("section", undefined, "review-checks");
+  checksBox.setAttribute("aria-label", "Review checks");
   checksBox.append(
     node("h3", "Checks"),
     node(

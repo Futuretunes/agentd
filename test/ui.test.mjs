@@ -2340,3 +2340,8 @@ test("run history disclosure is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /meta\.setAttribute\("aria-label", "Run history"\)/);
 });
+
+test("review checks are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /checksBox\.setAttribute\("aria-label", "Review checks"\)/);
+});
