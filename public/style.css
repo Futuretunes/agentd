@@ -456,6 +456,10 @@ dialog a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+.review-head a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 #picker-mode button:focus-visible,
 #picker-mode input:focus-visible,
 #picker-mode select:focus-visible,
