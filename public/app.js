@@ -5854,6 +5854,7 @@ function renderAccessKeySettings(recovery) {
     custom = node("input"),
     submit = node("button", "Review change", "primary"),
     actions = [];
+  form.setAttribute("aria-label", "Change access key");
   current.type = custom.type = "password";
   current.autocomplete = "current-password";
   custom.autocomplete = "new-password";
