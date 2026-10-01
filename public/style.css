@@ -388,6 +388,13 @@ dialog a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#review-progress-dialog button:focus-visible,
+#review-progress-dialog input:focus-visible,
+#review-progress-dialog select:focus-visible,
+#review-progress-dialog textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 input,
 select,
 textarea {
