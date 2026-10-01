@@ -470,6 +470,13 @@ dialog a:focus-visible {
     min-height: 44px;
   }
 }
+@media (max-width: 720px) {
+  .turn-actions button,
+  [aria-label="Turn actions"] button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
 dialog .body,
 dialog .content,
 dialog [id$="-content"] {
