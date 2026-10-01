@@ -2807,3 +2807,8 @@ test("Storage cleanup dialog is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /dialog\.setAttribute\("aria-label", "Review storage cleanup"\)/);
 });
+
+test("Turn status live region is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /status\.setAttribute\("aria-live", "polite"\)/);
+});
