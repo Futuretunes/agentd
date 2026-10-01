@@ -2384,3 +2384,8 @@ test("runtime flags are named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /runtimeSection\.setAttribute\("aria-label", "Runtime flags"\)/);
 });
+
+test("signed-in origin is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /originSection\.setAttribute\("aria-label", "Signed-in origin"\)/);
+});
