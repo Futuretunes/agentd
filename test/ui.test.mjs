@@ -2875,3 +2875,8 @@ test("Update progress is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /status\.setAttribute\("aria-label", "Update progress"\)/);
 });
+
+test("File review box is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
+  assert.match(src, /box\.setAttribute\("aria-label", "File review"\)/);
+});
