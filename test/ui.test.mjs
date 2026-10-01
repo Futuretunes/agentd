@@ -3444,3 +3444,8 @@ test("History filter focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#history\-filter:focus-visible/);
 });
+
+test("Mode select focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#mode:focus-visible/);
+});
