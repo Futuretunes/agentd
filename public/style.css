@@ -453,6 +453,11 @@ dialog a:focus-visible {
   outline-offset: 2px;
 }
 @media (max-width: 720px) {
+  .device-code {
+    font-size: 22px;
+  }
+}
+@media (max-width: 720px) {
   .output-download,
   .provider-login {
     min-height: 44px;
