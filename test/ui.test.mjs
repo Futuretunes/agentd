@@ -3797,3 +3797,8 @@ test("Phone empty-list CTA touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.empty-list-cta \{\n    min-height: 44px/);
 });
+
+test("Phone import-open touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /#import-open \{\n    min-height: 44px/);
+});

@@ -463,6 +463,11 @@ dialog a:focus-visible {
   }
 }
 @media (max-width: 720px) {
+  #import-open {
+    min-height: 44px;
+  }
+}
+@media (max-width: 720px) {
   #prompt {
     min-height: 72px;
   }
