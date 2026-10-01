@@ -2428,3 +2428,8 @@ test("recent failed runs are named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /failures\.setAttribute\("aria-label", "Recent failed runs"\)/);
 });
+
+test("installed vs tested is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /list\.setAttribute\("aria-label", "Installed vs tested"\)/);
+});
