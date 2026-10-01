@@ -55,6 +55,7 @@ function inline(target, text) {
 }
 export function renderMarkdown(text) {
   const box = el("div", undefined, "answer");
+  box.setAttribute("aria-label", "Agent answer");
   let list = null;
   for (const block of markdownBlocks(text)) {
     if (block.type === "space") {
