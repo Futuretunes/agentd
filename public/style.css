@@ -455,6 +455,9 @@ dialog a:focus-visible {
 dialog .muted {
   line-height: 1.5;
 }
+:focus-visible {
+  scroll-margin-block: 12px;
+}
 @media (max-width: 720px) {
   #preferences-dialog button {
     min-height: 44px;

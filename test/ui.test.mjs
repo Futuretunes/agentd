@@ -3684,3 +3684,8 @@ test("Dialog muted line-height is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /dialog \.muted \{\n  line-height: 1\.5/);
 });
+
+test("Focus scroll margin is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /:focus-visible \{\n  scroll-margin-block: 12px/);
+});
