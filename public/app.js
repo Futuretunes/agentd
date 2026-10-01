@@ -941,6 +941,7 @@ async function updateAccount() {
       const form = node("form"),
         label = node("label", "Code returned by Claude"),
         input = node("input");
+      form.setAttribute("aria-label", "Complete account sign-in");
       label.htmlFor = "account-code";
       input.id = "account-code";
       input.type = "password";
