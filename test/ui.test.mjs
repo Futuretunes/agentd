@@ -3514,3 +3514,8 @@ test("High-contrast checkbox focus ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /prefers-contrast: more[\s\S]*checkbox/);
 });
+
+test("Forced-colors focus ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /forced-colors: active/);
+});
