@@ -2351,6 +2351,7 @@ async function loadHistory(before = null) {
     results.replaceChildren();
     for (const item of result.items) {
       const card = node("article", undefined, "operation-task");
+      card.setAttribute("aria-label", "History result " + item.title);
       card.append(
         node("strong", item.title),
         node(

@@ -2769,3 +2769,11 @@ test("Conversation turn is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /turn\.setAttribute\("aria-label", "Conversation turn"\)/);
 });
+
+test("History result card is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /card\.setAttribute\("aria-label", "History result " \+ item\.title\)/,
+  );
+});
