@@ -3069,3 +3069,8 @@ test("Access key dialog focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#access-key-dialog button:focus-visible/);
 });
+
+test("Run dialog focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#run-dialog button:focus-visible/);
+});
