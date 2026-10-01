@@ -4072,6 +4072,7 @@ async function renderConfigurationSettings() {
     );
   }
   const notificationsSection = node("section", undefined, "operation-section");
+  notificationsSection.setAttribute("aria-label", "Mobile notifications");
   notificationsSection.append(node("h3", "Mobile notifications"));
   if (!notifications) {
     notificationsSection.append(

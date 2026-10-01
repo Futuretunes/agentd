@@ -2389,3 +2389,11 @@ test("signed-in origin is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /originSection\.setAttribute\("aria-label", "Signed-in origin"\)/);
 });
+
+test("mobile notifications are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /notificationsSection\.setAttribute\("aria-label", "Mobile notifications"\)/,
+  );
+});
