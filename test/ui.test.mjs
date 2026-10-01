@@ -2764,3 +2764,8 @@ test("Activity agent account card is named in app bootstrap", () => {
     /card\.setAttribute\("aria-label", "Agent account " \+ value\.name\)/,
   );
 });
+
+test("Conversation turn is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /turn\.setAttribute\("aria-label", "Conversation turn"\)/);
+});
