@@ -3807,3 +3807,8 @@ test("Phone output download touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.output-download,\n  \.provider-login \{\n    min-height: 44px/);
 });
+
+test("Dialog notice line-height is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.next-step,\n\.dialog-notice \{\n  line-height: 1\.5/);
+});

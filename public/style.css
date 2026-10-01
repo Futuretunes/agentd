@@ -458,6 +458,10 @@ dialog a:focus-visible {
     min-height: 44px;
   }
 }
+.next-step,
+.dialog-notice {
+  line-height: 1.5;
+}
 .danger,
 .error {
   text-decoration: underline;
