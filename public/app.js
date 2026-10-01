@@ -3942,6 +3942,7 @@ async function renderConfigurationSettings() {
     );
   }
   const tls = node("section", undefined, "operation-section");
+  tls.setAttribute("aria-label", "TLS certificate");
   tls.append(node("h3", "TLS certificate"));
   tls.append(
     node(
