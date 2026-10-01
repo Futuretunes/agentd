@@ -3762,3 +3762,8 @@ test("Phone turn status font size is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.turn \.status \{\n    font-size: 14px/);
 });
+
+test("Dialog label line-height is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /dialog label \{\n  line-height: 1\.4/);
+});

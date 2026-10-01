@@ -474,6 +474,9 @@ dialog a:focus-visible {
     font-size: 14px;
   }
 }
+dialog label {
+  line-height: 1.4;
+}
 @media (max-width: 720px) {
   .suggestions button {
     min-height: 44px;
