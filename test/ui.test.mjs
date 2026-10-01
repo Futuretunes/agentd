@@ -3593,3 +3593,8 @@ test("Phone mode adapter touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#mode,\n  #adapter \{\n    min-height: 44px/);
 });
+
+test("Phone theme touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /#theme \{\n    min-height: 44px/);
+});
