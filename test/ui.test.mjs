@@ -3842,3 +3842,8 @@ test("Phone settings confirm touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#settings-confirm button \{\n    min-height: 44px/);
 });
+
+test("Phone primary min-width is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /button\.primary \{\n    min-width: 44px/);
+});
