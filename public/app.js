@@ -1886,6 +1886,7 @@ async function openReview(id) {
         paginated = value.paginatedFiles ?? {},
         files = node("section", undefined, "large-review-files"),
         progress = node("p", undefined, "muted");
+      files.setAttribute("aria-label", "Large review files");
       for (const [file, state] of Object.entries(paginated))
         if (state.acknowledged.length === state.pages) completed.add(file);
       const updateProgress = () => {
