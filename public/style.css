@@ -458,6 +458,12 @@ dialog a:focus-visible {
     min-width: 44px;
   }
 }
+@media (max-width: 720px) {
+  #projects button,
+  #tasks button {
+    min-height: 44px;
+  }
+}
 dialog .body,
 dialog .content,
 dialog [id$="-content"] {
