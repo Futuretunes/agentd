@@ -6270,6 +6270,7 @@ async function renderUpdates() {
       parts.push(card);
     }
     const back = node("section", undefined, "operation-section");
+    back.setAttribute("aria-label", "Roll back");
     back.append(node("h3", "Roll back"));
     if (value.rollback?.available) {
       back.append(
