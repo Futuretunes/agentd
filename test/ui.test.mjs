@@ -2441,3 +2441,8 @@ test("approved CLI packages are named in app bootstrap", () => {
     /approvedSection\.setAttribute\("aria-label", "Approved CLI packages"\)/,
   );
 });
+
+test("guided CLI update is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /guide\.setAttribute\("aria-label", "Guided CLI update"\)/);
+});
