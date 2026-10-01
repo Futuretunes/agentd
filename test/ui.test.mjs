@@ -2512,3 +2512,8 @@ test("profile enable section is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /section\.setAttribute\("aria-label", "Enable " \+ label\)/);
 });
+
+test("diagnostics service restart form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /form\.setAttribute\("aria-label", "Restart " \+ label\)/);
+});

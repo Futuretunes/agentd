@@ -6001,6 +6001,7 @@ function openServiceRestartForm(target, label) {
     currentLabel = node("label", "Current access key"),
     current = node("input"),
     submit = node("button", "Review restart", "primary");
+  form.setAttribute("aria-label", "Restart " + label);
   current.type = "password";
   current.autocomplete = "current-password";
   current.required = true;
