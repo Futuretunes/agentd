@@ -4640,6 +4640,7 @@ function renderTlsReplaceForm(current) {
     currentKey = node("input"),
     submit = node("button", "Review TLS certificate", "primary"),
     section = node("section", undefined, "operation-section");
+  section.setAttribute("aria-label", "Replace managed TLS certificate");
   section.append(node("h3", "Replace managed TLS certificate"));
   section.append(
     node(
