@@ -3179,3 +3179,8 @@ test("Conversation menu focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#conversation-menu button:focus-visible/);
 });
+
+test("Attachments focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#attachments button:focus-visible/);
+});
