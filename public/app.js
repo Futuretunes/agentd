@@ -5930,6 +5930,7 @@ function renderAccessKeyRecoveryForm() {
     currentLabel = node("label", "Current access key"),
     current = node("input"),
     submit = node("button", "Review deletion", "primary");
+  form.setAttribute("aria-label", "Delete access-key recovery file");
   current.type = "password";
   current.autocomplete = "current-password";
   current.required = true;

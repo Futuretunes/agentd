@@ -2558,3 +2558,11 @@ test("change access key form is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /form\.setAttribute\("aria-label", "Change access key"\)/);
 });
+
+test("delete access-key recovery form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /form\.setAttribute\("aria-label", "Delete access-key recovery file"\)/,
+  );
+});
