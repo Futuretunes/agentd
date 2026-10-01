@@ -472,6 +472,11 @@ dialog a:focus-visible {
   }
 }
 @media (max-width: 720px) {
+  #theme {
+    min-height: 44px;
+  }
+}
+@media (max-width: 720px) {
   #history-pages button {
     min-height: 44px;
     min-width: 44px;
