@@ -1888,6 +1888,8 @@ async function openReview(id) {
         files = node("section", undefined, "large-review-files"),
         progress = node("p", undefined, "muted");
       files.setAttribute("aria-label", "Large review files");
+      progress.setAttribute("aria-live", "polite");
+      progress.setAttribute("aria-label", "Large review coverage");
       for (const [file, state] of Object.entries(paginated))
         if (state.acknowledged.length === state.pages) completed.add(file);
       const updateProgress = () => {
@@ -2073,6 +2075,7 @@ async function openReview(id) {
               }
             },
           );
+        row.setAttribute("aria-label", "Review file " + file);
         row.append(open, status);
         files.append(row);
       }
