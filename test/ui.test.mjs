@@ -3679,3 +3679,8 @@ test("Hint line-height is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.hint \{\n  line-height: 1\.5/);
 });
+
+test("Dialog muted line-height is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /dialog \.muted \{\n  line-height: 1\.5/);
+});
