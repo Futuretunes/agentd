@@ -2865,3 +2865,8 @@ test("Publication description is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /pubBody\.setAttribute\("aria-label", "Publication description"\)/);
 });
+
+test("Update progress live region is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /status\.setAttribute\("aria-live", "polite"\)/);
+});
