@@ -3747,3 +3747,8 @@ test("Phone prompt min-height is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#prompt \{\n    min-height: 72px/);
 });
+
+test("Failed status underline thickness is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /text-decoration-thickness: 2px/);
+});
