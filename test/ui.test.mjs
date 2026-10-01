@@ -3613,3 +3613,11 @@ test("Phone input font size is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#key,\n  #history-query,\n  #login input \{\n    font-size: 16px/);
 });
+
+test("Phone dialog field font size is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /dialog input,\n  dialog select,\n  dialog textarea \{\n    font-size: 16px/,
+  );
+});
