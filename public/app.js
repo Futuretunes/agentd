@@ -5618,6 +5618,7 @@ function renderCliInstallForm(item) {
     adapterNames = { claude: "Claude", codex: "Codex", cursor: "Cursor" },
     label = (adapterNames[item.adapter] ?? item.adapter) + " " + item.version,
     submit = node("button", "Review " + label + " install", "primary");
+  form.setAttribute("aria-label", "CLI install " + label);
   currentKey.type = "password";
   currentKey.autocomplete = "current-password";
   currentKey.required = true;

@@ -2548,3 +2548,8 @@ test("pause ntfy notifications form is named in app bootstrap", () => {
     /form\.setAttribute\(\s*"aria-label",\s*pause \? "Pause ntfy notifications" : "Resume ntfy notifications",\s*\)/,
   );
 });
+
+test("CLI install form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /form\.setAttribute\("aria-label", "CLI install " \+ label\)/);
+});
