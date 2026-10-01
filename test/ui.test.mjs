@@ -3767,3 +3767,8 @@ test("Dialog label line-height is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /dialog label \{\n  line-height: 1\.4/);
 });
+
+test("Phone file summary touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.file-summary \{\n    min-height: 44px/);
+});
