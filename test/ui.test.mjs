@@ -2474,3 +2474,8 @@ test("set signed-in origin section is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /section\.setAttribute\("aria-label", "Set signed-in origin"\)/);
 });
+
+test("set ntfy destination section is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /section\.setAttribute\("aria-label", "Set ntfy destination"\)/);
+});
