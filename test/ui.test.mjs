@@ -2735,3 +2735,8 @@ test("Update backup card is named in app bootstrap", () => {
     /card\.setAttribute\("aria-label", "Update backup " \+ item\.version\)/,
   );
 });
+
+test("Installed CLI card is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /card\.setAttribute\("aria-label", "Installed CLI " \+ title\)/);
+});
