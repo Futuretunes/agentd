@@ -3704,3 +3704,8 @@ test("Phone sidebar foot touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.sidebar-foot button \{\n    min-height: 44px/);
 });
+
+test("Phone composer tools touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /#compose-tools button \{\n    min-height: 44px/);
+});
