@@ -3346,10 +3346,14 @@ async function updateFeedback() {
       instruction = field;
       box.append(label, field);
     } else {
+      const planSummary = node("pre", plan.summary, "diff");
+      planSummary.setAttribute("aria-label", "Feedback plan summary");
+      const planPatch = node("pre", plan.patch, "diff");
+      planPatch.setAttribute("aria-label", "Feedback plan patch");
       box.append(
         node("p", plan.base + " at " + plan.baseSha, "path"),
-        node("pre", plan.summary, "diff"),
-        node("pre", plan.patch, "diff"),
+        planSummary,
+        planPatch,
         node(
           "p",
           plan.conflicts.length
