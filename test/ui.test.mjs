@@ -3792,3 +3792,8 @@ test("Danger error underline is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.danger,\n\.error \{\n  text-decoration: underline/);
 });
+
+test("Phone empty-list CTA touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.empty-list-cta \{\n    min-height: 44px/);
+});
