@@ -3782,3 +3782,8 @@ test("Actions button font size is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.actions button \{\n  font-size: 14px/);
 });
+
+test("Eyebrow section font size is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.eyebrow,\n\.section-label \{\n  font-size: 13px/);
+});
