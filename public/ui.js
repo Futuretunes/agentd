@@ -70,6 +70,7 @@ export function renderMarkdown(text) {
         "aria-label",
         "Code block" + (block.language ? " " + block.language : ""),
       );
+      head.setAttribute("aria-label", "Code block toolbar");
       copy.type = "button";
       copy.setAttribute("aria-label", "Copy code");
       copy.setAttribute("aria-live", "polite");
