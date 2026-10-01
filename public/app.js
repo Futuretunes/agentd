@@ -3325,7 +3325,9 @@ async function updateFeedback() {
           card.append(
             node("p", "Comment refers to another revision: " + item.commit, "muted"),
           );
-        card.append(node("pre", item.body, "result"));
+        const commentBody = node("pre", item.body, "result");
+        commentBody.setAttribute("aria-label", "Feedback comment body");
+        card.append(commentBody);
         const link = node("a", "View on GitHub");
         link.href = item.url;
         link.target = "_blank";

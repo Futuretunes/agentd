@@ -2842,3 +2842,8 @@ test("Paginated review diff is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /diffPre\.setAttribute\("aria-label", "Paginated review diff"\)/);
 });
+
+test("Feedback comment body is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /commentBody\.setAttribute\("aria-label", "Feedback comment body"\)/);
+});
