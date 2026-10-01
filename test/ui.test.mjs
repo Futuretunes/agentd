@@ -2999,3 +2999,8 @@ test("Agent picker focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.agent-picker summary:focus-visible/);
 });
+
+test("Login control focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /#login input:focus-visible/);
+});
