@@ -2748,3 +2748,11 @@ test("Approved CLI package row is named in app bootstrap", () => {
     /row\.setAttribute\("aria-label", "Approved CLI package " \+ title\)/,
   );
 });
+
+test("Activity task card is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /card\.setAttribute\("aria-label", "Activity task " \+ item\.conversationTitle\)/,
+  );
+});
