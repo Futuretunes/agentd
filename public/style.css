@@ -458,6 +458,10 @@ dialog .muted {
 :focus-visible {
   scroll-margin-block: 12px;
 }
+.good {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 @media (max-width: 720px) {
   #preferences-dialog button {
     min-height: 44px;
