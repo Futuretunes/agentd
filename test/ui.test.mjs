@@ -2597,3 +2597,8 @@ test("Adapter policy approval form is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /form\.setAttribute\("aria-label", "Adapter policy approval"\)/);
 });
+
+test("Signed-in origin approval form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /form\.setAttribute\("aria-label", "Signed-in origin approval"\)/);
+});
