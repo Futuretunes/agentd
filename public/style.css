@@ -459,6 +459,13 @@ dialog a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#revision-form button:focus-visible,
+#revision-form input:focus-visible,
+#revision-form select:focus-visible,
+#revision-form textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 #repository-form button:focus-visible,
 #repository-form input:focus-visible,
 #repository-form select:focus-visible,
