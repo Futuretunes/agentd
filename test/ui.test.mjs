@@ -2827,3 +2827,8 @@ test("Review checks output is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /checksOutput\.setAttribute\("aria-label", "Review checks output"\)/);
 });
+
+test("GitHub device code is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /deviceCode\.setAttribute\("aria-label", "GitHub device code"\)/);
+});
