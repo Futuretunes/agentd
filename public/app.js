@@ -789,6 +789,7 @@ function renderOperations(data) {
     ["Recent work", recent, "No completed work yet."],
   ]) {
     const section = node("section", undefined, "operation-section");
+    section.setAttribute("aria-label", title);
     section.append(node("h3", title));
     if (items.length) section.append(...items.map(operationTask));
     else section.append(node("p", emptyText, "muted"));
