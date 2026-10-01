@@ -4350,6 +4350,7 @@ function renderNotificationsForm(current) {
     currentKey = node("input"),
     submit = node("button", "Review ntfy destination", "primary"),
     section = node("section", undefined, "operation-section");
+  form.setAttribute("aria-label", "Set ntfy destination form");
   section.setAttribute("aria-label", "Set ntfy destination");
   section.append(node("h3", "Set ntfy destination"));
   section.append(
