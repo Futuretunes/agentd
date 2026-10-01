@@ -2469,3 +2469,8 @@ test("publication commit disclosures are named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /"Publication commit " \+ commit\.sha\.slice\(0, 12\)/);
 });
+
+test("set signed-in origin section is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /section\.setAttribute\("aria-label", "Set signed-in origin"\)/);
+});
