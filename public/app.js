@@ -1915,7 +1915,6 @@ async function openReview(id) {
             (completed.has(file) || savedPages ? "Inspect again " : "Inspect ") + file,
             async () => {
               open.disabled = true;
-              row.setAttribute("aria-label", "Review file " + file);
               status.textContent = "Loading…";
               status.className = "muted";
               try {
