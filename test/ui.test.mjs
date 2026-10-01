@@ -3694,3 +3694,8 @@ test("Good status underline is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.good \{\n  text-decoration: underline/);
 });
+
+test("Attention status underline is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.attention \{\n  text-decoration: underline/);
+});
