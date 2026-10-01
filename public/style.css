@@ -471,6 +471,10 @@ dialog a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#theme:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 #history-results button:focus-visible,
 #history-results input:focus-visible,
 #history-results select:focus-visible,
