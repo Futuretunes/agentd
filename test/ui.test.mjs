@@ -3827,3 +3827,8 @@ test("Phone actions button touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.actions button \{\n    min-height: 44px/);
 });
+
+test("Section label line-height is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.section-label \{\n  line-height: 1\.4/);
+});

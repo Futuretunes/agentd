@@ -476,6 +476,9 @@ summary {
     min-height: 44px;
   }
 }
+.section-label {
+  line-height: 1.4;
+}
 .danger,
 .error {
   text-decoration: underline;
