@@ -285,6 +285,13 @@ header.conversation-head button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#access-key-dialog button:focus-visible,
+#access-key-dialog input:focus-visible,
+#access-key-dialog select:focus-visible,
+#access-key-dialog textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 input,
 select,
 textarea {
