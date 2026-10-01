@@ -2702,3 +2702,18 @@ test("Feedback item card is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /card\.setAttribute\("aria-label", "Feedback item " \+ item\.key\)/);
 });
+
+test("large review coverage progress is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /progress\.setAttribute\("aria-label", "Large review coverage"\)/);
+});
+
+test("large review coverage progress announces politely in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /progress\.setAttribute\("aria-live", "polite"\)/);
+});
+
+test("large review file row is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /row\.setAttribute\("aria-label", "Review file " \+ file\)/);
+});
