@@ -6060,6 +6060,7 @@ function renderServiceRestartApproval(plan, target, label) {
     idleLabel = node("label"),
     idle = node("input"),
     approve = node("button", `Restart ${label.toLowerCase()}`, "danger");
+  form.setAttribute("aria-label", "Restart approval " + label);
   current.type = "password";
   current.autocomplete = "current-password";
   current.required = true;
