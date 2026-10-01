@@ -2837,3 +2837,8 @@ test("Check setup script is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /scriptPre\.setAttribute\("aria-label", "Check script " \+ name\)/);
 });
+
+test("Paginated review diff is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /diffPre\.setAttribute\("aria-label", "Paginated review diff"\)/);
+});

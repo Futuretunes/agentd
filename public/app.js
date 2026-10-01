@@ -2034,7 +2034,10 @@ async function openReview(id) {
                         "muted",
                       ),
                       controls,
-                      node("pre", current.patch, "result paginated-diff"),
+                      ((diffPre) => {
+                        diffPre.setAttribute("aria-label", "Paginated review diff");
+                        return diffPre;
+                      })(node("pre", current.patch, "result paginated-diff")),
                     );
                     row.append(panel);
                   };
