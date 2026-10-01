@@ -3114,3 +3114,8 @@ test("Composer controls focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#compose button:focus-visible/);
 });
+
+test("Conversation region focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#conversation button:focus-visible/);
+});
