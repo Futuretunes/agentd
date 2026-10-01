@@ -456,6 +456,11 @@ dialog a:focus-visible {
   line-height: 1.5;
 }
 @media (max-width: 720px) {
+  button.danger {
+    min-height: 44px;
+  }
+}
+@media (max-width: 720px) {
   .device-code {
     font-size: 22px;
   }
