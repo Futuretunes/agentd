@@ -452,6 +452,12 @@ dialog a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+@media (max-width: 720px) {
+  #history-pages button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
 dialog .body,
 dialog .content,
 dialog [id$="-content"] {
