@@ -4238,6 +4238,7 @@ function renderOriginForm(current) {
     currentKey = node("input"),
     submit = node("button", "Review signed-in origin", "primary"),
     section = node("section", undefined, "operation-section");
+  form.setAttribute("aria-label", "Set signed-in origin form");
   section.setAttribute("aria-label", "Set signed-in origin");
   section.append(node("h3", "Set signed-in origin"));
   section.append(
