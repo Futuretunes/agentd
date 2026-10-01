@@ -2525,3 +2525,8 @@ test("configuration service restart form is named in app bootstrap", () => {
     /form\.setAttribute\("aria-label", "Configuration restart " \+ label\)/,
   );
 });
+
+test("backup cleanup form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /form\.setAttribute\("aria-label", "Backup cleanup"\)/);
+});
