@@ -4405,6 +4405,7 @@ function renderNotificationsClearForm(current) {
     currentLabel = node("label", "Current access key"),
     currentKey = node("input"),
     submit = node("button", "Review clear destination", "primary");
+  form.setAttribute("aria-label", "Clear ntfy destination");
   currentKey.type = "password";
   currentKey.autocomplete = "current-password";
   currentKey.required = true;
