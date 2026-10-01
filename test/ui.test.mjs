@@ -2926,3 +2926,8 @@ test("Binary diff notice is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/ui.js", import.meta.url), "utf8");
   assert.match(src, /binary\.setAttribute\("aria-label", "Binary file changed"\)/);
 });
+
+test("Checkbox focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /input\[type="checkbox"\]:focus-visible/);
+});
