@@ -3219,3 +3219,8 @@ test("Settings content focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#settings-content button:focus-visible/);
 });
+
+test("Composer tool links focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#compose\-tools\ a:focus-visible/);
+});
