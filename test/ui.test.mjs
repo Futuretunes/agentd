@@ -2676,3 +2676,11 @@ test("Adapter policy form is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /form\.setAttribute\("aria-label", "Adapter policy form"\)/);
 });
+
+test("Repository job section is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /item\.setAttribute\("aria-label", "Repository job " \+ job\.kind \+ " " \+ job\.state\)/,
+  );
+});
