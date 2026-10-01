@@ -3379,3 +3379,8 @@ test("GitHub settings focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#github-settings button:focus-visible/);
 });
+
+test("History results focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#history-results button:focus-visible/);
+});
