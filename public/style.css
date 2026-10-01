@@ -457,6 +457,9 @@ dialog a:focus-visible {
     min-height: 44px;
   }
 }
+.eyebrow {
+  line-height: 1.4;
+}
 dialog .muted {
   line-height: 1.5;
 }
