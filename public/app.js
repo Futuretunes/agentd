@@ -5377,6 +5377,7 @@ function renderBackupCleanupForm(eligible) {
     currentLabel = node("label", "Current access key"),
     current = node("input"),
     submit = node("button", "Review cleanup", "primary");
+  form.setAttribute("aria-label", "Backup cleanup");
   current.type = "password";
   current.autocomplete = "current-password";
   current.required = true;
