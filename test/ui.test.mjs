@@ -3674,3 +3674,8 @@ test("Phone skip link touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.skip-link \{\n    min-height: 44px/);
 });
+
+test("Hint line-height is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.hint \{\n  line-height: 1\.5/);
+});

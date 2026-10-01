@@ -479,6 +479,9 @@ dialog a:focus-visible {
     min-height: 44px;
   }
 }
+.hint {
+  line-height: 1.5;
+}
 .suggestions button:focus-visible,
 .suggestions input:focus-visible,
 .suggestions select:focus-visible,
