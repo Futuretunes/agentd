@@ -4022,6 +4022,7 @@ async function renderConfigurationSettings() {
   guidance.append(node("h3", "Where to change things"));
   for (const note of Object.values(report.notes ?? {})) guidance.append(node("p", note));
   const runtimeSection = node("section", undefined, "operation-section");
+  runtimeSection.setAttribute("aria-label", "Runtime flags");
   runtimeSection.append(node("h3", "Runtime flags"));
   if (!runtime) {
     runtimeSection.append(

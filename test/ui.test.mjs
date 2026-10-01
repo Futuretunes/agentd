@@ -2379,3 +2379,8 @@ test("configuration guidance is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /guidance\.setAttribute\("aria-label", "Where to change things"\)/);
 });
+
+test("runtime flags are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /runtimeSection\.setAttribute\("aria-label", "Runtime flags"\)/);
+});
