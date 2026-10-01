@@ -3339,3 +3339,8 @@ test("Sign-in form focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#loginform button:focus-visible/);
 });
+
+test("Settings defaults focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#settings-defaults button:focus-visible/);
+});
