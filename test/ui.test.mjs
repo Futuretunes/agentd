@@ -3714,3 +3714,8 @@ test("Phone suggestions touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.suggestions button \{\n    min-height: 44px/);
 });
+
+test("Eyebrow line-height is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.eyebrow \{\n  line-height: 1\.4/);
+});
