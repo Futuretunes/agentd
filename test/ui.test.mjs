@@ -3719,3 +3719,8 @@ test("Eyebrow line-height is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.eyebrow \{\n  line-height: 1\.4/);
 });
+
+test("Phone diff line font size is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.diff-line \{\n    font-size: 14px/);
+});
