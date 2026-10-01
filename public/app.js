@@ -5173,6 +5173,7 @@ async function renderBackupsSettings() {
         : (value / 1024 ** 2).toFixed(1) + " MiB",
     list = node("section", undefined, "operation-section"),
     eligible = (report.items ?? []).filter((item) => item.eligible).length;
+  list.setAttribute("aria-label", "Update backups");
   list.append(node("h3", "Update backups"));
   list.append(
     node(

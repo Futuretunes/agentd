@@ -2502,3 +2502,8 @@ test("edit permissions section is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /editSection\.setAttribute\("aria-label", "Edit permissions"\)/);
 });
+
+test("update backups section is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /list\.setAttribute\("aria-label", "Update backups"\)/);
+});
