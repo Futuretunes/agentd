@@ -471,6 +471,11 @@ summary {
     min-height: 44px;
   }
 }
+@media (max-width: 720px) {
+  .actions button {
+    min-height: 44px;
+  }
+}
 .danger,
 .error {
   text-decoration: underline;

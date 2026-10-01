@@ -3822,3 +3822,8 @@ test("Phone disclosure summary touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.turn summary,\n  \.file-review summary \{\n    min-height: 44px/);
 });
+
+test("Phone actions button touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.actions button \{\n    min-height: 44px/);
+});
