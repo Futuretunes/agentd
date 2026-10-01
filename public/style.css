@@ -469,6 +469,11 @@ dialog a:focus-visible {
     min-height: 44px;
   }
 }
+@media (max-width: 720px) {
+  #project-settings-dialog button {
+    min-height: 44px;
+  }
+}
 .suggestions button:focus-visible,
 .suggestions input:focus-visible,
 .suggestions select:focus-visible,
