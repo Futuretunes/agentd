@@ -157,6 +157,10 @@ a.output-download:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+.code-block button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 input,
 select,
 textarea {
