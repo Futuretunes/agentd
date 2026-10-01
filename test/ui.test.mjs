@@ -2369,3 +2369,8 @@ test("tls certificate is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /tls\.setAttribute\("aria-label", "TLS certificate"\)/);
 });
+
+test("agent adapters are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /policySection\.setAttribute\("aria-label", "Agent adapters"\)/);
+});

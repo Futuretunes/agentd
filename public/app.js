@@ -3976,6 +3976,7 @@ async function renderConfigurationSettings() {
     ),
   );
   const policySection = node("section", undefined, "operation-section");
+  policySection.setAttribute("aria-label", "Agent adapters");
   policySection.append(node("h3", "Agent adapters"));
   if (!adapters) {
     policySection.append(
