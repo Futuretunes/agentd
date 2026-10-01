@@ -3214,3 +3214,8 @@ test("Settings accounts focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#settings-accounts button:focus-visible/);
 });
+
+test("Settings content focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#settings-content button:focus-visible/);
+});
