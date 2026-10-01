@@ -464,6 +464,12 @@ dialog a:focus-visible {
   text-decoration-thickness: 2px;
 }
 @media (max-width: 720px) {
+  .code-block button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+@media (max-width: 720px) {
   .suggestions button {
     min-height: 44px;
   }

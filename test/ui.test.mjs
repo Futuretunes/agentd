@@ -3752,3 +3752,8 @@ test("Failed status underline thickness is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /text-decoration-thickness: 2px/);
 });
+
+test("Phone code-block touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.code-block button \{\n    min-height: 44px/);
+});
