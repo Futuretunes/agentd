@@ -2374,3 +2374,8 @@ test("agent adapters are named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /policySection\.setAttribute\("aria-label", "Agent adapters"\)/);
 });
+
+test("configuration guidance is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /guidance\.setAttribute\("aria-label", "Where to change things"\)/);
+});

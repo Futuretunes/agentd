@@ -4018,6 +4018,7 @@ async function renderConfigurationSettings() {
     );
   }
   const guidance = node("section", undefined, "operation-section");
+  guidance.setAttribute("aria-label", "Where to change things");
   guidance.append(node("h3", "Where to change things"));
   for (const note of Object.values(report.notes ?? {})) guidance.append(node("p", note));
   const runtimeSection = node("section", undefined, "operation-section");
