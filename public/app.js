@@ -5280,6 +5280,7 @@ function renderBackupRestoreForm(item) {
     currentLabel = node("label", "Current access key"),
     current = node("input"),
     submit = node("button", "Preview restore", "primary");
+  form.setAttribute("aria-label", "Backup restore");
   current.type = "password";
   current.autocomplete = "current-password";
   current.required = true;
