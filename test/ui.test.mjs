@@ -3199,3 +3199,8 @@ test("Review progress cancel is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /Cancel change preview/);
 });
+
+test("Run options focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#run-options button:focus-visible/);
+});
