@@ -183,6 +183,11 @@ dialog form button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+#conversation-header button:focus-visible,
+header.conversation-head button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 input,
 select,
 textarea {
