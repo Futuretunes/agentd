@@ -457,6 +457,12 @@ dialog a:focus-visible {
     min-height: 72px;
   }
 }
+.status.failed,
+.status.timed_out,
+.status.interrupted,
+.status.cancelled {
+  text-decoration-thickness: 2px;
+}
 @media (max-width: 720px) {
   .suggestions button {
     min-height: 44px;
