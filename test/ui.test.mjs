@@ -3656,3 +3656,11 @@ test("Phone attachments touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#attachments button \{\n    min-height: 44px/);
 });
+
+test("Phone menu panel touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /menu-panel button,\n  \.picker-panel button \{\n    min-height: 44px/,
+  );
+});

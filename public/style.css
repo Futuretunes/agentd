@@ -463,6 +463,12 @@ dialog a:focus-visible {
     min-width: 44px;
   }
 }
+@media (max-width: 720px) {
+  .menu-panel button,
+  .picker-panel button {
+    min-height: 44px;
+  }
+}
 .suggestions button:focus-visible,
 .suggestions input:focus-visible,
 .suggestions select:focus-visible,
