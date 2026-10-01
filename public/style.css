@@ -453,6 +453,12 @@ dialog a:focus-visible {
   outline-offset: 2px;
 }
 @media (max-width: 720px) {
+  .conversation-menu > summary,
+  .header-actions > summary {
+    min-height: 44px;
+  }
+}
+@media (max-width: 720px) {
   .run-picker > summary {
     min-height: 44px;
   }
