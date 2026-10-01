@@ -2451,3 +2451,11 @@ test("updates roll back is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /back\.setAttribute\("aria-label", "Roll back"\)/);
 });
+
+test("available update cards are named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /card\.setAttribute\("aria-label", `Available update AgentD \$\{release\.version\}`\)/,
+  );
+});

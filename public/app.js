@@ -6251,6 +6251,7 @@ async function renderUpdates() {
       );
     for (const release of available) {
       const card = node("section", undefined, "operation-section");
+      card.setAttribute("aria-label", `Available update AgentD ${release.version}`);
       card.append(
         node("h3", `AgentD ${release.version}`),
         node(
