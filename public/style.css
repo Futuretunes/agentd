@@ -466,6 +466,13 @@ dialog [tabindex="0"]:focus-visible {
     outline-offset: 3px;
   }
 }
+@media (prefers-contrast: more) {
+  input[type="checkbox"]:focus-visible,
+  input[type="radio"]:focus-visible {
+    outline-width: 3px;
+    outline-offset: 3px;
+  }
+}
 #stop-current:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
