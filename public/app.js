@@ -404,6 +404,7 @@ function accountsSection(data) {
         state: "checking",
         message: "Checking account status",
       };
+    card.setAttribute("aria-label", "Agent account " + value.name);
     const plainReason = {
       "Adapter disabled by security policy": "Not enabled for runs on this server",
       "CLI is missing or not executable": "Not installed on this server",
