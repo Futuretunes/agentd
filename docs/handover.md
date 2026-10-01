@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-tls-replace-section-label.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-runtime-flags-form-label.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.331.0 — Managed runtime flags form accessible name (Cursor)
+
+Managed runtime flags form section is labeled Managed runtime flags. See [handover](handovers/2026-09-30-cursor-gui-runtime-flags-form-label.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.330.0 — Replace managed TLS certificate accessible name (Cursor)
 
