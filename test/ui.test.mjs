@@ -2822,3 +2822,8 @@ test("Latest run output is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /outputPre\.setAttribute\("aria-label", "Latest run output"\)/);
 });
+
+test("Review checks output is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /checksOutput\.setAttribute\("aria-label", "Review checks output"\)/);
+});
