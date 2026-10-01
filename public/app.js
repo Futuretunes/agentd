@@ -2469,6 +2469,7 @@ async function updateRun() {
     if (data.task.execution)
       box.append(executionDetails(JSON.parse(data.task.execution)));
     const timeline = node("ol", undefined, "run-timeline");
+    timeline.setAttribute("aria-label", "Run timeline");
     for (const event of data.events) {
       const row = node("li");
       row.append(
