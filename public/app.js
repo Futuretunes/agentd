@@ -1831,7 +1831,9 @@ async function openReview(id) {
     cancelled = true;
     if (job) await api("/api/review-jobs", { action: "cancel", job: job.id });
   };
-  progress.append(button("Cancel preview", stop));
+  const cancelPreview = button("Cancel preview", stop);
+  cancelPreview.setAttribute("aria-label", "Cancel change preview");
+  progress.append(cancelPreview);
   progress.addEventListener("cancel", (event) => {
     event.preventDefault();
     void stop().catch((error) => notice(error.message));
