@@ -3847,3 +3847,8 @@ test("Phone primary min-width is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /button\.primary \{\n    min-width: 44px/);
 });
+
+test("High-contrast status underline is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /prefers-contrast: more[\s\S]*text-decoration-thickness: 3px/);
+});
