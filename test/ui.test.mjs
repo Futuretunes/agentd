@@ -2792,3 +2792,8 @@ test("Agent message is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /response\.setAttribute\("aria-label", "Agent message"\)/);
 });
+
+test("Activity task heading is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /head\.setAttribute\("aria-label", "Activity task heading"\)/);
+});

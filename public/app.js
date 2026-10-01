@@ -353,6 +353,7 @@ const relativeTime = (value) => {
 function operationTask(item) {
   const card = node("article", undefined, "operation-task"),
     head = node("div", undefined, "message-head");
+  head.setAttribute("aria-label", "Activity task heading");
   card.setAttribute("aria-label", "Activity task " + item.conversationTitle);
   head.append(
     node("strong", item.conversationTitle),
