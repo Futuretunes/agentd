@@ -2359,3 +2359,8 @@ test("paginated review controls are named in app bootstrap", () => {
     /controls\.setAttribute\("aria-label", "Paginated review controls"\)/,
   );
 });
+
+test("managed status is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /overview\.setAttribute\("aria-label", "Managed status"\)/);
+});
