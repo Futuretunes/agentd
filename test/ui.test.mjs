@@ -3104,3 +3104,8 @@ test("Revision dialog focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\#revision-dialog button:focus-visible/);
 });
+
+test("Publication confirm dialog focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\#publication-confirm-dialog button:focus-visible/);
+});
