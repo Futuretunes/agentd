@@ -1,10 +1,14 @@
 # Shared handover — Codex and Claude
 
-Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-publication-commit-details-label.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
+Start with [repository instructions](../AGENTS.md) and the [latest work-item handover](handovers/2026-09-30-cursor-gui-set-origin-section-label.md). Claude's entry point is [CLAUDE.md](../CLAUDE.md). Both agents update these same files after every work item, including partial or blocked work.
 
 ## Ownership — 2026-09-29
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
+
+## Candidate 0.328.0 — Set signed-in origin accessible name (Cursor)
+
+Set signed-in origin form section is labeled Set signed-in origin. See [handover](handovers/2026-09-30-cursor-gui-set-origin-section-label.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.327.0 — Publication commit disclosure accessible names (Cursor)
 
