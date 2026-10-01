@@ -4598,6 +4598,7 @@ function renderProfileEnableApproval(plan) {
       "label",
       "Current work, account changes and preparations are stopped",
     );
+  form.setAttribute("aria-label", "Enable profile approval");
   confirm.type = "checkbox";
   confirm.required = true;
   confirmLabel.prepend(confirm);
