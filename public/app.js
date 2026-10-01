@@ -1094,6 +1094,7 @@ function renderThread(data) {
   d.replaceChildren();
   for (const t of data.messages) {
     const turn = node("article", undefined, "turn");
+    turn.setAttribute("aria-label", "Conversation turn");
     const user = node("div", undefined, "user-message");
     user.append(node("div", t.prompt, "message-text"), images(t.images ?? []));
     turn.append(user);
