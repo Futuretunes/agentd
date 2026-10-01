@@ -4047,6 +4047,7 @@ async function renderConfigurationSettings() {
     );
   }
   const originSection = node("section", undefined, "operation-section");
+  originSection.setAttribute("aria-label", "Signed-in origin");
   originSection.append(node("h3", "Signed-in origin"));
   if (!origin) {
     originSection.append(
