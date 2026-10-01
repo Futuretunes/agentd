@@ -3504,3 +3504,8 @@ test("Dialog tabindex focus-visible ring is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /dialog \[tabindex="0"\]:focus-visible/);
 });
+
+test("High-contrast focus ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /prefers-contrast: more/);
+});
