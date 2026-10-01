@@ -1109,6 +1109,7 @@ function renderThread(data) {
       ? formatActiveStatusLabel(t.status, t.updated || t.created)
       : formatTerminalStatusLabel(t, labels);
     const status = node("span", statusLabel, "status " + t.status);
+    status.setAttribute("aria-label", "Turn status");
     status.setAttribute("aria-live", "polite");
     if (pending(t.status)) {
       // updated is set on each status transition; no separate started_at field exists.
