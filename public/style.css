@@ -178,6 +178,11 @@ a.output-download:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+dialog .review-head button:focus-visible,
+dialog form button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 input,
 select,
 textarea {
