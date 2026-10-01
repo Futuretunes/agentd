@@ -188,6 +188,11 @@ header.conversation-head button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+.turn-actions button:focus-visible,
+[aria-label="Turn actions"] button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 input,
 select,
 textarea {

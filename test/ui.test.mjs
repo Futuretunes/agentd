@@ -2989,3 +2989,8 @@ test("Conversation header focus-visible ring is named in app bootstrap", () => {
     /#conversation-header button:focus-visible|header\.conversation-head button:focus-visible/,
   );
 });
+
+test("Turn actions focus-visible ring is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.turn-actions button:focus-visible/);
+});
