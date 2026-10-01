@@ -4448,6 +4448,10 @@ function renderNotificationsPauseForm(current, pause) {
       pause ? "Review pause notifications" : "Review resume notifications",
       "primary",
     );
+  form.setAttribute(
+    "aria-label",
+    pause ? "Pause ntfy notifications" : "Resume ntfy notifications",
+  );
   currentKey.type = "password";
   currentKey.autocomplete = "current-password";
   currentKey.required = true;
