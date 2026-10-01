@@ -3699,3 +3699,8 @@ test("Attention status underline is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.attention \{\n  text-decoration: underline/);
 });
+
+test("Phone sidebar foot touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.sidebar-foot button \{\n    min-height: 44px/);
+});
