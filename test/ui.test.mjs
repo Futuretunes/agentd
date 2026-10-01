@@ -2832,3 +2832,8 @@ test("GitHub device code is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /deviceCode\.setAttribute\("aria-label", "GitHub device code"\)/);
 });
+
+test("Check setup script is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /scriptPre\.setAttribute\("aria-label", "Check script " \+ name\)/);
+});

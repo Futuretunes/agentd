@@ -2831,8 +2831,11 @@ async function updateCheckSetup() {
         node("p", value.plan.packages + " locked packages · npm checks"),
         node("h3", "Commands you will approve separately when running checks"),
       );
-      for (const [name, script] of Object.entries(value.plan.scripts))
-        box.append(node("strong", name), node("pre", script, "diff"));
+      for (const [name, script] of Object.entries(value.plan.scripts)) {
+        const scriptPre = node("pre", script, "diff");
+        scriptPre.setAttribute("aria-label", "Check script " + name);
+        box.append(node("strong", name), scriptPre);
+      }
       box.append(
         node(
           "p",
