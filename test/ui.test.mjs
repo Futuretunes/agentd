@@ -2405,3 +2405,11 @@ test("configuration github connection is named in app bootstrap", () => {
     /githubSection\.setAttribute\("aria-label", "Configuration GitHub connection"\)/,
   );
 });
+
+test("agent settings technical disclosure is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /technical\.setAttribute\("aria-label", "How defaults and permissions work"\)/,
+  );
+});

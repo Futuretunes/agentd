@@ -3750,6 +3750,7 @@ function renderSettings(data) {
     ),
   );
   const technical = node("details");
+  technical.setAttribute("aria-label", "How defaults and permissions work");
   technical.append(node("summary", "How defaults and permissions work"));
   for (const child of [...settingsContent.children]) {
     if (child.tagName === "P" && child.classList.contains("muted"))
