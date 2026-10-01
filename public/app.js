@@ -4714,6 +4714,7 @@ function renderTlsReplaceApproval(plan, certificate, key) {
       "label",
       "Current work, account changes and preparations are stopped",
     );
+  form.setAttribute("aria-label", "Replace TLS certificate approval");
   confirm.type = "checkbox";
   confirm.required = true;
   confirmLabel.prepend(confirm);
