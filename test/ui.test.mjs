@@ -2579,3 +2579,8 @@ test("Save notification settings form is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(src, /form\.setAttribute\("aria-label", "Save notification settings"\)/);
 });
+
+test("Backup cleanup approval form is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(src, /form\.setAttribute\("aria-label", "Backup cleanup approval"\)/);
+});
