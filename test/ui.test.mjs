@@ -3852,3 +3852,8 @@ test("High-contrast status underline is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /prefers-contrast: more[\s\S]*text-decoration-thickness: 3px/);
 });
+
+test("Forced-colors good underline is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /forced-colors: active[\s\S]*\.good/);
+});
