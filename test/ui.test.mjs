@@ -3777,3 +3777,8 @@ test("Hint base font size is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.hint \{\n  font-size: 13px/);
 });
+
+test("Actions button font size is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.actions button \{\n  font-size: 14px/);
+});
