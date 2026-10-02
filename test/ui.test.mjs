@@ -3890,3 +3890,8 @@ test("Phone review head link touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.review-head a \{\n    min-height: 44px/);
 });
+
+test("Provider usage line-height is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.provider-usage \{\n  line-height: 1\.5/);
+});
