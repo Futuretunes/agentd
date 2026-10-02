@@ -461,6 +461,11 @@ dialog a:focus-visible {
   }
 }
 @media (max-width: 720px) {
+  #login-blurb {
+    line-height: 1.5;
+  }
+}
+@media (max-width: 720px) {
   .device-code {
     font-size: 22px;
   }
