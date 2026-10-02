@@ -462,6 +462,12 @@ dialog a:focus-visible {
     padding: 16px;
   }
 }
+.status.running,
+.status.waiting_for_approval,
+.status.queued,
+.status.cancelling {
+  letter-spacing: 0.02em;
+}
 .empty-list {
   line-height: 1.5;
 }

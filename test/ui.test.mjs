@@ -3905,3 +3905,8 @@ test("Phone composer padding is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#compose \{\n    padding: 16px/);
 });
+
+test("Active status letter-spacing is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.status\.running[\s\S]*letter-spacing: 0\.02em/);
+});
