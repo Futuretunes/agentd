@@ -468,6 +468,12 @@ dialog a:focus-visible {
 .status.cancelling {
   letter-spacing: 0.02em;
 }
+@media (max-width: 720px) {
+  .diff-line.hunk,
+  .diff-line.note {
+    font-size: 13px;
+  }
+}
 .empty-list {
   line-height: 1.5;
 }
