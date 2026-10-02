@@ -471,6 +471,11 @@ dialog a:focus-visible {
   }
 }
 @media (max-width: 720px) {
+  .review-head a {
+    min-height: 44px;
+  }
+}
+@media (max-width: 720px) {
   .device-code {
     font-size: 22px;
   }

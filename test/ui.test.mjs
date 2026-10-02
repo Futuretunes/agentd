@@ -3885,3 +3885,8 @@ test("Phone notice font size is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#notice \{\n    font-size: 15px/);
 });
+
+test("Phone review head link touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.review-head a \{\n    min-height: 44px/);
+});
