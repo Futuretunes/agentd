@@ -479,6 +479,11 @@ dialog a:focus-visible {
     font-size: 15px;
   }
 }
+@media (max-width: 720px) {
+  .tools select {
+    min-height: 44px;
+  }
+}
 .empty-list {
   line-height: 1.5;
 }

@@ -3920,3 +3920,8 @@ test("Phone message head font size is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.message-head strong \{\n    font-size: 15px/);
 });
+
+test("Phone tools select touch target is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.tools select \{\n    min-height: 44px/);
+});
