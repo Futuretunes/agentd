@@ -3925,3 +3925,8 @@ test("Phone tools select touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.tools select \{\n    min-height: 44px/);
 });
+
+test("Link underline offset is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /a \{\n  text-underline-offset: 2px/);
+});
