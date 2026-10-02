@@ -3880,3 +3880,8 @@ test("Phone login blurb line-height is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /#login-blurb \{\n    line-height: 1\.5/);
 });
+
+test("Phone notice font size is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /#notice \{\n    font-size: 15px/);
+});
