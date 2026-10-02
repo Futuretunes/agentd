@@ -3915,3 +3915,8 @@ test("Phone diff hunk font size is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.diff-line\.hunk,\n  \.diff-line\.note \{\n    font-size: 13px/);
 });
+
+test("Phone message head font size is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.message-head strong \{\n    font-size: 15px/);
+});
