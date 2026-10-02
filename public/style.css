@@ -457,6 +457,11 @@ dialog a:focus-visible {
     min-height: 44px;
   }
 }
+@media (max-width: 720px) {
+  #compose {
+    padding: 16px;
+  }
+}
 .empty-list {
   line-height: 1.5;
 }
