@@ -3910,3 +3910,8 @@ test("Active status letter-spacing is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
   assert.match(src, /\.status\.running[\s\S]*letter-spacing: 0\.02em/);
 });
+
+test("Phone diff hunk font size is named in app bootstrap", () => {
+  const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
+  assert.match(src, /\.diff-line\.hunk,\n  \.diff-line\.note \{\n    font-size: 13px/);
+});
