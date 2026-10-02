@@ -466,6 +466,11 @@ dialog a:focus-visible {
   }
 }
 @media (max-width: 720px) {
+  #notice {
+    font-size: 15px;
+  }
+}
+@media (max-width: 720px) {
   .device-code {
     font-size: 22px;
   }
