@@ -49,10 +49,11 @@ import {
   type DeleteScope,
 } from "./project-delete.ts";
 import {
-  applyLocalFolderImport,
   localFolderPlans,
   parseLocalProjectRoots,
+  resolveLocalFolderPath,
 } from "./local-folder-import.ts";
+import { localFolderJobs } from "./local-folder-jobs.ts";
 import { settings, resolveSettings, type Settings } from "./execution-settings.ts";
 import { modelCatalog, discoverModels } from "./model-catalog.ts";
 import { unresolvedConflicts, type ReviewAPI } from "./github-review.ts";
@@ -96,7 +97,8 @@ import {
   readdirSync,
   rmSync,
 } from "node:fs";
-import { join, isAbsolute } from "node:path";
+import { basename, join, isAbsolute } from "node:path";
+import { publicError } from "./public-errors.ts";
 import { createServer } from "node:net";
 
 type Config = {
@@ -169,6 +171,8 @@ type Config = {
   isolate?: typeof isolated;
   projectsDir?: string;
   localProjectRoots?: string[];
+  /** Test seam: return true to stop a local-folder import after a phase, as a crash would. */
+  localFolderInterrupt?: (phase: string, job: string) => boolean | Promise<boolean>;
   attachments?: string;
   timeoutMs?: number;
   command?: (adapter: string, prompt: string, mode?: string) => [string, string[]];
@@ -272,18 +276,32 @@ export function runner(c: Config) {
   mkdirSync(attachmentRoot, { recursive: true, mode: 0o700 });
   const projectsRoot = c.projectsDir ?? join(c.stateDir, "projects");
   mkdirSync(projectsRoot, { recursive: true, mode: 0o700 });
-  const localRoots = [
-    ...new Set([projectsRoot, ...parseLocalProjectRoots(c.localProjectRoots)]),
-  ];
+  // Only administrator-configured roots are importable; AgentD's own state is not.
+  const localRoots = parseLocalProjectRoots(c.localProjectRoots);
   const protectedLocalPaths = [
     c.stateDir,
     c.worktrees,
     c.logs,
     attachmentRoot,
+    projectsRoot,
     c.repo,
     ...(c.githubRoot ? [c.githubRoot] : []),
   ];
   const folderPlans = localFolderPlans();
+  const localFolderOwner = (value: unknown) => {
+    if (typeof value !== "string" || !/^[a-f0-9]{64}$/.test(value))
+      throw Error("Browser owner required");
+    return value;
+  };
+  const localFolders = localFolderJobs({
+    db,
+    roots: () => localRoots,
+    protectedPaths: () => protectedLocalPaths,
+    closing: () => closing,
+    blocked: () => blocked("localFolder"),
+    audit,
+    interrupt: c.localFolderInterrupt,
+  });
   const images = attachmentStore(attachmentRoot);
   const attachment = images.metadata;
   const logTail = (path: string, limit = 60000) => {
@@ -446,6 +464,8 @@ export function runner(c: Config) {
             .get();
         case "reviewPreparation":
           return !!db.prepare("SELECT id FROM review_jobs WHERE state='preparing'").get();
+        case "localFolder":
+          return localFolders.busy();
       }
     };
     return admissionBlocked(operation, read);
@@ -596,6 +616,7 @@ export function runner(c: Config) {
     });
   }
   function purgeDueProjects() {
+    if (localFolders.busy()) return;
     for (const row of dueDeletedProjects(db)) {
       try {
         purgeProjectNow(row);
@@ -2143,6 +2164,11 @@ export function runner(c: Config) {
   }
   function handleWorkspaceReadRequest(input: any) {
     if (input.op === "workspace-preferences") return workspacePrefs();
+    if (input.op === "local-folder-roots")
+      return {
+        roots: localRoots.map((path) => ({ label: basename(path) || path, path })),
+      };
+    if (input.op === "local-folder-jobs") return { jobs: localFolders.view() };
     if (input.op === "projects")
       return db
         .prepare(
@@ -2268,57 +2294,39 @@ export function runner(c: Config) {
       return project(input.id);
     }
     if (input.op === "local-folder-preview") {
-      if (dependencyManager.busy() || publicationManager.busy())
-        throw Error("Wait for the repository or publishing operation.");
-      return folderPlans.preview(
-        String(input.owner ?? ""),
-        title(input.name),
-        String(input.path ?? ""),
-        localRoots,
-        protectedLocalPaths,
-      );
-    }
-    if (input.op === "local-folder-cancel") {
-      return folderPlans.cancel(String(input.owner ?? ""));
-    }
-    if (input.op === "local-folder-approve") {
-      if (dependencyManager.busy() || publicationManager.busy())
-        throw Error("Wait for the repository or publishing operation.");
-      const plan = folderPlans.take(
-        String(input.owner ?? ""),
-        String(input.fingerprint ?? ""),
-      );
-      if (plan.sensitiveFindings.length && plan.case === "non_git") {
-        // Findings are excluded from the commit set; still refuse when any remain listed
-        // as blocking leftovers that the operator must clear from the folder.
-        const blocking = plan.sensitiveFindings.some((f) =>
-          plan.filesToAdd.includes(f.path),
+      const owner = localFolderOwner(input.owner);
+      try {
+        localFolders.assertNoRecovery(
+          resolveLocalFolderPath(input.path, localRoots, protectedLocalPaths).canonical,
         );
-        if (blocking)
-          throw Error(
-            "That folder includes sensitive filenames or credential-like content. Remove or ignore them before importing.",
-          );
+        return folderPlans.preview(
+          owner,
+          title(input.name),
+          String(input.path ?? ""),
+          localRoots,
+          protectedLocalPaths,
+        );
+      } catch (error) {
+        audit("local-folder-preview", null, {
+          outcome: "refused",
+          error: publicError(error),
+        });
+        throw error;
       }
-      return applyLocalFolderImport(
-        plan,
-        localRoots,
-        protectedLocalPaths,
-        ({ id, name, repo }) => {
-          if (db.prepare("SELECT id FROM projects WHERE repo=?").get(repo))
-            throw Error("That folder is already registered as a project.");
-          auditedWrite(
-            "local-folder-approve",
-            null,
-            { project: id, pathLabel: plan.pathLabel },
-            () => {
-              db.prepare(
-                "INSERT INTO projects(id,name,repo,created) VALUES(?,?,?,?)",
-              ).run(id, name, repo, new Date().toISOString());
-            },
-          );
-        },
-      );
     }
+    if (input.op === "local-folder-cancel")
+      return folderPlans.cancel(localFolderOwner(input.owner));
+    if (input.op === "local-folder-approve") {
+      const owner = localFolderOwner(input.owner),
+        fingerprint = String(input.fingerprint ?? "");
+      const repeated = localFolders.existing(fingerprint, owner);
+      if (repeated) return repeated;
+      return localFolders.approve(folderPlans.take(owner, fingerprint), owner);
+    }
+    if (input.op === "local-folder-job-cancel")
+      return localFolders.cancel(String(input.job ?? ""), localFolderOwner(input.owner));
+    if (input.op === "local-folder-recover")
+      return localFolders.recover(String(input.job ?? ""), input.action);
     if (input.op === "project-create" || input.op === "project-register") {
       const name = title(input.name),
         id = randomUUID();
@@ -2436,6 +2444,11 @@ export function runner(c: Config) {
       audit("workspace-preferences-save", null, { before, after });
       return after;
     }
+    if (
+      (input.op === "project-delete" || input.op === "project-purge") &&
+      localFolders.busy()
+    )
+      throw Error("Wait for the local folder import to finish.");
     if (input.op === "project-delete") {
       if (projectBusyForDelete(input.id))
         throw Error(
@@ -2993,6 +3006,7 @@ export function runner(c: Config) {
       const revisionClosed = revisionManager.close();
       const restartClosed = restartManager.close();
       await publicationManager.close();
+      await localFolders.close();
       await Promise.all([
         previewClosed,
         validationClosed,

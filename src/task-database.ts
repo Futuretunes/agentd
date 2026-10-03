@@ -138,6 +138,17 @@ export function ensureWorkspaceDefaultsSchema(db: DatabaseSync) {
   db.exec(
     "CREATE TABLE IF NOT EXISTS workspace_preferences(id INTEGER PRIMARY KEY CHECK (id = 1), value TEXT NOT NULL, updated TEXT NOT NULL)",
   );
+  ensureLocalFolderSchema(db);
+}
+
+/** Durable journal for local-folder imports; plans hold host paths and stay local. */
+export function ensureLocalFolderSchema(db: DatabaseSync) {
+  db.exec(
+    "CREATE TABLE IF NOT EXISTS local_folder_jobs(id TEXT PRIMARY KEY,owner TEXT NOT NULL,fingerprint TEXT NOT NULL,state TEXT NOT NULL,phase TEXT NOT NULL,project TEXT,plan TEXT NOT NULL,error TEXT,created TEXT NOT NULL,updated TEXT NOT NULL)",
+  );
+  db.exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS local_folder_jobs_fingerprint ON local_folder_jobs(fingerprint)",
+  );
 }
 
 // Check table/column/index definitions against the canonical migrated baseline.

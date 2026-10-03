@@ -617,9 +617,9 @@
       </div>
       <form id="local-folder-form" aria-label="Use local folder">
         <p class="muted">
-          Enter an absolute folder path on the AgentD server (not this browser). Paths
-          must be under an administrator-configured allowed root.
+          Enter an absolute folder path on the AgentD server, not on this device.
         </p>
+        <p id="local-folder-roots" class="muted" aria-live="polite"></p>
         <label for="local-folder-name">Project name</label>
         <input
           id="local-folder-name"
@@ -648,7 +648,7 @@
         />
         <div
           id="local-folder-preview"
-          class="muted"
+          class="local-folder-preview"
           aria-label="Local folder preview"
           aria-live="polite"
         ></div>
@@ -656,9 +656,15 @@
           <button type="button" id="local-folder-cancel-preview">Cancel</button>
           <button type="button" id="local-folder-preview-btn">Review folder</button>
           <button type="submit" id="local-folder-approve" class="primary" hidden>
-            Approve and register
+            Approve import
           </button>
         </div>
+        <section
+          id="local-folder-jobs"
+          class="local-folder-preview"
+          aria-label="Local folder imports"
+          aria-live="polite"
+        ></section>
       </form>
     </dialog>
     <dialog id="operations-dialog" aria-labelledby="operations-heading">

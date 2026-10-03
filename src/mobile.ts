@@ -214,6 +214,7 @@ export function mobile(c: Config) {
             "/app.js",
             "/ui.js",
             "/request-id.js",
+            "/local-folder.js",
             "/style.css",
             "/fonts/geist-400.ttf",
             "/fonts/geist-500.ttf",
@@ -1625,7 +1626,32 @@ export function mobile(c: Config) {
           );
           return;
         }
+        if (path === "/api/local-folder" && req.method === "GET") {
+          const [roots, jobs] = await Promise.all([
+            call({ op: "local-folder-roots" }),
+            call({ op: "local-folder-jobs" }),
+          ]);
+          send(200, { ...roots, ...jobs });
+          return;
+        }
         if (path === "/api/local-folder" && req.method === "POST") {
+          const input = await body(req);
+          if (input.action === "cancel") {
+            send(200, await call({ op: "local-folder-cancel", owner: accountOwner }));
+            return;
+          }
+          if (input.action === "cancelJob") {
+            send(
+              200,
+              await call({
+                op: "local-folder-job-cancel",
+                owner: accountOwner,
+                job: input.job,
+              }),
+            );
+            return;
+          }
+          // Folder inspection and access-key step-up are both bounded per client.
           const limitKey = "local-folder:" + (req.socket.remoteAddress ?? "unknown"),
             started = Date.now();
           for (const [key, value] of attempts)
@@ -1637,9 +1663,18 @@ export function mobile(c: Config) {
           }
           attempt.count++;
           attempts.set(limitKey, attempt);
-          const input = await body(req);
-          if (input.action === "cancel") {
-            send(200, await call({ op: "local-folder-cancel", owner: accountOwner }));
+          if (input.action === "recover") {
+            if (!accessKeyMatches(input.currentKey, accessHash))
+              throw Error("Current access key did not match.");
+            send(
+              200,
+              await call({
+                op: "local-folder-recover",
+                owner: accountOwner,
+                job: input.job,
+                action: input.recovery,
+              }),
+            );
             return;
           }
           if (input.action === "preview") {
