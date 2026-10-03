@@ -28,6 +28,7 @@ import {
   requestCloseDialog,
   trackDialogDirty,
   markDialogClean,
+  applyWorkspaceBehaviour,
   setTextWithTitle,
   emptyConversationList,
   emptyProjectList,
@@ -1868,6 +1869,7 @@ $("project-menu").onclick = () => {
       reset();
       box.hidden = true;
     }),
+    button("Delete project…", () => openProjectDelete(p), "danger"),
   );
 };
 
@@ -2559,13 +2561,18 @@ async function loadHistory(before = null) {
     $("archived-projects").replaceChildren();
     if (filter !== "active" && archived.length) {
       $("archived-projects").append(node("h3", "Archived projects"));
-      for (const p of archived)
+      for (const p of archived) {
+        const label = p.deleted_at ? "Cancel delete " + p.name : "Restore " + p.name;
         $("archived-projects").append(
-          button("Restore " + p.name, async () => {
-            await api("/api/action", { op: "project-restore", id: p.id });
+          button(label, async () => {
+            await api("/api/action", {
+              op: p.deleted_at ? "project-delete-cancel" : "project-restore",
+              id: p.id,
+            });
             await loadHistory();
           }),
         );
+      }
     }
   } catch (e) {
     if (epoch === historyEpoch) {
@@ -4038,6 +4045,10 @@ setInterval(() => {
 
 // UI composition preserves the existing action handlers and approval payloads.
 setupShell();
+try {
+  const cached = JSON.parse(localStorage.getItem("agentd-workspace-prefs") || "null");
+  if (cached) applyWorkspaceBehaviour(cached);
+} catch {}
 $("run-options").onclick = () => openSettings("next");
 $("composer-project-defaults").onclick = () => openSettings("project-agent");
 $("defaults-menu").onclick = () =>
@@ -4052,11 +4063,122 @@ $("stop-current").onclick = async () => {
     notice(error.message);
   }
 };
+let workspacePrefsCache = null;
+let deleteTarget = null;
+
+function fillWorkspaceDefaultsForm(prefs) {
+  workspacePrefsCache = prefs;
+  applyWorkspaceBehaviour(prefs);
+  try {
+    localStorage.setItem("agentd-workspace-prefs", JSON.stringify(prefs));
+  } catch {}
+  const form = $("workspace-defaults-form");
+  if (!form) return;
+  form.theme.value = prefs.theme;
+  form.density.value = prefs.density;
+  form.defaultAdapter.value = prefs.defaultAdapter;
+  form.defaultMode.value = prefs.defaultMode;
+  form.defaultModel.value = prefs.defaultModel;
+  form.defaultEffort.value = prefs.defaultEffort;
+  form.deleteTiming.value = prefs.deleteTiming;
+  form.deleteGraceDays.value = String(prefs.deleteGraceDays);
+  form.drawerAutoClose.checked = !!prefs.drawerAutoClose;
+  form.noticeInfoMs.value = String(prefs.noticeInfoMs);
+  form.noticeErrorMs.value = String(prefs.noticeErrorMs);
+  $("workspace-defaults-key").value = "";
+  markDialogClean($("preferences-dialog"));
+}
+
+async function loadWorkspaceDefaults() {
+  try {
+    const prefs = await api("/api/action", { op: "workspace-preferences" });
+    fillWorkspaceDefaultsForm(prefs);
+  } catch (e) {
+    notice(e.message);
+  }
+}
+
 function openPreferences() {
   openDialog($("preferences-dialog"));
   void loadAccounts();
+  void loadWorkspaceDefaults();
 }
 $("preferences-menu").onclick = openPreferences;
+
+$("workspace-defaults-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const values = {
+    theme: form.theme.value,
+    density: form.density.value,
+    defaultAdapter: form.defaultAdapter.value,
+    defaultMode: form.defaultMode.value,
+    defaultModel: form.defaultModel.value.trim(),
+    defaultEffort: form.defaultEffort.value,
+    deleteTiming: form.deleteTiming.value,
+    deleteGraceDays: Number(form.deleteGraceDays.value),
+    drawerAutoClose: form.drawerAutoClose.checked,
+    noticeInfoMs: Number(form.noticeInfoMs.value),
+    noticeErrorMs: Number(form.noticeErrorMs.value),
+  };
+  try {
+    const prefs = await api("/api/action", {
+      op: "workspace-preferences-save",
+      values,
+      currentKey: $("workspace-defaults-key").value,
+    });
+    fillWorkspaceDefaultsForm(prefs);
+    notice("Workspace defaults saved.");
+  } catch (error) {
+    notice(error.message);
+  }
+};
+trackDialogDirty($("workspace-defaults-form"), $("preferences-dialog"));
+trackDialogDirty($("project-delete-form"), $("project-delete-dialog"));
+
+function openProjectDelete(p) {
+  deleteTarget = p;
+  const timing = workspacePrefsCache?.deleteTiming || "immediate";
+  const days = workspacePrefsCache?.deleteGraceDays || 7;
+  $("project-delete-summary").textContent =
+    timing === "grace"
+      ? `Workspace policy keeps deleted projects for ${days} day(s), then purges them. You can cancel while pending.`
+      : "Workspace policy deletes immediately after confirmation.";
+  $("project-delete-confirm").value = "";
+  $("project-delete-key").value = "";
+  $("project-delete-form").querySelector('input[name="scope"][value="agentd"]').checked =
+    true;
+  if ($("project-settings-dialog")?.open) $("project-settings-dialog").close();
+  openDialog($("project-delete-dialog"));
+}
+$("project-delete-close").onclick = () => requestCloseDialog($("project-delete-dialog"));
+$("project-delete-form").onsubmit = async (e) => {
+  e.preventDefault();
+  if (!deleteTarget) return;
+  const form = e.target;
+  const scope = form.scope.value;
+  try {
+    const result = await api("/api/action", {
+      op: "project-delete",
+      id: deleteTarget.id,
+      scope,
+      confirmName: form.confirmName.value,
+      currentKey: $("project-delete-key").value || undefined,
+    });
+    $("project-delete-dialog").close();
+    saveDraft();
+    projectId = null;
+    reset();
+    notice(
+      result.purged
+        ? "Project deleted."
+        : "Project scheduled for deletion. Restore from pending delete before purge if needed.",
+    );
+    await refresh();
+  } catch (error) {
+    notice(error.message);
+  }
+};
 const accessKeyDialog = $("access-key-dialog"),
   accessKeyContent = $("access-key-content");
 $("access-key-close").onclick = () => requestCloseDialog(accessKeyDialog);

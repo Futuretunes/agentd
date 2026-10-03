@@ -96,6 +96,7 @@ export const workspaceReadOperations = [
   "conversations",
   "conversation-show",
   "list",
+  "workspace-preferences",
 ] as const;
 
 export const workspaceMutationOperations = [
@@ -105,9 +106,13 @@ export const workspaceMutationOperations = [
   "project-archive",
   "project-restore",
   "project-rename",
+  "project-delete",
+  "project-delete-cancel",
+  "project-purge",
   "conversation-restore",
   "conversation-rename",
   "conversation-archive",
+  "workspace-preferences-save",
 ] as const;
 
 export const taskOperations = [

@@ -1911,6 +1911,11 @@ export function mobile(c: Config) {
               "conversation-restore",
               "project-archive",
               "project-restore",
+              "project-delete",
+              "project-delete-cancel",
+              "project-purge",
+              "workspace-preferences",
+              "workspace-preferences-save",
             ].includes(input.op)
           )
             throw new Error("Unsupported action");
@@ -1920,7 +1925,15 @@ export function mobile(c: Config) {
               !/^[0-9a-f]{64}$/.test(input.fingerprint))
           )
             throw Error("Refresh the run preview before approving.");
-          send(200, await call(input));
+          if (
+            (input.op === "project-delete" && input.scope === "agentd_and_checkout") ||
+            input.op === "workspace-preferences-save"
+          ) {
+            if (!accessKeyMatches(input.currentKey, accessHash))
+              throw Error("Current access key did not match.");
+          }
+          const { currentKey: _stepUpKey, ...forward } = input;
+          send(200, await call(forward));
           return;
         }
         if (path === "/api/upload" && req.method === "POST") {
