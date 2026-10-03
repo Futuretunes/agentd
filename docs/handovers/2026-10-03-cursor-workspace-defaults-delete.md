@@ -2,8 +2,8 @@
 
 - Author/agent: Cursor
 - Requested outcome: AgentD-wide Workspace defaults (look, run defaults, delete policy, behaviour) and project delete with A/B scope plus grace/immediate purge
-- Status: implemented
-- Release: 0.604.0
+- Status: implemented; ship as 0.604.1 after additive schema startup fix
+- Release: 0.604.1 (0.604.0 failed live start: schema validate before creating `workspace_preferences` on migrated DBs)
 
 ## Changes
 

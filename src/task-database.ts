@@ -73,15 +73,10 @@ function baseline(db: DatabaseSync, repo: string) {
     "github_url",
     "github_branch",
     "check_manifest",
-    "deleted_at",
-    "delete_scope",
-    "purge_after",
   ])
     if (!projectColumns.includes(name))
       db.exec(`ALTER TABLE projects ADD COLUMN ${name} TEXT`);
-  db.exec(
-    "CREATE TABLE IF NOT EXISTS workspace_preferences(id INTEGER PRIMARY KEY CHECK (id = 1), value TEXT NOT NULL, updated TEXT NOT NULL)",
-  );
+  ensureWorkspaceDefaultsSchema(db);
   db.exec(
     "CREATE TABLE IF NOT EXISTS repository_jobs(id TEXT PRIMARY KEY,kind TEXT,state TEXT,project TEXT,source TEXT,branch TEXT,result TEXT,error TEXT,updated TEXT)",
   );
@@ -128,6 +123,20 @@ function baseline(db: DatabaseSync, repo: string) {
 function creationSchema(db: DatabaseSync) {
   db.exec(
     `CREATE TABLE creation_requests(scope TEXT NOT NULL,request_id TEXT NOT NULL,operation TEXT NOT NULL,payload_hash TEXT NOT NULL,result_id TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(scope,request_id))`,
+  );
+}
+
+/** Additive Workspace defaults / project-delete columns for already-migrated installs. */
+export function ensureWorkspaceDefaultsSchema(db: DatabaseSync) {
+  const projectColumns = db
+    .prepare("PRAGMA table_info(projects)")
+    .all()
+    .map((x) => x.name);
+  for (const name of ["deleted_at", "delete_scope", "purge_after"])
+    if (!projectColumns.includes(name))
+      db.exec(`ALTER TABLE projects ADD COLUMN ${name} TEXT`);
+  db.exec(
+    "CREATE TABLE IF NOT EXISTS workspace_preferences(id INTEGER PRIMARY KEY CHECK (id = 1), value TEXT NOT NULL, updated TEXT NOT NULL)",
   );
 }
 
@@ -210,6 +219,7 @@ export function initializeTaskDatabase(db: DatabaseSync, repo: string) {
       validate(db, 1);
       creationSchema(db);
     }
+    ensureWorkspaceDefaultsSchema(db);
     validate(db);
     recover(db);
     db.exec(`PRAGMA user_version=${TASK_SCHEMA_VERSION}`);
