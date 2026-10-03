@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.605.0 — Use local folder project import (Cursor)
 
-See [handover](handovers/2026-10-03-cursor-local-folder-import.md). Implemented on `feat/local-folder-import`; not merged or live-installed.
+See [handover](handovers/2026-10-03-cursor-local-folder-import.md). Revised after review on `feat/local-folder-import`: repository boundaries, ignore-first content-bound previews, a durable recoverable import job, fail-closed sensitive data and existing-repository vetting. Not merged or live-installed.
 
 ## Candidate 0.604.1 — Workspace defaults and project delete (Cursor)
 
