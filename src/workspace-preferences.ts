@@ -37,8 +37,7 @@ export function ensureWorkspacePreferencesSchema(db: DatabaseSync) {
 export function readWorkspacePreferences(db: DatabaseSync): WorkspacePreferences {
   ensureWorkspacePreferencesSchema(db);
   const row = db.prepare("SELECT value FROM workspace_preferences WHERE id=1").get() as
-    | { value: string }
-    | undefined;
+    { value: string } | undefined;
   if (!row) return defaultWorkspacePreferences();
   try {
     return normalizeWorkspacePreferences(JSON.parse(row.value));
@@ -78,9 +77,17 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
     base.defaultModel = input.defaultModel;
   if (
     typeof input.defaultEffort === "string" &&
-    ["auto", "provider", "none", "low", "medium", "high", "xhigh", "max", "ultra"].includes(
-      input.defaultEffort,
-    )
+    [
+      "auto",
+      "provider",
+      "none",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+      "ultra",
+    ].includes(input.defaultEffort)
   )
     base.defaultEffort = input.defaultEffort;
   if (["immediate", "grace"].includes(String(input.deleteTiming)))

@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  lstatSync,
-  realpathSync,
-  rmSync,
-  unlinkSync,
-} from "node:fs";
+import { existsSync, lstatSync, realpathSync, rmSync, unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 
@@ -114,9 +108,9 @@ export function purgeProjectRecords(
       "DELETE FROM execution_settings WHERE scope='conversation' AND scope_id=?",
     ).run(row.id);
   }
-  db.prepare(
-    "DELETE FROM execution_settings WHERE scope='project' AND scope_id=?",
-  ).run(projectId);
+  db.prepare("DELETE FROM execution_settings WHERE scope='project' AND scope_id=?").run(
+    projectId,
+  );
   db.prepare(
     "DELETE FROM review_jobs WHERE task IN (SELECT id FROM tasks WHERE project=?)",
   ).run(projectId);

@@ -409,8 +409,7 @@ let drawerAutoClose = true;
 export function applyWorkspaceBehaviour(prefs = {}) {
   if (Number.isInteger(prefs.noticeInfoMs)) noticeTiming.infoMs = prefs.noticeInfoMs;
   if (Number.isInteger(prefs.noticeErrorMs)) noticeTiming.errorMs = prefs.noticeErrorMs;
-  if (typeof prefs.drawerAutoClose === "boolean")
-    drawerAutoClose = prefs.drawerAutoClose;
+  if (typeof prefs.drawerAutoClose === "boolean") drawerAutoClose = prefs.drawerAutoClose;
   if (prefs.density === "compact" || prefs.density === "comfortable")
     document.documentElement.dataset.density = prefs.density;
   if (["system", "light", "dark"].includes(prefs.theme)) {

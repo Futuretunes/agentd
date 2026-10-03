@@ -2562,9 +2562,7 @@ async function loadHistory(before = null) {
     if (filter !== "active" && archived.length) {
       $("archived-projects").append(node("h3", "Archived projects"));
       for (const p of archived) {
-        const label = p.deleted_at
-          ? "Cancel delete " + p.name
-          : "Restore " + p.name;
+        const label = p.deleted_at ? "Cancel delete " + p.name : "Restore " + p.name;
         $("archived-projects").append(
           button(label, async () => {
             await api("/api/action", {
@@ -4153,8 +4151,7 @@ function openProjectDelete(p) {
   if ($("project-settings-dialog")?.open) $("project-settings-dialog").close();
   openDialog($("project-delete-dialog"));
 }
-$("project-delete-close").onclick = () =>
-  requestCloseDialog($("project-delete-dialog"));
+$("project-delete-close").onclick = () => requestCloseDialog($("project-delete-dialog"));
 $("project-delete-form").onsubmit = async (e) => {
   e.preventDefault();
   if (!deleteTarget) return;

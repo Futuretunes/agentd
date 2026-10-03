@@ -33,10 +33,7 @@ function repo(root, name) {
 test("workspace preferences normalize and persist through runner", async () => {
   assert.equal(normalizeWorkspacePreferences({ theme: "dark" }).theme, "dark");
   assert.equal(normalizeWorkspacePreferences({ theme: "neon" }).theme, "system");
-  assert.equal(
-    normalizeWorkspacePreferences({ deleteGraceDays: 0 }).deleteGraceDays,
-    7,
-  );
+  assert.equal(normalizeWorkspacePreferences({ deleteGraceDays: 0 }).deleteGraceDays, 7);
   const root = mkdtempSync(join(tmpdir(), "prefs-"));
   const app = runner({
     stateDir: join(root, "state"),
