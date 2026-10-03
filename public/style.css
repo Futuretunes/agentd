@@ -757,7 +757,9 @@ dialog .muted {
 }
 @media (max-width: 720px) {
   #mode,
-  #adapter {
+  #adapter,
+  #composer-model,
+  #composer-effort {
     min-height: 44px;
   }
 }
