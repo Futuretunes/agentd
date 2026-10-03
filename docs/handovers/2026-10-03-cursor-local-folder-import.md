@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Create project can register an absolute host folder (empty, non-git, or existing git) with allowlisted roots, approval preview, and handover scaffold
-- Status: implemented; PR open; not merged/deployed
+- Status: implemented; [PR #1143](https://github.com/Futuretunes/agentd/pull/1143) open with green CI (Node 24/26 + Required Linux isolation); not merged/deployed
 - Release: 0.605.0
 - Branch: `feat/local-folder-import`
 
