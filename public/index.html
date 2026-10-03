@@ -182,16 +182,7 @@
                     role="group"
                     aria-label="Agent mode and model"
                   >
-                    <label for="mode">Mode</label
-                    ><select
-                      id="mode"
-                      aria-label="Conversation mode"
-                      aria-describedby="agent-reasons"
-                    >
-                      <option value="ask">Ask · read only</option>
-                      <option value="chat">Chat only · no project access</option>
-                      <option value="edit" disabled>Edit files</option></select
-                    ><label for="adapter">Agent</label
+                    <label for="adapter">Agent</label
                     ><select
                       id="adapter"
                       aria-label="Agent"
@@ -201,24 +192,54 @@
                       <option value="claude">Claude</option>
                       <option value="cursor">Cursor</option>
                     </select>
+                    <label for="mode">Mode</label
+                    ><select
+                      id="mode"
+                      aria-label="Conversation mode"
+                      aria-describedby="agent-reasons"
+                    >
+                      <option value="ask">Ask · read only</option>
+                      <option value="chat">Chat only · no project access</option>
+                      <option value="edit" disabled>Edit files</option></select
+                    ><label for="composer-model">Model</label
+                    ><select id="composer-model" aria-label="Model">
+                      <option value="">Loading models…</option>
+                    </select>
+                    <label for="composer-effort">Effort</label
+                    ><select id="composer-effort" aria-label="Reasoning effort">
+                      <option value="provider">Provider default</option>
+                    </select>
                     <p
                       id="agent-reasons"
                       class="muted"
                       aria-label="Agent capabilities"
                       aria-live="polite"
                     ></p>
-                    <div class="picker-model" role="group" aria-label="Model and effort">
-                      <span
-                        id="selection-summary"
-                        aria-label="Model and effort"
-                        aria-live="polite"
-                      ></span
-                      ><button
+                    <p
+                      id="selection-summary"
+                      class="muted"
+                      aria-label="Model and effort"
+                      aria-live="polite"
+                      hidden
+                    ></p>
+                    <div
+                      class="picker-model"
+                      role="group"
+                      aria-label="Advanced run settings"
+                    >
+                      <button
                         type="button"
                         id="run-options"
-                        aria-label="Change model and effort"
+                        aria-label="More run settings"
                       >
-                        Change model &amp; effort
+                        More settings…
+                      </button>
+                      <button
+                        type="button"
+                        id="composer-project-defaults"
+                        aria-label="Project agent defaults"
+                      >
+                        Project defaults…
                       </button>
                     </div>
                   </div>

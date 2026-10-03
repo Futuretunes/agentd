@@ -131,12 +131,137 @@ function applyPolicy() {
         : "Each message waits for approval before an agent starts.";
   renderPicker();
 }
+let composerCatalog = null,
+  composerCatalogKey = "";
+function fillSelect(select, options, preferred) {
+  const previous = preferred ?? select.value;
+  select.replaceChildren();
+  for (const [id, text, disabled] of options) {
+    const option = node("option", text);
+    option.value = id;
+    option.disabled = !!disabled;
+    select.append(option);
+  }
+  select.value = Array.from(select.options).some((o) => o.value === previous)
+    ? previous
+    : (select.options[0]?.value ?? "");
+}
+function populateComposerEffort() {
+  const model = $("composer-model"),
+    effort = $("composer-effort"),
+    override = nextRun[$("adapter").value] ?? {},
+    chosen = (composerCatalog?.models ?? []).find((m) => m.id === model.value),
+    levels =
+      chosen?.efforts ??
+      (model.value === "auto" || model.value === "provider" || !model.value
+        ? ["auto", "provider"]
+        : ["provider"]);
+  fillSelect(
+    effort,
+    [
+      ["auto", "Auto — task appropriate"],
+      ["provider", "Provider default"],
+      ...levels
+        .filter((level) => level !== "auto" && level !== "provider")
+        .map((level) => [level, level]),
+    ],
+    override.effort || composerCatalog?.effectiveEffort || "provider",
+  );
+}
+async function syncComposerCatalog() {
+  const model = $("composer-model"),
+    effort = $("composer-effort");
+  if (!model || !effort) return;
+  if (!signedIn || !projectId || !policy.scopedSettings) {
+    fillSelect(model, [["provider", "Provider default"]]);
+    fillSelect(effort, [["provider", "Provider default"]]);
+    composerCatalog = null;
+    composerCatalogKey = "";
+    return;
+  }
+  const key = composerKey() + ":" + $("mode").value;
+  if (key === composerCatalogKey && composerCatalog) {
+    populateComposerEffort();
+    return;
+  }
+  const agent = $("adapter").value;
+  try {
+    const value = await api("/api/settings", {
+      action: "view",
+      project: projectId,
+      conversation: selected,
+      agent,
+      mode: $("mode").value,
+      overrides: nextRun[agent] ?? {},
+    });
+    if (composerKey() + ":" + $("mode").value !== key) return;
+    composerCatalog = value.catalog;
+    composerCatalog.effectiveEffort = value.effective?.selection?.effort;
+    composerCatalogKey = key;
+    const override = nextRun[agent] ?? {};
+    const effectiveModel = value.effective?.selection?.model ?? "provider";
+    fillSelect(
+      model,
+      [
+        ["auto", "Auto — agentd task routing"],
+        ["provider", "Provider default"],
+        ...(value.catalog?.models ?? []).map((m) => [m.id, m.name]),
+      ],
+      override.model || effectiveModel,
+    );
+    populateComposerEffort();
+    $("selection-summary").dataset.model =
+      model.value === "provider"
+        ? "Default model"
+        : model.value === "auto"
+          ? "Auto model"
+          : model.options[model.selectedIndex]?.textContent || model.value;
+    $("selection-summary").textContent =
+      $("selection-summary").dataset.model +
+      " · " +
+      (effort.value === "provider"
+        ? "default effort"
+        : effort.value === "auto"
+          ? "auto effort"
+          : effort.value + " effort");
+    renderPicker();
+  } catch (error) {
+    fillSelect(model, [["provider", "Provider default"]]);
+    fillSelect(effort, [["provider", "Provider default"]]);
+    notice(error.message);
+  }
+}
+function pinComposerNextRun() {
+  const agent = $("adapter").value;
+  if (!agent) return;
+  const values = { ...(nextRun[agent] ?? {}) };
+  const model = $("composer-model")?.value;
+  const effort = $("composer-effort")?.value;
+  if (model) values.model = model;
+  if (effort) values.effort = effort;
+  nextRun[agent] = values;
+  saveDraft();
+  $("selection-summary").dataset.model =
+    model === "provider"
+      ? "Default model"
+      : model === "auto"
+        ? "Auto model"
+        : $("composer-model").options[$("composer-model").selectedIndex]?.textContent ||
+          model;
+  renderPicker();
+}
 $("adapter").onchange = $("mode").onchange = () => {
   applyPolicy();
   saveDraft();
   if (!selected) fingerprint = "";
   void refresh();
+  void syncComposerCatalog();
 };
+$("composer-model").onchange = () => {
+  populateComposerEffort();
+  pinComposerNextRun();
+};
+$("composer-effort").onchange = () => pinComposerNextRun();
 let reviewTask = null,
   reviewTree = null,
   checking = false;
@@ -1517,12 +1642,15 @@ async function refresh() {
       $("selection-summary").dataset.model = effective
         ? effective.model === "provider"
           ? "Default model"
-          : effective.model
+          : effective.model === "auto"
+            ? "Auto model"
+            : effective.model
         : "";
       $("selection-summary").textContent = effective
         ? `${effective.model === "provider" ? "Provider default model" : effective.model} · ${effective.effort === "provider" ? "default effort" : effective.effort + " effort"}`
         : "Choose a model and effort";
       applyPolicy();
+      void syncComposerCatalog();
     }
     if (selected) {
       const data = await api(
@@ -3911,6 +4039,7 @@ setInterval(() => {
 // UI composition preserves the existing action handlers and approval payloads.
 setupShell();
 $("run-options").onclick = () => openSettings("next");
+$("composer-project-defaults").onclick = () => openSettings("project-agent");
 $("defaults-menu").onclick = () =>
   openSettings(selected ? "conversation-agent" : "project-agent");
 $("project-defaults").onclick = () => openSettings("project-agent");

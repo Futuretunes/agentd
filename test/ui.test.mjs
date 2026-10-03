@@ -444,7 +444,19 @@ test("workspace has unique controls, keyboard-accessible attachment input and na
   );
   assert.equal(
     document.getElementById("run-options").getAttribute("aria-label"),
-    "Change model and effort",
+    "More run settings",
+  );
+  assert.equal(
+    document.getElementById("composer-model").getAttribute("aria-label"),
+    "Model",
+  );
+  assert.equal(
+    document.getElementById("composer-effort").getAttribute("aria-label"),
+    "Reasoning effort",
+  );
+  assert.equal(
+    document.getElementById("composer-project-defaults").getAttribute("aria-label"),
+    "Project agent defaults",
   );
   for (const id of ["drawer-open", "drawer-close", "conversation-menu"]) {
     const el =
@@ -913,7 +925,7 @@ test("composer hints announce changes politely", () => {
     assert.match(tag[0], /aria-live="polite"/);
   }
   assert.match(
-    html.match(/<span[^>]*id="selection-summary"[^>]*>/)[0],
+    html.match(/<(?:span|p)[^>]*id="selection-summary"[^>]*>/)[0],
     /aria-live="polite"/,
   );
   for (const id of ["picker-summary", "picker-mode"]) {
@@ -2069,7 +2081,7 @@ test("model and effort row exposes a stable accessible name", () => {
   );
   const row = document.querySelector(".picker-model");
   assert.equal(row.getAttribute("role"), "group");
-  assert.equal(row.getAttribute("aria-label"), "Model and effort");
+  assert.equal(row.getAttribute("aria-label"), "Advanced run settings");
 });
 
 test("projects section heading exposes a stable accessible name", () => {
@@ -3667,7 +3679,10 @@ test("Phone history filter touch target is named in app bootstrap", () => {
 
 test("Phone mode adapter touch target is named in app bootstrap", () => {
   const src = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
-  assert.match(src, /#mode,\n  #adapter \{\n    min-height: 44px/);
+  assert.match(
+    src,
+    /#mode,\n  #adapter,\n  #composer-model,\n  #composer-effort \{\n    min-height: 44px/,
+  );
 });
 
 test("Phone theme touch target is named in app bootstrap", () => {
