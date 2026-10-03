@@ -6,17 +6,17 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
-## Candidate 0.604.0 — Workspace defaults and project delete (Cursor)
+## Candidate 0.604.1 — Workspace defaults and project delete (Cursor)
 
-See [handover](handovers/2026-10-03-cursor-workspace-defaults-delete.md).
+See [handover](handovers/2026-10-03-cursor-workspace-defaults-delete.md). **Live-installed on 192.168.1.20.**
 
 ## Candidate 0.603.0 — Composer agent/mode/model/effort controls (Cursor)
 
-See [handover](handovers/2026-10-03-cursor-gui-composer-run-controls.md).
+See [handover](handovers/2026-10-03-cursor-gui-composer-run-controls.md). **Superseded on live by 0.604.1.**
 
 ## Candidate 0.602.0 — Dialog Escape and backdrop dismiss (Cursor)
 
-See [handover](handovers/2026-10-03-cursor-gui-dialog-dismiss.md).
+See [handover](handovers/2026-10-03-cursor-gui-dialog-dismiss.md). **Superseded on live by 0.604.1.**
 
 ## Candidate 0.601.0 — Link underline offset (Cursor)
 

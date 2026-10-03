@@ -19,5 +19,5 @@
 
 ## Follow-up
 
-1. Live-install 0.604.0 on 192.168.1.20 after merge.
+1. Done: live-installed 0.604.1 on 192.168.1.20 (`8d50fa7`, SHA-256 `7d7580105d6d4bbda66f4dcd3b920e2eb17745236f66cb156109a056c55f7778`).
 2. Optional: surface pending-delete countdown more prominently in History.
