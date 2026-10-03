@@ -57,6 +57,7 @@ The first version had four confirmed bugs: a subfolder of a parent repository go
 - `node --test test/local-folder-ui.test.mjs`: 8/8 (exact lists, handover contents, invalidation, stale preview, progress/cancel/registration, recovery behind the key).
 - `node --test test/mobile-response.test.mjs test/operation-policy.test.mjs`: pass (post-header failure; all 2^16 admission states against explicit reference expressions).
 - `npm test`: 776 tests, 767 pass, 0 fail, 9 skipped. The skips are the Linux-only isolation fixtures, which CI runs with zero skips allowed.
+- CI on `27e9f32`: Node 24 and 26 pass. Required Linux isolation reports 776 tests, 776 pass, 0 fail, 0 skipped (run 37160761235). The first push failed once in isolation: newer Git's detached auto-maintenance in the test fixture wrote `maintenance.lock` while the test hashed `.git`. The fixtures now disable auto-maintenance, which AgentD's shared Git policy already disables.
 
 ## Remaining limitations
 
