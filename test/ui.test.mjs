@@ -28,6 +28,10 @@ import {
   brandMarkElement,
   disabledOptionReason,
   openDialog,
+  requestCloseDialog,
+  markDialogDirty,
+  markDialogClean,
+  trackDialogDirty,
   setTextWithTitle,
   emptyConversationList,
   emptyProjectList,
@@ -581,8 +585,13 @@ test("openDialog restores focus to the trigger when the dialog closes", () => {
   };
   const dialog = {
     open: false,
+    dataset: {},
     showModal() {
       this.open = true;
+    },
+    close() {
+      this.open = false;
+      listeners.close?.();
     },
     addEventListener(type, fn) {
       listeners[type] = fn;
@@ -597,6 +606,73 @@ test("openDialog restores focus to the trigger when the dialog closes", () => {
   listeners.close();
   assert.equal(trigger.focused, 1);
   assert.equal(dialog.__agentdReturnFocus, null);
+});
+test("requestCloseDialog confirms before discarding dirty dialogs", () => {
+  const listeners = {};
+  const dialog = {
+    open: false,
+    dataset: {},
+    showModal() {
+      this.open = true;
+    },
+    close() {
+      this.open = false;
+      listeners.close?.();
+    },
+    addEventListener(type, fn) {
+      listeners[type] = fn;
+    },
+  };
+  openDialog(dialog, { focus() {} });
+  markDialogDirty(dialog);
+  const prior = globalThis.confirm;
+  let asked = 0;
+  globalThis.confirm = () => {
+    asked += 1;
+    return false;
+  };
+  try {
+    assert.equal(requestCloseDialog(dialog), false);
+    assert.equal(dialog.open, true);
+    assert.equal(asked, 1);
+    globalThis.confirm = () => {
+      asked += 1;
+      return true;
+    };
+    assert.equal(requestCloseDialog(dialog), true);
+    assert.equal(dialog.open, false);
+    assert.equal(asked, 2);
+    markDialogClean(dialog);
+    trackDialogDirty({ addEventListener() {} }, dialog);
+  } finally {
+    globalThis.confirm = prior;
+  }
+});
+test("openDialog backdrop click dismisses a clean dialog", () => {
+  const listeners = {};
+  const dialog = {
+    open: false,
+    dataset: {},
+    showModal() {
+      this.open = true;
+    },
+    close() {
+      this.open = false;
+      listeners.close?.();
+    },
+    addEventListener(type, fn) {
+      listeners[type] = fn;
+    },
+  };
+  openDialog(dialog, { focus() {} });
+  listeners.click({ target: dialog });
+  assert.equal(dialog.open, false);
+});
+test("dialog dismiss helpers are exported for app close buttons", () => {
+  const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(source, /requestCloseDialog/);
+  assert.match(source, /trackDialogDirty/);
+  assert.match(source, /markDialogClean/);
 });
 test("app opens dialogs through openDialog for focus restoration", () => {
   const source = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");

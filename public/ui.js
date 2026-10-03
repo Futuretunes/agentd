@@ -698,9 +698,77 @@ export function emptyProjectList(documentRef = document) {
   return { wrap, copy, start };
 }
 
+/** Whether a modal has unsaved edits that should block light-dismiss. */
+export function isDialogDirty(dialog) {
+  return Boolean(dialog && dialog.dataset && dialog.dataset.dirty === "1");
+}
+
+/** Mark a modal dirty so Escape/backdrop/close ask before discarding. */
+export function markDialogDirty(dialog) {
+  if (dialog?.dataset) dialog.dataset.dirty = "1";
+}
+
+/** Clear dirty state after save or intentional discard. */
+export function markDialogClean(dialog) {
+  if (dialog?.dataset) delete dialog.dataset.dirty;
+}
+
+/**
+ * Track input/change on a form (or root) as dirty for its nearest dialog.
+ * Idempotent per root.
+ */
+export function trackDialogDirty(root, dialog) {
+  if (!root || !dialog || root.__agentdDirtyBound) return root;
+  root.__agentdDirtyBound = true;
+  const mark = (event) => {
+    const target = event.target;
+    if (!target || typeof target.matches !== "function") return;
+    if (!target.matches("input, select, textarea")) return;
+    markDialogDirty(dialog);
+  };
+  root.addEventListener("input", mark);
+  root.addEventListener("change", mark);
+  return root;
+}
+
+/**
+ * Close a modal, confirming when dirty. Returns whether it closed.
+ * force skips the confirm (used after successful save).
+ */
+export function requestCloseDialog(dialog, { force = false } = {}) {
+  if (!dialog) return true;
+  if (!dialog.open) {
+    markDialogClean(dialog);
+    return true;
+  }
+  if (!force && isDialogDirty(dialog)) {
+    const ask =
+      typeof globalThis.confirm === "function" ? globalThis.confirm : () => true;
+    if (!ask("Discard unsaved changes?")) return false;
+  }
+  markDialogClean(dialog);
+  dialog.close();
+  return true;
+}
+
+function bindDialogDismiss(dialog) {
+  if (!dialog || dialog.__agentdDismissBound) return;
+  dialog.__agentdDismissBound = true;
+  dialog.addEventListener("cancel", (event) => {
+    if (!isDialogDirty(dialog)) return;
+    event.preventDefault();
+    requestCloseDialog(dialog);
+  });
+  dialog.addEventListener("click", (event) => {
+    if (event.target !== dialog) return;
+    requestCloseDialog(dialog);
+  });
+}
+
 /**
  * Open a modal dialog and restore focus to the trigger when it closes (U19).
  * Re-opening an already-open dialog is a no-op so refresh paths keep the trigger.
+ * Escape and backdrop click dismiss unless the dialog is dirty.
  */
 export function openDialog(dialog, trigger) {
   if (!dialog) return dialog;
@@ -708,6 +776,7 @@ export function openDialog(dialog, trigger) {
   if (!dialog.__agentdFocusBound) {
     dialog.__agentdFocusBound = true;
     dialog.addEventListener("close", () => {
+      markDialogClean(dialog);
       const el = dialog.__agentdReturnFocus;
       dialog.__agentdReturnFocus = null;
       if (!el || typeof el.focus !== "function") return;
@@ -719,6 +788,7 @@ export function openDialog(dialog, trigger) {
       }
     });
   }
+  bindDialogDismiss(dialog);
   if (!dialog.open) {
     const candidate =
       trigger !== undefined
@@ -728,6 +798,7 @@ export function openDialog(dialog, trigger) {
           : null;
     dialog.__agentdReturnFocus =
       candidate && typeof candidate.focus === "function" ? candidate : null;
+    markDialogClean(dialog);
     dialog.showModal();
   }
   return dialog;
@@ -780,7 +851,7 @@ export function setupShell() {
   mobile.addEventListener("change", () => drawer(false));
   drawer(false);
   // Preferences open is owned by app.js (loads accounts via openDialog).
-  $("preferences-close").onclick = () => $("preferences-dialog").close();
+  $("preferences-close").onclick = () => requestCloseDialog($("preferences-dialog"));
   const appearance = $("theme");
   try {
     appearance.value = localStorage.getItem("agentd-theme") || "system";

@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.602.0 — Dialog Escape and backdrop dismiss (Cursor)
+
+See [handover](handovers/2026-10-03-cursor-gui-dialog-dismiss.md).
+
 ## Candidate 0.601.0 — Link underline offset (Cursor)
 
 See [handover](handovers/2026-09-30-cursor-gui-link-underline-offset.md). **Live-installed on 192.168.1.20.**
