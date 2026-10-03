@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, mkdirSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { once } from "node:events";
 import { createHash, randomUUID } from "node:crypto";
@@ -116,7 +117,7 @@ test("HTTPS auth secure cookies CSRF uploads and private runner bridge", async (
       port: 0,
       socket: sock,
       attachments: join(root, "images"),
-      publicDir: new URL("../public", import.meta.url).pathname,
+      publicDir: fileURLToPath(new URL("../public", import.meta.url)),
     });
     await once(web, "listening");
     const req = (path, data, cookie, origin = "https://localhost") =>

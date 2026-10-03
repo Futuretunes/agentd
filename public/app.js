@@ -2685,6 +2685,130 @@ $("import-open").onclick = () => {
   openDialog($("repository-dialog"));
   void updateRepositories();
 };
+let localFolderPreview = null;
+function renderLocalFolderPreview(preview) {
+  const box = $("local-folder-preview");
+  if (!preview) {
+    box.replaceChildren();
+    $("local-folder-approve").hidden = true;
+    return;
+  }
+  const caseLabel =
+    preview.case === "existing_git"
+      ? "Existing Git repository (register in place; no commit)"
+      : preview.case === "empty"
+        ? "Empty folder (initialize Git + handover, then approved initial commit)"
+        : "Folder without Git (initialize Git + handover, then approved initial commit)";
+  box.replaceChildren(
+    node("p", "Detected: " + caseLabel),
+    node(
+      "p",
+      "Path: " +
+        preview.pathLabel +
+        (preview.branch ? " · branch " + preview.branch : "") +
+        (preview.dirty ? " · has local changes" : ""),
+    ),
+    node(
+      "p",
+      "Stack hints: " +
+        (preview.stack?.length ? preview.stack.join(", ") : "none detected"),
+    ),
+    node(
+      "p",
+      "Handover files to create: " +
+        (preview.handoverToCreate?.length
+          ? preview.handoverToCreate.join(", ")
+          : "none (already present)"),
+    ),
+    node(
+      "p",
+      "Files to add: " +
+        (preview.filesToAdd?.length ? preview.filesToAdd.length : 0) +
+        (preview.willCreateInitialCommit ? " · initial commit planned" : " · no commit"),
+    ),
+    node(
+      "p",
+      "Ignored or excluded: " +
+        (preview.ignoredOrExcluded?.length ? preview.ignoredOrExcluded.length : 0),
+    ),
+    ...(preview.sensitiveFindings?.length
+      ? [
+          node(
+            "p",
+            "Sensitive findings excluded from the commit: " +
+              preview.sensitiveFindings.length,
+            "error",
+          ),
+        ]
+      : []),
+    node("p", "Git operations: " + (preview.gitOperations || []).join("; ")),
+  );
+  $("local-folder-approve").hidden = false;
+}
+$("local-folder-open").onclick = () => {
+  $("project-dialog").close();
+  localFolderPreview = null;
+  renderLocalFolderPreview(null);
+  $("local-folder-name").value = $("project-input").value || "";
+  $("local-folder-path").value = "";
+  $("local-folder-key").value = "";
+  openDialog($("local-folder-dialog"));
+  $("local-folder-path").focus();
+};
+$("local-folder-close").onclick = () => requestCloseDialog($("local-folder-dialog"));
+$("local-folder-cancel-preview").onclick = async () => {
+  try {
+    await api("/api/local-folder", { action: "cancel" });
+  } catch {}
+  localFolderPreview = null;
+  renderLocalFolderPreview(null);
+  requestCloseDialog($("local-folder-dialog"), { force: true });
+};
+$("local-folder-preview-btn").onclick = async () => {
+  try {
+    localFolderPreview = await api("/api/local-folder", {
+      action: "preview",
+      name: $("local-folder-name").value,
+      path: $("local-folder-path").value,
+    });
+    renderLocalFolderPreview(localFolderPreview);
+    markDialogClean($("local-folder-dialog"));
+    notice("Review the detected outcome, then approve with your access key.");
+  } catch (e) {
+    localFolderPreview = null;
+    renderLocalFolderPreview(null);
+    notice(e.message);
+  }
+};
+$("local-folder-form").onsubmit = async (e) => {
+  e.preventDefault();
+  if (!localFolderPreview?.fingerprint) {
+    notice("Review the folder before approving.");
+    return;
+  }
+  const button = $("local-folder-approve");
+  button.disabled = true;
+  try {
+    const result = await api("/api/local-folder", {
+      action: "approve",
+      fingerprint: localFolderPreview.fingerprint,
+      currentKey: $("local-folder-key").value,
+    });
+    saveDraft();
+    projectId = result.id;
+    reset();
+    localFolderPreview = null;
+    renderLocalFolderPreview(null);
+    requestCloseDialog($("local-folder-dialog"), { force: true });
+    notice("Local folder registered.");
+    await refresh();
+  } catch (error) {
+    notice(error.message);
+  } finally {
+    button.disabled = false;
+  }
+};
+trackDialogDirty($("local-folder-form"), $("local-folder-dialog"));
 $("repository-close").onclick = () => requestCloseDialog($("repository-dialog"));
 trackDialogDirty($("repository-form"), $("repository-dialog"));
 $("repository-url").oninput = () => {

@@ -10,6 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFile, execFileSync } from "node:child_process";
 import { once } from "node:events";
 import { runner } from "../src/runner.ts";
@@ -95,7 +96,7 @@ test("account changes exclude task approvals and running workers; audit excludes
     const cliOutput = await new Promise((resolve, reject) =>
       execFile(
         process.execPath,
-        [new URL("../src/control.ts", import.meta.url).pathname, "account-session"],
+        [fileURLToPath(new URL("../src/control.ts", import.meta.url)), "account-session"],
         {
           env: {
             ...process.env,
