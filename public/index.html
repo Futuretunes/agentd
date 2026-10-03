@@ -297,14 +297,123 @@
         </p>
         <button id="settings-defaults">Edit agent defaults</button>
       </section>
-      <section class="settings-section" aria-labelledby="settings-appearance-heading">
-        <h3 id="settings-appearance-heading">Appearance</h3>
-        <label for="theme">Theme</label
-        ><select id="theme" aria-label="Appearance theme">
-          <option value="system">Use device setting</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
+      <section class="settings-section" aria-labelledby="settings-workspace-heading">
+        <h3 id="settings-workspace-heading">Workspace defaults</h3>
+        <p class="muted">
+          Look, run defaults, delete policy and behaviour for this AgentD install.
+        </p>
+        <form id="workspace-defaults-form" aria-label="Workspace defaults">
+          <fieldset>
+            <legend>Look</legend>
+            <label for="theme">Theme</label>
+            <select id="theme" name="theme" aria-label="Appearance theme">
+              <option value="system">Use device setting</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+            <label for="density">Density</label>
+            <select id="density" name="density" aria-label="Interface density">
+              <option value="comfortable">Comfortable</option>
+              <option value="compact">Compact</option>
+            </select>
+          </fieldset>
+          <fieldset>
+            <legend>Run defaults</legend>
+            <label for="default-adapter">Default agent</label>
+            <select id="default-adapter" name="defaultAdapter" aria-label="Default agent">
+              <option value="claude">Claude</option>
+              <option value="codex">Codex</option>
+              <option value="cursor">Cursor</option>
+            </select>
+            <label for="default-mode">Default mode</label>
+            <select id="default-mode" name="defaultMode" aria-label="Default mode">
+              <option value="ask">Ask</option>
+              <option value="edit">Edit</option>
+              <option value="chat">Chat</option>
+            </select>
+            <label for="default-model">Default model</label>
+            <input
+              id="default-model"
+              name="defaultModel"
+              value="provider"
+              autocomplete="off"
+              aria-label="Default model id"
+            />
+            <label for="default-effort">Default effort</label>
+            <select id="default-effort" name="defaultEffort" aria-label="Default effort">
+              <option value="provider">Provider default</option>
+              <option value="auto">Auto</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="xhigh">Extra high</option>
+            </select>
+          </fieldset>
+          <fieldset>
+            <legend>Delete policy</legend>
+            <label for="delete-timing">When deleting a project</label>
+            <select id="delete-timing" name="deleteTiming" aria-label="Delete timing">
+              <option value="immediate">Delete now</option>
+              <option value="grace">Keep for a grace period</option>
+            </select>
+            <label for="delete-grace-days">Grace period (days)</label>
+            <input
+              id="delete-grace-days"
+              name="deleteGraceDays"
+              type="number"
+              min="1"
+              max="90"
+              value="7"
+              aria-label="Grace period days"
+            />
+          </fieldset>
+          <fieldset>
+            <legend>Behaviour</legend>
+            <label class="check">
+              <input
+                id="drawer-auto-close"
+                name="drawerAutoClose"
+                type="checkbox"
+                checked
+              />
+              Auto-close phone drawer after choosing a project or conversation
+            </label>
+            <label for="notice-info-ms">Info notice duration (ms)</label>
+            <input
+              id="notice-info-ms"
+              name="noticeInfoMs"
+              type="number"
+              min="1000"
+              max="60000"
+              step="500"
+              value="5000"
+              aria-label="Info notice duration"
+            />
+            <label for="notice-error-ms">Error notice duration (ms)</label>
+            <input
+              id="notice-error-ms"
+              name="noticeErrorMs"
+              type="number"
+              min="1000"
+              max="120000"
+              step="500"
+              value="8000"
+              aria-label="Error notice duration"
+            />
+            <p class="muted">
+              Mobile notification pause defaults stay under Configuration → Notifications.
+            </p>
+          </fieldset>
+          <label for="workspace-defaults-key">Current access key</label>
+          <input
+            id="workspace-defaults-key"
+            type="password"
+            autocomplete="current-password"
+            aria-label="Current access key for workspace defaults"
+          />
+          <p class="muted">Required to save (policy-affecting workspace defaults).</p>
+          <button type="submit">Save workspace defaults</button>
+        </form>
       </section>
       <section class="settings-section" aria-labelledby="settings-access-heading">
         <h3 id="settings-access-heading">Workspace access</h3>
@@ -357,6 +466,43 @@
       <section class="settings-section" aria-label="Sign out">
         <button id="logout" class="danger">Sign out of workspace</button>
       </section>
+    </dialog>
+    <dialog id="project-delete-dialog" aria-labelledby="project-delete-heading">
+      <div class="review-head" role="group" aria-label="Delete project heading">
+        <h2 id="project-delete-heading">Delete project</h2>
+        <button id="project-delete-close" aria-label="Close delete project">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      <form id="project-delete-form" aria-label="Delete project">
+        <p class="muted" id="project-delete-summary"></p>
+        <fieldset>
+          <legend>What to remove</legend>
+          <label class="check">
+            <input type="radio" name="scope" value="agentd" checked />
+            A — AgentD only (history, worktrees, attachments; leave checkout on disk)
+          </label>
+          <label class="check">
+            <input type="radio" name="scope" value="agentd_and_checkout" />
+            B — Also remove the local project checkout (AgentD-managed paths only)
+          </label>
+        </fieldset>
+        <label for="project-delete-confirm">Type the project name to confirm</label>
+        <input
+          id="project-delete-confirm"
+          name="confirmName"
+          autocomplete="off"
+          aria-label="Confirm project name"
+        />
+        <label for="project-delete-key">Current access key (required for B)</label>
+        <input
+          id="project-delete-key"
+          type="password"
+          autocomplete="current-password"
+          aria-label="Current access key for checkout delete"
+        />
+        <button type="submit" class="danger">Delete project</button>
+      </form>
     </dialog>
     <dialog id="access-key-dialog" aria-labelledby="access-key-heading">
       <div class="review-head" role="group" aria-label="Access key heading">

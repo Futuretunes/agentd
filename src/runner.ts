@@ -35,6 +35,19 @@ import { retention } from "./retention.ts";
 import { attachmentStore } from "./attachment-store.ts";
 import { gatewaySocket, gatewayMutations } from "./gateway-protocol.ts";
 import { initializeTaskDatabase } from "./task-database.ts";
+import {
+  purgeAtFromPreferences,
+  readWorkspacePreferences,
+  writeWorkspacePreferences,
+  type WorkspacePreferences,
+} from "./workspace-preferences.ts";
+import {
+  dueDeletedProjects,
+  isManagedProjectCheckout,
+  purgeProjectRecords,
+  removeManagedCheckout,
+  type DeleteScope,
+} from "./project-delete.ts";
 import { settings, resolveSettings, type Settings } from "./execution-settings.ts";
 import { modelCatalog, discoverModels } from "./model-catalog.ts";
 import { unresolvedConflicts, type ReviewAPI } from "./github-review.ts";
@@ -483,6 +496,21 @@ export function runner(c: Config) {
           .get(scope, id, agent)?.settings ?? "{}",
       ),
     ) as Settings;
+  function workspacePrefs(): WorkspacePreferences {
+    return readWorkspacePreferences(db);
+  }
+  function installationDefaults(agent: string): Settings {
+    const prefs = workspacePrefs();
+    const values: Settings = {};
+    if (prefs.defaultAdapter === agent || !prefs.defaultAdapter) {
+      if (prefs.defaultModel) values.model = prefs.defaultModel;
+      if (prefs.defaultEffort) values.effort = prefs.defaultEffort;
+    } else if (prefs.defaultModel || prefs.defaultEffort) {
+      if (prefs.defaultModel) values.model = prefs.defaultModel;
+      if (prefs.defaultEffort) values.effort = prefs.defaultEffort;
+    }
+    return values;
+  }
   function layers(
     projectId: string,
     conversationId: string | null,
@@ -490,6 +518,7 @@ export function runner(c: Config) {
     overrides: Settings = {},
   ) {
     return [
+      { source: "Workspace", values: installationDefaults(agent) },
       { source: "Project", values: layer("project", projectId, "*") },
       { source: "Project · " + agent, values: layer("project", projectId, agent) },
       ...(conversationId
@@ -506,6 +535,54 @@ export function runner(c: Config) {
         : []),
       { source: "Next run", values: overrides },
     ];
+  }
+  function projectBusyForDelete(id: string) {
+    if (dependencyManager.busy() || publicationManager.busy() || projectBusy(id))
+      return true;
+    if (
+      db
+        .prepare(
+          "SELECT id FROM tasks WHERE project=? AND (status IN ('waiting_for_approval','queued','running','cancelling') OR review='pending') LIMIT 1",
+        )
+        .get(id)
+    )
+      return true;
+    if (active && get(active.id)?.project === id) return true;
+    return false;
+  }
+  function purgeProjectNow(row: Record<string, unknown>) {
+    const id = String(row.id);
+    if (projectBusyForDelete(id))
+      throw Error(
+        "Finish or cancel pending runs and resolve reviews before deleting this project.",
+      );
+    const scope = String(row.delete_scope || "agentd") as DeleteScope;
+    const projectsRoot = c.projectsDir ?? join(c.stateDir, "projects");
+    const repo = String(row.repo);
+    auditedWrite("project-purge", null, { project: id, scope }, () => {
+      purgeProjectRecords(db, id, {
+        worktrees: c.worktrees,
+        logs: c.logs,
+        attachments: attachmentRoot,
+      });
+      if (scope === "agentd_and_checkout") {
+        if (isManagedProjectCheckout(repo, projectsRoot, id))
+          removeManagedCheckout(repo, projectsRoot, id);
+        else
+          throw Error(
+            "Checkout is outside AgentD-managed project roots and was not removed.",
+          );
+      }
+    });
+  }
+  function purgeDueProjects() {
+    for (const row of dueDeletedProjects(db)) {
+      try {
+        purgeProjectNow(row);
+      } catch {
+        /* leave for later */
+      }
+    }
   }
   function execution(row: any) {
     requireAdapter(String(row.adapter), String(row.mode));
@@ -737,6 +814,14 @@ export function runner(c: Config) {
   setImmediate(() => refreshAccounts(true));
   const accountTimer = setInterval(() => refreshAccounts(true), 300000);
   accountTimer.unref();
+  const purgeTimer = setInterval(() => {
+    try {
+      purgeDueProjects();
+    } catch {
+      /* next tick */
+    }
+  }, 60000);
+  purgeTimer.unref();
   const operationError = (value: unknown) => {
     if (value === null || value === undefined || value === "") return null;
     const message = String(value);
@@ -2037,15 +2122,18 @@ export function runner(c: Config) {
     throw Error("Unknown service read operation");
   }
   function handleWorkspaceReadRequest(input: any) {
+    if (input.op === "workspace-preferences") return workspacePrefs();
     if (input.op === "projects")
       return db
         .prepare(
-          `SELECT p.*, (SELECT count(*) FROM conversations c WHERE c.project=p.id AND c.archived=0) AS conversations FROM projects p WHERE p.archived=0 ORDER BY p.created,p.id`,
+          `SELECT p.*, (SELECT count(*) FROM conversations c WHERE c.project=p.id AND c.archived=0) AS conversations FROM projects p WHERE p.archived=0 AND p.deleted_at IS NULL ORDER BY p.created,p.id`,
         )
         .all();
     if (input.op === "archived-projects")
       return db
-        .prepare("SELECT id,name,created FROM projects WHERE archived=1 ORDER BY name,id")
+        .prepare(
+          "SELECT id,name,created,deleted_at,purge_after,delete_scope FROM projects WHERE archived=1 OR deleted_at IS NOT NULL ORDER BY name,id",
+        )
         .all();
     if (input.op === "history") {
       const query = input.query ?? "",
@@ -2065,6 +2153,7 @@ export function runner(c: Config) {
         (SELECT status FROM tasks t WHERE t.conversation=c.id ORDER BY t.rowid DESC LIMIT 1) AS status,
         (SELECT max(updated) FROM tasks t WHERE t.conversation=c.id) AS updated
         FROM conversations c JOIN projects p ON p.id=c.project WHERE c.rowid<?
+        AND p.deleted_at IS NULL
         AND (?='all' OR (?='archived' AND (c.archived=1 OR p.archived=1)) OR (?='active' AND c.archived=0 AND p.archived=0))
         AND (?='' OR instr(lower(c.title),lower(?))>0 OR instr(lower(p.name),lower(?))>0
           OR EXISTS(SELECT 1 FROM tasks t WHERE t.conversation=c.id AND instr(lower(t.prompt),lower(?))>0))
@@ -2201,8 +2290,12 @@ export function runner(c: Config) {
     if (input.op === "project-archive" || input.op === "project-restore") {
       if (dependencyManager.busy() || publicationManager.busy() || projectBusy(input.id))
         throw Error("Wait for the repository or publishing operation.");
-      const p = project(input.id),
+      const p = project(input.id) as Record<string, unknown>,
         archive = input.op === "project-archive";
+      if (p.deleted_at)
+        throw Error(
+          "Project is pending deletion. Cancel deletion before archiving or restoring.",
+        );
       if (
         archive &&
         db
@@ -2263,6 +2356,69 @@ export function runner(c: Config) {
       audit(input.op, null, { conversation: input.id });
       return { ok: true };
     }
+    if (input.op === "workspace-preferences-save") {
+      const before = workspacePrefs();
+      const after = writeWorkspacePreferences(db, input.values ?? input);
+      audit("workspace-preferences-save", null, { before, after });
+      return after;
+    }
+    if (input.op === "project-delete") {
+      if (projectBusyForDelete(input.id))
+        throw Error(
+          "Finish or cancel pending runs and resolve reviews before deleting this project.",
+        );
+      const p = project(input.id) as Record<string, unknown>;
+      if (p.deleted_at) throw Error("Project is already pending deletion.");
+      if (input.confirmName !== p.name)
+        throw Error("Type the project name to confirm deletion.");
+      const scope = input.scope as DeleteScope;
+      if (scope !== "agentd" && scope !== "agentd_and_checkout")
+        throw Error("Choose AgentD-only or AgentD plus local checkout.");
+      if (scope === "agentd_and_checkout") {
+        const projectsRoot = c.projectsDir ?? join(c.stateDir, "projects");
+        if (!isManagedProjectCheckout(String(p.repo), projectsRoot, String(p.id)))
+          throw Error(
+            "Checkout is outside AgentD-managed project roots and cannot be removed automatically.",
+          );
+      }
+      const prefs = workspacePrefs();
+      const deletedAt = new Date().toISOString();
+      const purgeAfter = purgeAtFromPreferences(prefs);
+      db.prepare(
+        "UPDATE projects SET deleted_at=?, delete_scope=?, purge_after=?, archived=1 WHERE id=?",
+      ).run(deletedAt, scope, purgeAfter, input.id);
+      audit(input.op, null, {
+        project: input.id,
+        scope,
+        purgeAfter,
+        deleteTiming: prefs.deleteTiming,
+      });
+      if (prefs.deleteTiming === "immediate") {
+        purgeProjectNow({
+          ...p,
+          deleted_at: deletedAt,
+          delete_scope: scope,
+          purge_after: purgeAfter,
+        });
+        return { ok: true, purged: true, purgeAfter };
+      }
+      return { ok: true, purged: false, purgeAfter, scope };
+    }
+    if (input.op === "project-delete-cancel") {
+      const p = project(input.id) as Record<string, unknown>;
+      if (!p.deleted_at) throw Error("Project is not pending deletion.");
+      db.prepare(
+        "UPDATE projects SET deleted_at=NULL, delete_scope=NULL, purge_after=NULL, archived=0 WHERE id=?",
+      ).run(input.id);
+      audit(input.op, null, { project: input.id });
+      return project(input.id);
+    }
+    if (input.op === "project-purge") {
+      const p = project(input.id) as Record<string, unknown>;
+      if (!p.deleted_at) throw Error("Schedule deletion before purging.");
+      purgeProjectNow(p);
+      return { ok: true, purged: true };
+    }
     throw Error("Unknown workspace mutation operation");
   }
   function handleTaskRequest(input: any) {
@@ -2300,7 +2456,9 @@ export function runner(c: Config) {
       const projectId = input.project ?? thread?.project ?? "default";
       if (projectBusy(projectId))
         throw Error("Wait for the repository update before starting work.");
-      const selectedProject = project(projectId);
+      const selectedProject = project(projectId) as Record<string, unknown>;
+      if (selectedProject.deleted_at)
+        throw Error("Project is pending deletion. Cancel deletion before using it.");
       if (selectedProject.archived || thread?.archived)
         throw new Error("Workspace is archived");
       if (thread && thread.project !== projectId)
@@ -2774,6 +2932,7 @@ export function runner(c: Config) {
       await github.close();
       await catalog.close();
       clearInterval(accountTimer);
+      clearInterval(purgeTimer);
       await accountManager.close();
       await renewalManager?.close();
       await preparation;

@@ -73,9 +73,15 @@ function baseline(db: DatabaseSync, repo: string) {
     "github_url",
     "github_branch",
     "check_manifest",
+    "deleted_at",
+    "delete_scope",
+    "purge_after",
   ])
     if (!projectColumns.includes(name))
       db.exec(`ALTER TABLE projects ADD COLUMN ${name} TEXT`);
+  db.exec(
+    "CREATE TABLE IF NOT EXISTS workspace_preferences(id INTEGER PRIMARY KEY CHECK (id = 1), value TEXT NOT NULL, updated TEXT NOT NULL)",
+  );
   db.exec(
     "CREATE TABLE IF NOT EXISTS repository_jobs(id TEXT PRIMARY KEY,kind TEXT,state TEXT,project TEXT,source TEXT,branch TEXT,result TEXT,error TEXT,updated TEXT)",
   );

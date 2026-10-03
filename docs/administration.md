@@ -43,6 +43,7 @@ Settings gains an **Administration** section, visible only to the signed-in oper
 4. **Agents and CLIs:** installed native CLI versions against the tested versions, and guided CLI updates (roadmap item 6).
 5. **Backups:** list, retention policy, and restore with a preview (roadmap item 7). This merges with the existing approval-gated storage cleanup.
 6. **Configuration:** enabled agents and edit permissions, resource profile, gateway hardening status, the TLS certificate (expiry, replace), notifications (roadmap item 5) and the GitHub connection. Each shows the current value, what changing it affects, and needs confirmation.
+7. **Workspace defaults (0.604.0):** look (theme/density), run defaults (agent/mode/model/effort for the Workspace inheritance layer), delete policy (immediate vs grace days), and behaviour (drawer auto-close, notice durations). Persisted in SQLite `workspace_preferences`; saves require the current access key. Project delete offers AgentD-only vs also removing an AgentD-managed checkout, then follows this delete policy.
 
 ## Security model (non-negotiable)
 

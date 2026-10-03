@@ -1650,6 +1650,28 @@ test("appearance theme exposes a visible label", () => {
   );
 });
 
+test("workspace defaults and project delete surfaces are labeled", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("settings-workspace-heading").textContent.trim(),
+    "Workspace defaults",
+  );
+  assert.equal(
+    document.getElementById("workspace-defaults-form").getAttribute("aria-label"),
+    "Workspace defaults",
+  );
+  assert.equal(
+    document.getElementById("project-delete-heading").textContent.trim(),
+    "Delete project",
+  );
+  assert.equal(
+    document.getElementById("project-delete-form").getAttribute("aria-label"),
+    "Delete project",
+  );
+});
+
 test("history filter exposes a visible label", () => {
   const { document } = parseHTML(
     readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),

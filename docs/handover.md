@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.604.0 — Workspace defaults and project delete (Cursor)
+
+See [handover](handovers/2026-10-03-cursor-workspace-defaults-delete.md).
+
 ## Candidate 0.603.0 — Composer agent/mode/model/effort controls (Cursor)
 
 See [handover](handovers/2026-10-03-cursor-gui-composer-run-controls.md).

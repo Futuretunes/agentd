@@ -402,13 +402,33 @@ export function reviewProgression(state = {}) {
   };
 }
 
+/** Mutable notice lifetimes from Workspace defaults (server prefs + local cache). */
+const noticeTiming = { infoMs: 5000, errorMs: 8000 };
+let drawerAutoClose = true;
+
+export function applyWorkspaceBehaviour(prefs = {}) {
+  if (Number.isInteger(prefs.noticeInfoMs)) noticeTiming.infoMs = prefs.noticeInfoMs;
+  if (Number.isInteger(prefs.noticeErrorMs)) noticeTiming.errorMs = prefs.noticeErrorMs;
+  if (typeof prefs.drawerAutoClose === "boolean")
+    drawerAutoClose = prefs.drawerAutoClose;
+  if (prefs.density === "compact" || prefs.density === "comfortable")
+    document.documentElement.dataset.density = prefs.density;
+  if (["system", "light", "dark"].includes(prefs.theme)) {
+    const appearance = document.getElementById("theme");
+    if (appearance) {
+      appearance.value = prefs.theme;
+      appearance.dispatchEvent(new Event("change"));
+    }
+  }
+}
+
 /**
  * Toast lifetime for page/dialog notices. Success/info clear quickly;
  * explicit errors linger a bit longer so they remain readable.
  */
 export function noticeDismissMs(kind = "info") {
-  if (kind === "error") return 8000;
-  return 5000;
+  if (kind === "error") return noticeTiming.errorMs;
+  return noticeTiming.infoMs;
 }
 
 /** ARIA role for transient notices: errors interrupt; info stays polite status. */
@@ -846,6 +866,7 @@ export function setupShell() {
   $("sidebar").addEventListener("click", (e) => {
     if (!mobile.matches || !e.target.closest("button")) return;
     if (e.target.closest("#drawer-close")) return;
+    if (!drawerAutoClose) return;
     drawer(false);
   });
   mobile.addEventListener("change", () => drawer(false));
