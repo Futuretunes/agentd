@@ -1,6 +1,7 @@
 // No account or model use: isolated ACP initialize with synthetic access-only credentials.
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { homedir, tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { git } from "../src/changes.ts";
@@ -44,7 +45,7 @@ try {
     tree,
     state,
     process.execPath,
-    [new URL("../src/cursor-probe.ts", import.meta.url).pathname, binary],
+    [fileURLToPath(new URL("../src/cursor-probe.ts", import.meta.url)), binary],
     "cursor",
     undefined,
     true,

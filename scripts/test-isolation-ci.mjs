@@ -9,6 +9,7 @@ const result = spawnSync(
   process.execPath,
   [
     "--test",
+    "--test-timeout=300000",
     "--test-reporter=tap",
     ...readdirSync("test")
       .filter((f) => f.endsWith(".test.mjs"))

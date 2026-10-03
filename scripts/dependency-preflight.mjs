@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFileSync, spawn } from "node:child_process";
 import {
   checkManifest,
@@ -63,7 +64,7 @@ try {
     repo,
     root,
     process.execPath,
-    [new URL("../src/check-worker.ts", import.meta.url).pathname],
+    [fileURLToPath(new URL("../src/check-worker.ts", import.meta.url))],
     undefined,
     join(stage, "node_modules"),
   );

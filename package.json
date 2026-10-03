@@ -11,7 +11,7 @@
     "start": "node src/server.ts",
     "mobile": "node src/mobile.ts",
     "agentctl": "node src/control.ts",
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test --test-timeout=300000 test/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"public/**/*.js\" \"test/**/*.mjs\" \"scripts/**/*.mjs\" package.json tsconfig.json",
     "format:check": "prettier --check \"src/**/*.ts\" \"public/**/*.js\" \"test/**/*.mjs\" \"scripts/**/*.mjs\" package.json tsconfig.json"
