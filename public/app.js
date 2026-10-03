@@ -25,6 +25,9 @@ import {
   brandMarkElement,
   disabledOptionReason,
   openDialog,
+  requestCloseDialog,
+  trackDialogDirty,
+  markDialogClean,
   setTextWithTitle,
   emptyConversationList,
   emptyProjectList,
@@ -842,7 +845,7 @@ async function loadAccounts(show = true) {
     accountsBusy = false;
   }
 }
-$("operations-close").onclick = () => $("operations-dialog").close();
+$("operations-close").onclick = () => requestCloseDialog($("operations-dialog"));
 const accountDialog = node("dialog");
 accountDialog.id = "account-dialog";
 accountDialog.setAttribute("aria-labelledby", "account-heading");
@@ -1632,7 +1635,8 @@ $("add-project").onclick = () => {
   openDialog($("project-dialog"));
   $("project-input").focus();
 };
-$("project-close").onclick = () => $("project-dialog").close();
+$("project-close").onclick = () => requestCloseDialog($("project-dialog"));
+trackDialogDirty($("project-form"), $("project-dialog"));
 $("project-form").onsubmit = async (e) => {
   e.preventDefault();
   const b = e.submitter;
@@ -1652,7 +1656,7 @@ $("project-form").onsubmit = async (e) => {
     saveDraft();
     projectId = p.id;
     reset();
-    $("project-dialog").close();
+    requestCloseDialog($("project-dialog"), { force: true });
     $("project-input").value = "";
     notice();
     await refresh();
@@ -2324,7 +2328,7 @@ async function startCommit(id, tree, message, actions, checksBox) {
   await openReview(id);
 }
 $("review-close").onclick = () => {
-  $("review-dialog").close();
+  if (!requestCloseDialog($("review-dialog"))) return;
   reviewTask = null;
 };
 setInterval(async () => {
@@ -2448,7 +2452,7 @@ $("history-menu").onclick = () => {
   void loadHistory();
 };
 $("history-close").onclick = () => {
-  $("history-dialog").close();
+  if (!requestCloseDialog($("history-dialog"))) return;
   historyEpoch++;
 };
 $("history-form").onsubmit = (e) => {
@@ -2524,7 +2528,7 @@ async function updateRun() {
   }
 }
 $("run-close").onclick = () => {
-  $("run-dialog").close();
+  if (!requestCloseDialog($("run-dialog"))) return;
   runId = null;
 };
 setInterval(() => {
@@ -2546,7 +2550,8 @@ $("import-open").onclick = () => {
   openDialog($("repository-dialog"));
   void updateRepositories();
 };
-$("repository-close").onclick = () => $("repository-dialog").close();
+$("repository-close").onclick = () => requestCloseDialog($("repository-dialog"));
+trackDialogDirty($("repository-form"), $("repository-dialog"));
 $("repository-url").oninput = () => {
   repositorySource = null;
   $("repository-import").hidden = true;
@@ -2678,7 +2683,7 @@ $("github-open").onclick = () => {
   void updateGithub();
 };
 $("github-close").onclick = () => {
-  $("github-dialog").close();
+  if (!requestCloseDialog($("github-dialog"))) return;
   $("github-content").replaceChildren();
   githubRendered = "";
 };
@@ -2796,7 +2801,7 @@ async function openCheckSetup(project, task) {
   await updateCheckSetup();
 }
 $("check-setup-close").onclick = () => {
-  $("check-setup-dialog").close();
+  if (!requestCloseDialog($("check-setup-dialog"))) return;
   if (reviewTask && $("review-dialog").open) void openReview(reviewTask);
   setupTarget = null;
 };
@@ -2940,9 +2945,10 @@ async function openPublishing(task, project) {
   await updatePublishing();
 }
 $("publishing-close").onclick = () => {
-  $("publishing-dialog").close();
+  if (!requestCloseDialog($("publishing-dialog"))) return;
   publishingTask = null;
 };
+trackDialogDirty($("publishing-form"), $("publishing-dialog"));
 $("publishing-form").onsubmit = async (e) => {
   e.preventDefault();
   const button = e.submitter;
@@ -3126,8 +3132,9 @@ $("revision-close").onclick = async () => {
     $("revision-status").textContent = "Stopping revision preparation…";
     return;
   }
-  $("revision-dialog").close();
+  requestCloseDialog($("revision-dialog"));
 };
+trackDialogDirty($("revision-form"), $("revision-dialog"));
 $("revision-form").onsubmit = async (e) => {
   e.preventDefault();
   const b = e.submitter;
@@ -3182,7 +3189,9 @@ $("publishing-target").onchange = () => {
 };
 
 let publicationApproval = null;
-$("publication-confirm-close").onclick = () => $("publication-confirm-dialog").close();
+$("publication-confirm-close").onclick = () =>
+  requestCloseDialog($("publication-confirm-dialog"));
+trackDialogDirty($("publication-confirm-form"), $("publication-confirm-dialog"));
 $("publication-confirm-form").onsubmit = async (e) => {
   e.preventDefault();
   const b = e.submitter;
@@ -3217,9 +3226,10 @@ async function openFeedback(task, project) {
 }
 $("feedback-form").onsubmit = (e) => e.preventDefault();
 $("feedback-close").onclick = () => {
-  $("feedback-dialog").close();
+  if (!requestCloseDialog($("feedback-dialog"))) return;
   feedbackTask = null;
 };
+trackDialogDirty($("feedback-form"), $("feedback-dialog"));
 async function prepareFeedback(kind) {
   await api("/api/feedback", {
     action: "prepare",
@@ -3428,12 +3438,13 @@ settingsHead.setAttribute("role", "group");
 settingsHead.setAttribute("aria-label", "Agent settings heading");
 settingsHead.append(node("h2", "Agent settings"));
 settingsHead.firstChild.id = "settings-heading";
-const settingsClose = button("Close", () => settingsDialog.close());
+const settingsClose = button("Close", () => requestCloseDialog(settingsDialog));
 settingsClose.setAttribute("aria-label", "Close agent settings");
 settingsHead.append(settingsClose);
 const settingsForm = node("form"),
   settingsContent = node("div");
 settingsForm.setAttribute("aria-label", "Agent settings form");
+trackDialogDirty(settingsForm, settingsDialog);
 settingsContent.id = "settings-content";
 settingsContent.setAttribute("aria-label", "Agent settings");
 settingsContent.setAttribute("aria-live", "polite");
@@ -3775,7 +3786,7 @@ function renderSettings(data) {
             )
           ) {
             await api("/api/action", { op: "cancel", id: running.id });
-            settingsDialog.close();
+            requestCloseDialog(settingsDialog, { force: true });
             await refresh();
           }
         },
@@ -3825,7 +3836,7 @@ async function saveSettings(values, confirmed = false) {
   if (scope === "next") {
     nextRun[data.agent] = values;
     saveDraft();
-    settingsDialog.close();
+    requestCloseDialog(settingsDialog, { force: true });
     notice(
       "Next-run choices saved for " +
         data.agent +
@@ -3876,6 +3887,7 @@ async function saveSettings(values, confirmed = false) {
     await loadSettings();
     fingerprint = "";
     await refresh();
+    markDialogClean(settingsDialog);
     notice("Settings saved. Review updated pending runs before approving.");
   } catch (e) {
     notice(e.message);
@@ -3918,7 +3930,7 @@ function openPreferences() {
 $("preferences-menu").onclick = openPreferences;
 const accessKeyDialog = $("access-key-dialog"),
   accessKeyContent = $("access-key-content");
-$("access-key-close").onclick = () => accessKeyDialog.close();
+$("access-key-close").onclick = () => requestCloseDialog(accessKeyDialog);
 $("access-key-settings").onclick = () => {
   $("preferences-dialog").close();
   renderAccessKeyForm();
@@ -3926,7 +3938,7 @@ $("access-key-settings").onclick = () => {
 };
 const configurationDialog = $("configuration-dialog"),
   configurationContent = $("configuration-content");
-$("configuration-close").onclick = () => configurationDialog.close();
+$("configuration-close").onclick = () => requestCloseDialog(configurationDialog);
 $("configuration-settings").onclick = () => {
   $("preferences-dialog").close();
   void openConfigurationSettings();
@@ -5218,7 +5230,7 @@ function renderConfigurationServiceRestartApproval(plan, target, label) {
 }
 const backupsDialog = $("backups-dialog"),
   backupsContent = $("backups-content");
-$("backups-close").onclick = () => backupsDialog.close();
+$("backups-close").onclick = () => requestCloseDialog(backupsDialog);
 $("backups-settings").onclick = () => {
   $("preferences-dialog").close();
   void openBackupsSettings();
@@ -5536,7 +5548,7 @@ function renderBackupCleanupApproval(plan) {
 }
 const cliDialog = $("cli-dialog"),
   cliContent = $("cli-content");
-$("cli-close").onclick = () => cliDialog.close();
+$("cli-close").onclick = () => requestCloseDialog(cliDialog);
 $("cli-settings").onclick = () => {
   $("preferences-dialog").close();
   void openCliSettings();
@@ -5780,7 +5792,7 @@ function renderCliInstallApproval(plan) {
 }
 const diagnosticsDialog = $("diagnostics-dialog"),
   diagnosticsContent = $("diagnostics-content");
-$("diagnostics-close").onclick = () => diagnosticsDialog.close();
+$("diagnostics-close").onclick = () => requestCloseDialog(diagnosticsDialog);
 $("diagnostics-settings").onclick = async () => {
   $("preferences-dialog").close();
   diagnosticsContent.replaceChildren(node("p", "Checking server health…", "muted"));
@@ -6256,7 +6268,8 @@ $("project-menu").onclick = () => {
   projectSettingsAction();
   openDialog($("project-settings-dialog"));
 };
-$("project-settings-close").onclick = () => $("project-settings-dialog").close();
+$("project-settings-close").onclick = () =>
+  requestCloseDialog($("project-settings-dialog"));
 
 // Settings > Updates: approved releases only; installing needs the current key again.
 const updatesDialog = $("updates-dialog"),
@@ -6275,7 +6288,7 @@ function stopUpdatesPoll() {
 }
 $("updates-close").onclick = () => {
   stopUpdatesPoll();
-  updatesDialog.close();
+  requestCloseDialog(updatesDialog);
 };
 $("updates-settings").onclick = () => {
   $("preferences-dialog").close();
