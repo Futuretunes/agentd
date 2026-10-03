@@ -38,18 +38,23 @@ import { gate, waitFor } from "./helpers.mjs";
 
 const owner = "a".repeat(64),
   stranger = "b".repeat(64);
-// Fixtures must not inherit the developer's global Git configuration or templates.
+// Fixtures must not inherit the developer's global Git configuration or templates, and
+// must not start detached auto-maintenance that writes into .git after a command returns.
 const gitEnv = {
   ...process.env,
   GIT_CONFIG_GLOBAL: "/dev/null",
   GIT_CONFIG_NOSYSTEM: "1",
 };
 const git = (cwd, ...args) =>
-  execFileSync("git", ["-C", cwd, ...args], {
-    stdio: "pipe",
-    encoding: "utf8",
-    env: gitEnv,
-  });
+  execFileSync(
+    "git",
+    ["-c", "maintenance.auto=false", "-c", "gc.auto=0", "-C", cwd, ...args],
+    {
+      stdio: "pipe",
+      encoding: "utf8",
+      env: gitEnv,
+    },
+  );
 function commitAll(path) {
   git(path, "add", ".");
   git(
