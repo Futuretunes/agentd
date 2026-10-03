@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes, createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 type Config = {
   key: string;
   cert: string;
@@ -19,6 +19,20 @@ type Config = {
   attachments?: string;
   publicDir: string;
 };
+/** A failure after headers cannot become a second status response; end the
+ * connection so the client settles instead of waiting for an unfinished body. */
+export function failResponse(
+  res: ServerResponse,
+  send: (status: number, value: unknown) => void,
+  error: unknown,
+) {
+  if (res.headersSent) {
+    console.error("agentd-mobile: response failed after headers were sent");
+    res.destroy();
+    return;
+  }
+  send(400, { error: publicError(error) });
+}
 export function mobile(c: Config) {
   const sessions = new Map<string, number>(),
     attempts = new Map<string, { count: number; until: number }>(),
@@ -188,7 +202,6 @@ export function mobile(c: Config) {
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
       const send = (status: number, value: unknown) => {
-        if (res.headersSent) return;
         res.writeHead(status, { "Content-Type": "application/json" });
         res.end(JSON.stringify(value));
       };
@@ -208,6 +221,7 @@ export function mobile(c: Config) {
           ].includes(path)
         ) {
           const file = path === "/" ? "index.html" : path.slice(1);
+          const body = readFileSync(join(c.publicDir, file));
           res.writeHead(200, {
             "Content-Type": file.endsWith(".html")
               ? "text/html; charset=utf-8"
@@ -217,7 +231,7 @@ export function mobile(c: Config) {
                   ? "font/ttf"
                   : "text/css",
           });
-          res.end(readFileSync(join(c.publicDir, file)));
+          res.end(body);
           return;
         }
         if (req.method === "POST") {
@@ -1743,6 +1757,7 @@ export function mobile(c: Config) {
         const output = path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/output$/);
         if (output && req.method === "GET") {
           const value = await call({ op: "task-output", id: output[1] });
+          if (typeof value?.text !== "string") throw Error("Unexpected runner response");
           res.writeHead(200, {
             "Content-Type": "text/plain; charset=utf-8",
             "Content-Disposition": `attachment; filename="agentd-${output[1]}.txt"`,
@@ -1996,15 +2011,17 @@ export function mobile(c: Config) {
         const img = path.match(/^\/api\/images\/([0-9a-f-]{36})$/);
         if (img && req.method === "GET") {
           const value = await call({ op: "attachment-read", id: img[1] });
+          if (typeof value?.data !== "string") throw Error("Unexpected runner response");
+          const body = Buffer.from(value.data, "base64");
           res.writeHead(200, {
             "Content-Type": value.ext === ".png" ? "image/png" : "image/jpeg",
           });
-          res.end(Buffer.from(value.data, "base64"));
+          res.end(body);
           return;
         }
         send(404, { error: "Not found" });
       } catch (error) {
-        send(400, { error: publicError(error) });
+        failResponse(res, send, error);
       }
     },
   );
