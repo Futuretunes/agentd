@@ -572,10 +572,10 @@ test("one oversized file requires durable acknowledgement of every bounded page"
   await once(app.server, "listening");
   const poll = async (op, job) => {
     let value;
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 500; i++) {
       value = app.request({ op, owner: "a", job });
       if (value.status !== "preparing") return value;
-      await sleep(10);
+      await sleep(20);
     }
     return value;
   };

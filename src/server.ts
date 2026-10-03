@@ -195,6 +195,10 @@ export function start(options: Options) {
           strictWorkers: process.env.AGENTD_STRICT_WORKERS === "1",
           stateDir: options.stateDir,
           projectsDir: process.env.AGENTD_PROJECTS_DIR,
+          localProjectRoots: (process.env.AGENTD_LOCAL_PROJECT_ROOTS ?? "")
+            .split(",")
+            .map((x) => x.trim())
+            .filter(Boolean),
           repo:
             process.env.AGENTD_REPO ??
             (() => {

@@ -48,6 +48,11 @@ import {
   removeManagedCheckout,
   type DeleteScope,
 } from "./project-delete.ts";
+import {
+  applyLocalFolderImport,
+  localFolderPlans,
+  parseLocalProjectRoots,
+} from "./local-folder-import.ts";
 import { settings, resolveSettings, type Settings } from "./execution-settings.ts";
 import { modelCatalog, discoverModels } from "./model-catalog.ts";
 import { unresolvedConflicts, type ReviewAPI } from "./github-review.ts";
@@ -163,6 +168,7 @@ type Config = {
   };
   isolate?: typeof isolated;
   projectsDir?: string;
+  localProjectRoots?: string[];
   attachments?: string;
   timeoutMs?: number;
   command?: (adapter: string, prompt: string, mode?: string) => [string, string[]];
@@ -264,6 +270,20 @@ export function runner(c: Config) {
   };
   const attachmentRoot = c.attachments ?? join(c.stateDir, "attachments");
   mkdirSync(attachmentRoot, { recursive: true, mode: 0o700 });
+  const projectsRoot = c.projectsDir ?? join(c.stateDir, "projects");
+  mkdirSync(projectsRoot, { recursive: true, mode: 0o700 });
+  const localRoots = [
+    ...new Set([projectsRoot, ...parseLocalProjectRoots(c.localProjectRoots)]),
+  ];
+  const protectedLocalPaths = [
+    c.stateDir,
+    c.worktrees,
+    c.logs,
+    attachmentRoot,
+    c.repo,
+    ...(c.githubRoot ? [c.githubRoot] : []),
+  ];
+  const folderPlans = localFolderPlans();
   const images = attachmentStore(attachmentRoot);
   const attachment = images.metadata;
   const logTail = (path: string, limit = 60000) => {
@@ -2247,6 +2267,58 @@ export function runner(c: Config) {
       ).run(dependencies, hash, input.id);
       return project(input.id);
     }
+    if (input.op === "local-folder-preview") {
+      if (dependencyManager.busy() || publicationManager.busy())
+        throw Error("Wait for the repository or publishing operation.");
+      return folderPlans.preview(
+        String(input.owner ?? ""),
+        title(input.name),
+        String(input.path ?? ""),
+        localRoots,
+        protectedLocalPaths,
+      );
+    }
+    if (input.op === "local-folder-cancel") {
+      return folderPlans.cancel(String(input.owner ?? ""));
+    }
+    if (input.op === "local-folder-approve") {
+      if (dependencyManager.busy() || publicationManager.busy())
+        throw Error("Wait for the repository or publishing operation.");
+      const plan = folderPlans.take(
+        String(input.owner ?? ""),
+        String(input.fingerprint ?? ""),
+      );
+      if (plan.sensitiveFindings.length && plan.case === "non_git") {
+        // Findings are excluded from the commit set; still refuse when any remain listed
+        // as blocking leftovers that the operator must clear from the folder.
+        const blocking = plan.sensitiveFindings.some((f) =>
+          plan.filesToAdd.includes(f.path),
+        );
+        if (blocking)
+          throw Error(
+            "That folder includes sensitive filenames or credential-like content. Remove or ignore them before importing.",
+          );
+      }
+      return applyLocalFolderImport(
+        plan,
+        localRoots,
+        protectedLocalPaths,
+        ({ id, name, repo }) => {
+          if (db.prepare("SELECT id FROM projects WHERE repo=?").get(repo))
+            throw Error("That folder is already registered as a project.");
+          auditedWrite(
+            "local-folder-approve",
+            null,
+            { project: id, pathLabel: plan.pathLabel },
+            () => {
+              db.prepare(
+                "INSERT INTO projects(id,name,repo,created) VALUES(?,?,?,?)",
+              ).run(id, name, repo, new Date().toISOString());
+            },
+          );
+        },
+      );
+    }
     if (input.op === "project-create" || input.op === "project-register") {
       const name = title(input.name),
         id = randomUUID();
@@ -2258,8 +2330,10 @@ export function runner(c: Config) {
         if (realpathSync(git(["rev-parse", "--show-toplevel"], repo)) !== repo)
           throw new Error("Repository root mismatch");
         git(["rev-parse", "--verify", "HEAD^{commit}"], repo);
+        if (db.prepare("SELECT id FROM projects WHERE repo=?").get(repo))
+          throw Error("That folder is already registered as a project.");
       } else {
-        repo = join(c.projectsDir ?? join(c.stateDir, "projects"), id);
+        repo = join(projectsRoot, id);
         mkdirSync(repo, { recursive: true, mode: 0o700 });
         git(["init", "-b", "main"], repo);
         git(

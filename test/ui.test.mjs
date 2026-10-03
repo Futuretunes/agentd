@@ -1650,6 +1650,24 @@ test("appearance theme exposes a visible label", () => {
   );
 });
 
+test("use local folder create-project control is labeled", () => {
+  const { document } = parseHTML(
+    readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),
+  );
+  assert.equal(
+    document.getElementById("local-folder-open").textContent.trim(),
+    "Use local folder",
+  );
+  assert.equal(
+    document.getElementById("local-folder-heading").textContent.trim(),
+    "Use local folder",
+  );
+  assert.equal(
+    document.getElementById("local-folder-form").getAttribute("aria-label"),
+    "Use local folder",
+  );
+});
+
 test("workspace defaults and project delete surfaces are labeled", () => {
   const { document } = parseHTML(
     readFileSync(new URL("../public/index.html", import.meta.url), "utf8"),

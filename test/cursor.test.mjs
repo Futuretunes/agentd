@@ -10,6 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import {
@@ -146,7 +147,7 @@ test("Cursor permission gate permits only explicit worktree diffs once, rejects 
 test("Cursor ACP negotiates no client tools, sends literal prompts, filters output and fails closed on requests and failed tools", async () => {
   const root = mkdtempSync(join(tmpdir(), "cursor-protocol-")),
     bin = join(root, "cursor-agent"),
-    wrapper = new URL("../src/cursor-acp.ts", import.meta.url).pathname;
+    wrapper = fileURLToPath(new URL("../src/cursor-acp.ts", import.meta.url));
   writeFileSync(
     bin,
     `#!${process.execPath}

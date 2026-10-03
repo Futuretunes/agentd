@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { chatArguments } from "../src/codex-chat.ts";
 test("chat pins CLI version, disables every active feature and separates literal prompt", () => {
@@ -39,7 +40,7 @@ test("chat pins CLI version, disables every active feature and separates literal
 test("chat wrapper emits answer text only and fails on incomplete or execution events", () => {
   const root = mkdtempSync(join(tmpdir(), "chat-stream-")),
     bin = join(root, "codex");
-  const wrapper = new URL("../src/codex-chat.ts", import.meta.url).pathname;
+  const wrapper = fileURLToPath(new URL("../src/codex-chat.ts", import.meta.url));
   const fixture = (events) =>
     writeFileSync(
       bin,

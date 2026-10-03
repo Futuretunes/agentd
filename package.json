@@ -1,6 +1,6 @@
 {
   "name": "agentd",
-  "version": "0.604.1",
+  "version": "0.605.0",
   "private": true,
   "description": "Self-hosted, approval-driven orchestration for native coding agents",
   "type": "module",

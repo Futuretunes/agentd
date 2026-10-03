@@ -6,6 +6,10 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 **Claude owns all development and deployment by operator decision; Codex is paused.** The current line is `release/0.62.2` ([handover](handovers/2026-09-29-claude-0.62.2.md)). Work continues from Claude's latest branch.
 
+## Candidate 0.605.0 — Use local folder project import (Cursor)
+
+See [handover](handovers/2026-10-03-cursor-local-folder-import.md). Implemented on `feat/local-folder-import`; not merged or live-installed.
+
 ## Candidate 0.604.1 — Workspace defaults and project delete (Cursor)
 
 See [handover](handovers/2026-10-03-cursor-workspace-defaults-delete.md). **Live-installed on 192.168.1.20.**

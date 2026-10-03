@@ -602,6 +602,63 @@
         </div>
         <p class="muted project-import-alt">Or bring in an existing GitHub repository.</p>
         <button type="button" id="import-open">Import from GitHub</button>
+        <p class="muted project-import-alt">
+          Or use a folder that already exists on the AgentD server.
+        </p>
+        <button type="button" id="local-folder-open">Use local folder</button>
+      </form>
+    </dialog>
+    <dialog id="local-folder-dialog" aria-labelledby="local-folder-heading">
+      <div class="review-head" role="group" aria-label="Local folder heading">
+        <h2 id="local-folder-heading">Use local folder</h2>
+        <button id="local-folder-close" aria-label="Close local folder import">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      <form id="local-folder-form" aria-label="Use local folder">
+        <p class="muted">
+          Enter an absolute folder path on the AgentD server (not this browser). Paths
+          must be under an administrator-configured allowed root.
+        </p>
+        <label for="local-folder-name">Project name</label>
+        <input
+          id="local-folder-name"
+          name="name"
+          maxlength="100"
+          required
+          autocomplete="off"
+          aria-label="Local folder project name"
+        />
+        <label for="local-folder-path">Absolute folder path</label>
+        <input
+          id="local-folder-path"
+          name="path"
+          required
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="/srv/projects/my-app"
+          aria-label="Absolute folder path on AgentD server"
+        />
+        <label for="local-folder-key">Current access key</label>
+        <input
+          id="local-folder-key"
+          type="password"
+          autocomplete="current-password"
+          aria-label="Current access key for local folder import"
+        />
+        <div
+          id="local-folder-preview"
+          class="muted"
+          aria-label="Local folder preview"
+          aria-live="polite"
+        ></div>
+        <div class="actions" role="group" aria-label="Local folder actions">
+          <button type="button" id="local-folder-cancel-preview">Cancel</button>
+          <button type="button" id="local-folder-preview-btn">Review folder</button>
+          <button type="submit" id="local-folder-approve" class="primary" hidden>
+            Approve and register
+          </button>
+        </div>
       </form>
     </dialog>
     <dialog id="operations-dialog" aria-labelledby="operations-heading">

@@ -12,6 +12,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { once } from "node:events";
 import { runner } from "../src/runner.ts";
 import { git } from "../src/changes.ts";
@@ -122,7 +123,7 @@ test("approved preparation pins manifests, excludes worker approval, preserves p
       execFile(
         process.execPath,
         [
-          new URL("../src/control.ts", import.meta.url).pathname,
+          fileURLToPath(new URL("../src/control.ts", import.meta.url)),
           "check-setup",
           "default",
         ],
@@ -213,7 +214,7 @@ test(
     const sandbox = dependencySandbox(stage, f.root);
     try {
       const separator = sandbox.args.indexOf("--"),
-        script = `const fs=require('fs');if(fs.existsSync(${JSON.stringify(join(f.root, "private"))}))process.exit(2);fs.writeFileSync('/workspace/result','ok');try{fs.writeFileSync(${JSON.stringify(new URL("../src/check-worker.ts", import.meta.url).pathname)},'bad');process.exit(3)}catch{}const s=require('net').connect(443,'1.1.1.1');s.on('connect',()=>process.exit(4));s.on('error',()=>process.exit(0));setTimeout(()=>process.exit(5),3000);`;
+        script = `const fs=require('fs');if(fs.existsSync(${JSON.stringify(join(f.root, "private"))}))process.exit(2);fs.writeFileSync('/workspace/result','ok');try{fs.writeFileSync(${JSON.stringify(fileURLToPath(new URL("../src/check-worker.ts", import.meta.url)))},'bad');process.exit(3)}catch{}const s=require('net').connect(443,'1.1.1.1');s.on('connect',()=>process.exit(4));s.on('error',()=>process.exit(0));setTimeout(()=>process.exit(5),3000);`;
       await new Promise((resolve, reject) => {
         const child = spawn(
           sandbox.command,
