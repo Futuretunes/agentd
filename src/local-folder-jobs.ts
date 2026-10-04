@@ -8,15 +8,18 @@ import {
   fsyncSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   openSync,
-  readFileSync,
+  readSync,
   readdirSync,
+  readlinkSync,
   rmSync,
   rmdirSync,
   unlinkSync,
   writeSync,
   type BigIntStats,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { operationSlot } from "./operation-slot.ts";
 import { gitEnvironment, gitPolicy } from "./git-policy.ts";
@@ -34,7 +37,11 @@ import {
 } from "./local-folder-import.ts";
 
 export const localFolderJobErrors = Object.freeze({
-  busy: "Wait for the current operation before importing a local folder.",
+  busy: "Wait for the current local folder import to finish.",
+  gitChanged:
+    "Git metadata changed after the interruption. AgentD left the repository and files for manual recovery.",
+  treeChanged:
+    "Working files changed before registration. AgentD rolled back its changes; review the folder and import again.",
   stopping: "Service is stopping. Try again after it restarts.",
   notFound: "Local folder import not found.",
   notRunning: "That local folder import is no longer running.",
@@ -66,6 +73,10 @@ type Owned = {
   dirs: string[];
   files: { path: string; sha256: string }[];
   commit: string | null;
+  /** Digest of the complete .git tree after AgentD's latest Git step. */
+  gitState?: string | null;
+  /** Device and inode of each committed path at its final content read. */
+  read?: Record<string, [string, string]>;
 };
 type JobPlan = {
   v: 2;
@@ -88,7 +99,10 @@ type Options = {
   roots: () => string[];
   protectedPaths: () => string[];
   closing: () => boolean;
-  blocked: () => boolean;
+  /** The public message for conflicting work, or null when the import may start. */
+  blocked: () => string | null;
+  /** Called when an import or recovery releases its slot. */
+  settled?: () => void;
   audit: (action: string, task: string | null, detail: unknown) => void;
   /** Test seam: returning true stops work as if the process died after a phase. */
   interrupt?: (phase: string, job: string) => boolean | Promise<boolean>;
@@ -106,10 +120,16 @@ const statOf = (path: string): BigIntStats | null => {
   }
 };
 
-function git(cwd: string, args: string[], signal?: AbortSignal, input?: Buffer) {
+function git(
+  cwd: string,
+  args: string[],
+  signal?: AbortSignal,
+  input?: Buffer,
+  env: NodeJS.ProcessEnv = {},
+) {
   return new Promise<string>((resolve, reject) => {
     const child = spawn("/usr/bin/git", [...gitPolicy, "-C", cwd, ...args], {
-      env: gitEnvironment(),
+      env: { ...gitEnvironment(), ...env },
       stdio: ["pipe", "pipe", "pipe"],
       signal,
       timeout: 60000,
@@ -184,26 +204,78 @@ async function treeMatches(cwd: string, commit: string, expected: Entry[]) {
   return JSON.stringify(listed) === JSON.stringify(want);
 }
 
-// An AgentD-initialized repository that crashed before its identity was journaled
-// contains no objects or refs, so removing it cannot lose user data.
-function freshRepository(gitDir: string) {
-  if (statOf(join(gitDir, "packed-refs"))) return false;
-  const anyFile = (dir: string): boolean => {
-    let entries;
-    try {
-      entries = readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return true;
+function readNoFollow(path: string, max = 1024 * 1024): Buffer | null {
+  let fd: number;
+  try {
+    fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  } catch {
+    return null;
+  }
+  try {
+    const info = fstatSync(fd);
+    if (!info.isFile() || info.size > max) return null;
+    const content = Buffer.alloc(info.size);
+    let offset = 0;
+    while (offset < content.length) {
+      const n = readSync(fd, content, offset, content.length - offset, offset);
+      if (n === 0) break;
+      offset += n;
     }
-    return entries.some((e) => (e.isDirectory() ? anyFile(join(dir, e.name)) : true));
+    return offset === content.length ? content : null;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+const gitTreeLimits = { entries: 50000, bytes: 64 * 1024 * 1024 };
+/** Digest of every entry under .git: path, type, permission bits and exact content or
+ * link target. Any added or changed ref, object, reflog, HEAD, index, config or hook
+ * changes it. Null means the tree could not be read completely within bounds. */
+export function gitTreeDigest(gitDir: string): string | null {
+  const hash = createHash("sha256");
+  let entries = 0,
+    bytes = 0;
+  const visit = (rel: string): boolean => {
+    let names: string[];
+    try {
+      names = readdirSync(join(gitDir, rel)).sort();
+    } catch {
+      return false;
+    }
+    for (const name of names) {
+      const child = rel ? `${rel}/${name}` : name,
+        full = join(gitDir, child),
+        info = statOf(full);
+      if (!info || ++entries > gitTreeLimits.entries) return false;
+      const perm = (info.mode & 0o7777n).toString(8);
+      if (info.isDirectory()) {
+        hash.update(`d\0${child}\0${perm}\n`);
+        if (!visit(child)) return false;
+      } else if (info.isFile()) {
+        bytes += Number(info.size);
+        if (bytes > gitTreeLimits.bytes) return false;
+        const content = readNoFollow(full, gitTreeLimits.bytes);
+        if (!content) return false;
+        hash.update(`f\0${child}\0${perm}\0${content.length}\0${sha256(content)}\n`);
+      } else if (info.isSymbolicLink())
+        hash.update(`l\0${child}\0${readlinkSync(full)}\n`);
+      else return false;
+    }
+    return true;
   };
-  const head = statOf(join(gitDir, "HEAD"));
-  if (!head?.isFile()) return false;
-  return (
-    readFileSync(join(gitDir, "HEAD"), "utf8") === "ref: refs/heads/main\n" &&
-    !anyFile(join(gitDir, "objects")) &&
-    !anyFile(join(gitDir, "refs"))
-  );
+  return visit("") ? hash.digest("hex") : null;
+}
+
+// The exact tree `git init` produces here, for a crash after init but before its
+// digest was journaled. Any difference means the metadata is not provably AgentD's.
+async function pristineGitDigest(signal?: AbortSignal) {
+  const dir = mkdtempSync(join(tmpdir(), "agentd-git-pristine-"));
+  try {
+    await git(dir, ["init", "-q", "-b", "main"], signal);
+    return gitTreeDigest(join(dir, ".git"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 function writeExclusive(path: string, content: string) {
@@ -294,8 +366,31 @@ export function localFolderJobs(o: Options) {
 
   function admit() {
     if (o.closing()) throw Error(E.stopping);
-    if (o.blocked() || slot.busy()) throw Error(E.busy);
+    if (slot.busy()) throw Error(E.busy);
+    const conflict = o.blocked();
+    if (conflict) throw Error(conflict);
   }
+
+  /** Refuse unless .git is exactly what AgentD's last journaled Git step produced. */
+  async function verifyGit(plan: JobPlan, signal?: AbortSignal) {
+    const gitDir = join(plan.canonical, ".git"),
+      info = statOf(gitDir);
+    if (
+      !info?.isDirectory() ||
+      String(info.dev) !== plan.identity.dev ||
+      (plan.owned.git && String(info.ino) !== plan.owned.git.ino)
+    )
+      throw new JobError(E.gitChanged);
+    const expected =
+      plan.owned.gitState ??
+      (plan.owned.gitIntent ? await pristineGitDigest(signal) : null);
+    const current = gitTreeDigest(gitDir);
+    if (!expected || !current || current !== expected) throw new JobError(E.gitChanged);
+  }
+  const recordGit = (plan: JobPlan) => {
+    plan.owned.gitState = gitTreeDigest(join(plan.canonical, ".git"));
+    if (!plan.owned.gitState) throw new JobError(E.gitChanged);
+  };
 
   function verifyIdentity(plan: JobPlan, fd?: number) {
     let current: Identity;
@@ -316,18 +411,32 @@ export function localFolderJobs(o: Options) {
     }
   }
 
-  function rollback(plan: JobPlan, persist: () => void) {
+  /** Undo only provably AgentD-owned changes. Returns null when complete, otherwise
+   * the public reason the folder was left for manual recovery. */
+  async function rollback(plan: JobPlan, persist: () => void): Promise<string | null> {
     try {
       verifyIdentity(plan);
     } catch {
-      return false;
+      return E.partial;
+    }
+    const gitDir = join(plan.canonical, ".git"),
+      info = statOf(gitDir),
+      ownsGit = !!(plan.owned.git || plan.owned.gitIntent);
+    // Verify Git first: if anything changed there, touch neither .git nor any file.
+    if (info && ownsGit) {
+      try {
+        await verifyGit(plan);
+      } catch {
+        return E.gitChanged;
+      }
     }
     let complete = true;
     for (const file of [...plan.owned.files].reverse()) {
       const full = join(plan.canonical, file.path),
-        info = statOf(full);
-      if (info) {
-        if (!info.isFile() || sha256(readFileSync(full)) !== file.sha256) {
+        present = statOf(full);
+      if (present) {
+        const content = readNoFollow(full);
+        if (!content || sha256(content) !== file.sha256) {
           complete = false;
           continue;
         }
@@ -348,29 +457,70 @@ export function localFolderJobs(o: Options) {
       plan.owned.dirs = plan.owned.dirs.filter((d) => d !== dir);
       persist();
     }
-    const gitDir = join(plan.canonical, ".git"),
-      info = statOf(gitDir);
-    if (info && (plan.owned.git || plan.owned.gitIntent)) {
-      const ours =
-        info.isDirectory() &&
-        String(info.dev) === plan.identity.dev &&
-        (plan.owned.git
-          ? String(info.ino) === plan.owned.git.ino
-          : freshRepository(gitDir));
-      if (ours) {
-        rmSync(gitDir, { recursive: true, force: true });
-        plan.owned.git = null;
-        plan.owned.gitIntent = false;
-        plan.owned.commit = null;
-        persist();
-      } else complete = false;
-    } else if (!info) {
-      plan.owned.git = null;
-      plan.owned.gitIntent = false;
-      plan.owned.commit = null;
-      persist();
+    if (!complete || (info && !ownsGit)) return E.partial;
+    if (info) {
+      // Re-check immediately before removal; the file steps above took time.
+      try {
+        await verifyGit(plan);
+      } catch {
+        return E.gitChanged;
+      }
+      rmSync(gitDir, { recursive: true, force: true });
     }
-    return complete;
+    plan.owned.git = null;
+    plan.owned.gitIntent = false;
+    plan.owned.gitState = null;
+    plan.owned.commit = null;
+    persist();
+    return null;
+  }
+
+  /** Immediately before registration, the working tree must still be exactly the
+   * approved, committed content, read without following links. */
+  async function verifyWorkingTree(plan: JobPlan, fd: number, signal: AbortSignal) {
+    verifyIdentity(plan, fd);
+    const expected = [
+      ...plan.candidates.map((c) => ({ path: c.path, mode: c.mode, sha256: c.sha256 })),
+      ...plan.handover.map((h) => ({ path: h.path, mode: "100644", sha256: h.sha256 })),
+    ];
+    for (const entry of expected) {
+      const seen = plan.owned.read?.[entry.path];
+      const read = readCandidate(
+        plan.canonical,
+        entry.path,
+        seen
+          ? ({ dev: BigInt(seen[0]), ino: BigInt(seen[1]) } as BigIntStats)
+          : undefined,
+      );
+      if (
+        !read.ok ||
+        read.candidate.sha256 !== entry.sha256 ||
+        read.candidate.mode !== entry.mode
+      )
+        throw new JobError(E.treeChanged);
+    }
+    await verifyGit(plan, signal);
+    const head = (
+      await git(plan.canonical, ["rev-parse", "--verify", "HEAD^{commit}"], signal)
+    ).trim();
+    if (head !== plan.owned.commit) throw new JobError(E.gitChanged);
+    // No optional locks: status must not refresh (write) the index while checking.
+    const status = await git(
+      plan.canonical,
+      [
+        "status",
+        "--porcelain=v1",
+        "-z",
+        "--untracked-files=all",
+        "--ignore-submodules=none",
+      ],
+      signal,
+      undefined,
+      { GIT_OPTIONAL_LOCKS: "0" },
+    );
+    if (status) throw new JobError(E.treeChanged);
+    await verifyGit(plan, signal);
+    verifyIdentity(plan, fd);
   }
 
   function register(id: string, plan: JobPlan) {
@@ -418,16 +568,17 @@ export function localFolderJobs(o: Options) {
     let fd: number | undefined;
     try {
       if (mode === "rollback") {
-        const complete = rollback(plan, persist);
+        const refused = await rollback(plan, persist);
         save(id, {
-          state: complete ? "rolled_back" : "recovery_required",
-          error: complete ? null : E.partial,
+          state: refused ? "recovery_required" : "rolled_back",
+          error: refused,
           plan,
         });
         o.audit("local-folder-import", null, {
           job: id,
           case: plan.case,
-          outcome: complete ? "rolled-back" : "rollback-incomplete",
+          outcome: refused ? "rollback-refused" : "rolled-back",
+          ...(refused ? { error: refused } : {}),
         });
         return;
       }
@@ -467,20 +618,22 @@ export function localFolderJobs(o: Options) {
       if (!gitInfo) {
         plan.owned.gitIntent = true;
         plan.owned.git = null;
+        plan.owned.gitState = null;
         persist();
         await git(plan.canonical, ["init", "-q", "-b", "main"], signal);
         gitInfo = statOf(gitDir);
         if (!gitInfo?.isDirectory() || String(gitInfo.dev) !== plan.identity.dev)
           throw new JobError(E.identity);
         plan.owned.git = { dev: String(gitInfo.dev), ino: String(gitInfo.ino) };
-      } else if (
-        !gitInfo.isDirectory() ||
-        !(plan.owned.git
-          ? String(gitInfo.ino) === plan.owned.git.ino
-          : plan.owned.gitIntent && freshRepository(gitDir))
-      )
+        recordGit(plan);
+      } else if (!plan.owned.git && !plan.owned.gitIntent)
         throw new JobError(E.foreignGit);
-      else plan.owned.git = { dev: String(gitInfo.dev), ino: String(gitInfo.ino) };
+      else {
+        // Resuming: the existing .git must be exactly what AgentD last journaled.
+        await verifyGit(plan, signal);
+        plan.owned.git = { dev: String(gitInfo.dev), ino: String(gitInfo.ino) };
+        recordGit(plan);
+      }
       persist("git_initialized");
       if (await halted("git_initialized")) return;
 
@@ -515,8 +668,11 @@ export function localFolderJobs(o: Options) {
           if (!owned) plan.owned.files.push({ path: file.path, sha256: file.sha256 });
           persist();
           writeExclusive(full, file.content);
-        } else if (!owned || !info.isFile() || sha256(readFileSync(full)) !== file.sha256)
-          throw new JobError(localFolderErrors.changedAfterPreview);
+        } else {
+          const content = owned ? readNoFollow(full) : null;
+          if (!content || sha256(content) !== file.sha256)
+            throw new JobError(localFolderErrors.changedAfterPreview);
+        }
       }
       persist("handover_created");
       if (await halted("handover_created")) return;
@@ -524,7 +680,9 @@ export function localFolderJobs(o: Options) {
       // Phase: committed. The commit is written from bytes re-verified against the
       // approved digests, not from whatever the working tree holds at staging time.
       guard();
-      const entries: Entry[] = [];
+      await verifyGit(plan, signal);
+      const entries: Entry[] = [],
+        identities: Record<string, [string, string]> = {};
       for (const candidate of plan.candidates) {
         const read = readCandidate(plan.canonical, candidate.path);
         if (
@@ -534,14 +692,23 @@ export function localFolderJobs(o: Options) {
           read.candidate.mode !== candidate.mode
         )
           throw new JobError(localFolderErrors.changedAfterPreview);
+        identities[candidate.path] = read.identity;
         entries.push({ ...candidate, content: read.content });
       }
       for (const file of plan.handover) {
-        const content = readFileSync(join(plan.canonical, file.path));
-        if (sha256(content) !== file.sha256)
+        const read = readCandidate(plan.canonical, file.path);
+        if (!read.ok || read.candidate.sha256 !== file.sha256)
           throw new JobError(localFolderErrors.changedAfterPreview);
-        entries.push({ path: file.path, mode: "100644", blob: file.blob, content });
+        identities[file.path] = read.identity;
+        entries.push({
+          path: file.path,
+          mode: "100644",
+          blob: file.blob,
+          content: read.content,
+        });
       }
+      plan.owned.read = identities;
+      persist();
       let head = "";
       try {
         head = (
@@ -575,34 +742,34 @@ export function localFolderJobs(o: Options) {
       if (!(await treeMatches(plan.canonical, head, entries)))
         throw new JobError(E.failed);
       plan.owned.commit = head;
+      recordGit(plan);
       persist();
       guard();
       await git(plan.canonical, ["read-tree", head], signal);
+      recordGit(plan);
       persist("committed");
       if (await halted("committed")) return;
 
-      // Phase: registered (atomic with job success).
+      // Phase: registered (atomic with job success), only after the working tree is
+      // proven to be exactly the committed tree.
       guard();
+      await verifyWorkingTree(plan, fd, signal);
       register(id, plan);
     } catch (error) {
       const cancelled = signal.aborted;
-      const complete = plan.case === "existing_git" ? true : rollback(plan, persist);
-      const message = !complete
-        ? E.partial
-        : cancelled
-          ? E.cancelled
-          : error instanceof JobError
-            ? error.message
-            : E.failed;
+      const refused = plan.case === "existing_git" ? null : await rollback(plan, persist);
+      const message =
+        refused ??
+        (cancelled ? E.cancelled : error instanceof JobError ? error.message : E.failed);
       save(id, {
-        state: !complete ? "recovery_required" : cancelled ? "cancelled" : "failed",
+        state: refused ? "recovery_required" : cancelled ? "cancelled" : "failed",
         error: message,
         plan,
       });
       o.audit("local-folder-import", null, {
         job: id,
         case: plan.case,
-        outcome: !complete ? "recovery-required" : cancelled ? "cancelled" : "failed",
+        outcome: refused ? "recovery-required" : cancelled ? "cancelled" : "failed",
         error: message,
       });
     } finally {
@@ -611,7 +778,7 @@ export function localFolderJobs(o: Options) {
   }
 
   const start = (id: string, mode: "apply" | "resume" | "rollback") =>
-    slot.start(id, (signal) => run(id, mode, signal));
+    slot.start(id, (signal) => run(id, mode, signal), o.settled);
   // A folder with unfinished AgentD changes must be recovered before it is re-inspected.
   function assertNoRecovery(canonical: string) {
     for (const row of db

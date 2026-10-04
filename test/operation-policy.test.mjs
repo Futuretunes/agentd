@@ -28,7 +28,14 @@ const original = {
     s.queued,
   accountProbe: (s) => s.probes || s.closing || s.worker || s.models || s.account,
   dispatch: (s) =>
-    s.closing || s.worker || s.dependency || s.models || s.account || s.renewalProbe,
+    s.closing ||
+    s.worker ||
+    s.dependency ||
+    s.models ||
+    s.account ||
+    s.renewalProbe ||
+    s.localFolder,
+  taskApproval: (s) => s.localFolder,
   storage: (s) =>
     s.worker ||
     s.preparing ||
@@ -139,7 +146,16 @@ test("admission reads only relevant blockers and retains intentional directional
   );
 });
 test("local-folder import conflicts in both directions with repository-changing work", () => {
-  for (const other of ["repository", "publication", "dependency", "worker", "queued"])
+  for (const other of [
+    "repository",
+    "publication",
+    "dependency",
+    "github",
+    "worker",
+    "preparing",
+    "queued",
+    "closing",
+  ])
     assert.equal(
       admissionBlocked("localFolder", (s) => s === other),
       true,
@@ -151,6 +167,8 @@ test("local-folder import conflicts in both directions with repository-changing 
     "dependencies",
     "storage",
     "update",
+    "dispatch",
+    "taskApproval",
   ])
     assert.equal(
       admissionBlocked(operation, (s) => s === "localFolder"),
@@ -162,8 +180,11 @@ test("local-folder import conflicts in both directions with repository-changing 
     admissionBlocked("localFolder", (s) => s === "probes"),
     false,
   );
-  assert.equal(
-    admissionBlocked("dispatch", (s) => s === "localFolder"),
-    false,
-  );
+  // Task approval is only held back by an import; every other gate stays where it was.
+  for (const other of states.filter((s) => s !== "localFolder"))
+    assert.equal(
+      admissionBlocked("taskApproval", (s) => s === other),
+      false,
+      other,
+    );
 });

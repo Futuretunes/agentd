@@ -33,7 +33,7 @@ import {
   previewView,
   resolveLocalFolderPath,
 } from "../src/local-folder-import.ts";
-import { localFolderJobErrors } from "../src/local-folder-jobs.ts";
+import { gitTreeDigest, localFolderJobErrors } from "../src/local-folder-jobs.ts";
 import { gate, waitFor } from "./helpers.mjs";
 
 const owner = "a".repeat(64),
@@ -240,6 +240,40 @@ test("repository boundaries: parent, nested, worktree, bare, incomplete and syml
     );
     throwsFixed(() => inspect(alternates, box.roots), localFolderErrors.gitIndirection);
   } finally {
+    box.cleanup();
+  }
+});
+
+test("an existing repository, worktree or repository beneath bare metadata nested in another repository is refused", async () => {
+  const box = sandbox("lf-nested-existing-");
+  const app = await service(box);
+  try {
+    const outer = makeRepo(join(box.roots, "outer"));
+    const inner = join(outer, "inner");
+    mkdirSync(inner);
+    git(inner, "init", "-q", "-b", "main");
+    writeFileSync(join(inner, "inner.txt"), "inner\n");
+    commitAll(inner);
+    assert.match(git(inner, "rev-parse", "HEAD"), /^[0-9a-f]{40}/);
+    const outerFiles = snapshotFiles(outer);
+    throwsFixed(() => inspect(inner, box.roots), localFolderErrors.parentRepository);
+    throwsFixed(() => preview(app, inner), localFolderErrors.parentRepository);
+    assert.deepEqual(snapshotFiles(outer), outerFiles, "outer and inner Git and files");
+
+    const main = makeRepo(join(box.roots, "main"));
+    const worktree = join(outer, "wt");
+    git(main, "worktree", "add", "-q", worktree);
+    const mainFiles = snapshotFiles(main),
+      treeFiles = snapshotFiles(worktree);
+    throwsFixed(() => inspect(worktree, box.roots), localFolderErrors.parentRepository);
+    assert.deepEqual(snapshotFiles(main), mainFiles);
+    assert.deepEqual(snapshotFiles(worktree), treeFiles);
+
+    git(box.roots, "init", "-q", "--bare", "bare.git");
+    const underBare = makeRepo(join(box.roots, "bare.git", "info", "nested"));
+    throwsFixed(() => inspect(underBare, box.roots), localFolderErrors.bare);
+  } finally {
+    await app.close();
     box.cleanup();
   }
 });
@@ -766,6 +800,306 @@ test("a root replaced by a symlink between phases is refused and never written t
   }
 });
 
+test("the Git metadata digest covers content, not timestamps", () => {
+  const box = sandbox("lf-digest-");
+  try {
+    const repo = makeRepo(join(box.roots, "repo"));
+    const gitDir = join(repo, ".git"),
+      ref = join(gitDir, "refs", "heads", "main");
+    const first = gitTreeDigest(gitDir);
+    assert.match(first, /^[0-9a-f]{64}$/);
+    assert.equal(gitTreeDigest(gitDir), first);
+    const { atime, mtime } = statSync(ref);
+    const sha = readFileSync(ref, "utf8");
+    writeFileSync(ref, sha.replace(/^./, sha[0] === "0" ? "1" : "0"));
+    utimesSync(ref, atime, mtime);
+    assert.notEqual(gitTreeDigest(gitDir), first, "same-size ref edit");
+    writeFileSync(ref, sha);
+    utimesSync(ref, atime, mtime);
+    assert.equal(gitTreeDigest(gitDir), first);
+    chmodSync(join(gitDir, "config"), 0o600);
+    assert.notEqual(gitTreeDigest(gitDir), first, "permission change");
+  } finally {
+    box.cleanup();
+  }
+});
+
+test("rollback after interruption refuses when Git metadata changed and keeps the added history", async () => {
+  const box = sandbox("lf-git-changed-");
+  const halts = new Map();
+  let app = await service(box, {
+    localFolderInterrupt: (phase, job) => halts.get(job) === phase,
+  });
+  const changes = {
+    commit: (path) => {
+      writeFileSync(join(path, "user.txt"), "added by the operator\n");
+      git(path, "add", "user.txt");
+      git(
+        path,
+        "-c",
+        "user.name=u",
+        "-c",
+        "user.email=u@localhost",
+        "commit",
+        "-qm",
+        "operator commit",
+      );
+    },
+    branch: (path) => git(path, "branch", "operator-branch"),
+    config: (path) => git(path, "config", "user.name", "Operator"),
+    unchanged: () => {},
+  };
+  const items = [];
+  try {
+    for (const [name, phase] of [
+      ["commit", "committed"],
+      ["branch", "committed"],
+      ["config", "handover_created"],
+      ["unchanged", "committed"],
+    ]) {
+      const path = folder(box.roots, name, { "a.txt": `${name}\n` });
+      const original = snapshotFiles(path);
+      const id = approve(app, preview(app, path, name)).id;
+      halts.set(id, phase);
+      await halted(app, id, phase);
+      items.push({ id, name, path, original });
+    }
+    await app.close();
+    for (const item of items) changes[item.name](item.path);
+    const evidence = Object.fromEntries(
+      items.map((item) => [
+        item.name,
+        {
+          git: snapshotFiles(join(item.path, ".git")),
+          files: readdirSync(item.path).sort(),
+        },
+      ]),
+    );
+    app = await service(box);
+    for (const item of items) {
+      app.request({ op: "local-folder-recover", job: item.id, action: "rollback" });
+      const job = await settled(app, item.id, ["recovery_required", "rolled_back"]);
+      if (item.name === "unchanged") {
+        assert.equal(job.state, "rolled_back");
+        assert.deepEqual(snapshotFiles(item.path), item.original);
+        assert.equal(existsSync(join(item.path, ".git")), false);
+        continue;
+      }
+      assert.equal(job.state, "recovery_required", item.name);
+      assert.equal(job.error, localFolderJobErrors.gitChanged, item.name);
+      assert.equal(job.needsRecovery, true);
+      assert.deepEqual(
+        snapshotFiles(join(item.path, ".git")),
+        evidence[item.name].git,
+        `${item.name}: Git metadata untouched`,
+      );
+      assert.deepEqual(readdirSync(item.path).sort(), evidence[item.name].files);
+      // Resuming is refused the same way and still deletes nothing.
+      app.request({ op: "local-folder-recover", job: item.id, action: "resume" });
+      const resumed = await settled(app, item.id, ["recovery_required", "succeeded"]);
+      assert.equal(resumed.state, "recovery_required", item.name);
+      assert.equal(resumed.error, localFolderJobErrors.gitChanged, item.name);
+      assert.deepEqual(snapshotFiles(join(item.path, ".git")), evidence[item.name].git);
+      assert.equal(
+        app.request({ op: "projects" }).some((p) => p.repo === item.path),
+        false,
+      );
+    }
+    const byName = Object.fromEntries(items.map((i) => [i.name, i.path]));
+    assert.match(git(byName.commit, "log", "--format=%s"), /operator commit/);
+    assert.equal(
+      readFileSync(join(byName.commit, "user.txt"), "utf8"),
+      "added by the operator\n",
+    );
+    assert.match(git(byName.branch, "branch", "--list"), /operator-branch/);
+    assert.equal(git(byName.config, "config", "user.name").trim(), "Operator");
+  } finally {
+    await app.close();
+    box.cleanup();
+  }
+});
+
+test("working files are revalidated without following symlinks immediately before registration", async () => {
+  const box = sandbox("lf-final-");
+  const mutate = new Map();
+  const app = await service(box, {
+    localFolderInterrupt: (phase, job) => {
+      if (phase === "committed") mutate.get(job)?.();
+      return false;
+    },
+  });
+  try {
+    const sameSize = (path, rel, content) => {
+      const { atime, mtime } = statSync(join(path, rel));
+      writeFileSync(join(path, rel), content);
+      utimesSync(join(path, rel), atime, mtime);
+    };
+    const cases = [
+      ["same-size", (p) => sameSize(p, "a.txt", "bbbb\n"), "failed"],
+      [
+        "symlink",
+        (p) => {
+          rmSync(join(p, "a.txt"));
+          symlinkSync("b.txt", join(p, "a.txt"));
+        },
+        "failed",
+      ],
+      [
+        "special",
+        (p) => {
+          rmSync(join(p, "a.txt"));
+          execFileSync("mkfifo", [join(p, "a.txt")]);
+        },
+        "failed",
+      ],
+      ["removed", (p) => rmSync(join(p, "a.txt")), "failed"],
+      ["untracked", (p) => writeFileSync(join(p, "new.txt"), "new\n"), "failed"],
+      [
+        "handover-changed",
+        (p) => sameSize(p, "AGENTS.md", "x".repeat(statSync(join(p, "AGENTS.md")).size)),
+        "recovery_required",
+      ],
+      [
+        "handover-symlink",
+        (p) => {
+          rmSync(join(p, "docs", "handover.md"));
+          symlinkSync("../b.txt", join(p, "docs", "handover.md"));
+        },
+        "recovery_required",
+      ],
+      ["unchanged", () => {}, "succeeded"],
+    ];
+    for (const [name, change, expected] of cases) {
+      const path = folder(box.roots, name, { "a.txt": "aaaa\n", "b.txt": "b\n" });
+      const id = approve(app, preview(app, path, name)).id;
+      mutate.set(id, () => change(path));
+      const job = await settled(app, id, ["succeeded", "failed", "recovery_required"]);
+      assert.equal(job.state, expected, name);
+      const registered = app.request({ op: "projects" }).some((p) => p.repo === path);
+      if (expected === "succeeded") {
+        assert.equal(registered, true);
+        assert.equal(git(path, "status", "--porcelain"), "");
+        continue;
+      }
+      assert.equal(registered, false, name);
+      if (expected === "failed") {
+        assert.equal(job.error, localFolderJobErrors.treeChanged, name);
+        assert.equal(existsSync(join(path, ".git")), false, `${name}: rolled back`);
+        assert.equal(existsSync(join(path, "AGENTS.md")), false, name);
+        assert.equal(readFileSync(join(path, "b.txt"), "utf8"), "b\n");
+      } else {
+        // The operator's replacement of an AgentD file is never deleted.
+        assert.equal(job.error, localFolderJobErrors.partial, name);
+        assert.equal(job.needsRecovery, true);
+        assert.equal(existsSync(join(path, ".git")), true);
+      }
+    }
+    assert.equal(readFileSync(join(box.roots, "same-size", "a.txt"), "utf8"), "bbbb\n");
+  } finally {
+    await app.close();
+    box.cleanup();
+  }
+});
+
+test("task work and local-folder imports exclude each other, including across restart recovery", async () => {
+  const box = sandbox("lf-exclusion-");
+  const halts = new Map();
+  let pause = null;
+  const hold = (phase) => {
+    pause = { phase, reached: gate(), release: gate() };
+    return pause;
+  };
+  const interrupt = async (phase, job) => {
+    if (halts.get(job) === phase) return true;
+    if (pause?.phase === phase) {
+      const current = pause;
+      pause = null;
+      current.reached.open();
+      await current.release.opened;
+    }
+    return false;
+  };
+  let app = await service(box, { localFolderInterrupt: interrupt });
+  let held = null;
+  const status = (id) => app.request({ op: "show", id }).task.status;
+  const settledTask = (id, what) =>
+    waitFor(() => !["queued", "running", "cancelling"].includes(status(id)), { what });
+  const approvalBlocked =
+      "Wait for the local folder import to finish before approving work.",
+    importBlocked = "Finish or cancel approved tasks before importing a local folder.";
+  try {
+    const project = app.request({
+      op: "project-create",
+      name: "Other",
+      requestId: "22222222-2222-4222-8222-222222222222",
+    });
+    const create = () =>
+      app.request({ op: "create", adapter: "claude", prompt: "x", project: project.id });
+
+    // Import first: approval, and therefore queueing and dispatch, waits for it.
+    const waiting = create();
+    held = hold("handover_created");
+    const path = folder(box.roots, "held", { "a.txt": "a\n" });
+    const id = approve(app, preview(app, path)).id;
+    await held.reached.opened;
+    throwsFixed(() => app.request({ op: "approve", id: waiting.id }), approvalBlocked);
+    assert.equal(status(waiting.id), "waiting_for_approval");
+    held.release.open();
+    await settled(app, id, ["succeeded"]);
+    app.request({ op: "approve", id: waiting.id });
+    await waitFor(() => ["queued", "running"].includes(status(waiting.id)), {
+      what: "approved after import",
+    });
+
+    // Task first: queued or running work blocks a new import, which changes nothing.
+    const second = folder(box.roots, "second", { "b.txt": "b\n" });
+    throwsFixed(() => approve(app, preview(app, second)), importBlocked);
+    assert.deepEqual(readdirSync(second), ["b.txt"]);
+    app.request({ op: "cancel", id: waiting.id });
+    await settledTask(waiting.id, "task settled");
+
+    // Restart recovery keeps the exclusion in both directions.
+    const interrupted = folder(box.roots, "interrupted", { "c.txt": "c\n" });
+    const job = approve(app, preview(app, interrupted)).id;
+    halts.set(job, "handover_created");
+    await halted(app, job, "handover_created");
+    await app.close();
+    halts.clear();
+    app = await service(box, { localFolderInterrupt: interrupt });
+    assert.equal(jobOf(app, job).state, "recovery_required");
+    const busy = create();
+    app.request({ op: "approve", id: busy.id });
+    await waitFor(() => ["queued", "running"].includes(status(busy.id)), {
+      what: "task after restart",
+    });
+    throwsFixed(
+      () => app.request({ op: "local-folder-recover", job, action: "resume" }),
+      importBlocked,
+    );
+    assert.equal(jobOf(app, job).state, "recovery_required");
+    app.request({ op: "cancel", id: busy.id });
+    await settledTask(busy.id, "task settled after restart");
+
+    const later = create();
+    held = hold("committed");
+    app.request({ op: "local-folder-recover", job, action: "resume" });
+    await held.reached.opened;
+    throwsFixed(() => app.request({ op: "approve", id: later.id }), approvalBlocked);
+    held.release.open();
+    await settled(app, job, ["succeeded"]);
+    assert.equal(status(later.id), "waiting_for_approval");
+    app.request({ op: "approve", id: later.id });
+    await waitFor(() => ["queued", "running"].includes(status(later.id)), {
+      what: "approved after recovery",
+    });
+    app.request({ op: "cancel", id: later.id });
+  } finally {
+    held?.release.open();
+    await app.close();
+    box.cleanup();
+  }
+});
+
 test("cancellation is owner-bound and rolls back; admission conflicts in both directions", async () => {
   const box = sandbox("lf-cancel-");
   const reached = gate(),
@@ -836,7 +1170,10 @@ test("cancellation is owner-bound and rolls back; admission conflicts in both di
         ),
       { what: "approved task" },
     );
-    throwsFixed(() => approve(app, preview(app, second)), localFolderJobErrors.busy);
+    throwsFixed(
+      () => approve(app, preview(app, second)),
+      "Finish or cancel approved tasks before importing a local folder.",
+    );
     app.request({ op: "cancel", id: task.id });
   } finally {
     release.open();
@@ -852,6 +1189,12 @@ test("browser errors from local-folder refusals stay fixed and path-free", async
     for (const value of [
       ...Object.values(localFolderErrors),
       ...Object.values(localFolderJobErrors),
+      "Finish or cancel approved tasks before importing a local folder.",
+      "Wait for the repository or GitHub operation before importing a local folder.",
+      "Wait for publishing to finish before importing a local folder.",
+      "Wait for dependency preparation before importing a local folder.",
+      "Wait for current work to finish before importing a local folder.",
+      "Wait for the local folder import to finish before approving work.",
     ])
       assert.equal(publicError(Error(value)), value);
     for (const path of [

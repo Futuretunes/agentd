@@ -25,7 +25,17 @@ export const admission = {
     "queued",
   ],
   accountProbe: ["probes", "closing", "worker", "models", "account"],
-  dispatch: ["closing", "worker", "dependency", "models", "account", "renewalProbe"],
+  dispatch: [
+    "closing",
+    "worker",
+    "dependency",
+    "models",
+    "account",
+    "renewalProbe",
+    "localFolder",
+  ],
+  // A local-folder import or recovery excludes new task work in both directions.
+  taskApproval: ["localFolder"],
   storage: [
     "worker",
     "preparing",

@@ -17,7 +17,12 @@ import { executeChecks } from "./check-execution.ts";
 import { removeDependencyStage } from "./dependency-recovery.ts";
 import { repositoryJobs } from "./repository-jobs.ts";
 import { dependencyJobs } from "./dependency-jobs.ts";
-import { admissionBlocked, type Operation, type BusyState } from "./operation-policy.ts";
+import {
+  admission,
+  admissionBlocked,
+  type Operation,
+  type BusyState,
+} from "./operation-policy.ts";
 import { prepareWorktree } from "./worktree-preparation.ts";
 import { creationRequests } from "./creation-requests.ts";
 import { followupContext } from "./followup-context.ts";
@@ -298,7 +303,16 @@ export function runner(c: Config) {
     roots: () => localRoots,
     protectedPaths: () => protectedLocalPaths,
     closing: () => closing,
-    blocked: () => blocked("localFolder"),
+    blocked: () => {
+      const state = blockingState("localFolder");
+      return state
+        ? (localFolderConflicts[state] ??
+            "Wait for current work to finish before importing a local folder.")
+        : null;
+    },
+    settled: () => {
+      if (!closing) setImmediate(pump);
+    },
     audit,
     interrupt: c.localFolderInterrupt,
   });
@@ -427,49 +441,65 @@ export function runner(c: Config) {
     },
     "restart-preparation",
   );
-  function blocked(operation: Operation) {
-    const read = (state: BusyState): boolean => {
-      switch (state) {
-        case "repository":
-          return repositoryManager.busy();
-        case "publication":
-          return publicationManager.busy();
-        case "dependency":
-          return dependencyManager.busy();
-        case "github":
-          return github.busy();
-        case "worker":
-          return !!active;
-        case "account":
-          return accountBusy();
-        case "queued":
-          return !!db.prepare("SELECT id FROM tasks WHERE status='queued'").get();
-        case "probes":
-          return checkingAccounts;
-        case "closing":
-          return closing;
-        case "models":
-          return catalog.busy();
-        case "preparing":
-          return !!preparing;
-        case "renewal":
-          return !!renewalManager?.busy();
-        case "renewalProbe":
-          return !!renewalManager && checkingAccounts;
-        case "unsettled":
-          return !!db
-            .prepare(
-              "SELECT id FROM tasks WHERE status IN ('queued','running','cancelling')",
-            )
-            .get();
-        case "reviewPreparation":
-          return !!db.prepare("SELECT id FROM review_jobs WHERE state='preparing'").get();
-        case "localFolder":
-          return localFolders.busy();
-      }
-    };
-    return admissionBlocked(operation, read);
+  function busyState(state: BusyState): boolean {
+    switch (state) {
+      case "repository":
+        return repositoryManager.busy();
+      case "publication":
+        return publicationManager.busy();
+      case "dependency":
+        return dependencyManager.busy();
+      case "github":
+        return github.busy();
+      case "worker":
+        return !!active;
+      case "account":
+        return accountBusy();
+      case "queued":
+        return !!db.prepare("SELECT id FROM tasks WHERE status='queued'").get();
+      case "probes":
+        return checkingAccounts;
+      case "closing":
+        return closing;
+      case "models":
+        return catalog.busy();
+      case "preparing":
+        return !!preparing;
+      case "renewal":
+        return !!renewalManager?.busy();
+      case "renewalProbe":
+        return !!renewalManager && checkingAccounts;
+      case "unsettled":
+        return !!db
+          .prepare(
+            "SELECT id FROM tasks WHERE status IN ('queued','running','cancelling')",
+          )
+          .get();
+      case "reviewPreparation":
+        return !!db.prepare("SELECT id FROM review_jobs WHERE state='preparing'").get();
+      case "localFolder":
+        return localFolders.busy();
+    }
   }
+  function blocked(operation: Operation) {
+    return admissionBlocked(operation, busyState);
+  }
+  const blockingState = (operation: Operation) =>
+    (admission[operation] as readonly BusyState[]).find(busyState) ?? null;
+  // Name the work that must finish first, so the operator knows what to wait for.
+  const localFolderConflicts: Partial<Record<BusyState, string>> = {
+    worker: "Finish or cancel approved tasks before importing a local folder.",
+    queued: "Finish or cancel approved tasks before importing a local folder.",
+    preparing: "Finish or cancel approved tasks before importing a local folder.",
+    repository:
+      "Wait for the repository or GitHub operation before importing a local folder.",
+    github:
+      "Wait for the repository or GitHub operation before importing a local folder.",
+    publication: "Wait for publishing to finish before importing a local folder.",
+    dependency: "Wait for dependency preparation before importing a local folder.",
+    localFolder: "Wait for the current local folder import to finish.",
+    closing: "Service is stopping. Try again after it restarts.",
+  };
   const repositoryManager = repositoryJobs({
     db,
     stateDir: c.stateDir,
@@ -2760,6 +2790,8 @@ export function runner(c: Config) {
     if (input.op === "approve") {
       if (projectBusy(String(row.project)))
         throw Error("Wait for the repository update.");
+      if (blocked("taskApproval"))
+        throw Error("Wait for the local folder import to finish before approving work.");
       if (accountBusy() || catalog.busy() || dependencyManager.busy())
         throw Error(
           "Finish the account change or dependency preparation before approving work",

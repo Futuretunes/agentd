@@ -356,11 +356,13 @@ function looksBare(dir: string) {
   return !!(head?.isFile() && objects?.isDirectory() && refs?.isDirectory());
 }
 
+// Ancestors are checked whether or not the selection has its own .git: an existing
+// repository or worktree nested inside another repository is still refused.
 function assertRepositoryBoundary(canonical: string, ownGit: boolean) {
   if (!ownGit && looksBare(canonical)) fail(localFolderErrors.bare);
   for (let dir = dirname(canonical); ; dir = dirname(dir)) {
-    if (!ownGit && stat(join(dir, ".git"))) fail(localFolderErrors.parentRepository);
-    if (!ownGit && looksBare(dir)) fail(localFolderErrors.bare);
+    if (stat(join(dir, ".git"))) fail(localFolderErrors.parentRepository);
+    if (looksBare(dir)) fail(localFolderErrors.bare);
     if (dir === dirname(dir)) break;
   }
 }
@@ -550,7 +552,13 @@ export function displayPath(dir: string, name: string) {
 }
 
 type Read =
-  | { ok: true; candidate: Candidate; content: Buffer; reasons: string[] }
+  | {
+      ok: true;
+      candidate: Candidate;
+      content: Buffer;
+      reasons: string[];
+      identity: [string, string];
+    }
   | { ok: false; reason: string; reasons: string[] };
 
 /** Read one candidate without following links and bind it to its exact bytes. */
@@ -608,6 +616,7 @@ export function readCandidate(
     return {
       ok: true,
       content,
+      identity: [String(before.dev), String(before.ino)],
       reasons: [...new Set(reasons)],
       candidate: {
         path: rel,
