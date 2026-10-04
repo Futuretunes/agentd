@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Create project can register an absolute folder on the AgentD server (empty, without Git, or an existing Git repository) from allowlisted roots, with a content-bound preview, step-up approval and a handover scaffold
-- Status: revised for portable mutation-test skips (head `7e98517`); [PR #1143](https://github.com/Futuretunes/agentd/pull/1143) open, not merged or deployed
+- Status: revised for portable mutation-test skips (head `4a22845`); [PR #1143](https://github.com/Futuretunes/agentd/pull/1143) open, not merged or deployed
 - Release: 0.605.0 (candidate)
 - Branch: `feat/local-folder-import`
 
@@ -129,7 +129,7 @@ Mutating imports still require Linux `/proc/self/fd` handles. The mutation tests
 
 A new always-on test covers non-Linux refusal without mocking the platform check: preview of an allowed non-Git folder still works; approval returns exactly `localFolderJobErrors.unsupported`; no `.git`, handover files or directories, job or project appear; original files stay byte-identical; public errors and audits contain no host path. Linux isolation forbids skipped tests, so on Linux the same test is a positive control: approval does not return that unsupported error and the import may start.
 
-Expected portable `npm test` (macOS): 786 tests, 765 pass, 0 fail, 21 skipped (12 Linux-only local-folder mutation cases + 9 existing isolation fixtures). Focused local-folder + UI + policy: 37 tests, 25 pass, 12 skipped. Linux Node 24/26: 786 tests, 777 pass, 9 skipped. Isolation: 786/786, 0 skipped. Production mutation support remains Linux-only.
+Expected portable `npm test` (macOS): 786 tests, 765 pass, 0 fail, 21 skipped (12 Linux-only local-folder mutation cases + 9 existing isolation fixtures). Focused local-folder + UI + policy: 37 tests, 25 pass, 12 skipped. Linux Node 24/26: 786 tests, 777 pass, 9 skipped. Isolation: 786/786, 0 skipped. GitHub CI on `4a22845` (runs 37196477717 and 37196474661): Node 24/26 786 tests, 777 pass, 0 fail, 9 skipped; isolation 786/786, 0 skipped. Production mutation support remains Linux-only.
 
 ## Remaining limitations
 
