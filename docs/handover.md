@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.605.0 — Use local folder project import (Cursor)
 
-See [handover](handovers/2026-10-03-cursor-local-folder-import.md). Revised after review on `feat/local-folder-import`. Third revision `0f51a30` (2026-10-04) closes parent-directory symlink traversal during rollback and handover writes: owned paths are reached through Linux directory handles, directory identities are journaled, and an unsafe parent chain fails closed without deleting external files. Local Linux: Node 24/26 783 tests, 774 pass, 9 skipped; isolation 783/783, 0 skipped. Not merged or live-installed.
+See [handover](handovers/2026-10-03-cursor-local-folder-import.md). Revised after review on `feat/local-folder-import`. P1 parent-chain rollback is fixed (`0f51a30`). Fourth revision gates Linux-only mutation tests so portable `npm test` is green; inspection and existing-repository registration remain portable. Not merged or live-installed.
 
 ## Candidate 0.604.1 — Workspace defaults and project delete (Cursor)
 

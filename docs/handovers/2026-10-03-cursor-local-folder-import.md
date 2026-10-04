@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Create project can register an absolute folder on the AgentD server (empty, without Git, or an existing Git repository) from allowlisted roots, with a content-bound preview, step-up approval and a handover scaffold
-- Status: revised after the parent-chain rollback finding (code `0f51a30`, head `c1a9514`); [PR #1143](https://github.com/Futuretunes/agentd/pull/1143) open, not merged or deployed
+- Status: revised for portable mutation-test skips (head `7e98517`); [PR #1143](https://github.com/Futuretunes/agentd/pull/1143) open, not merged or deployed
 - Release: 0.605.0 (candidate)
 - Branch: `feat/local-folder-import`
 
@@ -120,6 +120,16 @@ Local Linux Docker evidence on `0f51a30`:
 - GitHub CI on `c1a9514` (runs 37195275710 and 37195272606): Node 24 and Node 26 each report 783 tests, 774 pass, 0 fail, 9 skipped. Required Linux isolation reports 783 tests, 783 pass, 0 fail, 0 skipped.
 - Codex reproduction against `70e50e6` deleted the external `handover.md`; against `0f51a30` the same steps leave the file byte-identical and the job in `recovery_required`.
 - Existing-repository inspection remains byte-identical for `.git`. No model request, consent change, live import, merge or deploy.
+
+## Fourth revision after re-review (2026-10-04)
+
+Codex found no remaining path-traversal or rollback-deletion defect in `79d0949`. The P1 directory-handle fix is unchanged.
+
+Mutating imports still require Linux `/proc/self/fd` handles. The mutation tests in `test/local-folder-import.test.mjs` now share one skip option, `linuxMutation` (`directoryRelativeSupported()`), instead of failing on macOS with the production unsupported error. Inspection, preview, blocked-preview refusal, existing-repository read-only inspection and in-place registration, public errors, GUI tests, operation-policy tests and the phone-gateway access-key test stay portable.
+
+A new always-on test covers non-Linux refusal without mocking the platform check: preview of an allowed non-Git folder still works; approval returns exactly `localFolderJobErrors.unsupported`; no `.git`, handover files or directories, job or project appear; original files stay byte-identical; public errors and audits contain no host path. Linux isolation forbids skipped tests, so on Linux the same test is a positive control: approval does not return that unsupported error and the import may start.
+
+Expected portable `npm test` (macOS): 786 tests, 765 pass, 0 fail, 21 skipped (12 Linux-only local-folder mutation cases + 9 existing isolation fixtures). Focused local-folder + UI + policy: 37 tests, 25 pass, 12 skipped. Linux Node 24/26: 786 tests, 777 pass, 9 skipped. Isolation: 786/786, 0 skipped. Production mutation support remains Linux-only.
 
 ## Remaining limitations
 
