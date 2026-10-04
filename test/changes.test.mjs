@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { once } from "node:events";
 import { runner } from "../src/runner.ts";
 import { git, snapshot } from "../src/changes.ts";
+import { waitFor } from "./helpers.mjs";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function finished(app, id) {
   for (let i = 0; i < 200; i++) {
@@ -570,15 +571,15 @@ test("one oversized file requires durable acknowledgement of every bounded page"
     }),
   });
   await once(app.server, "listening");
-  const poll = async (op, job) => {
-    let value;
-    for (let i = 0; i < 100; i++) {
-      value = app.request({ op, owner: "a", job });
-      if (value.status !== "preparing") return value;
-      await sleep(10);
-    }
-    return value;
-  };
+  // Wait for the job to leave "preparing" instead of guessing how long that takes.
+  const poll = (op, job) =>
+    waitFor(
+      () => {
+        const value = app.request({ op, owner: "a", job });
+        return value.status !== "preparing" && value;
+      },
+      { what: `${op} to finish preparing` },
+    );
   try {
     const task = app.request({
       op: "create",

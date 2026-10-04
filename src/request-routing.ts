@@ -97,6 +97,8 @@ export const workspaceReadOperations = [
   "conversation-show",
   "list",
   "workspace-preferences",
+  "local-folder-roots",
+  "local-folder-jobs",
 ] as const;
 
 export const workspaceMutationOperations = [
@@ -109,6 +111,11 @@ export const workspaceMutationOperations = [
   "project-delete",
   "project-delete-cancel",
   "project-purge",
+  "local-folder-preview",
+  "local-folder-approve",
+  "local-folder-cancel",
+  "local-folder-job-cancel",
+  "local-folder-recover",
   "conversation-restore",
   "conversation-rename",
   "conversation-archive",

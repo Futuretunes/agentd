@@ -17,7 +17,12 @@ import { executeChecks } from "./check-execution.ts";
 import { removeDependencyStage } from "./dependency-recovery.ts";
 import { repositoryJobs } from "./repository-jobs.ts";
 import { dependencyJobs } from "./dependency-jobs.ts";
-import { admissionBlocked, type Operation, type BusyState } from "./operation-policy.ts";
+import {
+  admission,
+  admissionBlocked,
+  type Operation,
+  type BusyState,
+} from "./operation-policy.ts";
 import { prepareWorktree } from "./worktree-preparation.ts";
 import { creationRequests } from "./creation-requests.ts";
 import { followupContext } from "./followup-context.ts";
@@ -48,6 +53,12 @@ import {
   removeManagedCheckout,
   type DeleteScope,
 } from "./project-delete.ts";
+import {
+  localFolderPlans,
+  parseLocalProjectRoots,
+  resolveLocalFolderPath,
+} from "./local-folder-import.ts";
+import { localFolderJobs } from "./local-folder-jobs.ts";
 import { settings, resolveSettings, type Settings } from "./execution-settings.ts";
 import { modelCatalog, discoverModels } from "./model-catalog.ts";
 import { unresolvedConflicts, type ReviewAPI } from "./github-review.ts";
@@ -91,7 +102,8 @@ import {
   readdirSync,
   rmSync,
 } from "node:fs";
-import { join, isAbsolute } from "node:path";
+import { basename, join, isAbsolute } from "node:path";
+import { publicError } from "./public-errors.ts";
 import { createServer } from "node:net";
 
 type Config = {
@@ -163,6 +175,11 @@ type Config = {
   };
   isolate?: typeof isolated;
   projectsDir?: string;
+  localProjectRoots?: string[];
+  /** Test seam: return true to stop a local-folder import after a phase, as a crash would. */
+  localFolderInterrupt?: (phase: string, job: string) => boolean | Promise<boolean>;
+  /** Test seam: extra generated handover files, including nested paths. */
+  localFolderExtraHandover?: { path: string; content: string }[];
   attachments?: string;
   timeoutMs?: number;
   command?: (adapter: string, prompt: string, mode?: string) => [string, string[]];
@@ -264,6 +281,44 @@ export function runner(c: Config) {
   };
   const attachmentRoot = c.attachments ?? join(c.stateDir, "attachments");
   mkdirSync(attachmentRoot, { recursive: true, mode: 0o700 });
+  const projectsRoot = c.projectsDir ?? join(c.stateDir, "projects");
+  mkdirSync(projectsRoot, { recursive: true, mode: 0o700 });
+  // Only administrator-configured roots are importable; AgentD's own state is not.
+  const localRoots = parseLocalProjectRoots(c.localProjectRoots);
+  const protectedLocalPaths = [
+    c.stateDir,
+    c.worktrees,
+    c.logs,
+    attachmentRoot,
+    projectsRoot,
+    c.repo,
+    ...(c.githubRoot ? [c.githubRoot] : []),
+  ];
+  const folderPlans = localFolderPlans();
+  const localFolderOwner = (value: unknown) => {
+    if (typeof value !== "string" || !/^[a-f0-9]{64}$/.test(value))
+      throw Error("Browser owner required");
+    return value;
+  };
+  const localFolders = localFolderJobs({
+    db,
+    roots: () => localRoots,
+    protectedPaths: () => protectedLocalPaths,
+    closing: () => closing,
+    blocked: () => {
+      const state = blockingState("localFolder");
+      return state
+        ? (localFolderConflicts[state] ??
+            "Wait for current work to finish before importing a local folder.")
+        : null;
+    },
+    settled: () => {
+      if (!closing) setImmediate(pump);
+    },
+    audit,
+    interrupt: c.localFolderInterrupt,
+    extraHandover: c.localFolderExtraHandover,
+  });
   const images = attachmentStore(attachmentRoot);
   const attachment = images.metadata;
   const logTail = (path: string, limit = 60000) => {
@@ -389,47 +444,65 @@ export function runner(c: Config) {
     },
     "restart-preparation",
   );
-  function blocked(operation: Operation) {
-    const read = (state: BusyState): boolean => {
-      switch (state) {
-        case "repository":
-          return repositoryManager.busy();
-        case "publication":
-          return publicationManager.busy();
-        case "dependency":
-          return dependencyManager.busy();
-        case "github":
-          return github.busy();
-        case "worker":
-          return !!active;
-        case "account":
-          return accountBusy();
-        case "queued":
-          return !!db.prepare("SELECT id FROM tasks WHERE status='queued'").get();
-        case "probes":
-          return checkingAccounts;
-        case "closing":
-          return closing;
-        case "models":
-          return catalog.busy();
-        case "preparing":
-          return !!preparing;
-        case "renewal":
-          return !!renewalManager?.busy();
-        case "renewalProbe":
-          return !!renewalManager && checkingAccounts;
-        case "unsettled":
-          return !!db
-            .prepare(
-              "SELECT id FROM tasks WHERE status IN ('queued','running','cancelling')",
-            )
-            .get();
-        case "reviewPreparation":
-          return !!db.prepare("SELECT id FROM review_jobs WHERE state='preparing'").get();
-      }
-    };
-    return admissionBlocked(operation, read);
+  function busyState(state: BusyState): boolean {
+    switch (state) {
+      case "repository":
+        return repositoryManager.busy();
+      case "publication":
+        return publicationManager.busy();
+      case "dependency":
+        return dependencyManager.busy();
+      case "github":
+        return github.busy();
+      case "worker":
+        return !!active;
+      case "account":
+        return accountBusy();
+      case "queued":
+        return !!db.prepare("SELECT id FROM tasks WHERE status='queued'").get();
+      case "probes":
+        return checkingAccounts;
+      case "closing":
+        return closing;
+      case "models":
+        return catalog.busy();
+      case "preparing":
+        return !!preparing;
+      case "renewal":
+        return !!renewalManager?.busy();
+      case "renewalProbe":
+        return !!renewalManager && checkingAccounts;
+      case "unsettled":
+        return !!db
+          .prepare(
+            "SELECT id FROM tasks WHERE status IN ('queued','running','cancelling')",
+          )
+          .get();
+      case "reviewPreparation":
+        return !!db.prepare("SELECT id FROM review_jobs WHERE state='preparing'").get();
+      case "localFolder":
+        return localFolders.busy();
+    }
   }
+  function blocked(operation: Operation) {
+    return admissionBlocked(operation, busyState);
+  }
+  const blockingState = (operation: Operation) =>
+    (admission[operation] as readonly BusyState[]).find(busyState) ?? null;
+  // Name the work that must finish first, so the operator knows what to wait for.
+  const localFolderConflicts: Partial<Record<BusyState, string>> = {
+    worker: "Finish or cancel approved tasks before importing a local folder.",
+    queued: "Finish or cancel approved tasks before importing a local folder.",
+    preparing: "Finish or cancel approved tasks before importing a local folder.",
+    repository:
+      "Wait for the repository or GitHub operation before importing a local folder.",
+    github:
+      "Wait for the repository or GitHub operation before importing a local folder.",
+    publication: "Wait for publishing to finish before importing a local folder.",
+    dependency: "Wait for dependency preparation before importing a local folder.",
+    localFolder: "Wait for the current local folder import to finish.",
+    closing: "Service is stopping. Try again after it restarts.",
+  };
   const repositoryManager = repositoryJobs({
     db,
     stateDir: c.stateDir,
@@ -576,6 +649,7 @@ export function runner(c: Config) {
     });
   }
   function purgeDueProjects() {
+    if (localFolders.busy()) return;
     for (const row of dueDeletedProjects(db)) {
       try {
         purgeProjectNow(row);
@@ -2123,6 +2197,11 @@ export function runner(c: Config) {
   }
   function handleWorkspaceReadRequest(input: any) {
     if (input.op === "workspace-preferences") return workspacePrefs();
+    if (input.op === "local-folder-roots")
+      return {
+        roots: localRoots.map((path) => ({ label: basename(path) || path, path })),
+      };
+    if (input.op === "local-folder-jobs") return { jobs: localFolders.view() };
     if (input.op === "projects")
       return db
         .prepare(
@@ -2247,6 +2326,40 @@ export function runner(c: Config) {
       ).run(dependencies, hash, input.id);
       return project(input.id);
     }
+    if (input.op === "local-folder-preview") {
+      const owner = localFolderOwner(input.owner);
+      try {
+        localFolders.assertNoRecovery(
+          resolveLocalFolderPath(input.path, localRoots, protectedLocalPaths).canonical,
+        );
+        return folderPlans.preview(
+          owner,
+          title(input.name),
+          String(input.path ?? ""),
+          localRoots,
+          protectedLocalPaths,
+        );
+      } catch (error) {
+        audit("local-folder-preview", null, {
+          outcome: "refused",
+          error: publicError(error),
+        });
+        throw error;
+      }
+    }
+    if (input.op === "local-folder-cancel")
+      return folderPlans.cancel(localFolderOwner(input.owner));
+    if (input.op === "local-folder-approve") {
+      const owner = localFolderOwner(input.owner),
+        fingerprint = String(input.fingerprint ?? "");
+      const repeated = localFolders.existing(fingerprint, owner);
+      if (repeated) return repeated;
+      return localFolders.approve(folderPlans.take(owner, fingerprint), owner);
+    }
+    if (input.op === "local-folder-job-cancel")
+      return localFolders.cancel(String(input.job ?? ""), localFolderOwner(input.owner));
+    if (input.op === "local-folder-recover")
+      return localFolders.recover(String(input.job ?? ""), input.action);
     if (input.op === "project-create" || input.op === "project-register") {
       const name = title(input.name),
         id = randomUUID();
@@ -2258,8 +2371,10 @@ export function runner(c: Config) {
         if (realpathSync(git(["rev-parse", "--show-toplevel"], repo)) !== repo)
           throw new Error("Repository root mismatch");
         git(["rev-parse", "--verify", "HEAD^{commit}"], repo);
+        if (db.prepare("SELECT id FROM projects WHERE repo=?").get(repo))
+          throw Error("That folder is already registered as a project.");
       } else {
-        repo = join(c.projectsDir ?? join(c.stateDir, "projects"), id);
+        repo = join(projectsRoot, id);
         mkdirSync(repo, { recursive: true, mode: 0o700 });
         git(["init", "-b", "main"], repo);
         git(
@@ -2362,6 +2477,11 @@ export function runner(c: Config) {
       audit("workspace-preferences-save", null, { before, after });
       return after;
     }
+    if (
+      (input.op === "project-delete" || input.op === "project-purge") &&
+      localFolders.busy()
+    )
+      throw Error("Wait for the local folder import to finish.");
     if (input.op === "project-delete") {
       if (projectBusyForDelete(input.id))
         throw Error(
@@ -2673,6 +2793,8 @@ export function runner(c: Config) {
     if (input.op === "approve") {
       if (projectBusy(String(row.project)))
         throw Error("Wait for the repository update.");
+      if (blocked("taskApproval"))
+        throw Error("Wait for the local folder import to finish before approving work.");
       if (accountBusy() || catalog.busy() || dependencyManager.busy())
         throw Error(
           "Finish the account change or dependency preparation before approving work",
@@ -2919,6 +3041,7 @@ export function runner(c: Config) {
       const revisionClosed = revisionManager.close();
       const restartClosed = restartManager.close();
       await publicationManager.close();
+      await localFolders.close();
       await Promise.all([
         previewClosed,
         validationClosed,

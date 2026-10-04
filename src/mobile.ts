@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes, createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 type Config = {
   key: string;
   cert: string;
@@ -19,6 +19,20 @@ type Config = {
   attachments?: string;
   publicDir: string;
 };
+/** A failure after headers cannot become a second status response; end the
+ * connection so the client settles instead of waiting for an unfinished body. */
+export function failResponse(
+  res: ServerResponse,
+  send: (status: number, value: unknown) => void,
+  error: unknown,
+) {
+  if (res.headersSent) {
+    console.error("agentd-mobile: response failed after headers were sent");
+    res.destroy();
+    return;
+  }
+  send(400, { error: publicError(error) });
+}
 export function mobile(c: Config) {
   const sessions = new Map<string, number>(),
     attempts = new Map<string, { count: number; until: number }>(),
@@ -200,6 +214,7 @@ export function mobile(c: Config) {
             "/app.js",
             "/ui.js",
             "/request-id.js",
+            "/local-folder.js",
             "/style.css",
             "/fonts/geist-400.ttf",
             "/fonts/geist-500.ttf",
@@ -207,6 +222,7 @@ export function mobile(c: Config) {
           ].includes(path)
         ) {
           const file = path === "/" ? "index.html" : path.slice(1);
+          const body = readFileSync(join(c.publicDir, file));
           res.writeHead(200, {
             "Content-Type": file.endsWith(".html")
               ? "text/html; charset=utf-8"
@@ -216,7 +232,7 @@ export function mobile(c: Config) {
                   ? "font/ttf"
                   : "text/css",
           });
-          res.end(readFileSync(join(c.publicDir, file)));
+          res.end(body);
           return;
         }
         if (req.method === "POST") {
@@ -1610,6 +1626,84 @@ export function mobile(c: Config) {
           );
           return;
         }
+        if (path === "/api/local-folder" && req.method === "GET") {
+          const [roots, jobs] = await Promise.all([
+            call({ op: "local-folder-roots" }),
+            call({ op: "local-folder-jobs" }),
+          ]);
+          send(200, { ...roots, ...jobs });
+          return;
+        }
+        if (path === "/api/local-folder" && req.method === "POST") {
+          const input = await body(req);
+          if (input.action === "cancel") {
+            send(200, await call({ op: "local-folder-cancel", owner: accountOwner }));
+            return;
+          }
+          if (input.action === "cancelJob") {
+            send(
+              200,
+              await call({
+                op: "local-folder-job-cancel",
+                owner: accountOwner,
+                job: input.job,
+              }),
+            );
+            return;
+          }
+          // Folder inspection and access-key step-up are both bounded per client.
+          const limitKey = "local-folder:" + (req.socket.remoteAddress ?? "unknown"),
+            started = Date.now();
+          for (const [key, value] of attempts)
+            if (value.until < started) attempts.delete(key);
+          const attempt = attempts.get(limitKey) ?? { count: 0, until: started + 60000 };
+          if (attempt.count >= 10) {
+            send(429, { error: "Too many attempts. Try again in one minute." });
+            return;
+          }
+          attempt.count++;
+          attempts.set(limitKey, attempt);
+          if (input.action === "recover") {
+            if (!accessKeyMatches(input.currentKey, accessHash))
+              throw Error("Current access key did not match.");
+            send(
+              200,
+              await call({
+                op: "local-folder-recover",
+                owner: accountOwner,
+                job: input.job,
+                action: input.recovery,
+              }),
+            );
+            return;
+          }
+          if (input.action === "preview") {
+            send(
+              200,
+              await call({
+                op: "local-folder-preview",
+                owner: accountOwner,
+                name: input.name,
+                path: input.path,
+              }),
+            );
+            return;
+          }
+          if (input.action === "approve") {
+            if (!accessKeyMatches(input.currentKey, accessHash))
+              throw Error("Current access key did not match.");
+            send(
+              200,
+              await call({
+                op: "local-folder-approve",
+                owner: accountOwner,
+                fingerprint: input.fingerprint,
+              }),
+            );
+            return;
+          }
+          throw Error("Unsupported local folder action");
+        }
         if (path === "/api/repositories" && req.method === "GET") {
           send(200, await call({ op: "repository-jobs" }));
           return;
@@ -1698,6 +1792,7 @@ export function mobile(c: Config) {
         const output = path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/output$/);
         if (output && req.method === "GET") {
           const value = await call({ op: "task-output", id: output[1] });
+          if (typeof value?.text !== "string") throw Error("Unexpected runner response");
           res.writeHead(200, {
             "Content-Type": "text/plain; charset=utf-8",
             "Content-Disposition": `attachment; filename="agentd-${output[1]}.txt"`,
@@ -1951,15 +2046,17 @@ export function mobile(c: Config) {
         const img = path.match(/^\/api\/images\/([0-9a-f-]{36})$/);
         if (img && req.method === "GET") {
           const value = await call({ op: "attachment-read", id: img[1] });
+          if (typeof value?.data !== "string") throw Error("Unexpected runner response");
+          const body = Buffer.from(value.data, "base64");
           res.writeHead(200, {
             "Content-Type": value.ext === ".png" ? "image/png" : "image/jpeg",
           });
-          res.end(Buffer.from(value.data, "base64"));
+          res.end(body);
           return;
         }
         send(404, { error: "Not found" });
       } catch (error) {
-        send(400, { error: publicError(error) });
+        failResponse(res, send, error);
       }
     },
   );

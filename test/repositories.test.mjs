@@ -11,6 +11,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFile, execFileSync } from "node:child_process";
 import { once } from "node:events";
 import { DatabaseSync } from "node:sqlite";
@@ -162,7 +163,7 @@ test("import jobs discover branches, register successful clones, reject duplicat
     const output = await new Promise((resolve, reject) =>
       execFile(
         process.execPath,
-        [new URL("../src/control.ts", import.meta.url).pathname, "github-status"],
+        [fileURLToPath(new URL("../src/control.ts", import.meta.url)), "github-status"],
         {
           env: {
             ...process.env,

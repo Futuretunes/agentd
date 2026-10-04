@@ -1,4 +1,5 @@
 import { stageCreation, completeCreation } from "./request-id.js";
+import { localFolderController } from "./local-folder.js";
 import {
   renderMarkdown,
   renderDiff,
@@ -2685,6 +2686,53 @@ $("import-open").onclick = () => {
   openDialog($("repository-dialog"));
   void updateRepositories();
 };
+const localFolder = localFolderController({
+  doc: document,
+  elements: {
+    name: $("local-folder-name"),
+    path: $("local-folder-path"),
+    key: $("local-folder-key"),
+    roots: $("local-folder-roots"),
+    preview: $("local-folder-preview"),
+    jobs: $("local-folder-jobs"),
+    review: $("local-folder-preview-btn"),
+    approve: $("local-folder-approve"),
+  },
+  api,
+  notice,
+  onRegistered: async (job) => {
+    saveDraft();
+    projectId = job.project;
+    reset();
+    requestCloseDialog($("local-folder-dialog"), { force: true });
+    notice("Local folder registered.");
+    await refresh();
+  },
+});
+$("local-folder-open").onclick = () => {
+  $("project-dialog").close();
+  localFolder.reset();
+  $("local-folder-name").value = $("project-input").value || "";
+  $("local-folder-path").value = "";
+  $("local-folder-key").value = "";
+  openDialog($("local-folder-dialog"));
+  $("local-folder-path").focus();
+  localFolder.load().catch((error) => notice(error.message));
+};
+$("local-folder-close").onclick = () => requestCloseDialog($("local-folder-dialog"));
+$("local-folder-cancel-preview").onclick = () => {
+  localFolder.invalidate();
+  requestCloseDialog($("local-folder-dialog"), { force: true });
+};
+$("local-folder-preview-btn").onclick = async () => {
+  await localFolder.review();
+  markDialogClean($("local-folder-dialog"));
+};
+$("local-folder-form").onsubmit = (e) => {
+  e.preventDefault();
+  void localFolder.approve();
+};
+trackDialogDirty($("local-folder-form"), $("local-folder-dialog"));
 $("repository-close").onclick = () => requestCloseDialog($("repository-dialog"));
 trackDialogDirty($("repository-form"), $("repository-dialog"));
 $("repository-url").oninput = () => {
