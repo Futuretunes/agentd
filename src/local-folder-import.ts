@@ -899,9 +899,13 @@ export function inspectLocalFolder(input: {
         keptHandover.push(rel);
         continue;
       }
-      const parent = dirname(rel);
-      if (parent !== ".") {
-        const parentInfo = stat(join(canonical, parent));
+      // Every missing ancestor is created (outermost first); an existing one must be a
+      // plain folder.
+      const parents = dirname(rel) === "." ? [] : dirname(rel).split("/");
+      let plain = true;
+      for (let i = 1; i <= parents.length && plain; i++) {
+        const parent = parents.slice(0, i).join("/"),
+          parentInfo = stat(join(canonical, parent));
         if (!parentInfo) {
           if (!createDirs.includes(parent)) createDirs.push(parent);
         } else if (parentInfo.isSymbolicLink() || !parentInfo.isDirectory()) {
@@ -909,9 +913,10 @@ export function inspectLocalFolder(input: {
             path: parent,
             reason: "handover location is not a plain folder",
           });
-          continue;
+          plain = false;
         }
       }
+      if (!plain) continue;
       const bytes = Buffer.from(content);
       handover.push({
         path: rel,

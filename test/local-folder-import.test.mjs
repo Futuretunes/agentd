@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   chmodSync,
+  cpSync,
   existsSync,
   linkSync,
   mkdirSync,
@@ -9,6 +10,7 @@ import {
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -33,6 +35,7 @@ import {
   previewView,
   resolveLocalFolderPath,
 } from "../src/local-folder-import.ts";
+import { directoryRelativeSupported } from "../src/directory-handles.ts";
 import { gitTreeDigest, localFolderJobErrors } from "../src/local-folder-jobs.ts";
 import { gate, waitFor } from "./helpers.mjs";
 
@@ -800,29 +803,33 @@ test("a root replaced by a symlink between phases is refused and never written t
   }
 });
 
-test("the Git metadata digest covers content, not timestamps", () => {
-  const box = sandbox("lf-digest-");
-  try {
-    const repo = makeRepo(join(box.roots, "repo"));
-    const gitDir = join(repo, ".git"),
-      ref = join(gitDir, "refs", "heads", "main");
-    const first = gitTreeDigest(gitDir);
-    assert.match(first, /^[0-9a-f]{64}$/);
-    assert.equal(gitTreeDigest(gitDir), first);
-    const { atime, mtime } = statSync(ref);
-    const sha = readFileSync(ref, "utf8");
-    writeFileSync(ref, sha.replace(/^./, sha[0] === "0" ? "1" : "0"));
-    utimesSync(ref, atime, mtime);
-    assert.notEqual(gitTreeDigest(gitDir), first, "same-size ref edit");
-    writeFileSync(ref, sha);
-    utimesSync(ref, atime, mtime);
-    assert.equal(gitTreeDigest(gitDir), first);
-    chmodSync(join(gitDir, "config"), 0o600);
-    assert.notEqual(gitTreeDigest(gitDir), first, "permission change");
-  } finally {
-    box.cleanup();
-  }
-});
+test(
+  "the Git metadata digest covers content, not timestamps",
+  { skip: !directoryRelativeSupported() },
+  () => {
+    const box = sandbox("lf-digest-");
+    try {
+      const repo = makeRepo(join(box.roots, "repo"));
+      const gitDir = join(repo, ".git"),
+        ref = join(gitDir, "refs", "heads", "main");
+      const first = gitTreeDigest(gitDir);
+      assert.match(first, /^[0-9a-f]{64}$/);
+      assert.equal(gitTreeDigest(gitDir), first);
+      const { atime, mtime } = statSync(ref);
+      const sha = readFileSync(ref, "utf8");
+      writeFileSync(ref, sha.replace(/^./, sha[0] === "0" ? "1" : "0"));
+      utimesSync(ref, atime, mtime);
+      assert.notEqual(gitTreeDigest(gitDir), first, "same-size ref edit");
+      writeFileSync(ref, sha);
+      utimesSync(ref, atime, mtime);
+      assert.equal(gitTreeDigest(gitDir), first);
+      chmodSync(join(gitDir, "config"), 0o600);
+      assert.notEqual(gitTreeDigest(gitDir), first, "permission change");
+    } finally {
+      box.cleanup();
+    }
+  },
+);
 
 test("rollback after interruption refuses when Git metadata changed and keeps the added history", async () => {
   const box = sandbox("lf-git-changed-");
@@ -995,6 +1002,186 @@ test("working files are revalidated without following symlinks immediately befor
       }
     }
     assert.equal(readFileSync(join(box.roots, "same-size", "a.txt"), "utf8"), "bbbb\n");
+  } finally {
+    await app.close();
+    box.cleanup();
+  }
+});
+
+test("rollback refuses a parent-directory symlink and never deletes the external file", async () => {
+  const box = sandbox("lf-parent-symlink-");
+  const nested = { path: "docs/notes/keep.md", content: "nested generated file\n" };
+  const halt = new Set();
+  let haltNext = false;
+  const interrupt = (phase, job) => {
+    if (haltNext && phase === "committed") {
+      haltNext = false;
+      halt.add(job);
+      return true;
+    }
+    return halt.has(job) && phase === "committed";
+  };
+  let app = await service(box, {
+    localFolderInterrupt: interrupt,
+    localFolderExtraHandover: [nested],
+  });
+  try {
+    const recover = async (name, action, mutate) => {
+      const path = folder(box.roots, name, { "a.txt": `${name}\n` });
+      haltNext = true;
+      const id = approve(app, preview(app, path, name)).id;
+      await halted(app, id, "committed");
+      await app.close();
+      halt.clear();
+      const evidence = mutate(path);
+      app = await service(box, {
+        localFolderInterrupt: interrupt,
+        localFolderExtraHandover: [nested],
+      });
+      app.request({ op: "local-folder-recover", job: id, action });
+      const job = await settled(app, id, [
+        "recovery_required",
+        "rolled_back",
+        "succeeded",
+      ]);
+      assert.equal(job.state, "recovery_required", `${name} ${action}`);
+      assert.equal(job.needsRecovery, true);
+      assert.equal(
+        app.request({ op: "projects" }).some((p) => p.repo === path),
+        false,
+        name,
+      );
+      return evidence;
+    };
+
+    for (const action of ["resume", "rollback"]) {
+      const evidence = await recover(`docs-link-${action}`, action, (path) => {
+        const external = join(box.base, `other-project-${action}`, "docs");
+        mkdirSync(external, { recursive: true });
+        const dest = join(external, "handover.md");
+        cpSync(join(path, "docs", "handover.md"), dest);
+        const before = readFileSync(dest);
+        rmSync(join(path, "docs"), { recursive: true });
+        symlinkSync(external, join(path, "docs"));
+        return { dest, before };
+      });
+      assert.equal(existsSync(evidence.dest), true, action);
+      assert.deepEqual(readFileSync(evidence.dest), evidence.before, action);
+    }
+
+    const replaced = await recover("replaced-dir", "rollback", (path) => {
+      const replacement = join(box.base, "replacement-docs");
+      const originalIno = statSync(join(path, "docs")).ino;
+      mkdirSync(replacement);
+      cpSync(join(path, "docs", "handover.md"), join(replacement, "handover.md"));
+      cpSync(join(path, "docs", "notes", "keep.md"), join(replacement, "keep.md"));
+      const before = {
+        handover: readFileSync(join(replacement, "handover.md")),
+        keep: readFileSync(join(replacement, "keep.md")),
+      };
+      rmSync(join(path, "docs"), { recursive: true });
+      renameSync(replacement, join(path, "docs"));
+      assert.notEqual(statSync(join(path, "docs")).ino, originalIno);
+      return before;
+    });
+    assert.deepEqual(
+      readFileSync(join(box.roots, "replaced-dir", "docs", "handover.md")),
+      replaced.handover,
+    );
+    assert.deepEqual(
+      readFileSync(join(box.roots, "replaced-dir", "docs", "keep.md")),
+      replaced.keep,
+    );
+    assert.equal(existsSync(join(box.roots, "replaced-dir", "docs")), true);
+
+    const nestedEvidence = await recover("nested-link", "rollback", (path) => {
+      const external = join(box.base, "nested-external");
+      mkdirSync(join(external, "notes"), { recursive: true });
+      const dest = join(external, "notes", "keep.md");
+      cpSync(join(path, "docs", "notes", "keep.md"), dest);
+      writeFileSync(join(external, "foreign.txt"), "other project\n");
+      const before = readFileSync(dest);
+      rmSync(join(path, "docs"), { recursive: true });
+      symlinkSync(external, join(path, "docs"));
+      return { dest, before, foreign: join(external, "foreign.txt") };
+    });
+    assert.deepEqual(readFileSync(nestedEvidence.dest), nestedEvidence.before);
+    assert.equal(readFileSync(nestedEvidence.foreign, "utf8"), "other project\n");
+
+    const clean = folder(box.roots, "clean", { "a.txt": "clean\n" });
+    const original = snapshotFiles(clean);
+    haltNext = true;
+    const id = approve(app, preview(app, clean, "clean")).id;
+    await halted(app, id, "committed");
+    await app.close();
+    halt.clear();
+    app = await service(box, {
+      localFolderInterrupt: () => false,
+      localFolderExtraHandover: [nested],
+    });
+    app.request({ op: "local-folder-recover", job: id, action: "rollback" });
+    const cleanJob = await settled(app, id, ["rolled_back", "recovery_required"]);
+    assert.equal(cleanJob.state, "rolled_back");
+    assert.deepEqual(snapshotFiles(clean), original);
+    assert.equal(existsSync(join(clean, ".git")), false);
+  } finally {
+    try {
+      await app.close();
+    } catch {}
+    box.cleanup();
+  }
+});
+
+test("a parent-directory symlink between validation and handover write is not written through", async () => {
+  const box = sandbox("lf-write-through-");
+  const nested = { path: "docs/notes/keep.md", content: "nested generated file\n" };
+  let seam = "",
+    swap = null;
+  const app = await service(box, {
+    localFolderExtraHandover: [nested],
+    localFolderInterrupt: (phase) => {
+      if (swap && phase === seam) {
+        swap();
+        swap = null;
+      }
+      return false;
+    },
+  });
+  try {
+    const run = async (name, phase, replace) => {
+      const path = folder(box.roots, name, { "a.txt": `${name}\n` });
+      const external = join(box.base, `write-${name}`);
+      mkdirSync(join(external, "notes"), { recursive: true });
+      writeFileSync(join(external, "marker.txt"), "keep\n");
+      writeFileSync(join(external, "notes", "marker.txt"), "keep\n");
+      seam = phase;
+      swap = () => replace(path, external);
+      const job = await settled(app, approve(app, preview(app, path, name)).id, [
+        "failed",
+        "recovery_required",
+        "succeeded",
+      ]);
+      assert.notEqual(job.state, "succeeded", name);
+      assert.equal(existsSync(join(external, "handover.md")), false, name);
+      assert.equal(existsSync(join(external, "notes", "keep.md")), false, name);
+      assert.equal(readFileSync(join(external, "marker.txt"), "utf8"), "keep\n", name);
+      assert.equal(
+        readFileSync(join(external, "notes", "marker.txt"), "utf8"),
+        "keep\n",
+        name,
+      );
+      assert.equal(
+        app.request({ op: "projects" }).some((p) => p.repo === path),
+        false,
+        name,
+      );
+    };
+    const linkDocs = (path, external) => {
+      rmSync(join(path, "docs"), { recursive: true, force: true });
+      symlinkSync(external, join(path, "docs"));
+    };
+    await run("docs-handover", "handover_write:docs/handover.md", linkDocs);
+    await run("nested-keep", "handover_write:docs/notes/keep.md", linkDocs);
   } finally {
     await app.close();
     box.cleanup();

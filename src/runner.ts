@@ -178,6 +178,8 @@ type Config = {
   localProjectRoots?: string[];
   /** Test seam: return true to stop a local-folder import after a phase, as a crash would. */
   localFolderInterrupt?: (phase: string, job: string) => boolean | Promise<boolean>;
+  /** Test seam: extra generated handover files, including nested paths. */
+  localFolderExtraHandover?: { path: string; content: string }[];
   attachments?: string;
   timeoutMs?: number;
   command?: (adapter: string, prompt: string, mode?: string) => [string, string[]];
@@ -315,6 +317,7 @@ export function runner(c: Config) {
     },
     audit,
     interrupt: c.localFolderInterrupt,
+    extraHandover: c.localFolderExtraHandover,
   });
   const images = attachmentStore(attachmentRoot);
   const attachment = images.metadata;

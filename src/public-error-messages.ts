@@ -656,6 +656,7 @@ export const publicMessages = new Set<string>([
   "Worktree size limit reached before checkout",
   "ntfy delivery refused",
   // Local folder import (sorted within this block).
+  "A folder on a path AgentD uses was replaced or became a link. AgentD left the files for manual recovery.",
   "A previous import of that folder needs recovery. Resume it or roll it back first.",
   "Choose resume or roll back.",
   "Enter an absolute folder path on the AgentD server.",
@@ -699,6 +700,7 @@ export const publicMessages = new Set<string>([
   "The folder now has Git metadata that AgentD did not create. Review the folder.",
   "The local folder was replaced or moved during import. Review the folder.",
   "This local folder import does not need recovery.",
+  "This server cannot change local folders safely: directory-relative file operations need Linux. Nothing was changed.",
   "Unsupported local folder action",
   "Wait for current work to finish before importing a local folder.",
   "Wait for dependency preparation before importing a local folder.",
