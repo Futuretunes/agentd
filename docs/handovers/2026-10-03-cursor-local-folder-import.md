@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Create project can register an absolute folder on the AgentD server (empty, without Git, or an existing Git repository) from allowlisted roots, with a content-bound preview, step-up approval and a handover scaffold
-- Status: revised after the parent-chain rollback finding (code `0f51a30`); [PR #1143](https://github.com/Futuretunes/agentd/pull/1143) open, not merged or deployed
+- Status: revised after the parent-chain rollback finding (code `0f51a30`, head `c1a9514`); [PR #1143](https://github.com/Futuretunes/agentd/pull/1143) open, not merged or deployed
 - Release: 0.605.0 (candidate)
 - Branch: `feat/local-folder-import`
 
@@ -117,6 +117,7 @@ Local Linux Docker evidence on `0f51a30`:
 - Focused `local-folder-import`, `local-folder-ui` and `operation-policy` suites: 34/34.
 - Node 24 and Node 26 full suites: 783 tests, 774 pass, 0 fail, 9 skipped (Linux-only isolation fixtures).
 - Required Linux isolation (`AGENTD_TEST_ISOLATION=1`, bubblewrap): 783 tests, 783 pass, 0 fail, 0 skipped.
+- GitHub CI on `c1a9514` (runs 37195275710 and 37195272606): Node 24 and Node 26 each report 783 tests, 774 pass, 0 fail, 9 skipped. Required Linux isolation reports 783 tests, 783 pass, 0 fail, 0 skipped.
 - Codex reproduction against `70e50e6` deleted the external `handover.md`; against `0f51a30` the same steps leave the file byte-identical and the job in `recovery_required`.
 - Existing-repository inspection remains byte-identical for `.git`. No model request, consent change, live import, merge or deploy.
 
