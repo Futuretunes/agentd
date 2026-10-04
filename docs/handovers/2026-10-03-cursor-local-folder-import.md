@@ -2,7 +2,7 @@
 
 - Author/agent: Cursor
 - Requested outcome: Create project can register an absolute folder on the AgentD server (empty, without Git, or an existing Git repository) from allowlisted roots, with a content-bound preview, step-up approval and a handover scaffold
-- Status: revised twice after review (latest code commit `80f71a1`); [PR #1143](https://github.com/Futuretunes/agentd/pull/1143) open, not merged or deployed
+- Status: revised after the parent-chain rollback finding (code `0f51a30`); [PR #1143](https://github.com/Futuretunes/agentd/pull/1143) open, not merged or deployed
 - Release: 0.605.0 (candidate)
 - Branch: `feat/local-folder-import`
 
@@ -89,6 +89,37 @@ Each fix was checked by disabling it: the matching regression test, and only tha
   - CI on `80f71a1` (runs 37164511245 and 37164509609): Node 24 and Node 26 each report 781 tests, 772 pass, 0 fail, 9 skipped. Required Linux isolation reports 781 tests, 781 pass, 0 fail, 0 skipped.
   - No test or step made a model request, changed account consent, inspected a real private folder, merged, deployed or imported a live project. Existing-repository inspection is still proven byte-identical for `.git`.
 
+## Third revision after re-review (2026-10-04)
+
+Codex's review of `70e50e6` reproduced a P1 rollback bug: `readNoFollow` and `unlinkSync` only no-follow the final name, so `project/docs/handover.md` followed a replaced `docs` symlink and deleted a byte-identical external `handover.md`. That violates the rule that rollback deletes only files AgentD can prove it created.
+
+Commit `0f51a30` treats every intermediate component as security-sensitive:
+
+- New `src/directory-handles.ts` performs Linux directory-relative operations through `/proc/self/fd/<dir>/<name>`. Each call uses one final name inside an already verified directory handle (`O_DIRECTORY|O_NOFOLLOW` for directories, `O_NOFOLLOW` for files). A successful final-component open is never treated as proof that the parents were safe.
+- The job journals `dirIds` (device and inode of every directory on a handover path, created or pre-existing) before writing inside it, and journals each created file's inode.
+- Reads, exclusive creates, rollback unlinks, `rmdir` and `.git` removal walk from the held project-root descriptor, reject symlinks, device changes, inode mismatches and unexpected hard links, and re-check immediately before the destructive call.
+- Rollback is two-pass and fail-closed: every owned file and directory is verified first; if any parent chain is unsafe, nothing is deleted and the job stays `recovery_required`. `.git` is removed entry-by-entry against the journaled digest, through the same handles.
+- If directory-relative operations are unavailable (non-Linux), mutating imports and recovery refuse up front and change nothing.
+- Handover inspection now lists every missing ancestor of a generated path, not only the immediate parent.
+
+Regression tests (deterministic seams, no sleeps):
+
+1. Pause at `committed`, copy `docs/handover.md` to an external directory, replace `docs` with a symlink to it, resume or roll back: the external file stays byte-identical, the job is `recovery_required`, and the project is not registered. This case failed on `70e50e6` (external file deleted) and passes after the fix.
+2. `handover_write:<path>` seam: replace `docs` with a symlink after the parent chain is held and before the write. AgentD does not create `handover.md` or `docs/notes/keep.md` in the external directory.
+3. Replace the owned `docs` directory with a different real directory (different inode) containing copies of the generated files: rollback does not delete the replacement or its files.
+4. Extra generated file `docs/notes/keep.md`; replace the intermediate `docs` component with a symlink: no external read, write or deletion.
+5. Unchanged AgentD-created parent chain still rolls back to the original folder.
+6. Existing final-component coverage remains: same-size replacement, symlink, FIFO, removal, untracked file, changed or replaced handover file, and the unchanged success case.
+
+Local Linux Docker evidence on `0f51a30`:
+
+- `npm run format:check` and `npm run typecheck` are clean.
+- Focused `local-folder-import`, `local-folder-ui` and `operation-policy` suites: 34/34.
+- Node 24 and Node 26 full suites: 783 tests, 774 pass, 0 fail, 9 skipped (Linux-only isolation fixtures).
+- Required Linux isolation (`AGENTD_TEST_ISOLATION=1`, bubblewrap): 783 tests, 783 pass, 0 fail, 0 skipped.
+- Codex reproduction against `70e50e6` deleted the external `handover.md`; against `0f51a30` the same steps leave the file byte-identical and the job in `recovery_required`.
+- Existing-repository inspection remains byte-identical for `.git`. No model request, consent change, live import, merge or deploy.
+
 ## Remaining limitations
 
 - Crashing or cancelling while AgentD's own Git command runs (`init`, `fast-import`, `read-tree`) leaves `.git` different from the journaled digest. Recovery then refuses and the operator removes `.git` by hand. This is fail-closed by design. The same applies after a crash between `git init` and journaling its digest if the import folder's filesystem makes `git init` write different config than the temporary directory (for example `core.ignorecase`).
@@ -96,7 +127,7 @@ Each fix was checked by disabling it: the matching regression test, and only tha
 - The final revalidation is a check, then a database insert. A change after the last check and before the insert is not detected, and registration itself writes no files. Existing-repository registrations do not run the working-tree check, because they never write and may be dirty by design; their boundary, configuration and identity checks still run.
 - Dispatch exclusion is defence in depth: no code path queues a task while an import holds the slot, so it is exercised by the policy test rather than a runner scenario.
 
-- Node has no `openat`/`mkdirat`, so handover creation and Git commands are path-based. The final component uses `O_EXCL|O_NOFOLLOW`, and every step re-checks the held descriptor, the device and inode, and the ancestors before and after. A swap of the selected folder between a check and the next system call could still land one write in the replacement. It is detected afterwards and the job stays `recovery_required` for the operator.
+- Node has no `openat`/`mkdirat`/`unlinkat`. Owned-path mutations now use Linux `/proc/self/fd/<dir>/<name>` on a held directory, so intermediate path components are no longer followed. The remaining window is only the last name inside that held directory: between the final `lstat` identity check and the `unlink`/`rmdir`/`O_EXCL` create, another process can replace that single name. Git commands (`init`, `fast-import`, `read-tree`, `status`) still take `-C` with the canonical path; a swap of the project folder between the last identity check and those Git calls can still aim Git at a replacement, after which the journaled digest or identity check fails closed. The first `open` of the project root is still path-based and is then bound to the journaled device and inode. Non-Linux hosts refuse mutating imports rather than falling back to path walks.
 - Ignore rules exclude the user's global excludes file (`GIT_CONFIG_GLOBAL=/dev/null`). Files ignored only globally become candidates, so sensitive ones block rather than leak.
 - Sensitive-content detection is the shared heuristic and does not promise complete secret detection.
 - Repository configuration is vetted when the repository is registered. Later edits are covered only by the existing per-use `assertGitConfig` checks.
