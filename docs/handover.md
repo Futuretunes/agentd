@@ -8,7 +8,7 @@ Start with [repository instructions](../AGENTS.md) and the [latest work-item han
 
 ## Candidate 0.605.0 — Use local folder project import (Cursor)
 
-See [handover](handovers/2026-10-03-cursor-local-folder-import.md). Revised after review on `feat/local-folder-import`: repository boundaries, ignore-first content-bound previews, a durable recoverable import job, fail-closed sensitive data and existing-repository vetting. Not merged or live-installed.
+See [handover](handovers/2026-10-03-cursor-local-folder-import.md). Revised after review on `feat/local-folder-import`: repository boundaries, ignore-first content-bound previews, a durable recoverable import job, fail-closed sensitive data and existing-repository vetting. Second revision `80f71a1` (2026-10-04) refuses nested existing repositories, fails closed when Git metadata changed after an interruption (complete `.git` digest), revalidates working files without following links right before registration, and makes imports and task approval or dispatch exclude each other. CI green: Node 24/26 781 tests (9 Linux-only skips), isolation 781/781 with 0 skipped. Not merged or live-installed.
 
 ## Candidate 0.604.1 — Workspace defaults and project delete (Cursor)
 
